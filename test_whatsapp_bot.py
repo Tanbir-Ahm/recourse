@@ -299,10 +299,19 @@ check(
 )
 check(
     whatsapp_bot._extract_incoming_gupshup({
-        "type": "message",
-        "payload": {"type": "text", "payload": {"text": "hi there"}, "sender": {"phone": "919876543210"}},
+        "entry": [{"changes": [{"value": {
+            "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi there"}}]
+        }}]}]
     }) == ("919876543210", "hi there"),
-    "parses the best-guess real Gupshup inbound shape",
+    "parses the real 'Meta format (v3)' shape confirmed from Gupshup's own webhook setup screen",
+)
+check(
+    whatsapp_bot._extract_incoming_gupshup({
+        "entry": [{"changes": [{"value": {
+            "messages": [{"from": "919876543210", "type": "image"}]
+        }}]}]
+    }) == (None, None),
+    "a non-text message type (image, location, etc.) is honestly left unhandled, not guessed at",
 )
 check(
     whatsapp_bot._extract_incoming_gupshup({"something": "totally different"}) == (None, None),

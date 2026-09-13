@@ -137,24 +137,30 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
 
 
 def _extract_incoming_gupshup(payload: dict):
-    """Best-effort parse of Gupshup's inbound webhook shape. Gupshup's
-    documented shape (unverified against a real payload as of
-    2026-09-13):
-        {"type": "message", "payload": {"type": "text",
-         "payload": {"text": "..."}, "sender": {"phone": "91..."}}}
-    Also accepts the plain {"phone_number": ..., "text": ...} shape
-    from Phase 1's local tests, so test_whatsapp_bot.py keeps working
-    unchanged. Returns (phone_number, text) or (None, None) if neither
-    shape matches -- the raw payload is always logged by the caller
-    regardless, so an unrecognised real shape is never silently lost."""
+    """Parses the webhook Gupshup's dashboard configures as "Meta
+    format (v3)" -- deliberately chosen over Gupshup's own proprietary
+    v2 shape specifically because it's Meta's own official, externally
+    documented, stable WhatsApp Cloud API webhook format rather than
+    something reverse-engineered. Shape:
+        {"entry": [{"changes": [{"value": {
+            "messages": [{"from": "91...", "type": "text",
+                          "text": {"body": "..."}}]
+        }}]}]}
+    Non-text message types (image, location, etc.) and non-message
+    events (delivery/read status, if ever subscribed to) are left
+    unhandled on purpose -- return (None, None) honestly rather than
+    guess at content that isn't there. Also still accepts the plain
+    {"phone_number": ..., "text": ...} shape from Phase 1's local
+    tests, so that coverage keeps working unchanged."""
     if "phone_number" in payload and "text" in payload:
         return payload["phone_number"], payload["text"]
     try:
-        inner = payload["payload"]
-        phone = inner["sender"]["phone"]
-        text = inner["payload"]["text"]
-        return phone, text
-    except (KeyError, TypeError):
+        value = payload["entry"][0]["changes"][0]["value"]
+        message = value["messages"][0]
+        if message.get("type") != "text":
+            return None, None
+        return message["from"], message["text"]["body"]
+    except (KeyError, IndexError, TypeError):
         return None, None
 
 
