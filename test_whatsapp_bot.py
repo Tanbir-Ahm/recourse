@@ -161,6 +161,44 @@ check(
     "with history, the context is prepended in plain prose and the new message stays clearly last",
 )
 
+
+# ---- whatsapp_store.classify_confidence / log_qa: the safe learning loop, part 1 ----
+
+check(
+    whatsapp_store.classify_confidence("single_match") == "confident",
+    "a real, single grounded answer is classified confident",
+)
+for _state in ("adjacent_uncovered", "no_match", "conflicting_matches"):
+    check(
+        whatsapp_store.classify_confidence(_state) == "thin",
+        f"'{_state}' is classified thin -- the engine's own signal that this is worth a person's review",
+    )
+for _state in ("classifier_unavailable", "retrieval_unavailable"):
+    check(
+        whatsapp_store.classify_confidence(_state) == "technical_failure",
+        f"'{_state}' is classified technical_failure, separate from a real knowledge gap",
+    )
+for _state in ("unrelated", "covered_elsewhere_in_tool", "some_future_unknown_state"):
+    check(
+        whatsapp_store.classify_confidence(_state) == "out_of_scope",
+        f"'{_state}' (including an unrecognised future state) falls back to out_of_scope, never crashes",
+    )
+
+whatsapp_store.log_qa(PHONE, "What is criminal intimidation?", "no_match")
+whatsapp_store.log_qa(PHONE, "My brother was arrested for stealing a goat", "single_match")
+conn = sqlite3.connect(whatsapp_store.DB_PATH)
+logged = conn.execute(
+    "SELECT question, state, confidence FROM qa_log WHERE phone_number = ? ORDER BY created_at", (PHONE,)
+).fetchall()
+conn.close()
+check(
+    logged == [
+        ("What is criminal intimidation?", "no_match", "thin"),
+        ("My brother was arrested for stealing a goat", "single_match", "confident"),
+    ],
+    "log_qa records the original question, the raw state, AND the classified confidence -- nothing silently dropped",
+)
+
 try:
     os.remove(_tmp_db)
 except OSError:

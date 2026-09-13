@@ -156,6 +156,13 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     result = chat_assistant.answer_question(question, inline_domains={"cheque_bounce", "freeze"})
     messages = format_answer_for_whatsapp(result)
 
+    # The safe learning loop, part 1: quietly note how confident the
+    # engine was on this real question. Never changes this reply or any
+    # future one -- purely raw material for a person to review later via
+    # whatsapp_weekly_report.py. Logs the person's own original message,
+    # not the context-prefixed `question` sent to the engine.
+    whatsapp_store.log_qa(phone_number, message_text, result.get("state", "unknown"))
+
     # Store the engine's own response_text (clean prose) rather than the
     # WhatsApp-formatted messages (which may include the "reply DRAFT"
     # nudge) -- that keeps future follow-up context readable and doesn't
