@@ -42,3 +42,8 @@ seed_full_text*.json
 
 # submission working files (screenshots, gallery framing) -- not part of the app
 tool_snapshots/
+
+# whatsapp_store.py's local SQLite conversation history. Once real, this
+# holds real people's real legal/arrest situations, phone numbers
+# included -- must never be tracked, even in local dev.
+*.db
