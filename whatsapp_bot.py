@@ -143,7 +143,17 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # until now.
     send_whatsapp_message(phone_number, "Got it -- give me a moment while I check the law and real judgments...")
 
-    result = chat_assistant.answer_question(question)
+    # CONFIRMED REAL BUG (2026-09-13), from a real WhatsApp test: a
+    # bank-freeze question came back as "This looks like a freeze
+    # question -- ask me about that directly and I can help" -- a dead
+    # end on WhatsApp, since there's no separate "directly" flow to ask
+    # in a chat. recourse_app.py already solved this exact problem
+    # (its own comment: "cheque-bounce and bank-freeze questions are
+    # answered inline from the shared corpus rather than dead-ended
+    # with a 'covered elsewhere' redirect that points nowhere here")
+    # by always passing inline_domains -- WhatsApp needs the same fix,
+    # for the same reason: no separate UI to redirect to here either.
+    result = chat_assistant.answer_question(question, inline_domains={"cheque_bounce", "freeze"})
     messages = format_answer_for_whatsapp(result)
 
     # Store the engine's own response_text (clean prose) rather than the

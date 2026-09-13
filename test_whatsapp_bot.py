@@ -227,6 +227,25 @@ check(
     "the reset path replies immediately, confirming the reset happened",
 )
 
+# CONFIRMED REAL BUG (2026-09-13), from a real WhatsApp test: a
+# bank-freeze question dead-ended with "This looks like a freeze
+# question -- ask me about that directly", a redirect that only makes
+# sense on the website's own separate freeze/cheque-bounce UI flow --
+# there's no "directly" to ask on WhatsApp. recourse_app.py already
+# avoids this by always passing inline_domains={"cheque_bounce",
+# "freeze"} to answer_question(); this checks whatsapp_bot.py does the
+# same, not just that the code happens to work for arrest questions.
+with patch("chat_assistant.answer_question") as mock_answer_question:
+    mock_answer_question.return_value = {"state": "no_match"}
+    whatsapp_bot.handle_incoming_message(PHONE, "my bank account got frozen without notice")
+    call_kwargs = mock_answer_question.call_args.kwargs
+    check(
+        call_kwargs.get("inline_domains") == {"cheque_bounce", "freeze"},
+        "handle_incoming_message calls answer_question with inline_domains={'cheque_bounce','freeze'}, "
+        "matching recourse_app.py's own fix for the exact same dead-end redirect problem -- WhatsApp has "
+        "no separate UI to redirect a freeze/cheque-bounce question to, so it must be answered inline too",
+    )
+
 try:
     os.remove(_tmp_db2)
 except OSError:
