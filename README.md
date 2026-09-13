@@ -6,7 +6,7 @@ Plain-English help for a person facing an **arrest, an FIR, a night in custody**
 
 **Live:** <https://recourse.co.in> &nbsp;·&nbsp; **Backup:** <https://recourse.up.railway.app> &nbsp;·&nbsp; **2-min walkthrough:** <https://tanbir-ahm.github.io/recourse-walkthrough/>
 
-![licence](https://img.shields.io/badge/licence-MIT-136a61) ![python](https://img.shields.io/badge/python-3.13-41555a) ![tests](https://img.shields.io/badge/tests-27_suites-2f6b3f) ![grounded](https://img.shields.io/badge/every_answer-traced_to_source-95541c)
+![licence](https://img.shields.io/badge/licence-MIT-136a61) ![python](https://img.shields.io/badge/python-3.13-41555a) ![tests](https://img.shields.io/badge/tests-27_suites-2f6b3f) ![grounded](https://img.shields.io/badge/every_answer-traced_to_source-95541c) ![whatsapp](https://img.shields.io/badge/whatsapp-pilot_tested_live-25D366)
 
 ---
 
@@ -85,6 +85,20 @@ A short **what to do right now**, then **what the law says**, then **what's stil
 ### 3 · A draft petition you can take to court
 
 Recourse assembles a **draft High Court petition** from the findings and your own account — cause title, grounds, prayer, affidavit, index — **editable on the page** and one click from a formatted **PDF** with a `RECOURSE — DRAFT PETITION` letterhead. Available for illegal arrest, Section 138 cheque cases and frozen accounts. Every unknown is left as `[ ___ ]`; every case passage carries a *"not independently verified"* flag until it is checked in the judgment. A starting point for a lawyer, not a filed document.
+
+---
+
+## Also on WhatsApp — the identical engine, no website required
+
+The exact pipeline above — scope check, checked retrieval, grounded phrasing, the ungrounded-statement screen — runs unmodified behind a WhatsApp front door. Nothing about the safety architecture changes with the interface: the model still never decides the law, every reply still carries the section and the judgment behind it. Only how the question arrives changes.
+
+Built and pressure-tested against real conversations, not just designed:
+
+- **Follow-up, in context.** Ask about a frozen account, then ask *"so was 107 BNSS mandatory?"* — Recourse answers as a continuation of the same conversation, without being re-told the facts.
+- **Duplicate-delivery protected.** A slow reply used to read as a failure and trigger a retry — the same question, answered three times, three real judgment lookups. Found on real traffic, fixed at the source: an instant acknowledgement, then a message-ID check that guarantees exactly one real answer per question, however many times delivery is retried underneath it.
+- **No dead ends.** Cheque-bounce and bank-freeze questions are answered inline, same as the website — never a redirect to a screen that doesn't exist inside a chat.
+
+**Proven end-to-end on real WhatsApp conversations, currently in sandbox pilot.** Opening a public number is the next step — see [Roadmap](#roadmap).
 
 ---
 
@@ -191,6 +205,13 @@ The live product is **`recourse_app.py`** (Streamlit, at recourse.co.in) over th
 | `petition_draft.py` | assembles the High Court petition — arrest (from the checklist or the document check), cheque (s. 138) and freeze; the ReportLab PDF renderer |
 | `draft_layer.py` | the lighter Magistrate-representation / SP-complaint templates |
 
+### WhatsApp front door (pilot)
+| File | Does |
+|---|---|
+| `whatsapp_bot.py` | the FastAPI receptionist — receives a message, calls the same `chat_assistant.answer_question()`, unmodified; background-task dispatch + message-ID dedup so a slow network can never re-answer the same question |
+| `whatsapp_formatter.py` | an answer, split into natural WhatsApp-sized messages, markdown bold converted to WhatsApp's own |
+| `whatsapp_store.py` | the conversation memory the website doesn't have — one running history per phone number, so a follow-up isn't re-explained from scratch |
+
 ### Doctrine maps & data
 `cheque_bounce_doctrine_map.py` · `freeze_doctrine_map.py` · `itact_section_data.py` · `bns_section_data.py` · `settled_doctrine_whitelist.py`
 
@@ -245,6 +266,7 @@ for f in test_*.py; do python "$f" || echo "FAIL: $f"; done
 
 ## Roadmap
 
+- **A public WhatsApp number.** The pilot is proven end-to-end; what's left is Meta's business verification, not engineering.
 - More offence and situation coverage, verified the same way — search & seizure (NDPS s. 50), FIR-registration disputes (*Lalita Kumari*), summons to vulnerable persons (s. 179 BNSS).
 - **Regional-language output** — the citizens least served by existing tools are the ones least served by English-only findings.
 - A warm handoff to a real lawyer or the nearest DLSA.
@@ -257,6 +279,8 @@ for f in test_*.py; do python "$f" || echo "FAIL: $f"; done
 The engine — scope classification, checked retrieval over the BNS/BNSS and a verified judgment corpus, the offence-keyword anchors, the concordance, the ungrounded-statement screens, the "model never states a verdict" architecture — was built over several months with **Claude Code** (Anthropic's agentic CLI). The agent wrote most of the retrieval pipeline, the deterministic checkers, the petition builder and the 27 test suites; the architectural call — that the LLM stays out of the legal-reasoning path — was the human one.
 
 The point isn't that an AI wrote a lot of the code. It's that an AI was used to build a legal tool whose defining design decision is **knowing exactly where an AI must not be trusted**.
+
+The WhatsApp pilot is the proof this holds outside the website too: the identical engine, byte-for-byte, now answers behind a second front door — confirmation that the safety architecture lives in the engine, not in any one interface built on top of it.
 
 Built with Python · Streamlit · the Anthropic API (extraction, scope, phrasing — never legal judgment) · Voyage AI embeddings (`voyage-law-2`) · ReportLab. Deployed on Railway.
 
