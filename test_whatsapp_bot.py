@@ -199,8 +199,13 @@ with patch("chat_assistant.client") as mock_client, \
     messages = whatsapp_bot.handle_incoming_message(PHONE, "My brother was arrested for stealing a goat")
 
 check(
-    len(_sent) == len(messages) and all(p == PHONE for p, _ in _sent),
-    "every formatted message actually goes through send_whatsapp_message, addressed to the right phone number",
+    len(_sent) == len(messages) + 1 and all(p == PHONE for p, _ in _sent),
+    "every formatted message goes through send_whatsapp_message, PLUS one immediate "
+    "acknowledgment sent before the (slow) engine call -- addressed to the right phone number",
+)
+check(
+    "give me a moment" in _sent[0][1],
+    "the acknowledgment is genuinely the FIRST thing sent, before the real answer arrives",
 )
 check(
     whatsapp_store.get_recent_history(PHONE)[0]["text"] == "My brother was arrested for stealing a goat",

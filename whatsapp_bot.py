@@ -57,6 +57,15 @@ import chat_assistant
 import whatsapp_store
 from whatsapp_formatter import format_answer_for_whatsapp
 
+# CONFIRMED REAL BUG (2026-09-13): logger.info() calls (the raw-payload
+# diagnostic logging on every webhook call, specifically added so the
+# first real incoming message would reveal Gupshup's actual shape) were
+# never actually appearing in Railway's logs. Python's root logger
+# defaults to WARNING -- uvicorn's own request-access lines showed up
+# only because uvicorn configures its own logger separately; ours never
+# did. Without this, the diagnostic logging existed in the code but was
+# invisible in practice.
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("whatsapp_bot")
 app = FastAPI()
 
@@ -120,6 +129,19 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     whatsapp_store.add_message(phone_number, "user", message_text)
     history = whatsapp_store.get_recent_history(phone_number)[:-1]  # exclude the message just added
     question = whatsapp_store.build_question_with_context(history, message_text)
+
+    # CONFIRMED REAL ISSUE (2026-09-13): with no immediate reply, a real
+    # user sent the same question three times within about a minute
+    # (~20s apart -- too spaced out to be a webhook retry, confirmed via
+    # the deployed logs), because chat_assistant.answer_question() takes
+    # several real seconds (Haiku classify + retrieval + Sonnet
+    # generate) and nothing told them it had even been received. Each
+    # resend re-ran the full engine for real -- a real, if small, cost,
+    # not just a UX rough edge. This mirrors the same "Got it, give me a
+    # moment..." acknowledgment already designed for the mocked-up
+    # website conversation; it was designed then, never actually built
+    # until now.
+    send_whatsapp_message(phone_number, "Got it -- give me a moment while I check the law and real judgments...")
 
     result = chat_assistant.answer_question(question)
     messages = format_answer_for_whatsapp(result)
