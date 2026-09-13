@@ -13,6 +13,7 @@ Anthropic calls, so those are mocked exactly the way test_chat_grounding.py
 already does it (patch chat_assistant.client, feed canned responses) --
 this file makes zero real network calls.
 """
+import json
 import os
 import sys
 import tempfile
@@ -170,6 +171,8 @@ except OSError:
 
 import whatsapp_bot
 
+_real_send_whatsapp_message = whatsapp_bot.send_whatsapp_message  # saved before it gets monkeypatched below
+
 _tmp_db2 = tempfile.mktemp(suffix=".db")
 whatsapp_store.DB_PATH = _tmp_db2
 
@@ -223,6 +226,88 @@ try:
     os.remove(_tmp_db2)
 except OSError:
     pass
+
+# The handle_incoming_message tests above monkeypatched
+# whatsapp_bot.send_whatsapp_message with a plain lambda (to capture
+# what was "sent" without a real call) and never put the real
+# implementation back -- restore it, or every test below would
+# silently exercise that lambda instead of the actual Gupshup code.
+whatsapp_bot.send_whatsapp_message = _real_send_whatsapp_message
+
+
+# ---- send_whatsapp_message: the real Gupshup call, requests.post mocked (no real send, no real key needed) ----
+
+_orig_api_key = os.environ.pop("GUPSHUP_API_KEY", None)
+
+with patch("whatsapp_bot.logger") as mock_logger:
+    whatsapp_bot.send_whatsapp_message("+919876543210", "hello")
+    check(
+        mock_logger.info.called and not mock_logger.error.called,
+        "with no GUPSHUP_API_KEY set, send_whatsapp_message falls back to logging only -- "
+        "never makes a real network call, so tests/local dev never need a real key",
+    )
+
+os.environ["GUPSHUP_API_KEY"] = "fake-test-key"
+with patch("whatsapp_bot.requests") as mock_requests:
+    mock_requests.post.return_value = MagicMock(status_code=202, text="")
+    whatsapp_bot.send_whatsapp_message("+919876543210", "Right now, ask for the FIR.")
+    call = mock_requests.post.call_args
+    check(
+        call.args[0] == "https://api.gupshup.io/wa/api/v1/msg",
+        "hits the exact Gupshup sandbox endpoint shown in the dashboard's Test access API panel",
+    )
+    check(
+        call.kwargs["headers"]["apikey"] == "fake-test-key"
+        and call.kwargs["headers"]["Content-Type"] == "application/x-www-form-urlencoded",
+        "sends the api key and content-type headers exactly as Gupshup's own curl example requires",
+    )
+    data = call.kwargs["data"]
+    check(
+        data["channel"] == "whatsapp"
+        and data["destination"] == "919876543210"  # leading + stripped
+        and json.loads(data["message"]) == {"type": "text", "text": "Right now, ask for the FIR."},
+        "builds the destination (no leading +) and the message as Gupshup's expected JSON-in-a-form-field shape",
+    )
+
+with patch("whatsapp_bot.requests") as mock_requests, patch("whatsapp_bot.logger") as mock_logger:
+    mock_requests.post.return_value = MagicMock(status_code=401, text="Invalid API key")
+    whatsapp_bot.send_whatsapp_message("+919876543210", "hello")
+    check(
+        mock_logger.error.called,
+        "an error response from Gupshup (e.g. a bad key) is logged, not silently ignored",
+    )
+
+with patch("whatsapp_bot.requests") as mock_requests, patch("whatsapp_bot.logger") as mock_logger:
+    mock_requests.post.side_effect = Exception("network exploded")
+    whatsapp_bot.send_whatsapp_message("+919876543210", "hello")
+    check(
+        mock_logger.exception.called,
+        "a real network failure is caught and logged, never raised -- one failed send must not crash the request",
+    )
+
+if _orig_api_key is not None:
+    os.environ["GUPSHUP_API_KEY"] = _orig_api_key
+else:
+    os.environ.pop("GUPSHUP_API_KEY", None)
+
+
+# ---- _extract_incoming_gupshup: both accepted shapes, plus the honest "unrecognised" case ----
+
+check(
+    whatsapp_bot._extract_incoming_gupshup({"phone_number": "+91123", "text": "hi"}) == ("+91123", "hi"),
+    "still accepts Phase 1's plain test shape, so test coverage above keeps working unchanged",
+)
+check(
+    whatsapp_bot._extract_incoming_gupshup({
+        "type": "message",
+        "payload": {"type": "text", "payload": {"text": "hi there"}, "sender": {"phone": "919876543210"}},
+    }) == ("919876543210", "hi there"),
+    "parses the best-guess real Gupshup inbound shape",
+)
+check(
+    whatsapp_bot._extract_incoming_gupshup({"something": "totally different"}) == (None, None),
+    "an unrecognised shape returns (None, None) honestly, rather than crashing or guessing wrong",
+)
 
 
 # ---- summary ----
