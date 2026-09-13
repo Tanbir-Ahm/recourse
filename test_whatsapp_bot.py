@@ -299,29 +299,85 @@ else:
 # ---- _extract_incoming_gupshup: both accepted shapes, plus the honest "unrecognised" case ----
 
 check(
-    whatsapp_bot._extract_incoming_gupshup({"phone_number": "+91123", "text": "hi"}) == ("+91123", "hi"),
-    "still accepts Phase 1's plain test shape, so test coverage above keeps working unchanged",
+    whatsapp_bot._extract_incoming_gupshup({"phone_number": "+91123", "text": "hi"}) == ("+91123", "hi", None),
+    "still accepts Phase 1's plain test shape (message_id is None for it), so test coverage above keeps working unchanged",
 )
 check(
     whatsapp_bot._extract_incoming_gupshup({
         "entry": [{"changes": [{"value": {
-            "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi there"}}]
+            "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi there"}, "id": "wamid.ABC"}]
         }}]}]
-    }) == ("919876543210", "hi there"),
-    "parses the real 'Meta format (v3)' shape confirmed from Gupshup's own webhook setup screen",
+    }) == ("919876543210", "hi there", "wamid.ABC"),
+    "parses the real 'Meta format (v3)' shape confirmed from Gupshup's own webhook setup screen, including the message id used for dedup",
 )
 check(
     whatsapp_bot._extract_incoming_gupshup({
         "entry": [{"changes": [{"value": {
             "messages": [{"from": "919876543210", "type": "image"}]
         }}]}]
-    }) == (None, None),
+    }) == (None, None, None),
     "a non-text message type (image, location, etc.) is honestly left unhandled, not guessed at",
 )
 check(
-    whatsapp_bot._extract_incoming_gupshup({"something": "totally different"}) == (None, None),
-    "an unrecognised shape returns (None, None) honestly, rather than crashing or guessing wrong",
+    whatsapp_bot._extract_incoming_gupshup({"something": "totally different"}) == (None, None, None),
+    "an unrecognised shape returns (None, None, None) honestly, rather than crashing or guessing wrong",
 )
+
+
+# ---- whatsapp_webhook endpoint: real HTTP calls via TestClient -- proves the actual retry-storm fix,
+#      not just the helper function in isolation ----
+
+from fastapi.testclient import TestClient
+
+_tmp_db3 = tempfile.mktemp(suffix=".db")
+whatsapp_store.DB_PATH = _tmp_db3
+whatsapp_bot._seen_message_ids.clear()
+
+_handled = []
+whatsapp_bot.handle_incoming_message = lambda phone, text: (_handled.append((phone, text)), [])[1]
+
+client = TestClient(whatsapp_bot.app)
+
+resp1 = client.post("/whatsapp/webhook", json={
+    "entry": [{"changes": [{"value": {
+        "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi"}, "id": "wamid.DEDUP1"}]
+    }}]}]
+})
+check(
+    resp1.status_code == 200 and resp1.json()["status"] == "accepted",
+    "a genuinely new message is accepted (the real work runs as a background task, not inline)",
+)
+check(
+    len(_handled) == 1 and _handled[0] == ("919876543210", "hi"),
+    "the background task actually ran and reached handle_incoming_message with the right phone/text",
+)
+
+resp2 = client.post("/whatsapp/webhook", json={
+    "entry": [{"changes": [{"value": {
+        "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi"}, "id": "wamid.DEDUP1"}]
+    }}]}]
+})
+check(
+    resp2.json()["status"] == "duplicate_ignored" and len(_handled) == 1,
+    "CONFIRMED REAL BUG regression check: a retried delivery of the SAME message id is recognised "
+    "and skipped -- handle_incoming_message is NOT called a second time, so no duplicate paid answer "
+    "and no duplicate WhatsApp reply, matching the exact failure seen live twice on 2026-09-13",
+)
+
+resp3 = client.post("/whatsapp/webhook", json={
+    "entry": [{"changes": [{"value": {
+        "messages": [{"from": "919876543210", "type": "text", "text": {"body": "a different question"}, "id": "wamid.DEDUP2"}]
+    }}]}]
+})
+check(
+    resp3.json()["status"] == "accepted" and len(_handled) == 2,
+    "a different, new message id is still processed normally -- dedup only blocks exact repeats",
+)
+
+try:
+    os.remove(_tmp_db3)
+except OSError:
+    pass
 
 
 # ---- summary ----

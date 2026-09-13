@@ -45,7 +45,7 @@ import logging
 import os
 
 import requests
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 
 try:
     from dotenv import load_dotenv
@@ -170,39 +170,70 @@ def _extract_incoming_gupshup(payload: dict):
         }}]}]}
     Non-text message types (image, location, etc.) and non-message
     events (delivery/read status, if ever subscribed to) are left
-    unhandled on purpose -- return (None, None) honestly rather than
-    guess at content that isn't there. Also still accepts the plain
-    {"phone_number": ..., "text": ...} shape from Phase 1's local
-    tests, so that coverage keeps working unchanged."""
+    unhandled on purpose -- return (None, None, None) honestly rather
+    than guess at content that isn't there. Also still accepts the
+    plain {"phone_number": ..., "text": ...} shape from Phase 1's
+    local tests, so that coverage keeps working unchanged (message_id
+    is None for that shape -- fine, it's test-only).
+
+    Also returns Meta's own message id ("wamid...") when present, so
+    the webhook handler can deduplicate a retried delivery of the SAME
+    message (see CONFIRMED REAL BUG note on whatsapp_webhook below)."""
     if "phone_number" in payload and "text" in payload:
-        return payload["phone_number"], payload["text"]
+        return payload["phone_number"], payload["text"], None
     try:
         value = payload["entry"][0]["changes"][0]["value"]
         message = value["messages"][0]
         if message.get("type") != "text":
-            return None, None
-        return message["from"], message["text"]["body"]
+            return None, None, None
+        return message["from"], message["text"]["body"], message.get("id")
     except (KeyError, IndexError, TypeError):
-        return None, None
+        return None, None, None
+
+
+# CONFIRMED REAL BUG (2026-09-13), found from TWO separate real WhatsApp
+# tests: a question got answered 3 times, ~20-40s apart -- not a person
+# resending (the "Got it, give me a moment" ack fix did NOT stop this,
+# ruling that out), but Gupshup's own webhook retrying delivery of the
+# SAME message, because handle_incoming_message() used to run the full
+# slow pipeline (Haiku classify + retrieval + Sonnet generate -- several
+# real seconds) BEFORE this endpoint ever returned an HTTP response.
+# Most webhook senders assume "no fast response = failed" and retry.
+# Fix, two layers: (1) respond in well under a second by handing the
+# real work to FastAPI's BackgroundTasks instead of awaiting it inline;
+# (2) belt-and-suspenders, deduplicate by Meta's own message id in case
+# a retry still slips through for some other reason (network blip, a
+# tighter timeout than expected) -- an in-memory set, capped, good
+# enough given this service's storage is already ephemeral between
+# deploys (see memory/whatsapp-interface-technical-plan.md).
+_seen_message_ids = set()
+_SEEN_IDS_CAP = 500
 
 
 @app.post("/whatsapp/webhook")
-async def whatsapp_webhook(request: Request):
-    """Logs the FULL raw payload on every call -- Gupshup's exact
-    inbound shape hasn't been confirmed against a real message yet, so
-    the first real one arriving is what fixes _extract_incoming_gupshup
-    for good, not further guessing. handle_incoming_message() itself
-    never changes regardless of what the real shape turns out to be."""
+async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
+    """Logs the FULL raw payload on every call -- kept even after
+    confirming the real Meta-format shape, since a malformed or
+    unexpected payload should still be diagnosable from logs, not just
+    silently dropped."""
     payload = await request.json()
     logger.info("RAW incoming webhook payload: %s", json.dumps(payload)[:2000])
 
-    phone_number, message_text = _extract_incoming_gupshup(payload)
+    phone_number, message_text, message_id = _extract_incoming_gupshup(payload)
     if phone_number is None:
         logger.warning("Could not parse an incoming message out of this payload shape -- see raw log above.")
         return {"status": "unrecognised_payload"}
 
-    messages = handle_incoming_message(phone_number, message_text)
-    return {"status": "ok", "messages_sent": len(messages)}
+    if message_id is not None:
+        if message_id in _seen_message_ids:
+            logger.info("Duplicate delivery of message %s -- skipping, already handled", message_id)
+            return {"status": "duplicate_ignored"}
+        _seen_message_ids.add(message_id)
+        if len(_seen_message_ids) > _SEEN_IDS_CAP:
+            _seen_message_ids.pop()
+
+    background_tasks.add_task(handle_incoming_message, phone_number, message_text)
+    return {"status": "accepted"}
 
 
 @app.get("/whatsapp/health")
