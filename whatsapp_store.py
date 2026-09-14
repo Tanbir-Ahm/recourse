@@ -22,6 +22,7 @@ whatsapp_bot.py).
 """
 import logging
 import os
+import shutil
 import sqlite3
 import time
 
@@ -30,6 +31,36 @@ logger = logging.getLogger("whatsapp_store")
 DB_PATH = os.environ.get("WHATSAPP_DB_PATH", "whatsapp_conversations.db")
 MAX_AGE_SECONDS = 24 * 3600  # one day of silence resets the conversation
 MAX_HISTORY_MESSAGES = 6     # how many recent turns to carry into a follow-up
+
+# ONE-TIME MIGRATION (2026-09-14, safe to delete once confirmed run in
+# production): WHATSAPP_DB_PATH was set from a Windows Git Bash terminal as
+# "/data/whatsapp_conversations.db", but Git Bash auto-rewrites any argument
+# starting with "/" into a Windows path under its own install dir, so the
+# value Railway actually received and used was the *relative* path
+# "C:/Program Files/Git/data/whatsapp_conversations.db" -- resolved against
+# the app's working directory, landing on the container's throwaway disk
+# instead of the persistent volume at /data. Real user conversation history
+# and qa_log entries collected before this fix was deployed live there, not
+# on the volume. This copies that file onto the correct path exactly once,
+# the first time the app starts with the corrected WHATSAPP_DB_PATH.
+_LEGACY_MANGLED_DB_PATH = os.path.join(
+    os.getcwd(), "C:/Program Files/Git/data/whatsapp_conversations.db"
+)
+
+
+def _migrate_legacy_mangled_path() -> None:
+    if os.path.exists(DB_PATH) or not os.path.exists(_LEGACY_MANGLED_DB_PATH):
+        return
+    parent = os.path.dirname(DB_PATH)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    shutil.copyfile(_LEGACY_MANGLED_DB_PATH, DB_PATH)
+    logger.info(
+        "Migrated WhatsApp DB from mangled path %r to %r", _LEGACY_MANGLED_DB_PATH, DB_PATH
+    )
+
+
+_migrate_legacy_mangled_path()
 
 
 def _connect():
