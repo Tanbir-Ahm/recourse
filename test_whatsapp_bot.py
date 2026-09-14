@@ -389,13 +389,36 @@ from fastapi.testclient import TestClient
 _tmp_db3 = tempfile.mktemp(suffix=".db")
 whatsapp_store.DB_PATH = _tmp_db3
 whatsapp_bot._seen_message_ids.clear()
+whatsapp_bot.WEBHOOK_SECRET = "test-secret-value"
 
 _handled = []
 whatsapp_bot.handle_incoming_message = lambda phone, text: (_handled.append((phone, text)), [])[1]
 
 client = TestClient(whatsapp_bot.app)
 
-resp1 = client.post("/whatsapp/webhook", json={
+_SAMPLE_PAYLOAD = {
+    "entry": [{"changes": [{"value": {
+        "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi"}, "id": "wamid.AUTHCHECK"}]
+    }}]}]
+}
+
+# ---- CONFIRMED REAL VULNERABILITY (security review, 2026-09-14): the
+# webhook had no authentication at all -- these regression-test the fix.
+check(
+    client.post("/whatsapp/webhook/wrong-secret", json=_SAMPLE_PAYLOAD).status_code == 404
+    and len(_handled) == 0,
+    "a request with the WRONG secret is rejected with a plain 404, never reaches handle_incoming_message",
+)
+_saved_secret, whatsapp_bot.WEBHOOK_SECRET = whatsapp_bot.WEBHOOK_SECRET, None
+check(
+    client.post("/whatsapp/webhook/anything", json=_SAMPLE_PAYLOAD).status_code == 404
+    and len(_handled) == 0,
+    "FAIL CLOSED: with WHATSAPP_WEBHOOK_SECRET unset entirely, every request is rejected -- "
+    "there is no accidental 'unauthenticated mode'",
+)
+whatsapp_bot.WEBHOOK_SECRET = _saved_secret
+
+resp1 = client.post("/whatsapp/webhook/test-secret-value", json={
     "entry": [{"changes": [{"value": {
         "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi"}, "id": "wamid.DEDUP1"}]
     }}]}]
@@ -409,7 +432,7 @@ check(
     "the background task actually ran and reached handle_incoming_message with the right phone/text",
 )
 
-resp2 = client.post("/whatsapp/webhook", json={
+resp2 = client.post("/whatsapp/webhook/test-secret-value", json={
     "entry": [{"changes": [{"value": {
         "messages": [{"from": "919876543210", "type": "text", "text": {"body": "hi"}, "id": "wamid.DEDUP1"}]
     }}]}]
@@ -421,7 +444,7 @@ check(
     "and no duplicate WhatsApp reply, matching the exact failure seen live twice on 2026-09-13",
 )
 
-resp3 = client.post("/whatsapp/webhook", json={
+resp3 = client.post("/whatsapp/webhook/test-secret-value", json={
     "entry": [{"changes": [{"value": {
         "messages": [{"from": "919876543210", "type": "text", "text": {"body": "a different question"}, "id": "wamid.DEDUP2"}]
     }}]}]

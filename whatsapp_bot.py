@@ -39,13 +39,21 @@ further. handle_incoming_message() itself does not change either way.
 
 Run locally:
     uvicorn whatsapp_bot:app --reload --port 8001
+
+SECURITY (added 2026-09-14 after a security review found the webhook had
+no authentication at all): set WHATSAPP_WEBHOOK_SECRET in the environment,
+and configure Gupshup's dashboard callback URL as
+    https://<host>/whatsapp/webhook/<that same secret value>
+Without WHATSAPP_WEBHOOK_SECRET set, every request is rejected -- there is
+no "unauthenticated mode".
 """
+import hmac
 import json
 import logging
 import os
 
 import requests
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 
 try:
     from dotenv import load_dotenv
@@ -74,6 +82,21 @@ _RESET_WORDS = {"new question", "start over", "reset"}
 GUPSHUP_API_URL = "https://api.gupshup.io/wa/api/v1/msg"
 GUPSHUP_SOURCE_NUMBER = os.environ.get("GUPSHUP_SOURCE_NUMBER", "917834811114")
 GUPSHUP_APP_NAME = os.environ.get("GUPSHUP_APP_NAME", "RecourseA2J")
+
+# CONFIRMED REAL VULNERABILITY (found by security review, 2026-09-14): this
+# webhook had NO authentication at all -- anyone who found the URL could
+# POST any phone_number + text and it would be processed exactly like a
+# real incoming WhatsApp message (real Anthropic API spend, a real outbound
+# WhatsApp send to any destination they named, and unauthenticated writes/
+# deletes against that phone number's stored conversation). Gupshup's
+# sandbox dashboard doesn't offer a signed-webhook option, so the fix is a
+# shared secret embedded in the callback URL PATH itself (the one thing
+# every webhook provider supports, since it's just "the URL you configure
+# them to POST to") -- see whatsapp_webhook below. WHATSAPP_WEBHOOK_SECRET
+# must be set in the deployment environment; if it is not, EVERY request is
+# rejected (fail closed, never fail open) rather than silently running
+# unauthenticated.
+WEBHOOK_SECRET = os.environ.get("WHATSAPP_WEBHOOK_SECRET")
 
 
 def send_whatsapp_message(phone_number: str, text: str) -> None:
@@ -227,12 +250,23 @@ _seen_message_ids = set()
 _SEEN_IDS_CAP = 500
 
 
-@app.post("/whatsapp/webhook")
-async def whatsapp_webhook(request: Request, background_tasks: BackgroundTasks):
-    """Logs the FULL raw payload on every call -- kept even after
+@app.post("/whatsapp/webhook/{secret}")
+async def whatsapp_webhook(secret: str, request: Request, background_tasks: BackgroundTasks):
+    """The secret path segment is checked FIRST, before touching the
+    request body at all -- Gupshup's dashboard is configured with this
+    exact URL (secret included) as the callback, so a real delivery
+    always carries it; anything else is rejected as a plain 404 (never
+    a distinguishing error) so a prober can't tell "wrong secret" from
+    "route doesn't exist". Uses hmac.compare_digest for a constant-time
+    comparison -- low cost, standard practice for secret comparison.
+
+    Logs the FULL raw payload on every call -- kept even after
     confirming the real Meta-format shape, since a malformed or
     unexpected payload should still be diagnosable from logs, not just
     silently dropped."""
+    if not WEBHOOK_SECRET or not hmac.compare_digest(secret, WEBHOOK_SECRET):
+        raise HTTPException(status_code=404)
+
     payload = await request.json()
     logger.info("RAW incoming webhook payload: %s", json.dumps(payload)[:2000])
 
