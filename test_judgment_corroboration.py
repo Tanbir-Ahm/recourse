@@ -156,6 +156,79 @@ check(
     "full_corroboration_report combines both independent checks into one result for a human to read",
 )
 
+# ---- independent_vaquill_candidates / independent_agreement_check ----
+# ---- against a small, directly-populated test pool (no network) ----
+
+_test_db2 = tempfile.mktemp(suffix=".db")
+vaquill_search.DB_PATH = _test_db2
+conn = vaquill_search._connect()
+with conn:
+    conn.execute(
+        "INSERT INTO metadata (case_id, title, court, decision_date, disposition, is_procedural_order, "
+        "has_reasoning_structure, disposal_markers, ik_search_url, n_chunks, topic) "
+        "VALUES ('TEST_1', 'TEST CASE versus SOMEONE', 'Supreme Court of India', '2020-01-01', "
+        "'Disposed off', NULL, NULL, '[]', 'https://x', 1, 'domestic_violence')"
+    )
+    # A realistic overruling shape: the old (wrong) rule quoted almost
+    # verbatim, immediately followed by the real holding negating it in
+    # nearly the same words -- exactly the Ahuja shape.
+    conn.execute(
+        "INSERT INTO fts (case_id, title, full_text) VALUES (?, ?, ?)",
+        ("TEST_1", "TEST CASE versus SOMEONE",
+         "some earlier background text not about the doctrine at all, padding padding padding. "
+         "an earlier court held that a shared household would only mean the house belonging to "
+         "the husband, or the house of the joint family of which the husband is a member. "
+         "we now hold that the definition of shared household cannot be read to mean that shared "
+         "household can only be that household of the joint family of which husband is a member. "
+         "more unrelated closing text follows here, padding padding padding padding."),
+    )
+conn.close()
+
+cand_result = judgment_corroboration.independent_vaquill_candidates(
+    "TEST CASE", doctrine_keywords=["shared household", "joint family"]
+)
+check(
+    cand_result["checked"] and len(cand_result["candidates"]) > 0,
+    "independent_vaquill_candidates finds real candidate windows scored by doctrine keywords, "
+    "with no knowledge of any already-picked holding text",
+)
+
+# The real, correct holding -- should match SOME candidate.
+agree_correct = judgment_corroboration.independent_agreement_check(
+    "TEST CASE",
+    "we now hold that the definition of shared household cannot be read to mean that shared "
+    "household can only be that household of the joint family of which husband is a member",
+    doctrine_keywords=["shared household", "joint family"],
+)
+check(
+    agree_correct["checked"] and agree_correct["best_matching_rank"] is not None,
+    "the real holding text is found among the independently-surfaced candidates",
+)
+
+# CONFIRMED REAL LIMITATION (found live against Satish Chander Ahuja):
+# the OLD, now-rejected rule -- stated as a near-negation of the real
+# holding, sharing almost all the same words -- ALSO matches. This is
+# not a bug to be fixed away; it's why the review UI always shows full
+# candidate TEXT, never just a pass/fail number.
+agree_old_rule = judgment_corroboration.independent_agreement_check(
+    "TEST CASE",
+    "a shared household would only mean the house belonging to the husband, or the house of "
+    "the joint family of which the husband is a member",
+    doctrine_keywords=["shared household", "joint family"],
+)
+check(
+    agree_old_rule["checked"] and agree_old_rule["best_matching_rank"] is not None,
+    "CONFIRMED REAL LIMITATION reproduced: the OLD, REJECTED rule -- worded as a near-negation "
+    "of the real holding -- ALSO registers a match, because word-overlap matching cannot tell a "
+    "sentence apart from its own negation. This is exactly why a rank number is never shown alone.",
+)
+
+try:
+    import os as _os
+    _os.remove(_test_db2)
+except OSError:
+    pass
+
 if FAILURES:
     print(f"\n{len(FAILURES)} check(s) failed:")
     for f in FAILURES:

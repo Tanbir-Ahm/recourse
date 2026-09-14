@@ -163,11 +163,150 @@ def citation_corroboration_check(case_name: str, key_phrase_groups: list, max_do
     }
 
 
+# ---------------------------------------------------------------------------
+# STRENGTHENED independent-extraction check, added 2026-09-14 after the user
+# pointed out cross_source_check only confirms a quote is REAL, not that it
+# is the RIGHT paragraph -- exactly the Ahuja mistake it was originally
+# pitched (imprecisely) as catching. This is the honest fix: independently
+# surface candidate holding passages from VAQUILL'S OWN text, using
+# deterministic structural + keyword scoring that never looks at what was
+# already picked from Indian Kanoon, then check whether the two agree.
+# Real, not cosmetic, independence: a wrong IK pick would not automatically
+# make Vaquill's independently-highest-scoring window agree with it.
+# ---------------------------------------------------------------------------
+
+_HOLDING_MARKERS = (
+    "we hold", "we declare", "it is held", "we therefore", "we, therefore",
+    "in view of the foregoing", "we answer", "we are of the view",
+    "the appeal is allowed", "the appeal is dismissed", "stands deleted",
+    "does not lay down", "has not correctly interpreted", "we conclude",
+)
+_WINDOW_SIZE = 400
+_WINDOW_STRIDE = 200
+
+
+def _score_window(window_lower: str, doctrine_keywords: list) -> int:
+    score = sum(1 for m in _HOLDING_MARKERS if m in window_lower)
+    score += sum(1 for kw in doctrine_keywords if kw.lower() in window_lower)
+    return score
+
+
+def independent_vaquill_candidates(case_title_contains: str, doctrine_keywords: list,
+                                    max_candidates: int = 3, vaquill_db_path: str = None) -> dict:
+    """Slides a fixed-size window across Vaquill's OWN full text (never
+    looking at any paragraph already picked from Indian Kanoon) and scores
+    each window by how many disposal/holding-style phrases AND
+    doctrine-specific keywords it contains. Returns the top-scoring,
+    non-overlapping windows -- an independently-derived guess at where the
+    real holding sits, for comparison against whatever was picked from the
+    other source. Deterministic, no LLM call -- Python decides via keyword
+    counting, exactly the same kind of rule this project already trusts
+    elsewhere (e.g. ik_triage's own disposal-marker scan)."""
+    import sqlite3
+    import vaquill_search
+
+    db_path = vaquill_db_path or vaquill_search.DB_PATH
+    try:
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT case_id, full_text FROM fts WHERE title LIKE ?", (f"%{case_title_contains}%",)
+        ).fetchone()
+        conn.close()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("independent_vaquill_candidates: could not query %r: %s", db_path, exc)
+        return {"checked": False, "candidates": []}
+
+    if row is None:
+        return {"checked": True, "candidates": [], "vaquill_case_id": None}
+
+    case_id, full_text = row
+    text_norm = _normalise(full_text)
+    scored = []
+    for start in range(0, max(1, len(text_norm) - _WINDOW_SIZE), _WINDOW_STRIDE):
+        window = text_norm[start:start + _WINDOW_SIZE]
+        s = _score_window(window, doctrine_keywords)
+        if s > 0:
+            scored.append((s, start, window))
+
+    # Collapse overlapping/adjacent high-scorers into one candidate each,
+    # keeping the highest-scoring window per local peak rather than
+    # returning near-duplicate overlapping windows.
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    candidates, taken_starts = [], []
+    for s, start, window in scored:
+        if any(abs(start - t) < _WINDOW_SIZE for t in taken_starts):
+            continue
+        taken_starts.append(start)
+        candidates.append({"score": s, "text": window})
+        if len(candidates) >= max_candidates:
+            break
+
+    return {"checked": True, "candidates": candidates, "vaquill_case_id": case_id}
+
+
+def independent_agreement_check(case_title_contains: str, holding_text: str, doctrine_keywords: list,
+                                 min_shared_words: int = 5) -> dict:
+    """Compares the ORIGINAL pick (from Indian Kanoon) against candidates
+    independently surfaced from Vaquill's own text (see
+    independent_vaquill_candidates -- computed with NO knowledge of
+    holding_text).
+
+    CONFIRMED REAL LIMITATION, found testing this against Satish Chander
+    Ahuja (the actual case that caused the original mistake) -- a much
+    deeper one than expected: an overruling judgment quotes the OLD,
+    now-rejected rule almost verbatim right before rejecting it, and the
+    correct rule is often stated as a direct NEGATION using nearly the
+    SAME words ("shared household CANNOT be read to mean X" vs the old
+    rule's "shared household would ONLY mean X"). Confirmed live: both
+    the real holding and the rejected old rule matched this function's
+    best-matching-rank at rank 1 -- plain word-overlap matching cannot
+    tell a sentence apart from its own negation, since "not" is a single
+    word buried among a dozen shared ones. This is a genuine limit of
+    any non-semantic (keyword/word-overlap) check, not a bug to patch
+    away -- and it is NOT this project's job to reach for an LLM to
+    settle it, since that would be exactly the "AI decides what the law
+    means" step this whole architecture refuses to take.
+
+    CONSEQUENCE FOR HOW THIS RESULT MUST BE USED: 'best_matching_rank'
+    is a genuinely useful signal for NARROWING a 40,000-character
+    judgment down to a handful of short, independently-surfaced
+    candidate passages worth a person's 30 seconds -- it is NOT a
+    verdict, and must never be shown or treated as "agrees == safe to
+    skip reading". The review UI built from this always shows the
+    candidate text itself alongside the rank, precisely so a human can
+    catch exactly this kind of negation flip that the number alone
+    cannot."""
+    result = independent_vaquill_candidates(case_title_contains, doctrine_keywords)
+    if not result["checked"]:
+        return {"checked": False, "best_matching_rank": None, "candidates": []}
+
+    holding_words = _normalise_for_fingerprint(holding_text).split()
+    best_rank = None
+    if len(holding_words) >= min_shared_words:
+        for rank, candidate in enumerate(result["candidates"], start=1):
+            candidate_norm = _normalise_for_fingerprint(candidate["text"])
+            for i in range(len(holding_words) - min_shared_words + 1):
+                fragment = " ".join(holding_words[i:i + min_shared_words])
+                if fragment in candidate_norm:
+                    best_rank = rank
+                    break
+            if best_rank is not None:
+                break
+
+    return {"checked": True, "best_matching_rank": best_rank, "candidates": result["candidates"]}
+
+
 def full_corroboration_report(case_title_contains: str, case_name_for_search: str,
-                               holding_text: str, key_phrase_groups: list) -> dict:
-    """Runs both checks and returns one combined, human-readable report
+                               holding_text: str, key_phrase_groups: list,
+                               doctrine_keywords: list = None) -> dict:
+    """Runs all checks and returns one combined, human-readable report
     -- the thing actually meant to be shown to a person before they
     sign off on a new anchor, per the review process agreed 2026-09-14."""
     cross = cross_source_check(case_title_contains, holding_text)
     citation = citation_corroboration_check(case_name_for_search, key_phrase_groups)
-    return {"cross_source": cross, "citation_corroboration": citation}
+    report = {"cross_source": cross, "citation_corroboration": citation}
+    if doctrine_keywords:
+        report["independent_agreement"] = independent_agreement_check(
+            case_title_contains, holding_text, doctrine_keywords
+        )
+    return report
