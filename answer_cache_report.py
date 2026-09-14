@@ -4,10 +4,17 @@ answer_cache_report.py
 
 The human-review half of answer_cache.py (see that module's docstring for
 the full design). Lists every confident ('single_match') answer the tool
-has generated, grouped by the exact set of legal sources it used, so a
-person can decide which repeat questions are worth serving from cache
-instead of paying for a fresh answer every time -- and separately lists
-what's currently approved and when each approval expires.
+has generated -- the exact legal sources it used AND the full generated
+answer text itself, since that's what a reviewer actually needs to read
+to judge "was this answered correctly" before approving it for reuse --
+and separately lists what's currently approved and when each approval
+expires.
+
+FIXED 2026-09-14 (found live, by the user, the first time they actually
+tried to use this report): the original version only showed the
+sources and a sample question, never the generated answer text itself
+-- making it impossible to actually do the one thing this report exists
+for (read the answer and judge whether it's correct before approving).
 
 This script changes nothing on its own read path; --approve / --revoke
 are the only things that change what gets served, and both require an
@@ -57,7 +64,12 @@ def generate_report() -> str:
         for c in unapproved:
             lines.append(f"  asked {c['hit_count']}x -- {c['description']}")
             lines.append(f"      e.g. \"{c['sample_question']}\"")
+            lines.append("      --- the actual answer that would be reused (read this before approving) ---")
+            for line in c["response_text"].splitlines():
+                lines.append(f"      {line}")
+            lines.append("      ---")
             lines.append(f"      key: {c['cache_key']}")
+            lines.append("")
         lines.append("")
         lines.append("Approve one with: python answer_cache_report.py --approve <key>")
 
