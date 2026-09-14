@@ -94,6 +94,23 @@ check(
     "the real, verified Ahuja citation is attached, not a placeholder",
 )
 
+sarma_q = get_domestic_violence_override("we have been living together but I found out he was already married")
+sarma_hits = [m for m in sarma_q if m.get("case_name") == "Indra Sarma v V.K.V. Sarma"]
+check(
+    len(sarma_hits) == 1 and "could not have entered into a live-in relationship" in sarma_hits[0]["text"],
+    "an 'already married' + live-in question surfaces the real Indra Sarma holding paragraph "
+    "(verbatim, from the chunk file)",
+)
+check(
+    sarma_hits and sarma_hits[0]["citation"] == "2013 AIR SCW 6783, (2013) 15 SCC 755",
+    "the real, verified Indra Sarma citation is attached, not a placeholder",
+)
+check(
+    not [m for m in velusamy_q if m.get("case_name") == "Indra Sarma v V.K.V. Sarma"],
+    "a plain live-in question with NO mention of the other person being married does NOT pull in "
+    "Indra Sarma -- it's a narrower doctrine than Velusamy's general test, not a replacement for it",
+)
+
 check(
     get_domestic_violence_override("my mother in law hurts me") == get_domestic_violence_override("my mother in law hurts me"),
     "the same question always produces the same result -- fully deterministic, no randomness",

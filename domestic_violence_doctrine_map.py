@@ -16,11 +16,12 @@ anchor in this project: see cheque_bounce_doctrine_map.py /
 statute_doctrine_map.py). It deliberately covers ONLY the small core of
 PWDVA anyone would need to understand a first real question -- what
 counts as domestic violence, who can apply, and the three main relief
-types (protection/residence/monetary orders) -- plus three fully-
+types (protection/residence/monetary orders) -- plus four fully-
 verified Supreme Court holdings (Hiral P. Harsora on who can be
 proceeded against; D. Velusamy on when a live-in relationship counts;
 Satish Chander Ahuja on the shared household not needing to be owned
-by the husband).
+by the husband; Indra Sarma on when a live-in relationship with an
+already-married person does NOT qualify).
 This is NOT meant to cover everything PWDVA-related -- for a genuinely
 comprehensive answer, chat_assistant also surfaces a WIDER, honestly
 UNVERIFIED pool of real judgments via vaquill_search.py, clearly
@@ -287,6 +288,35 @@ _PWDVA_JUDGMENT_ANCHORS = [
             "family of, the husband -- an earlier ruling (S.R. Batra v "
             "Taruna Batra, 2007) that read it that narrowly was held to "
             "not lay down correct law."
+        ),
+    },
+    {
+        # Sourced and reviewed 2026-09-14 via the "Judgment Review Docket"
+        # artifact -- corroboration evidence (6/10 independent citing
+        # courts confirm, incl. the Supreme Court itself in Harsora;
+        # confirmed in an independent second copy; matches the top
+        # independently-re-derived candidate) reviewed and approved by
+        # the user before this entry was added. See
+        # memory/judgment-corroboration-tool.md.
+        "doctrine": "live_in_with_someone_already_married_does_not_qualify",
+        "case_key": "indra_sarma_v_v_k_v_sarma",
+        "paragraph_numbers": ["65"],
+        "triggers": [
+            ("married", "live in"), ("married", "living together"),
+            ("married", "girlfriend"), ("married", "boyfriend"),
+            ("already married",), ("he was married",), ("she was married",),
+            ("knew he was married",), ("knew she was married",),
+            ("his wife", "live in"), ("his wife", "living together"),
+        ],
+        "context_note": (
+            "Indra Sarma v V.K.V. Sarma (2013): a live-in relationship "
+            "does NOT count as a 'relationship in the nature of marriage' "
+            "under this Act if the woman knew the man was already married "
+            "to someone else -- the Supreme Court held such a relationship "
+            "has none of the essential characteristics of a marriage, so "
+            "it falls outside this Act's protection. This is narrower than, "
+            "and does not override, D. Velusamy's general 4-part test above "
+            "-- it addresses specifically the 'already married' situation."
         ),
     },
 ]
