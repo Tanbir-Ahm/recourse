@@ -864,6 +864,24 @@ def render_answer(result: dict):
                                         unsafe_allow_html=True)
                         st.markdown(f'<div class="r-mono">{esc(_clean_excerpt(m.get("text") or "")[:1100])}</div>',
                                     unsafe_allow_html=True)
+
+        # The WIDER, honestly UNVERIFIED judgment pool (vaquill_search.py --
+        # see its module docstring and memory/vaquill-search-pool.md).
+        # Deliberately its OWN expander, separate from "Read the source"
+        # above -- never implies the same confidence level.
+        unverified = result.get("unverified_related_judgments")
+        if unverified:
+            with st.expander("Other real court cases that might be relevant (not independently verified)"):
+                st.markdown('<p class="r-foot">These came up in a search of a much wider judgment '
+                            "database. Nobody at Recourse has read and confirmed them yet &mdash; "
+                            'read the real judgment yourself, or with a lawyer, before relying on '
+                            'it.</p>', unsafe_allow_html=True)
+                for j in unverified:
+                    warn = (' &mdash; <span class="r-src">may be a procedural/bail order, not a '
+                            'full judgment</span>' if j.get("procedural_disposal") else "")
+                    st.markdown(f'- [{esc(j["case_name"])}]({esc(j["ik_search_url"])}){warn}',
+                                unsafe_allow_html=True)
+
         return bool(result.get("situation_detected"))
 
     # ---- everything below is an honest non-answer ----
@@ -871,12 +889,15 @@ def render_answer(result: dict):
 
     if state == "covered_elsewhere_in_tool":
         dom = result.get("redirect_domain")
-        label = {"freeze": "a frozen bank account", "cheque_bounce": "a bounced cheque"}.get(dom, "this")
+        label = {
+            "freeze": "a frozen bank account", "cheque_bounce": "a bounced cheque",
+            "domestic_violence": "domestic violence",
+        }.get(dom, "this")
         st.markdown("## That's a different kind of matter")
         st.markdown(f'<div class="r-oos">This looks like it is about <b>{esc(label)}</b>. '
-                    'Recourse focuses on arrest, FIR, police procedure and bail. For a cheque '
-                    'or bank-freeze matter, take the notice or letter to a lawyer or your '
-                    'nearest District Legal Services Authority.</div>', unsafe_allow_html=True)
+                    'Recourse focuses on arrest, FIR, police procedure and bail. For a cheque, '
+                    'bank-freeze, or domestic violence matter, take the notice, letter, or details '
+                    'to a lawyer or your nearest District Legal Services Authority.</div>', unsafe_allow_html=True)
     elif state == "adjacent_uncovered":
         st.markdown("## Recourse can't help with this one")
         reason = result.get("reasoning") or ""

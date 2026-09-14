@@ -1614,6 +1614,12 @@ _INLINE_DOMAIN_CONFIG = {
             "nearest District Legal Services Authority (free) can help you prepare that "
             "application and decide which reliefs to ask for."
         ),
+        # The WIDER, honestly UNVERIFIED judgment pool (vaquill_search.py) --
+        # see memory/vaquill-search-pool.md. Deliberately a SEPARATE tier
+        # from the curated overrides above: never folded into response_text
+        # or matches, only ever surfaced as its own clearly-labelled
+        # "read carefully, not independently verified" list.
+        "vaquill_topic": "domestic_violence",
     },
 }
 
@@ -1683,13 +1689,47 @@ def _answer_inline_domain(question, domain):
         m for m in sem_statutes if m.get("section_number") and not m.get("case_name")
     ]
 
-    return {
+    result = {
         "state": "single_match",
         "matches": display_matches,
         "response_text": response_text,
         "situation_detected": False,
         "redirect_domain": domain,
     }
+
+    vaquill_topic = cfg.get("vaquill_topic")
+    if vaquill_topic:
+        result["unverified_related_judgments"] = _fetch_unverified_related_judgments(
+            question, vaquill_topic, exclude_case_names={m.get("case_name") for m in display_matches if m.get("case_name")}
+        )
+
+    return result
+
+
+def _fetch_unverified_related_judgments(question: str, topic: str, exclude_case_names: set, top_k: int = 3) -> list:
+    """The WIDER, honestly UNVERIFIED judgment pool -- see
+    vaquill_search.py's module docstring and memory/vaquill-search-pool.md
+    for the full design. NEVER folded into a grounded answer's own
+    matches/response_text -- this is a separate list a caller (the
+    website / WhatsApp formatter) renders under its own clearly-labelled
+    "read carefully, not independently verified" heading, never
+    presented with the same confidence as the curated anchors above.
+
+    Excludes any case already cited as a curated anchor (no point
+    telling someone to 'go read carefully' something already fully
+    quoted and verified above). Swallows any failure (missing/corrupt
+    local vaquill_search.db, e.g. on a fresh deploy that hasn't had it
+    built yet) and returns [] rather than ever breaking the trusted
+    answer this is attached to."""
+    try:
+        import vaquill_search
+        results = vaquill_search.search(question, topic=topic, top_k=top_k + len(exclude_case_names))
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("_fetch_unverified_related_judgments: vaquill_search failed: %s", exc)
+        return []
+
+    filtered = [r for r in results if r.get("case_name") not in exclude_case_names]
+    return filtered[:top_k]
 
 
 def _answer_single_match(question, matches):

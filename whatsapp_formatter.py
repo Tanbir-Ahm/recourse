@@ -44,6 +44,22 @@ _CONSULT_LINE = (
 )
 
 
+def _format_unverified_judgments(unverified: list) -> str:
+    """The WIDER, honestly UNVERIFIED judgment pool (vaquill_search.py --
+    see its module docstring and memory/vaquill-search-pool.md) as one
+    extra WhatsApp message, clearly separate from and less confident
+    than the answer above it. Never presented as something the tool
+    itself vouches for -- each case links to an Indian Kanoon search so
+    the person (or their lawyer) can read the real thing themselves."""
+    lines = ["*Other real court cases that might also be relevant* "
+             "(I haven't personally checked these -- read them carefully "
+             "before relying on them):"]
+    for j in unverified:
+        flag = " (may be a procedural/bail order, not a full judgment)" if j.get("procedural_disposal") else ""
+        lines.append(f"- {j['case_name']}{flag}\n  {j['ik_search_url']}")
+    return "\n".join(lines)
+
+
 def format_answer_for_whatsapp(result: dict) -> list:
     """Returns a list of message strings to send, in order. Never
     returns an empty list -- every state gets at least one honest
@@ -97,6 +113,9 @@ def format_answer_for_whatsapp(result: dict) -> list:
             messages.append(
                 "Want a draft court petition based on this? Reply *DRAFT* and I'll prepare one you can download."
             )
+        unverified = result.get("unverified_related_judgments")
+        if unverified:
+            messages.append(_format_unverified_judgments(unverified))
         return messages
 
     # Unknown/unhandled state -- fail honestly, never silently.

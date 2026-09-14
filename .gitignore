@@ -47,3 +47,10 @@ tool_snapshots/
 # holds real people's real legal/arrest situations, phone numbers
 # included -- must never be tracked, even in local dev.
 *.db
+
+# EXCEPTION: vaquill_search.db holds only public court judgment text
+# (no private user data at all, unlike every other *.db above) -- it's
+# real, valuable, curated research data (see memory/vaquill-search-pool.md)
+# that needs to travel with the code so it actually reaches production,
+# the same way chunks/*.json and embeddings/corpus_embeddings.json do.
+!vaquill_search.db

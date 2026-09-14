@@ -103,6 +103,40 @@ check(
     "an unrecognised state still fails honestly with a real message, never an empty/silent list",
 )
 
+with_unverified = format_answer_for_whatsapp({
+    "state": "single_match",
+    "response_text": "Section 3 covers this.",
+    "situation_detected": False,
+    "unverified_related_judgments": [
+        {"case_name": "Some Real Case v Someone", "ik_search_url": "https://indiankanoon.org/search/?formInput=x",
+         "procedural_disposal": False},
+        {"case_name": "A Bail Order Case", "ik_search_url": "https://indiankanoon.org/search/?formInput=y",
+         "procedural_disposal": True},
+    ],
+})
+check(
+    len(with_unverified) == 2 and "haven't personally checked" in with_unverified[-1]
+    and "Some Real Case v Someone" in with_unverified[-1]
+    and "A Bail Order Case" in with_unverified[-1],
+    "unverified_related_judgments becomes its own extra WhatsApp message, clearly separate from the "
+    "answer and honestly labelled as not independently verified",
+)
+check(
+    "procedural/bail order" in with_unverified[-1],
+    "an entry flagged procedural_disposal=True carries a visible warning, never silently listed the "
+    "same way as an unflagged one ('flag, never hide')",
+)
+
+without_unverified = format_answer_for_whatsapp({
+    "state": "single_match",
+    "response_text": "Section 3 covers this.",
+    "situation_detected": False,
+})
+check(
+    len(without_unverified) == 1,
+    "when unverified_related_judgments is absent (every other domain today), nothing extra is appended",
+)
+
 
 # ---- whatsapp_store: conversation memory, isolated in a real temp file (not :memory:, "
 #      since :memory: doesn't persist across the separate connections _connect() opens) ----
