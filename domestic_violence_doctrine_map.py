@@ -16,12 +16,13 @@ anchor in this project: see cheque_bounce_doctrine_map.py /
 statute_doctrine_map.py). It deliberately covers ONLY the small core of
 PWDVA anyone would need to understand a first real question -- what
 counts as domestic violence, who can apply, and the three main relief
-types (protection/residence/monetary orders) -- plus four fully-
+types (protection/residence/monetary orders) -- plus five fully-
 verified Supreme Court holdings (Hiral P. Harsora on who can be
 proceeded against; D. Velusamy on when a live-in relationship counts;
 Satish Chander Ahuja on the shared household not needing to be owned
 by the husband; Indra Sarma on when a live-in relationship with an
-already-married person does NOT qualify).
+already-married person does NOT qualify; Prabha Tyagi on not needing
+to still be living together to make a claim).
 This is NOT meant to cover everything PWDVA-related -- for a genuinely
 comprehensive answer, chat_assistant also surfaces a WIDER, honestly
 UNVERIFIED pool of real judgments via vaquill_search.py, clearly
@@ -317,6 +318,31 @@ _PWDVA_JUDGMENT_ANCHORS = [
             "it falls outside this Act's protection. This is narrower than, "
             "and does not override, D. Velusamy's general 4-part test above "
             "-- it addresses specifically the 'already married' situation."
+        ),
+    },
+    {
+        # Sourced and reviewed via the automated candidate_pipeline.py +
+        # "Judgment Review Docket" flow -- corroboration evidence (found
+        # in an independent second source; a real Delhi District Court
+        # judgment independently cites the same holding; independent
+        # re-derivation matched at rank 1 of 3) reviewed and approved by
+        # the user before this entry was added.
+        "doctrine": "no_longer_living_together_does_not_bar_a_claim",
+        "case_key": "prabha_tyagi_v_kamlesh_devi",
+        "paragraph_numbers": ["Issue (ii) of the judgment"],
+        "triggers": [
+            ("moved out",), ("no longer living together",), ("don't live together anymore",),
+            ("doesn't live with me anymore",), ("used to live together",), ("already left",),
+            ("we are separated",), ("left the house", "before"), ("moved back to my parents",),
+            ("not living with him anymore",), ("not staying there anymore",),
+        ],
+        "context_note": (
+            "Prabha Tyagi v Kamlesh Devi (2022): you do NOT have to still be "
+            "living with the person at the time you seek help. The Supreme "
+            "Court held that if you ever had the right to live in that "
+            "shared household and were a victim of domestic violence, you "
+            "can still seek protection and other reliefs under this Act, "
+            "even after you've already moved out."
         ),
     },
 ]

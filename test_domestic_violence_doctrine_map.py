@@ -111,6 +111,18 @@ check(
     "Indra Sarma -- it's a narrower doctrine than Velusamy's general test, not a replacement for it",
 )
 
+tyagi_q = get_domestic_violence_override("I already moved out of the house but he still hits me when I visit")
+tyagi_hits = [m for m in tyagi_q if m.get("case_name") == "Prabha Tyagi v Kamlesh Devi"]
+check(
+    len(tyagi_hits) == 1 and "not mandatory for the aggrieved person" in tyagi_hits[0]["text"],
+    "an 'already moved out' question surfaces the real Prabha Tyagi holding paragraph "
+    "(verbatim, from the chunk file)",
+)
+check(
+    tyagi_hits and "SCC/AIR reporter citation not found" in tyagi_hits[0]["citation"],
+    "the honest citation gap is preserved end to end -- never silently upgraded to a fake-looking citation",
+)
+
 check(
     get_domestic_violence_override("my mother in law hurts me") == get_domestic_violence_override("my mother in law hurts me"),
     "the same question always produces the same result -- fully deterministic, no randomness",
