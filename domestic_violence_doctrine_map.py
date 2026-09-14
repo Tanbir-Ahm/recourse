@@ -16,9 +16,11 @@ anchor in this project: see cheque_bounce_doctrine_map.py /
 statute_doctrine_map.py). It deliberately covers ONLY the small core of
 PWDVA anyone would need to understand a first real question -- what
 counts as domestic violence, who can apply, and the three main relief
-types (protection/residence/monetary orders) -- plus exactly two fully-
+types (protection/residence/monetary orders) -- plus three fully-
 verified Supreme Court holdings (Hiral P. Harsora on who can be
-proceeded against; D. Velusamy on when a live-in relationship counts).
+proceeded against; D. Velusamy on when a live-in relationship counts;
+Satish Chander Ahuja on the shared household not needing to be owned
+by the husband).
 This is NOT meant to cover everything PWDVA-related -- for a genuinely
 comprehensive answer, chat_assistant also surfaces a WIDER, honestly
 UNVERIFIED pool of real judgments via vaquill_search.py, clearly
@@ -172,10 +174,13 @@ _PWDVA_STATUTE_ANCHORS = [
             "passed against any person who is a woman."
         ),
         "context_note": (
-            "The right to stay in the shared household does NOT depend on "
-            "owning it or being on the rent agreement (see Satish Chander "
-            "Ahuja v Sneha Ahuja, 2020 -- surfaced in the wider judgment "
-            "pool below, not independently pinned here yet)."
+            "The right to stay in the shared household does not depend on "
+            "the RESPONDENT owning it (see the statute text above) -- and "
+            "the Supreme Court in Satish Chander Ahuja v Sneha Ahuja "
+            "confirmed 'shared household' is not limited to a house owned "
+            "by, or belonging to the joint family of, the husband; a 2007 "
+            "ruling that had read it that narrowly does not lay down "
+            "correct law."
         ),
     },
     {
@@ -265,6 +270,23 @@ _PWDVA_JUDGMENT_ANCHORS = [
             "both been of legal age and otherwise free to marry, and to "
             "have voluntarily lived together for a significant period -- a "
             "casual or purely sexual arrangement does not qualify."
+        ),
+    },
+    {
+        "doctrine": "shared_household_is_not_limited_to_a_house_the_husband_owns",
+        "case_key": "satish_chander_ahuja_v_sneha_ahuja",
+        "paragraph_numbers": ["84"],
+        "triggers": [
+            ("papers",), ("rent agreement",), ("own the house",), ("ownership",),
+            ("my name",), ("his name",), ("not on the papers",), ("belongs to",),
+            ("in laws house",), ("father in law",), ("owned by",),
+        ],
+        "context_note": (
+            "Satish Chander Ahuja v Sneha Ahuja (2020): 'shared household' "
+            "is NOT limited to a house owned by, or belonging to the joint "
+            "family of, the husband -- an earlier ruling (S.R. Batra v "
+            "Taruna Batra, 2007) that read it that narrowly was held to "
+            "not lay down correct law."
         ),
     },
 ]

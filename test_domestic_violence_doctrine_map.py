@@ -82,6 +82,18 @@ check(
     "the actual 4-condition test text is present, verbatim",
 )
 
+ahuja_q = get_domestic_violence_override("the house is not in my name, it belongs to my father in law")
+ahuja_hits = [m for m in ahuja_q if m.get("case_name") == "Satish Chander Ahuja v Sneha Ahuja"]
+check(
+    len(ahuja_hits) == 1 and "not correctly interpreted" in ahuja_hits[0]["text"],
+    "an ownership/'not in my name' question surfaces the real Satish Chander Ahuja holding paragraph "
+    "(verbatim, from the chunk file)",
+)
+check(
+    ahuja_hits and ahuja_hits[0]["citation"] == "AIRONLINE 2020 SC 784",
+    "the real, verified Ahuja citation is attached, not a placeholder",
+)
+
 check(
     get_domestic_violence_override("my mother in law hurts me") == get_domestic_violence_override("my mother in law hurts me"),
     "the same question always produces the same result -- fully deterministic, no randomness",
