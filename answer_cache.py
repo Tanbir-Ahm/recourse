@@ -18,7 +18,13 @@ conclusion -- the exact set of statute sections / judgment paragraphs it
 already decided are the single, solid match for the question (the
 'single_match' state). Two different questions only ever share a cache
 entry when the tool's own grounded matching independently landed on the
-IDENTICAL set of legal sources -- never on textual similarity. The
+same RELIABLE legal sources -- never on textual similarity. "Reliable"
+means every curated/rule-based override always counts, plus only the
+semantic-search matches confident enough to trust as a real signal
+rather than near-threshold noise (see _eligible_for_cache and the
+2026-09-14 finding above it -- two honestly-similar real questions
+landed on different low-confidence semantic matches purely from wording,
+which is exactly the noise this filter exists to ignore). The
 expensive step this skips is ONLY the final wording (generate_grounded_response,
 the Sonnet call) -- the classification and retrieval steps that decide
 whether reuse is even eligible always still run in full, so nothing about
@@ -80,6 +86,53 @@ def _connect():
     return conn
 
 
+# CONFIRMED REAL FINDING (2026-09-14), from the user's own first live test:
+# two honestly-similar questions ("my cousin was picked up... for a road
+# accident, they didn't give any paper" vs "my uncle was picked up... over a
+# minor bike accident and they never handed him any paperwork") matched
+# IDENTICALLY on every curated, rule-based override (BNSS 47/35/58/187 +
+# the same 3 judgments) but got DIFFERENT low-scoring statute matches from
+# semantic_retrieval's embedding search (0.34-0.39 range, right at
+# STATUTE_SIMILARITY_THRESHOLD=0.34) -- different wording nudged which
+# barely-qualifying sections surfaced, even though the underlying situation
+# was the same. Requiring every one of those to match exactly (the original
+# design) meant this pair never reused, despite being exactly the kind of
+# repeat this cache exists for.
+#
+# THE MIDDLE PATH (built same day, after discussing the tradeoff with the
+# user): a match with NO 'score' field is a curated/rule-based override --
+# always reliable by construction, always required to match exactly. A
+# match WITH a 'score' (from semantic_retrieval) is only required to match
+# when it's clearly confident, not just barely over the qualifying floor --
+# a borderline score is closer to noise than a real signal (this project's
+# own eval work already found retrieval near the threshold is unstable
+# run-to-run, see memory/live-judgment-retrieval-plan.md's baseline
+# findings). Below this bar, the match is ignored for cache-key purposes.
+#
+# THE ACCEPTED TRADE-OFF: a genuinely relevant but low-scoring match specific
+# to a new question could occasionally be silently absent from a REUSED
+# (cache-hit) answer, since a hit skips generation entirely. This is a
+# deliberate, explicit choice to raise the hit rate -- not an oversight.
+# Set to match _APPROVED_MATCH_FLOOR (related_judgments.py), the existing
+# "is this really the same thing" bar elsewhere in this project, rather
+# than inventing an unrelated number.
+_SEMANTIC_CACHE_CONFIDENCE_FLOOR = 0.55
+
+
+def _is_confident_enough(match: dict) -> bool:
+    score = match.get("score")
+    if score is None:
+        return True  # no score at all => a curated/rule-based override, always reliable
+    return score >= _SEMANTIC_CACHE_CONFIDENCE_FLOOR
+
+
+def _eligible_for_cache(matches: list) -> list:
+    """The subset of matches that actually decide cache eligibility -- every
+    curated override, plus only the semantic/lexical matches confident
+    enough to trust as a real signal rather than near-threshold noise."""
+    return [m for m in matches if _is_confident_enough(m)]
+
+
 def _match_identity(match: dict):
     """A deterministic identity for one retrieved match -- reuses the exact
     same 'chunk_id, else (case_name, paragraph_number, section_number)'
@@ -101,18 +154,26 @@ def _match_identity(match: dict):
 def cache_key(matches: list) -> str:
     """A stable key for a set of matches, independent of their order.
     Two questions worded completely differently produce the SAME key if
-    and only if chat_assistant's own retrieval independently landed on
-    the identical set of sources -- see module docstring."""
-    identities = sorted((_match_identity(m) for m in matches), key=lambda t: json.dumps(t, default=str))
+    and only if every RELIABLE source (every curated override, and every
+    semantic/lexical match confident enough to trust -- see
+    _eligible_for_cache) lines up exactly. See module docstring for the
+    full design and the 2026-09-14 finding that made this filtering
+    necessary."""
+    eligible = _eligible_for_cache(matches)
+    identities = sorted((_match_identity(m) for m in eligible), key=lambda t: json.dumps(t, default=str))
     canonical = json.dumps(identities, default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def describe_matches(matches: list) -> str:
     """Human-readable summary for the review report -- e.g.
-    'BNS 303; BNSS 187; Judgment: Arnesh Kumar v State of Bihar'."""
+    'BNS 303; BNSS 187; Judgment: Arnesh Kumar v State of Bihar'. Only
+    describes the same eligible subset cache_key() actually uses, so what
+    a reviewer reads matches what future questions are actually compared
+    against -- not the full raw match list, which may include low-
+    confidence noise that was never part of the reuse decision."""
     parts = []
-    for m in matches:
+    for m in _eligible_for_cache(matches):
         if m.get("case_name"):
             parts.append(f"Judgment: {m['case_name']}")
         elif m.get("act") and m.get("section_number"):

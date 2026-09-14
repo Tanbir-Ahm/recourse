@@ -56,6 +56,40 @@ check(
     "chunk_id-identified matches (used by hybrid_search results) are respected as the primary identity",
 )
 
+# ---- cache_key: the 2026-09-14 confidence-floor fix -------------------
+# CONFIRMED REAL FINDING: two honestly-similar live questions ("my cousin
+# was picked up... for a road accident, they didn't give any paper" vs
+# "my uncle was picked up... over a minor bike accident and they never
+# handed him any paperwork") matched the SAME curated overrides but
+# DIFFERENT low-confidence (0.34-0.39) semantic statute matches, so the
+# original (pre-fix) cache_key treated them as different questions.
+
+WEAK_MATCH_A = {"act": "BNSS", "section_number": "38", "score": 0.36}
+WEAK_MATCH_B = {"act": "BNSS", "section_number": "478", "score": 0.35}
+STRONG_MATCH = {"act": "BNSS", "section_number": "60", "score": 0.70}
+
+check(
+    answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]) == answer_cache.cache_key([STATUTE_303, WEAK_MATCH_B]),
+    "REPRODUCES THE 2026-09-14 FIX: two questions sharing the same reliable (rule-based) match but differing "
+    "only in which LOW-confidence semantic match tagged along now produce the SAME key -- the exact pair "
+    "that failed to reuse live before this fix",
+)
+check(
+    answer_cache.cache_key([STATUTE_303, STRONG_MATCH])
+    != answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]),
+    "a CONFIDENT semantic match (>= the confidence floor) is still a real, required part of the key -- "
+    "only near-threshold, low-confidence matches get ignored, not all semantic matches",
+)
+check(
+    answer_cache.cache_key([STATUTE_303]) == answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]),
+    "a low-confidence semantic match adds nothing to the key at all -- present or absent makes no difference",
+)
+check(
+    answer_cache.describe_matches([STATUTE_303, WEAK_MATCH_A]) == answer_cache.describe_matches([STATUTE_303]),
+    "describe_matches (the review report's summary) reflects the same eligible-only view as cache_key, "
+    "so what a reviewer reads matches what future questions are actually compared against",
+)
+
 # ---- describe_matches: human-readable summary for the review report ----
 
 check(
