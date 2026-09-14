@@ -1681,6 +1681,47 @@ def _answer_inline_domain(question, domain):
     }
 
 
+def _answer_single_match(question, matches):
+    """Shared by every branch below that produces a 'single_match' result
+    (the main path and both statute-override fallbacks) -- previously each
+    duplicated the same retrieve/generate/situation_detected block.
+
+    ADDED 2026-09-14 (answer-reuse cache, safe-by-design version of an
+    idea deferred in memory/live-judgment-retrieval-plan.md): before
+    paying for a fresh Sonnet call, checks answer_cache.get_cached(matches)
+    -- a cache entry only exists at all when a PERSON has already reviewed
+    and explicitly approved a past answer that used this EXACT set of
+    matched sources (see answer_cache.py's module docstring for why
+    matching on the tool's own deterministic sources, not the question's
+    wording, keeps this safe). A cache miss behaves exactly as before:
+    generate fresh, and record it as a candidate a person can later
+    choose to approve. Cached or fresh, the answer itself is identical in
+    shape -- callers cannot tell the difference except via 'from_cache'."""
+    from answer_cache import get_cached, record_candidate
+
+    cached = get_cached(matches)
+    if cached is not None:
+        return {
+            "state": "single_match",
+            "matches": matches,
+            "response_text": cached["response_text"],
+            "situation_detected": cached["situation_detected"],
+            "from_cache": True,
+        }
+
+    retrieved_text = format_retrieved_text_for_prompt(matches)
+    response_text = generate_grounded_response(question, retrieved_text, matches=matches)
+    situation_detected = _looks_like_situation(response_text)
+    record_candidate(matches, question, response_text, situation_detected)
+    return {
+        "state": "single_match",
+        "matches": matches,
+        "response_text": response_text,
+        "situation_detected": situation_detected,
+        "from_cache": False,
+    }
+
+
 def answer_question(question, inline_domains=frozenset()):
     """Main entry point for the chat interface. Returns a dict describing
     the outcome, always including a 'state' field so the UI layer can
@@ -1861,14 +1902,7 @@ def answer_question(question, inline_domains=frozenset()):
         # still apply -- don't discard it just because the general
         # embedding-based path is down.
         if overrides:
-            retrieved_text = format_retrieved_text_for_prompt(overrides)
-            response_text = generate_grounded_response(question, retrieved_text, matches=overrides)
-            return {
-                "state": "single_match",
-                "matches": overrides,
-                "response_text": response_text,
-                "situation_detected": _looks_like_situation(response_text),
-            }
+            return _answer_single_match(question, overrides)
         return {"state": "retrieval_unavailable"}
 
     if result["state"] == "no_match":
@@ -1886,14 +1920,7 @@ def answer_question(question, inline_domains=frozenset()):
         # out-of-domain Rangappa fix above, correctly stops padding
         # find_relevant_sections's result out of "no_match").
         if overrides:
-            retrieved_text = format_retrieved_text_for_prompt(overrides)
-            response_text = generate_grounded_response(question, retrieved_text, matches=overrides)
-            return {
-                "state": "single_match",
-                "matches": overrides,
-                "response_text": response_text,
-                "situation_detected": _looks_like_situation(response_text),
-            }
+            return _answer_single_match(question, overrides)
         return {"state": "no_match"}
 
     if result["state"] == "conflicting_matches":
@@ -1915,14 +1942,7 @@ def answer_question(question, inline_domains=frozenset()):
     # curated statute overrides that matched alongside the normal
     # semantic results.
     all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
-    retrieved_text = format_retrieved_text_for_prompt(all_matches)
-    response_text = generate_grounded_response(question, retrieved_text, matches=all_matches)
-    return {
-        "state": "single_match",
-        "matches": all_matches,
-        "response_text": response_text,
-        "situation_detected": _looks_like_situation(response_text),
-    }
+    return _answer_single_match(question, all_matches)
 
 
 # ---------------------------------------------------------------------------
