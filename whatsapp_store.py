@@ -20,9 +20,12 @@ unrelated situations shouldn't bleed into a new one weeks later. A
 person can also always start over explicitly (see chat commands in
 whatsapp_bot.py).
 """
+import logging
 import os
 import sqlite3
 import time
+
+logger = logging.getLogger("whatsapp_store")
 
 DB_PATH = os.environ.get("WHATSAPP_DB_PATH", "whatsapp_conversations.db")
 MAX_AGE_SECONDS = 24 * 3600  # one day of silence resets the conversation
@@ -30,7 +33,31 @@ MAX_HISTORY_MESSAGES = 6     # how many recent turns to carry into a follow-up
 
 
 def _connect():
-    conn = sqlite3.connect(DB_PATH)
+    """CONFIRMED REAL BUG (2026-09-13): every real WhatsApp message
+    started crashing with `sqlite3.OperationalError: unable to open
+    database file` right after WHATSAPP_DB_PATH was pointed at the new
+    Railway volume (/data/whatsapp_conversations.db). sqlite3.connect()
+    auto-creates the DATABASE FILE itself if missing, but does NOT
+    create missing PARENT DIRECTORIES -- this codebase's local dev
+    default ("whatsapp_conversations.db", no directory component) never
+    exercised that gap, so it went unnoticed until a real path with a
+    directory was used for the first time. Defensive fix: ensure the
+    parent directory exists before every connect. If it still fails,
+    log exactly which path and directory were involved -- a bare
+    "unable to open database file" with no context is what actually
+    slowed down diagnosing this the first time."""
+    parent = os.path.dirname(DB_PATH)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+    except sqlite3.OperationalError:
+        logger.exception(
+            "Could not open DB at DB_PATH=%r (parent dir=%r, parent exists=%s, parent writable=%s)",
+            DB_PATH, parent, os.path.isdir(parent) if parent else None,
+            os.access(parent, os.W_OK) if parent and os.path.isdir(parent) else None,
+        )
+        raise
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS messages (
