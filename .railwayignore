@@ -1,11 +1,3 @@
-raw_pdfs/
-Sample_*.pdf
-*.pdf
-eval_out/
-eval_related_out/
-citation_currency_review/
-__pycache__/
-*.pyc
-.pytest_cache/
-tests_scratch/
-venv/
+# Unrelated, untracked scratch clone sitting in this working directory --
+# not part of any service, shouldn't be bundled into a `railway up` deploy.
+recourse/
