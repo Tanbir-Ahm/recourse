@@ -199,6 +199,29 @@ check(
     "log_qa records the original question, the raw state, AND the classified confidence -- nothing silently dropped",
 )
 
+
+# ---- whatsapp_store.save_draft_context / get_draft_context: what the DRAFT command needs ----
+
+check(
+    whatsapp_store.get_draft_context(PHONE) is None,
+    "no draft context exists yet for a phone number that's never had an arrest-shaped answer",
+)
+_matches_1 = [{"act": "BNS", "section_number": "303"}]
+whatsapp_store.save_draft_context(PHONE, "My brother was arrested for stealing a goat", _matches_1)
+check(
+    whatsapp_store.get_draft_context(PHONE) == {
+        "question": "My brother was arrested for stealing a goat", "matches": _matches_1,
+    },
+    "save_draft_context / get_draft_context round-trips the question and matches exactly",
+)
+_matches_2 = [{"act": "BNS", "section_number": "318"}, {"case_name": "Arnesh Kumar v State of Bihar"}]
+whatsapp_store.save_draft_context(PHONE, "a different, later situation", _matches_2)
+check(
+    whatsapp_store.get_draft_context(PHONE) == {"question": "a different, later situation", "matches": _matches_2},
+    "a second save for the same phone number REPLACES the first, rather than accumulating -- "
+    "DRAFT should always build from the MOST RECENT arrest-shaped answer",
+)
+
 try:
     os.remove(_tmp_db)
 except OSError:
@@ -283,6 +306,69 @@ with patch("chat_assistant.answer_question") as mock_answer_question:
         "matching recourse_app.py's own fix for the exact same dead-end redirect problem -- WhatsApp has "
         "no separate UI to redirect a freeze/cheque-bounce question to, so it must be answered inline too",
     )
+
+# ---- "Reply DRAFT": CONFIRMED REAL GAP fixed 2026-09-14 -- the formatter has
+#      always invited this reply, but nothing ever caught it. See
+#      whatsapp_bot.py's comment above _build_petition_pdf. ----
+
+with patch("chat_assistant.client") as mock_client, \
+     patch("semantic_retrieval.find_relevant_sections", lambda q: {"state": "no_match", "results": []}):
+    mock_client.messages.create.side_effect = [
+        _classify_in_scope(),
+        _fake_response("**Right now**\nAsk for a copy of the FIR.\n\nSection 303 of the BNS covers theft."),
+    ]
+    whatsapp_bot.handle_incoming_message(PHONE, "My brother was arrested for stealing a goat")
+
+check(
+    (whatsapp_store.get_draft_context(PHONE) or {}).get("question") == "My brother was arrested for stealing a goat",
+    "an arrest-shaped ('Right now'-opening, situation_detected) answer now saves a draft context, "
+    "so a later 'DRAFT' reply has something real to build from",
+)
+
+_sent.clear()
+draft_no_context = whatsapp_bot.handle_incoming_message("+919999999999", "draft")
+check(
+    "describe what's happening first" in draft_no_context[0],
+    "DRAFT with no prior arrest-shaped answer for THIS phone number replies honestly instead of "
+    "crashing or building a blank petition",
+)
+
+_orig_base_url = whatsapp_bot.WHATSAPP_PUBLIC_BASE_URL
+whatsapp_bot.WHATSAPP_PUBLIC_BASE_URL = "https://whatsapp-bot-production-969a.up.railway.app"
+with patch("whatsapp_bot.send_whatsapp_document") as mock_send_doc:
+    mock_send_doc.return_value = True
+    draft_reply = whatsapp_bot.handle_incoming_message(PHONE, "draft")
+    check(
+        mock_send_doc.called and mock_send_doc.call_args.args[0] == PHONE,
+        "DRAFT with a saved context actually calls send_whatsapp_document, addressed to the right phone number",
+    )
+    sent_url = mock_send_doc.call_args.args[1]
+    check(
+        sent_url.startswith("https://whatsapp-bot-production-969a.up.railway.app/whatsapp/files/")
+        and sent_url.endswith(".pdf"),
+        "the document URL passed to Gupshup points back at THIS service's own file-serving route",
+    )
+    check(
+        "starting point, not a filed document" in draft_reply[0],
+        "a successful DRAFT send tells the person this is a starting point, not legal advice to file as-is",
+    )
+
+with patch("whatsapp_bot.send_whatsapp_document") as mock_send_doc:
+    mock_send_doc.return_value = False  # Gupshup rejected the send
+    draft_reply_failed = whatsapp_bot.handle_incoming_message(PHONE, "DRAFT")  # also proves case-insensitivity
+    check(
+        "couldn't prepare the draft" in draft_reply_failed[0],
+        "when the actual Gupshup send fails, DRAFT replies honestly instead of claiming success",
+    )
+
+whatsapp_bot.WHATSAPP_PUBLIC_BASE_URL = None
+draft_reply_no_url = whatsapp_bot.handle_incoming_message(PHONE, "draft")
+check(
+    "couldn't prepare the draft" in draft_reply_no_url[0],
+    "without WHATSAPP_PUBLIC_BASE_URL configured, DRAFT fails honestly (no URL to link to) "
+    "rather than silently pretending to send a document",
+)
+whatsapp_bot.WHATSAPP_PUBLIC_BASE_URL = _orig_base_url
 
 try:
     os.remove(_tmp_db2)
@@ -458,6 +544,88 @@ try:
     os.remove(_tmp_db3)
 except OSError:
     pass
+
+
+# ---- _build_petition_pdf: the real reportlab call, no mocking -- cheap, local, no API cost ----
+
+pdf_bytes = whatsapp_bot._build_petition_pdf(
+    "My brother was arrested for stealing a goat", [{"act": "BNS", "section_number": "303"}]
+)
+check(
+    isinstance(pdf_bytes, bytes) and pdf_bytes.startswith(b"%PDF"),
+    "_build_petition_pdf produces a real, valid PDF file (checked by its own %PDF magic bytes), "
+    "the same deterministic, no-LLM path recourse_app.py's own draft-petition feature uses",
+)
+check(
+    whatsapp_bot._build_petition_pdf("anything", None) is not None,
+    "a None matches list (e.g. an answer with no BNS sections at all) still produces a PDF, never crashes",
+)
+
+
+# ---- send_whatsapp_document: the Gupshup 'file' message shape, requests mocked ----
+
+os.environ["GUPSHUP_API_KEY"] = "fake-test-key"
+with patch("whatsapp_bot.requests") as mock_requests:
+    mock_requests.post.return_value = MagicMock(status_code=202, text="")
+    ok = whatsapp_bot.send_whatsapp_document(
+        "+919876543210", "https://example.com/whatsapp/files/abc.pdf", "recourse_draft_petition.pdf"
+    )
+    check(ok is True, "a successful (< 400) Gupshup response reports success")
+    call = mock_requests.post.call_args
+    data = call.kwargs["data"]
+    check(
+        json.loads(data["message"]) == {
+            "type": "file", "url": "https://example.com/whatsapp/files/abc.pdf",
+            "filename": "recourse_draft_petition.pdf",
+        },
+        "sends Gupshup's documented 'file' message shape (type/url/filename), mirroring send_whatsapp_message's "
+        "own 'text' shape exactly",
+    )
+
+with patch("whatsapp_bot.requests") as mock_requests:
+    mock_requests.post.return_value = MagicMock(status_code=400, text="bad request")
+    ok = whatsapp_bot.send_whatsapp_document("+919876543210", "https://example.com/x.pdf", "x.pdf")
+    check(ok is False, "an error response from Gupshup is reported as failure, not silently swallowed")
+
+with patch("whatsapp_bot.requests") as mock_requests:
+    mock_requests.post.side_effect = Exception("network exploded")
+    ok = whatsapp_bot.send_whatsapp_document("+919876543210", "https://example.com/x.pdf", "x.pdf")
+    check(ok is False, "a real network failure is caught and reported as failure, never raised")
+
+if _orig_api_key is not None:
+    os.environ["GUPSHUP_API_KEY"] = _orig_api_key
+else:
+    os.environ.pop("GUPSHUP_API_KEY", None)
+
+
+# ---- GET /whatsapp/files/{token}.pdf: serves a generated PDF for Gupshup to fetch ----
+
+file_client = TestClient(whatsapp_bot.app)
+
+_test_pdf_bytes = b"%PDF-1.4 fake pdf content for testing"
+_test_token = whatsapp_bot._store_pending_pdf(_test_pdf_bytes)
+
+resp = file_client.get(f"/whatsapp/files/{_test_token}.pdf")
+check(
+    resp.status_code == 200 and resp.content == _test_pdf_bytes and resp.headers["content-type"] == "application/pdf",
+    "a valid, unexpired token serves back the exact PDF bytes with the right content type",
+)
+
+resp = file_client.get("/whatsapp/files/not-a-real-token.pdf")
+check(
+    resp.status_code == 404,
+    "an unknown token is rejected with 404, not a crash or a leak of some other person's PDF",
+)
+
+import time as _time_module
+_expired_token = "expired-test-token"
+whatsapp_bot._PENDING_PDFS[_expired_token] = (b"%PDF-old", _time_module.time() - 1)
+resp = file_client.get(f"/whatsapp/files/{_expired_token}.pdf")
+check(
+    resp.status_code == 404,
+    "an expired token (past its TTL) is rejected with 404 even though it was once valid -- "
+    "a PDF containing someone's real legal situation shouldn't stay fetchable indefinitely",
+)
 
 
 # ---- summary ----

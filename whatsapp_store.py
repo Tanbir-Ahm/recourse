@@ -20,6 +20,7 @@ unrelated situations shouldn't bleed into a new one weeks later. A
 person can also always start over explicitly (see chat commands in
 whatsapp_bot.py).
 """
+import json
 import logging
 import os
 import sqlite3
@@ -87,7 +88,59 @@ def _connect():
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_qa_confidence_time ON qa_log(confidence, created_at)"
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS draft_context (
+            phone_number TEXT PRIMARY KEY,
+            question TEXT NOT NULL,
+            matches_json TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+        """
+    )
     return conn
+
+
+# ---------------------------------------------------------------------------
+# The "reply DRAFT" command, added 2026-09-14: the formatter has always
+# invited an arrest-shaped answer's DRAFT reply, but nothing on WhatsApp
+# ever actually built one -- CONFIRMED REAL GAP, found by re-reading
+# whatsapp_bot.py after shipping the answer-reuse cache. Building the
+# petition needs the same `matches` chat_assistant.answer_question()
+# returned for the ORIGINAL question, not the one-word "draft" reply --
+# so the most recent arrest-shaped answer's context is saved here, one row
+# per phone number (overwritten by each new one), and read back when
+# "draft" arrives.
+# ---------------------------------------------------------------------------
+
+def save_draft_context(phone_number: str, question: str, matches: list) -> None:
+    conn = _connect()
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO draft_context (phone_number, question, matches_json, created_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(phone_number) DO UPDATE SET question = excluded.question, "
+                "matches_json = excluded.matches_json, created_at = excluded.created_at",
+                (phone_number, question, json.dumps(matches), time.time()),
+            )
+    finally:
+        conn.close()
+
+
+def get_draft_context(phone_number: str):
+    """Returns {'question', 'matches'} for the most recent arrest-shaped
+    answer this phone number got, or None if there isn't one yet."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT question, matches_json FROM draft_context WHERE phone_number = ?",
+            (phone_number,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    return {"question": row[0], "matches": json.loads(row[1])}
 
 
 # ---------------------------------------------------------------------------

@@ -22,6 +22,33 @@ Public surface:
 
 import re
 
+# CIVIL-DISPUTE-DRESSED-AS-CRIMINAL case names: if the answer leaned on one
+# of these, the petition should also ask for quashing, not just the arrest
+# safeguards. Shared by recourse_app.py (website) and whatsapp_bot.py (the
+# WhatsApp DRAFT command, added 2026-09-14) so one list decides both,
+# rather than two copies drifting apart over time.
+_CIVIL_DISPUTE_CASE_NAMES = ("Md. Ibrahim", "Bhajan Lal", "Vijay Kumar Ghai", "Usha Chakraborty",
+                             "Satishchandra Ratanlal Shah")
+
+
+def derive_draft_context(matches):
+    """From a chat answer's `matches` list: (civil_dispute flag, offence
+    BNS sections) -- the two pieces from_checklist()/from_doc_check() need
+    beyond the checklist/doc-check result itself. civil_dispute=True means
+    the answer leaned on the 'civil matter given criminal colour' line of
+    cases."""
+    matches = matches or []
+    civil = any(any(c in (m.get("case_name") or "") for c in _CIVIL_DISPUTE_CASE_NAMES) for m in matches)
+    secs, seen = [], set()
+    for m in matches:
+        sn = str(m.get("section_number") or "")
+        act = str(m.get("act") or "")
+        if sn and act.upper() == "BNS" and not m.get("case_name") and sn not in seen:
+            seen.add(sn)
+            secs.append(sn)
+    return civil, secs[:4]
+
+
 _NOT_VERIFIED = (
     "« The case-law statements above are from an automated search and are NOT "
     "INDEPENDENTLY VERIFIED. Read the judgment(s) named and confirm the holding with a "

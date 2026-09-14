@@ -51,9 +51,13 @@ import hmac
 import json
 import logging
 import os
+import secrets
+import tempfile
+import time
 
 import requests
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi.responses import Response
 
 try:
     from dotenv import load_dotenv
@@ -62,7 +66,9 @@ except ImportError:
     pass  # python-dotenv should already be installed (main.py depends on it)
 
 import chat_assistant
+import petition_draft
 import whatsapp_store
+from arrest_safeguard_checklist import evaluate as _evaluate_arrest_safeguards
 from whatsapp_formatter import format_answer_for_whatsapp
 
 # CONFIRMED REAL BUG (2026-09-13): logger.info() calls (the raw-payload
@@ -78,10 +84,61 @@ logger = logging.getLogger("whatsapp_bot")
 app = FastAPI()
 
 _RESET_WORDS = {"new question", "start over", "reset"}
+_DRAFT_WORDS = {"draft"}
 
 GUPSHUP_API_URL = "https://api.gupshup.io/wa/api/v1/msg"
 GUPSHUP_SOURCE_NUMBER = os.environ.get("GUPSHUP_SOURCE_NUMBER", "917834811114")
 GUPSHUP_APP_NAME = os.environ.get("GUPSHUP_APP_NAME", "RecourseA2J")
+
+# CONFIRMED REAL GAP (found 2026-09-14, re-reading this file after shipping
+# the answer cache): whatsapp_formatter's "Reply *DRAFT*" nudge has been
+# live since the very first WhatsApp deploy, but nothing ever caught that
+# reply -- the website's single most concrete feature (a real, downloadable
+# petition PDF) was advertised on WhatsApp and silently did nothing. Fixed
+# below. Sending a document via Gupshup needs a URL it can fetch (unlike
+# text, there is no "just POST the bytes" option) -- this service has no
+# other public file host, so the generated PDF is served from a short-
+# lived, one-per-request URL on this same app instead of a real object
+# store, matching this project's "build the smallest real thing" pattern.
+WHATSAPP_PUBLIC_BASE_URL = os.environ.get("WHATSAPP_PUBLIC_BASE_URL")
+_PENDING_PDFS = {}  # token -> (pdf_bytes, expires_at)
+_PENDING_PDF_TTL_SECONDS = 600
+_PENDING_PDFS_CAP = 50
+
+
+def _store_pending_pdf(pdf_bytes: bytes) -> str:
+    now = time.time()
+    for tok in [t for t, (_, exp) in _PENDING_PDFS.items() if exp <= now]:
+        del _PENDING_PDFS[tok]
+    if len(_PENDING_PDFS) >= _PENDING_PDFS_CAP:
+        oldest = min(_PENDING_PDFS, key=lambda t: _PENDING_PDFS[t][1])
+        del _PENDING_PDFS[oldest]
+    token = secrets.token_urlsafe(24)
+    _PENDING_PDFS[token] = (pdf_bytes, now + _PENDING_PDF_TTL_SECONDS)
+    return token
+
+
+def _build_petition_pdf(question: str, matches: list):
+    """The general-form draft petition (recourse_app.py's own fallback
+    when no uploaded document or completed checklist exists yet --
+    `arrest_safeguard_checklist.evaluate({})`) -- the only version that
+    makes sense on WhatsApp, since there's no document-upload or
+    multi-question checklist flow here. Pure Python, no LLM, same as the
+    website. Returns the PDF bytes, or None if anything went wrong (a
+    failed PDF must not crash the request)."""
+    try:
+        civil, secs = petition_draft.derive_draft_context(matches)
+        seed = _evaluate_arrest_safeguards({})
+        draft_text = petition_draft.from_checklist(question, seed, civil_dispute=civil, offence_sections=secs)
+        out_path = os.path.join(tempfile.gettempdir(), f"whatsapp_petition_{secrets.token_hex(8)}.pdf")
+        petition_draft.to_pdf(draft_text, output_path=out_path)
+        with open(out_path, "rb") as fh:
+            data = fh.read()
+        os.remove(out_path)
+        return data
+    except Exception:
+        logger.exception("Failed to build petition PDF for a WhatsApp DRAFT request")
+        return None
 
 # CONFIRMED REAL VULNERABILITY (found by security review, 2026-09-14): this
 # webhook had NO authentication at all -- anyone who found the URL could
@@ -136,6 +193,54 @@ def send_whatsapp_message(phone_number: str, text: str) -> None:
         logger.exception("Gupshup send to %s raised an exception", phone_number)
 
 
+def send_whatsapp_document(phone_number: str, url: str, filename: str, caption: str = None) -> bool:
+    """Sends a file/document message via Gupshup -- the 'file' message
+    type shape per Gupshup's own docs (mirrors send_whatsapp_message's
+    'text' shape exactly, just a different `message` JSON payload).
+    UNLIKE a text message, Gupshup must be able to fetch `url` itself, so
+    it needs to be a real, reachable, public URL (see WHATSAPP_PUBLIC_BASE_URL
+    and _store_pending_pdf above) -- not tested against a real send yet as
+    of writing this; the shape is the best-documented guess, matching this
+    project's established pattern of shipping the best-understood shape and
+    correcting it against the first real send if needed. Returns True only
+    if the send looks like it succeeded, so the caller can fall back to a
+    text-only message rather than silently pretending a file arrived."""
+    api_key = os.environ.get("GUPSHUP_API_KEY")
+    if not api_key:
+        logger.info("GUPSHUP_API_KEY not set -- WOULD SEND FILE to %s: %s", phone_number, url)
+        return False
+    destination = phone_number.lstrip("+")
+    message = {"type": "file", "url": url, "filename": filename}
+    if caption:
+        message["caption"] = caption
+    try:
+        resp = requests.post(
+            GUPSHUP_API_URL,
+            headers={
+                "apikey": api_key,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "channel": "whatsapp",
+                "source": GUPSHUP_SOURCE_NUMBER,
+                "destination": destination,
+                "message": json.dumps(message),
+                "src.name": GUPSHUP_APP_NAME,
+            },
+            timeout=15,
+        )
+        if resp.status_code >= 400:
+            logger.error(
+                "Gupshup file send to %s failed (%s): %s",
+                phone_number, resp.status_code, resp.text[:500],
+            )
+            return False
+        return True
+    except Exception:
+        logger.exception("Gupshup file send to %s raised an exception", phone_number)
+        return False
+
+
 def handle_incoming_message(phone_number: str, message_text: str) -> list:
     """The whole pipeline for one incoming message, kept in its own
     plain function (no FastAPI/HTTP involved) so it can be called
@@ -146,6 +251,31 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     if message_text.lower() in _RESET_WORDS:
         whatsapp_store.clear_history(phone_number)
         reply = "Starting fresh -- tell me what's happening."
+        send_whatsapp_message(phone_number, reply)
+        return [reply]
+
+    # CONFIRMED REAL GAP, fixed 2026-09-14: format_answer_for_whatsapp has
+    # always invited "Reply *DRAFT*" after an arrest-shaped answer, but
+    # nothing ever caught that reply -- see the module-level comment above
+    # _build_petition_pdf. Checked before the reset-word style early-return
+    # above would otherwise treat it as just another free-text question.
+    if message_text.lower() in _DRAFT_WORDS:
+        ctx = whatsapp_store.get_draft_context(phone_number)
+        if ctx is None:
+            reply = "I don't have a situation to draft from yet -- describe what's happening first, then reply DRAFT."
+            send_whatsapp_message(phone_number, reply)
+            return [reply]
+        pdf_bytes = _build_petition_pdf(ctx["question"], ctx["matches"])
+        sent = False
+        if pdf_bytes is not None and WHATSAPP_PUBLIC_BASE_URL:
+            token = _store_pending_pdf(pdf_bytes)
+            url = f"{WHATSAPP_PUBLIC_BASE_URL}/whatsapp/files/{token}.pdf"
+            sent = send_whatsapp_document(phone_number, url, "recourse_draft_petition.pdf")
+        if sent:
+            reply = ("Here's a draft petition based on what you've told me -- edit it and take it "
+                      "to a lawyer before filing. It's a starting point, not a filed document.")
+        else:
+            reply = "Sorry, I couldn't prepare the draft just now -- please try again in a moment."
         send_whatsapp_message(phone_number, reply)
         return [reply]
 
@@ -185,6 +315,12 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # whatsapp_weekly_report.py. Logs the person's own original message,
     # not the context-prefixed `question` sent to the engine.
     whatsapp_store.log_qa(phone_number, message_text, result.get("state", "unknown"))
+
+    # Save what a "DRAFT" reply would need, exactly matching when the
+    # formatter actually offers that reply (single_match/conflicting_matches
+    # + situation_detected) -- see _DRAFT_WORDS handling above.
+    if result.get("state") in ("single_match", "conflicting_matches") and result.get("situation_detected"):
+        whatsapp_store.save_draft_context(phone_number, message_text, result.get("matches", []))
 
     # Store the engine's own response_text (clean prose) rather than the
     # WhatsApp-formatted messages (which may include the "reply DRAFT"
@@ -290,3 +426,21 @@ async def whatsapp_webhook(secret: str, request: Request, background_tasks: Back
 @app.get("/whatsapp/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/whatsapp/files/{token}.pdf")
+async def whatsapp_file(token: str):
+    """Serves a generated petition PDF for Gupshup to fetch and relay --
+    see the WHATSAPP_PUBLIC_BASE_URL/_store_pending_pdf comment above
+    _build_petition_pdf for why this exists instead of a real object
+    store. `token` is an unguessable secrets.token_urlsafe(24) value, so
+    (per this project's own established precedent that unguessable
+    tokens don't need extra validation) a bare lookup is the actual
+    access control here -- there is no separate per-user auth because
+    only the person the PDF was generated for (via their own WhatsApp
+    conversation) ever receives this exact URL."""
+    entry = _PENDING_PDFS.get(token)
+    if entry is None or entry[1] <= time.time():
+        raise HTTPException(status_code=404)
+    pdf_bytes, _expires_at = entry
+    return Response(content=pdf_bytes, media_type="application/pdf")

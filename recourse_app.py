@@ -1046,19 +1046,10 @@ def render_arrest_checklist():
 def _answer_draft_context(answer):
     """From the chat answer's matches: (civil_dispute flag, offence sections).
     civil_dispute -> the answer leaned on the 'civil matter given criminal
-    colour' line of cases, so the petition should also ask for quashing."""
-    matches = (answer or {}).get("matches") or []
-    _CIVIL = ("Md. Ibrahim", "Bhajan Lal", "Vijay Kumar Ghai", "Usha Chakraborty",
-              "Satishchandra Ratanlal Shah")
-    civil = any(any(c in (m.get("case_name") or "") for c in _CIVIL) for m in matches)
-    secs, seen = [], set()
-    for m in matches:
-        sn = str(m.get("section_number") or "")
-        act = str(m.get("act") or "")
-        if sn and act.upper() == "BNS" and not m.get("case_name") and sn not in seen:
-            seen.add(sn)
-            secs.append(sn)
-    return civil, secs[:4]
+    colour' line of cases, so the petition should also ask for quashing.
+    Delegates to petition_draft.derive_draft_context (shared with
+    whatsapp_bot.py's DRAFT command, 2026-09-14) so one rule decides both."""
+    return _pd.derive_draft_context((answer or {}).get("matches"))
 
 
 def render_petition_draft(question_text, *, checklist_result=None, doc_check_result=None,
