@@ -16,13 +16,14 @@ anchor in this project: see cheque_bounce_doctrine_map.py /
 statute_doctrine_map.py). It deliberately covers ONLY the small core of
 PWDVA anyone would need to understand a first real question -- what
 counts as domestic violence, who can apply, and the three main relief
-types (protection/residence/monetary orders) -- plus five fully-
+types (protection/residence/monetary orders) -- plus six fully-
 verified Supreme Court holdings (Hiral P. Harsora on who can be
 proceeded against; D. Velusamy on when a live-in relationship counts;
 Satish Chander Ahuja on the shared household not needing to be owned
 by the husband; Indra Sarma on when a live-in relationship with an
 already-married person does NOT qualify; Prabha Tyagi on not needing
-to still be living together to make a claim).
+to still be living together to make a claim; S. Vanitha on the Senior
+Citizens Act not being usable to defeat these residence rights).
 This is NOT meant to cover everything PWDVA-related -- for a genuinely
 comprehensive answer, chat_assistant also surfaces a WIDER, honestly
 UNVERIFIED pool of real judgments via vaquill_search.py, clearly
@@ -343,6 +344,34 @@ _PWDVA_JUDGMENT_ANCHORS = [
             "shared household and were a victim of domestic violence, you "
             "can still seek protection and other reliefs under this Act, "
             "even after you've already moved out."
+        ),
+    },
+    {
+        # Sourced and reviewed via the automated candidate_pipeline.py +
+        # candidate_pipeline_report.py flow -- corroboration evidence
+        # (8 of 10 independent citing courts confirm the same holding,
+        # including a later Supreme Court bench; independent re-derivation
+        # matched at rank 1) reviewed and approved by the user
+        # ("confirmed, looks solid") before this entry was added.
+        "doctrine": "senior_citizens_act_cannot_be_used_to_defeat_pwdva_residence_rights",
+        "case_key": "s_vanitha_v_deputy_commissioner",
+        "paragraph_numbers": ["24 (Part F, Summation)"],
+        "triggers": [
+            ("senior citizens act",), ("evict", "in laws"), ("evict", "mother in law"),
+            ("evict", "father in law"), ("throw", "in laws"), ("kick", "in laws"),
+            ("parents", "evict", "house"), ("his parents", "evict"),
+            ("transferred the house",), ("house is in his mother's name",),
+            ("house is in his father's name",),
+        ],
+        "context_note": (
+            "S. Vanitha v Deputy Commissioner, Bengaluru (2020): in-laws "
+            "cannot use the Maintenance and Welfare of Parents and Senior "
+            "Citizens Act, 2007 -- a fast, summary law meant to protect "
+            "elderly parents -- as a shortcut to evict a daughter-in-law "
+            "and sidestep her rights under this Act. The Supreme Court held "
+            "that even if the house has since been transferred to the "
+            "in-laws' name, or her husband now lives elsewhere, that does "
+            "not defeat her right to the shared household."
         ),
     },
 ]

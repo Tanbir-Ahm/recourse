@@ -123,6 +123,19 @@ check(
     "the honest citation gap is preserved end to end -- never silently upgraded to a fake-looking citation",
 )
 
+vanitha_q = get_domestic_violence_override("my in laws are trying to evict me using the senior citizens act")
+vanitha_hits = [m for m in vanitha_q if m.get("case_name") == "S. Vanitha v Deputy Commissioner, Bengaluru Urban District"]
+check(
+    len(vanitha_hits) == 1 and "summary procedure contemplated by the Senior Citizens Act" in vanitha_hits[0]["text"],
+    "a 'senior citizens act' eviction question surfaces the real S. Vanitha holding paragraph "
+    "(verbatim, from the chunk file)",
+)
+check(
+    vanitha_hits and vanitha_hits[0]["citation"] == "AIRONLINE 2020 SC 897, (2021) 15 SCC 730",
+    "the real citation is attached, including the proper SCC citation found via corroboration -- "
+    "not just the first one recorded",
+)
+
 check(
     get_domestic_violence_override("my mother in law hurts me") == get_domestic_violence_override("my mother in law hurts me"),
     "the same question always produces the same result -- fully deterministic, no randomness",
