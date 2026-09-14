@@ -301,10 +301,10 @@ with patch("chat_assistant.answer_question") as mock_answer_question:
     whatsapp_bot.handle_incoming_message(PHONE, "my bank account got frozen without notice")
     call_kwargs = mock_answer_question.call_args.kwargs
     check(
-        call_kwargs.get("inline_domains") == {"cheque_bounce", "freeze"},
-        "handle_incoming_message calls answer_question with inline_domains={'cheque_bounce','freeze'}, "
-        "matching recourse_app.py's own fix for the exact same dead-end redirect problem -- WhatsApp has "
-        "no separate UI to redirect a freeze/cheque-bounce question to, so it must be answered inline too",
+        call_kwargs.get("inline_domains") == {"cheque_bounce", "freeze", "domestic_violence"},
+        "handle_incoming_message calls answer_question with inline_domains={'cheque_bounce','freeze',"
+        "'domestic_violence'}, matching recourse_app.py's own fix for the exact same dead-end redirect "
+        "problem -- WhatsApp has no separate UI to redirect these questions to, so they must be answered inline",
     )
 
 # ---- "Reply DRAFT": CONFIRMED REAL GAP fixed 2026-09-14 -- the formatter has

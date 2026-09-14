@@ -306,7 +306,8 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # with a 'covered elsewhere' redirect that points nowhere here")
     # by always passing inline_domains -- WhatsApp needs the same fix,
     # for the same reason: no separate UI to redirect to here either.
-    result = chat_assistant.answer_question(question, inline_domains={"cheque_bounce", "freeze"})
+    result = chat_assistant.answer_question(
+        question, inline_domains={"cheque_bounce", "freeze", "domestic_violence"})
     messages = format_answer_for_whatsapp(result)
 
     # The safe learning loop, part 1: quietly note how confident the

@@ -1169,12 +1169,12 @@ if _busy:
             'Reading the law and the judgments on this&hellip;</div>')
     _scroll_into_view("#r-working")
     try:
-        # recourse_app is chat-only: cheque-bounce and bank-freeze
-        # questions are answered inline from the shared corpus rather than
-        # dead-ended with a "covered elsewhere" redirect that points
-        # nowhere here.
+        # recourse_app is chat-only: cheque-bounce, bank-freeze, and
+        # (added 2026-09-14) domestic-violence (PWDVA) questions are
+        # answered inline from the shared corpus rather than dead-ended
+        # with a "covered elsewhere" redirect that points nowhere here.
         st.session_state.answer = _answer_question(
-            _q, inline_domains={"cheque_bounce", "freeze"})
+            _q, inline_domains={"cheque_bounce", "freeze", "domestic_violence"})
     except Exception:
         logging.getLogger("recourse_app").exception("answer_question failed")
         st.session_state.answer = {"state": "retrieval_unavailable"}

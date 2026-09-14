@@ -79,6 +79,8 @@ SCOPE_CLASSIFIER_PROMPT = """You are a scope classifier for a legal tool that he
 
 The WIDER tool (outside this chat feature, via document upload) ALSO has working, real compliance-check logic for two other domains: bank account freezing (BNS Sections 106/107) and cheque bounce notices (Section 138, Negotiable Instruments Act). This chat feature's own search corpus does not yet include those domains' case law, but the tool as a whole genuinely handles them -- a question about them should be redirected to the document-upload feature, NOT told "this isn't covered" or "consult a lawyer", since that would be inaccurate.
 
+This chat feature ALSO now has real, curated coverage (added 2026-09-14) of the Protection of Women from Domestic Violence Act, 2005 (PWDVA) -- domestic violence between people in a domestic relationship (spouse, live-in partner, or a relative in the same household), including protection orders, the right to stay in the shared household, monetary relief, and who can be named as the person responsible (this now explicitly includes female relatives, not only a husband). A question specifically about domestic violence under this Act (being hit, threatened, thrown out of the shared home, denied money, by a spouse/partner/in-law) is "covered_elsewhere_in_tool" with redirect_domain "domestic_violence" -- NOT adjacent_uncovered. This is DIFFERENT from general family law (divorce itself, child custody disputes, alimony under other Acts with no domestic-violence element) which remains adjacent_uncovered, and DIFFERENT from dowry-death or a Dowry Prohibition Act-specific charge (still adjacent_uncovered) and from BNS 85/86 cruelty-by-husband-or-relatives (a criminal FIR/arrest scenario, which stays in_scope as before) -- PWDVA coverage is specifically for the CIVIL protection-order/residence/maintenance remedy under the 2005 Act itself.
+
 CRITICAL: this chat feature does NOT cover every Indian criminal law. A question can genuinely be about "arrest" or "cognizable/non-cognizable" and still be out of this CHAT feature's scope, if the specific offence involved is governed by a law neither this chat feature nor the wider tool covers (e.g. POCSO, UAPA, NDPS, a Dowry Prohibition Act-SPECIFIC offence, company/tax law offences). Do NOT classify a question as in_scope just because it uses words like "arrest", "cognizable", "police", or "FIR" -- check whether the SPECIFIC OFFENCE NAMED (if any) is actually a BNS/BNSS offence, a bank-freeze/cheque-bounce matter (see below), or a procedural question with no specific other-law offence attached.
 
 IMPORTANT -- do not confuse the OFFENCE with its BACKSTORY: a message can spend most of its length describing civil/family/property background (a disputed will, a power of attorney, a land or inheritance dispute, a dowry demand, a business falling-out) purely as CONTEXT for why an arrest or FIR happened. That background does NOT make the question out of scope, and it does NOT matter how much of the message it takes up relative to the arrest itself -- judge scope by the ACTUAL EVENT the person is asking about: was someone (them, or someone close to them) arrested, or is there an FIR/police complaint, for an offence that is itself a real BNS/BNSS offence? Forgery, cheating, criminal breach of trust, criminal intimidation, rioting, theft, assault, and cruelty by husband/relatives (BNS 85/86 -- this covers most real-world "dowry harassment" fact patterns, even though a SEPARATE, narrower Dowry Prohibition Act also exists) are ALL genuine BNS/BNSS offences with their own sections -- BNS is the direct successor to the IPC covering the exact same conduct under new numbers, NOT a different or narrower law, so an offence "sounding like an IPC offence" is never by itself a reason to classify adjacent_uncovered. Only classify adjacent_uncovered for the CIVIL side of such a scenario (e.g. "how do I get my father's will declared void", "can I recover my share of the land") when no arrest/FIR/police action is actually described, or when the offence actually named is a genuinely different, specialized offence this chat doesn't cover (POCSO, UAPA, NDPS, a dowry-DEATH or dowry-Act-specific charge, etc.).
@@ -91,16 +93,16 @@ Classify the user's question into exactly one category:
 
 "in_scope" -- plausibly about arrest, FIR, police procedure, bail, or a criminal offence's classification (cognizable/non-cognizable) under BNS/BNSS or the specific IT Act sections listed above, where the offence involved (if named) is genuinely one of those, or the question is purely about general arrest PROCEDURE with no other-law offence named. Includes vague or layman-phrased questions about "being arrested", "police took my X", "is this a crime", specific offence names (theft, cheating, forgery, assault, rioting, cruelty, hacking, identity theft, etc.), FIR copies, notice before arrest, etc. -- REGARDLESS of how much civil/family/property backstory surrounds the description of the arrest itself (see above).
 
-"covered_elsewhere_in_tool" -- specifically about bank account freezing (BNS 106/107) or cheque bounce (Section 138 NI Act), including arrest threats or police involvement in either. This wider tool has real, working compliance logic for these via document upload, even though this chat feature's own search corpus does not yet include their case law.
+"covered_elsewhere_in_tool" -- specifically about bank account freezing (BNS 106/107), cheque bounce (Section 138 NI Act), or domestic violence under the PWDVA 2005 (see above), including arrest threats or police involvement in any of them. This wider tool has real, working logic for these, even though this chat feature's own general search corpus does not yet include their case law.
 
-"adjacent_uncovered" -- genuinely about Indian law, but NOT about BNS/BNSS criminal procedure, bank freezing, or cheque bounce -- either a purely civil question with no arrest/FIR involved, or an arrest for an offence genuinely outside BNS/BNSS. Examples: POCSO, UAPA, NDPS, a dowry-DEATH or dowry-Act-specific charge, a civil suit or property dispute with NO arrest/FIR described, family law/divorce, employment law, consumer complaints, contract disputes, tax law, company law offences.
+"adjacent_uncovered" -- genuinely about Indian law, but NOT about BNS/BNSS criminal procedure, bank freezing, cheque bounce, or PWDVA domestic violence -- either a purely civil question with no arrest/FIR involved, or an arrest for an offence genuinely outside BNS/BNSS. Examples: POCSO, UAPA, NDPS, a dowry-DEATH or dowry-Act-specific charge, a civil suit or property dispute with NO arrest/FIR described, divorce/child-custody/alimony with no domestic-violence element, employment law, consumer complaints, contract disputes, tax law, company law offences.
 
 "unrelated" -- not a legal question at all, small talk, or about something with no connection to Indian law (e.g. "what's the weather", "who are you", general chit-chat).
 
-If (and only if) the category is "covered_elsewhere_in_tool", also decide which specific domain: "freeze" (bank account freezing) or "cheque_bounce" (Section 138 NI Act cheque dishonour). For every other category, redirect_domain must be null.
+If (and only if) the category is "covered_elsewhere_in_tool", also decide which specific domain: "freeze" (bank account freezing), "cheque_bounce" (Section 138 NI Act cheque dishonour), or "domestic_violence" (PWDVA 2005). For every other category, redirect_domain must be null.
 
 Respond with ONLY a JSON object, no other text:
-{{"category": "in_scope" | "covered_elsewhere_in_tool" | "adjacent_uncovered" | "unrelated", "redirect_domain": "freeze" | "cheque_bounce" | null, "reasoning": "one short sentence"}}
+{{"category": "in_scope" | "covered_elsewhere_in_tool" | "adjacent_uncovered" | "unrelated", "redirect_domain": "freeze" | "cheque_bounce" | "domestic_violence" | null, "reasoning": "one short sentence"}}
 
 User's question: {question}"""
 
@@ -208,7 +210,7 @@ def classify_scope(question):
                 )
                 continue
             redirect_domain = parsed.get("redirect_domain")
-            if category != "covered_elsewhere_in_tool" or redirect_domain not in ("freeze", "cheque_bounce"):
+            if category != "covered_elsewhere_in_tool" or redirect_domain not in ("freeze", "cheque_bounce", "domestic_violence"):
                 redirect_domain = None
             return category, parsed.get("reasoning", ""), redirect_domain
         except Exception:
@@ -1602,6 +1604,15 @@ _INLINE_DOMAIN_CONFIG = {
             "lawyer or your nearest District Legal Services Authority -- the release of a "
             "wrongly-frozen account is usually pursued before the Magistrate or the High "
             "Court."
+        ),
+    },
+    "domestic_violence": {
+        "override_import": ("domestic_violence_doctrine_map", "get_domestic_violence_override"),
+        "closing_line": (
+            "What you can do next: you (or a Protection Officer, or someone on your behalf) "
+            "can apply to a Magistrate under Section 12 of the Act -- a lawyer or your "
+            "nearest District Legal Services Authority (free) can help you prepare that "
+            "application and decide which reliefs to ask for."
         ),
     },
 }
