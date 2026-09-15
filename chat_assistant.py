@@ -387,6 +387,10 @@ _UNSUPPORTED_GENERALIZATION_RETRY_INSTRUCTION = """
 IMPORTANT CORRECTION: your previous answer made a claim about what {cases} "illustrates" or "shows" that is NOT supported by the excerpt you were actually given for it -- the excerpt only contains background facts (what a party alleged), not a court's own reasoning or ruling on that point. Write a new, complete answer from scratch, and either drop this case entirely or describe it only as what the excerpt literally shows (facts a party alleged, not a court's finding), following all the same rules."""
 
 
+_COURT_MISATTRIBUTION_RETRY_INSTRUCTION = """
+IMPORTANT CORRECTION: your previous answer named the WRONG COURT for one or more cases: {details} Write a new, complete answer from scratch, and state the correct court for each of these cases as given above, following all the same rules."""
+
+
 # Real name variants a model's answer might use for each act it can cite
 # a section from -- "BNS"/"BNSS" are literal short forms the model does
 # write verbatim, but "ITACT" is only this project's internal code
@@ -613,6 +617,171 @@ def _find_unsupported_case_generalizations(response_text: str, matches) -> list:
             continue
         if not _HOLDING_LANGUAGE_PAT.search(" ".join(texts)):
             flagged.append(name)
+    return flagged
+
+
+# Matches "Delhi High Court", "High Court of Kerala", "Supreme Court",
+# "Supreme Court of India" -- the small, closed vocabulary of court names
+# this project's answers actually use (Supreme Court + a named High
+# Court), not a general NER pass.
+_COURT_NAME_PAT = re.compile(
+    r"\b(?:[A-Z][a-zA-Z]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z]+)?\s+High\s+Court"
+    r"|High\s+Court\s+of\s+[A-Z][a-zA-Z]+"
+    r"|Supreme\s+Court(?:\s+of\s+India)?)\b"
+)
+
+_COURT_ATTRIBUTION_WINDOW = 120
+
+
+def _normalize_court(name: str) -> str:
+    """'Delhi High Court', 'High Court of Delhi', and 'High Court Of
+    Delhi' all normalize to 'delhi'; 'Supreme Court' and 'Supreme Court
+    of India' both normalize to 'supreme court' -- so the comparison in
+    _find_court_misattributions isn't defeated by which of the two
+    equally-common phrasings either the answer or the curated 'court'
+    fact happens to use."""
+    low = (name or "").lower().strip()
+    if "supreme court" in low:
+        return "supreme court"
+    m = re.search(r"high\s+court\s+of\s+([a-z][a-z\s&]*)", low)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"([a-z][a-z\s&]*?)\s+high\s+court", low)
+    if m:
+        return m.group(1).strip()
+    return low
+
+
+_CASE_COURT_REGISTRY = None
+
+
+def _known_case_courts() -> dict:
+    """real case name (as returned by retrieval.get_judgment_paragraphs,
+    e.g. "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India") -> the
+    human-verified court that actually decided it, built once from the
+    'court' field now on every judgment anchor in the 3 curated inline
+    domains (domestic_violence, cheque_bounce, freeze).
+
+    CONFIRMED REAL BUG this exists to catch (2026-09-15, found via live
+    end-to-end WhatsApp testing): asked a freeze question, the model
+    correctly retrieved and correctly described Neelkanth Pharma
+    Logistics Pvt. Ltd. v Union of India's real holding, but wrote "the
+    Kerala High Court in Neelkanth Pharma Logistics... held..." -- wrong.
+    Neelkanth is a DELHI High Court case. The mix-up traced to a
+    DIFFERENT, non-anchor paragraph from that same case's chunk file
+    (paragraph 18) also clearing the semantic-search threshold and
+    getting fed into the same prompt -- it discusses a genuinely
+    different case, Dr. Sajir v Reserve Bank of India, which really was
+    decided by the Kerala High Court. The model welded the two case
+    names and the one court together in a single sentence. The legal
+    SUBSTANCE was accurate throughout; only the court attribution was
+    wrong -- exactly the class of error none of the other checks above
+    look for, since they all check section numbers and classification
+    facts, never which court decided a judgment.
+
+    Deliberately scoped to just these 3 domains' curated anchors -- the
+    ones actually verified for this fix -- not the wider general
+    arrest/FIR judgment corpus, which was not audited here. A case with
+    no known court fact is simply never checked (no false positives from
+    guessing), same discipline as every other fact-checked field in this
+    file (e.g. _find_cognizable_bailable_mismatches only fires where
+    BNS_SECTION_DATA actually has an entry)."""
+    global _CASE_COURT_REGISTRY
+    if _CASE_COURT_REGISTRY is not None:
+        return _CASE_COURT_REGISTRY
+
+    from retrieval import get_judgment_paragraphs
+
+    anchor_lists = []
+    try:
+        from domestic_violence_doctrine_map import _PWDVA_JUDGMENT_ANCHORS
+        anchor_lists.append(_PWDVA_JUDGMENT_ANCHORS)
+    except Exception:
+        logger.exception("_known_case_courts: could not load domestic_violence_doctrine_map")
+    try:
+        from cheque_bounce_doctrine_map import CHEQUE_BOUNCE_ANCHORS
+        anchor_lists.append(CHEQUE_BOUNCE_ANCHORS)
+    except Exception:
+        logger.exception("_known_case_courts: could not load cheque_bounce_doctrine_map")
+    try:
+        from freeze_doctrine_map import FREEZE_ANCHORS
+        anchor_lists.append(FREEZE_ANCHORS)
+    except Exception:
+        logger.exception("_known_case_courts: could not load freeze_doctrine_map")
+
+    registry = {}
+    for anchors in anchor_lists:
+        for entry in anchors:
+            court = entry.get("court")
+            para_nums = entry.get("paragraph_numbers")
+            if not court or not para_nums:
+                continue
+            case_name = registry.get(entry["case_key"])
+            try:
+                paras = get_judgment_paragraphs(entry["case_key"], para_nums[:1])
+            except Exception:
+                paras = []
+            if paras and paras[0].get("case_name"):
+                registry[paras[0]["case_name"]] = court
+
+    _CASE_COURT_REGISTRY = registry
+    return registry
+
+
+def _find_court_misattributions(response_text: str, matches) -> list:
+    """Checks every judgment case named in the response against
+    _known_case_courts(): if the same sentence that names the case ALSO
+    names a court, and that court doesn't match the real one, the answer
+    has misattributed it. See _known_case_courts's docstring for the
+    confirmed real failure this guards against.
+
+    Proximity-windowed (not whole-answer, unlike _find_sections_missing_act):
+    a court name is a specific factual claim tied to the case it's
+    written next to, not a fact that's "established once" for the whole
+    answer -- an answer correctly naming the Supreme Court for one case
+    and a High Court for another elsewhere in the text must not be
+    flagged just because both court names appear somewhere in the text.
+    Uses a fixed character window around each case-name mention rather
+    than splitting into sentences first -- CONFIRMED REAL BUG in this
+    check's own first draft: splitting on punctuation-then-whitespace breaks apart the
+    very common "Pvt. Ltd." in Indian case names (e.g. "Neelkanth Pharma
+    Logistics Pvt. Ltd. v Union of India" splits into three fragments at
+    "Pvt." and "Ltd."), so the case name and a court name written right
+    next to it can land in different "sentences" and never get compared
+    at all -- silently defeating the whole check for any case with a
+    "Pvt.", "Ltd.", initials, or similar abbreviation in its name.
+
+    Hard check, unlike the case-generalization check above: a wrong
+    court is a checkable fact (like a cognizable/bailable mismatch), not
+    a judgment call about how well-supported a nuance is -- see the
+    give-up logic in generate_grounded_response.
+
+    Returns a list of (case_name, claimed_court, correct_court) tuples."""
+    if not response_text:
+        return []
+    known_courts = _known_case_courts()
+    if not known_courts:
+        return []
+    case_names_in_prompt = {m.get("case_name") for m in (matches or []) if m.get("case_name")}
+
+    response_low = response_text.lower()
+    flagged = []
+    for case_name, correct_court in known_courts.items():
+        if case_name not in case_names_in_prompt:
+            continue
+        first_party = re.split(r"\s+vs?\.?\s+", case_name, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        if len(first_party) < 4:
+            continue
+        idx = response_low.find(first_party.lower())
+        if idx == -1:
+            continue
+        window = response_text[max(0, idx - _COURT_ATTRIBUTION_WINDOW):idx + len(first_party) + _COURT_ATTRIBUTION_WINDOW]
+        court_match = _COURT_NAME_PAT.search(window)
+        if not court_match:
+            continue
+        claimed_court = court_match.group(0)
+        if _normalize_court(claimed_court) != _normalize_court(correct_court):
+            flagged.append((case_name, claimed_court, correct_court))
     return flagged
 
 
@@ -878,8 +1047,9 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         missing_act = _find_sections_missing_act(response_text, section_act_map)
         missing_companion = _find_missing_companion_sections(response_text, section_act_map)
         unsupported_cases = _find_unsupported_case_generalizations(response_text, matches)
+        court_misattributions = _find_court_misattributions(response_text, matches)
 
-        if ungrounded or mismatches or missing_act or missing_companion or unsupported_cases:
+        if ungrounded or mismatches or missing_act or missing_companion or unsupported_cases or court_misattributions:
             retry_prompt = prompt
             if ungrounded:
                 retry_prompt += _UNGROUNDED_RETRY_INSTRUCTION.format(sections=", ".join(ungrounded))
@@ -898,6 +1068,13 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 retry_prompt += _UNSUPPORTED_GENERALIZATION_RETRY_INSTRUCTION.format(
                     cases=", ".join(unsupported_cases)
                 )
+            if court_misattributions:
+                retry_prompt += _COURT_MISATTRIBUTION_RETRY_INSTRUCTION.format(
+                    details=" ".join(
+                        f'You wrote "{claimed}" for {name}, but the correct court is the {correct}.'
+                        for name, claimed, correct in court_misattributions
+                    )
+                )
             retry_response = client.messages.create(
                 model=model,
                 max_tokens=4000,  # same thinking-block headroom as the first call
@@ -906,13 +1083,15 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retry_text = _extract_text_from_response(retry_response).strip()
             # A still-missing companion section or still-unsupported case
             # generalization is a completeness/nuance gap, not a
-            # correctness error like the other three checks -- neither
+            # correctness error like the other four checks -- neither
             # justifies discarding an otherwise-correct answer outright.
             # Give up (None) only for the checks that guard against
-            # showing an actively WRONG or unverifiable claim.
+            # showing an actively WRONG or unverifiable claim -- a wrong
+            # court is exactly that: a checkable fact, not a nuance.
             if (_find_ungrounded_sections(retry_text, retrieved_text)
                     or _find_cognizable_bailable_mismatches(retry_text, variants)
-                    or _find_sections_missing_act(retry_text, section_act_map)):
+                    or _find_sections_missing_act(retry_text, section_act_map)
+                    or _find_court_misattributions(retry_text, matches)):
                 return None
             return retry_text
 

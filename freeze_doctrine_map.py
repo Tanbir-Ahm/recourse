@@ -44,6 +44,7 @@ FREEZE_ANCHORS = [
         "doctrine": "a_bank_account_is_property_the_police_may_freeze_but_only_under_investigation",
         "case_key": "tapas_d_neogy",
         "paragraph_numbers": ["fallback_11", "fallback_5"],
+        "court": "Supreme Court of India",
         "triggers": _ALWAYS,
         "context_note": (
             "State of Maharashtra v Tapas D. Neogy: a bank account is "
@@ -60,6 +61,7 @@ FREEZE_ANCHORS = [
         "doctrine": "attachment_of_a_bank_account_runs_through_the_magistrate_under_bnss_107",
         "case_key": "malabar_gold",
         "paragraph_numbers": ["fallback_17", "fallback_16"],
+        "court": "Delhi High Court",
         "triggers": _ALWAYS,
         "context_note": (
             "Malabar Gold and Diamond Ltd v Union of India: BNSS Section "
@@ -77,6 +79,7 @@ FREEZE_ANCHORS = [
         "doctrine": "blanket_freeze_of_the_whole_account_is_disproportionate_lien_the_traceable_sum",
         "case_key": "neelkanth_pharma_logistics",
         "paragraph_numbers": ["17", "27"],
+        "court": "Delhi High Court",
         "triggers": _ALWAYS,
         "context_note": (
             "Neelkanth Pharma Logistics v Union of India: where the "
@@ -94,6 +97,7 @@ FREEZE_ANCHORS = [
         "doctrine": "a_bare_ncrp_complaint_number_or_bank_email_is_not_a_lawful_basis_to_debit_freeze",
         "case_key": "malabar_gold",
         "paragraph_numbers": ["fallback_21", "fallback_8"],
+        "court": "Delhi High Court",
         "triggers": [
             ("ncrp",), ("cybercrime portal",), ("cyber crime portal",),
             ("complaint number",), ("acknowledgement number",), ("acknowledgment number",),

@@ -50,6 +50,7 @@ from chat_assistant import (
     _find_sections_missing_act,
     _find_missing_companion_sections,
     _find_unsupported_case_generalizations,
+    _find_court_misattributions,
     generate_grounded_response,
 )
 from itact_section_data import ITACT_SECTION_DATA
@@ -916,6 +917,119 @@ with patch("chat_assistant.client") as mock_client:
         "test question", _MURUGANANTHAM_RETRIEVED_TEXT, matches=_MURUGANANTHAM_FACT_MATCH
     )
     check(mock_client.messages.create.call_count == 1, "no retry call when the response makes no case generalization")
+
+
+# ---------------------------------------------------------------------------
+# Court-attribution verification (2026-09-15): CONFIRMED REAL BUG, found via
+# live end-to-end WhatsApp testing of the freeze domain -- asked a real
+# freeze question, the model correctly retrieved and correctly described
+# Neelkanth Pharma Logistics Pvt. Ltd. v Union of India's real holding, but
+# wrote "the Kerala High Court in Neelkanth Pharma Logistics... held..." --
+# wrong; Neelkanth is a Delhi High Court case. The mix-up traced to a
+# DIFFERENT paragraph from the same case's chunk file (which discusses a
+# genuinely different, Kerala-High-Court-decided case) also clearing the
+# semantic-search threshold and landing in the same prompt.
+# ---------------------------------------------------------------------------
+
+_NEELKANTH_MALABAR_MATCHES = [
+    {"case_name": "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India",
+     "text": "freezing the entire account is disproportionate"},
+    {"case_name": "Malabar Gold and Diamond Limited v Union of India",
+     "text": "attachment can only be done under Section 107"},
+]
+
+check(
+    _find_court_misattributions(
+        "Even where a specific sum is genuinely suspected, the Kerala High Court in Neelkanth "
+        "Pharma Logistics Pvt. Ltd. v Union of India held that freezing your entire account is "
+        "disproportionate. Separately, the Delhi High Court in Malabar Gold and Diamond Limited "
+        "v Union of India held that attachment can only be done under Section 107.",
+        _NEELKANTH_MALABAR_MATCHES,
+    ) == [("Neelkanth Pharma Logistics Pvt. Ltd. v Union of India", "Kerala High Court", "Delhi High Court")],
+    "REPRODUCES THE CONFIRMED BUG: Neelkanth misattributed to the Kerala High Court is flagged, "
+    "correctly-attributed Malabar Gold is not",
+)
+check(
+    _find_court_misattributions(
+        "The Delhi High Court in Neelkanth Pharma Logistics Pvt. Ltd. v Union of India held that "
+        "freezing your entire account is disproportionate. The Delhi High Court in Malabar Gold "
+        "and Diamond Limited v Union of India held that attachment can only be done under Section 107.",
+        _NEELKANTH_MALABAR_MATCHES,
+    ) == [],
+    "the corrected text (both correctly attributed to the Delhi High Court) is not flagged",
+)
+check(
+    _find_court_misattributions(
+        "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India held that freezing an entire "
+        "account is disproportionate.",
+        _NEELKANTH_MALABAR_MATCHES,
+    ) == [],
+    "a case mentioned with NO court name at all is never flagged -- this check only catches a "
+    "wrong claim, it never demands one",
+)
+check(
+    _find_court_misattributions(
+        "The Kerala High Court in an unrelated case held something else entirely.",
+        _NEELKANTH_MALABAR_MATCHES,
+    ) == [],
+    "a court name near a case that was never actually retrieved for this answer is ignored -- "
+    "only checks cases present in `matches`",
+)
+check(
+    _find_court_misattributions("", _NEELKANTH_MALABAR_MATCHES) == [],
+    "empty response text is a no-op, never crashes",
+)
+check(
+    _find_court_misattributions("The Kerala High Court held something.", []) == [],
+    "an empty/None match list is a no-op even when a court name is present",
+)
+
+with patch("chat_assistant.client") as mock_client:
+    # First response misattributes Neelkanth to the Kerala High Court;
+    # retry correctly names the Delhi High Court -> corrected text returned.
+    mock_client.messages.create.side_effect = [
+        _fake_response(
+            "The Kerala High Court in Neelkanth Pharma Logistics Pvt. Ltd. v Union of India held "
+            "that freezing your entire account is disproportionate."
+        ),
+        _fake_response(
+            "The Delhi High Court in Neelkanth Pharma Logistics Pvt. Ltd. v Union of India held "
+            "that freezing your entire account is disproportionate."
+        ),
+    ]
+    result = generate_grounded_response(
+        "test question",
+        "[Neelkanth Pharma Logistics Pvt. Ltd. v Union of India, Section/Para 17]\n"
+        "freezing the entire account is disproportionate",
+        matches=_NEELKANTH_MALABAR_MATCHES,
+    )
+    check(mock_client.messages.create.call_count == 2, "a court misattribution triggers exactly one retry")
+    check(result is not None and "Delhi High Court" in result,
+          "the corrected retry text (right court named) is returned")
+
+with patch("chat_assistant.client") as mock_client:
+    # Retry STILL misattributes the court -- unlike the case-generalization
+    # check, this IS a correctness error and must give up (None), same as
+    # ungrounded/mismatch/missing-act.
+    mock_client.messages.create.side_effect = [
+        _fake_response(
+            "The Kerala High Court in Neelkanth Pharma Logistics Pvt. Ltd. v Union of India held "
+            "that freezing your entire account is disproportionate."
+        ),
+        _fake_response(
+            "The Kerala High Court in Neelkanth Pharma Logistics Pvt. Ltd. v Union of India still "
+            "held that freezing your entire account is disproportionate."
+        ),
+    ]
+    result = generate_grounded_response(
+        "test question",
+        "[Neelkanth Pharma Logistics Pvt. Ltd. v Union of India, Section/Para 17]\n"
+        "freezing the entire account is disproportionate",
+        matches=_NEELKANTH_MALABAR_MATCHES,
+    )
+    check(result is None,
+          "a court misattribution still wrong after retry gives up honestly (None), unlike the "
+          "soft case-generalization check")
 
 
 # ---- old IPC/CrPC -> BNS/BNSS translation in retrieved judgment text ----

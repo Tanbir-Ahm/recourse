@@ -243,6 +243,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "respondent_is_not_limited_to_an_adult_male",
         "case_key": "hiral_p_harsora_v_kusum_narottamdas_harsora",
         "paragraph_numbers": ["46"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("mother in law",), ("sister in law",), ("female relative",),
             ("she is not", "man"), ("not a man",), ("woman", "responsible"),
@@ -261,6 +262,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "when_a_live_in_relationship_counts_as_domestic",
         "case_key": "d_velusamy_v_d_patchaiammal",
         "paragraph_numbers": ["33", "34"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("live in",), ("living together",), ("not married",),
             ("girlfriend",), ("partner",), ("live-in",), ("boyfriend",),
@@ -279,6 +281,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "shared_household_is_not_limited_to_a_house_the_husband_owns",
         "case_key": "satish_chander_ahuja_v_sneha_ahuja",
         "paragraph_numbers": ["84"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("papers",), ("rent agreement",), ("own the house",), ("ownership",),
             ("my name",), ("his name",), ("not on the papers",), ("belongs to",),
@@ -303,6 +306,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "live_in_with_someone_already_married_does_not_qualify",
         "case_key": "indra_sarma_v_v_k_v_sarma",
         "paragraph_numbers": ["65"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("married", "live in"), ("married", "living together"),
             ("married", "girlfriend"), ("married", "boyfriend"),
@@ -331,6 +335,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "no_longer_living_together_does_not_bar_a_claim",
         "case_key": "prabha_tyagi_v_kamlesh_devi",
         "paragraph_numbers": ["Issue (ii) of the judgment"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("moved out",), ("no longer living together",), ("don't live together anymore",),
             ("doesn't live with me anymore",), ("used to live together",), ("already left",),
@@ -356,6 +361,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "doctrine": "senior_citizens_act_cannot_be_used_to_defeat_pwdva_residence_rights",
         "case_key": "s_vanitha_v_deputy_commissioner",
         "paragraph_numbers": ["24 (Part F, Summation)"],
+        "court": "Supreme Court of India",
         "triggers": [
             ("senior citizens act",), ("evict", "in laws"), ("evict", "mother in law"),
             ("evict", "father in law"), ("throw", "in laws"), ("kick", "in laws"),
