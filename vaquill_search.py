@@ -72,7 +72,20 @@ _SECTION_TYPE_TO_IK_STRUCTURE = {
 
 
 def _connect():
-    conn = sqlite3.connect(DB_PATH)
+    # busy_timeout added 2026-09-15: a real, unreproducible FTS5 "syntax
+    # error near ','" was observed once in live logs, most likely a
+    # transient collision from a fresh connection opening moments after
+    # this container cold-started under concurrent requests -- never
+    # reproduced despite repeated attempts with the exact same (later
+    # confirmed byte-identical) input, locally and on the server. This
+    # doesn't fix a confirmed cause (none was found), but gives any
+    # future genuine concurrent-access collision on this file 5 seconds
+    # to resolve via SQLite's own retry instead of failing immediately
+    # -- cheap, safe insurance for a sqlite file opened fresh on every
+    # call with no connection pooling. search() already fails safely
+    # either way (caught, logged, empty list -- never breaks the real
+    # answer this is attached to).
+    conn = sqlite3.connect(DB_PATH, timeout=5.0)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS metadata (
