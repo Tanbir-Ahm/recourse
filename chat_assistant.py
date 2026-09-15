@@ -652,15 +652,10 @@ def _normalize_court(name: str) -> str:
     return low
 
 
-_CASE_COURT_REGISTRY = None
-
-
 def _known_case_courts() -> dict:
-    """real case name (as returned by retrieval.get_judgment_paragraphs,
-    e.g. "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India") -> the
-    human-verified court that actually decided it, built once from the
-    'court' field now on every judgment anchor in the 3 curated inline
-    domains (domestic_violence, cheque_bounce, freeze).
+    """real case name (exactly as stored in that case's own chunk file,
+    and therefore exactly what a `matches` dict's case_name carries) ->
+    the human-verified court that actually decided it.
 
     CONFIRMED REAL BUG this exists to catch (2026-09-15, found via live
     end-to-end WhatsApp testing): asked a freeze question, the model
@@ -679,53 +674,21 @@ def _known_case_courts() -> dict:
     look for, since they all check section numbers and classification
     facts, never which court decided a judgment.
 
-    Deliberately scoped to just these 3 domains' curated anchors -- the
-    ones actually verified for this fix -- not the wider general
-    arrest/FIR judgment corpus, which was not audited here. A case with
-    no known court fact is simply never checked (no false positives from
-    guessing), same discipline as every other fact-checked field in this
-    file (e.g. _find_cognizable_bailable_mismatches only fires where
+    Source of truth: judgment_court_facts.CASE_NAME_TO_COURT, a flat,
+    hand-verified fact table covering all 46 real judgments in the whole
+    corpus (chunks/*.json minus the 3 full-statute-text files) -- see
+    that module's docstring for how each fact was verified. This check
+    first shipped covering only the 13 judgment anchors curated for the
+    3 inline domains (domestic_violence/cheque_bounce/freeze); the other
+    33, used constantly by the general arrest/FIR path, had zero
+    court-attribution protection until this same-day follow-up. A case
+    genuinely absent from that table is simply never checked (no
+    guessing, no false positives), same discipline as every other
+    fact-checked field in this file (e.g.
+    _find_cognizable_bailable_mismatches only fires where
     BNS_SECTION_DATA actually has an entry)."""
-    global _CASE_COURT_REGISTRY
-    if _CASE_COURT_REGISTRY is not None:
-        return _CASE_COURT_REGISTRY
-
-    from retrieval import get_judgment_paragraphs
-
-    anchor_lists = []
-    try:
-        from domestic_violence_doctrine_map import _PWDVA_JUDGMENT_ANCHORS
-        anchor_lists.append(_PWDVA_JUDGMENT_ANCHORS)
-    except Exception:
-        logger.exception("_known_case_courts: could not load domestic_violence_doctrine_map")
-    try:
-        from cheque_bounce_doctrine_map import CHEQUE_BOUNCE_ANCHORS
-        anchor_lists.append(CHEQUE_BOUNCE_ANCHORS)
-    except Exception:
-        logger.exception("_known_case_courts: could not load cheque_bounce_doctrine_map")
-    try:
-        from freeze_doctrine_map import FREEZE_ANCHORS
-        anchor_lists.append(FREEZE_ANCHORS)
-    except Exception:
-        logger.exception("_known_case_courts: could not load freeze_doctrine_map")
-
-    registry = {}
-    for anchors in anchor_lists:
-        for entry in anchors:
-            court = entry.get("court")
-            para_nums = entry.get("paragraph_numbers")
-            if not court or not para_nums:
-                continue
-            case_name = registry.get(entry["case_key"])
-            try:
-                paras = get_judgment_paragraphs(entry["case_key"], para_nums[:1])
-            except Exception:
-                paras = []
-            if paras and paras[0].get("case_name"):
-                registry[paras[0]["case_name"]] = court
-
-    _CASE_COURT_REGISTRY = registry
-    return registry
+    from judgment_court_facts import CASE_NAME_TO_COURT
+    return CASE_NAME_TO_COURT
 
 
 def _find_court_misattributions(response_text: str, matches) -> list:
