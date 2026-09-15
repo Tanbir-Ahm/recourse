@@ -246,7 +246,7 @@ _PWDVA_JUDGMENT_ANCHORS = [
         "triggers": [
             ("mother in law",), ("sister in law",), ("female relative",),
             ("she is not", "man"), ("not a man",), ("woman", "responsible"),
-            ("his mother",), ("his sister",), ("women in the house"),
+            ("his mother",), ("his sister",), ("women in the house",),
         ],
         "context_note": (
             "Hiral P. Harsora v Kusum Narottamdas Harsora (2016): the "

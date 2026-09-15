@@ -71,6 +71,26 @@ check(
     "the real, verified citation is attached, not a placeholder",
 )
 
+# REGRESSION TEST (2026-09-15, caught via live testing): one of Harsora's
+# trigger groups was written as ("women in the house") -- missing the
+# trailing comma that makes it a 1-tuple. Without the comma, Python
+# treated it as a plain string, and _matches()'s `all(word in q for word
+# in group)` then iterated the string CHARACTER BY CHARACTER, checking
+# whether every individual letter in "women in the house" appears
+# anywhere in the question -- true for nearly any ordinary English
+# sentence. This made Harsora fire on almost every PWDVA question,
+# relevant or not, since the domain shipped on 2026-09-14. Fixed by
+# adding the missing comma.
+unrelated_q = get_domestic_violence_override(
+    "What are my rights if my husband constantly insults and humiliates me in front of our children?"
+)
+unrelated_harsora_hits = [m for m in unrelated_q if m.get("case_name") == "Hiral P. Harsora v Kusum Narottamdas Harsora"]
+check(
+    len(unrelated_harsora_hits) == 0,
+    "Harsora does NOT fire on a question with none of its real trigger phrases -- "
+    "regression guard for the missing-comma bug that made it fire on almost everything",
+)
+
 velusamy_q = get_domestic_violence_override("we have been living together as boyfriend and girlfriend for years")
 velusamy_hits = [m for m in velusamy_q if m.get("case_name") == "D. Velusamy v D. Patchaiammal"]
 check(
