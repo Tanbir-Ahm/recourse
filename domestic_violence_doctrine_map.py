@@ -13,15 +13,16 @@ This is the TRUSTED tier only -- every section and every judgment
 paragraph here was pulled verbatim from Indian Kanoon and read by a
 person before being added (same discipline as every other curated
 anchor in this project: see cheque_bounce_doctrine_map.py /
-statute_doctrine_map.py). It deliberately covers ONLY the small core of
-PWDVA anyone would need to understand a first real question -- what
-counts as domestic violence, who can apply, and the three main relief
-types (protection/residence/monetary orders) -- plus six fully-
-verified Supreme Court holdings (Hiral P. Harsora on who can be
-proceeded against; D. Velusamy on when a live-in relationship counts;
-Satish Chander Ahuja on the shared household not needing to be owned
-by the husband; Indra Sarma on when a live-in relationship with an
-already-married person does NOT qualify; Prabha Tyagi on not needing
+statute_doctrine_map.py). It deliberately covers only the sections
+anyone would realistically need for a first real question -- what
+counts as domestic violence, who can apply, the four main relief types
+(protection/residence/monetary/custody orders), compensation, what
+happens if an order is broken, and how a Protection Officer helps --
+plus six fully-verified Supreme Court holdings (Hiral P. Harsora on who
+can be proceeded against; D. Velusamy on when a live-in relationship
+counts; Satish Chander Ahuja on the shared household not needing to be
+owned by the husband; Indra Sarma on when a live-in relationship with
+an already-married person does NOT qualify; Prabha Tyagi on not needing
 to still be living together to make a claim; S. Vanitha on the Senior
 Citizens Act not being usable to defeat these residence rights).
 This is NOT meant to cover everything PWDVA-related -- for a genuinely
@@ -30,6 +31,21 @@ UNVERIFIED pool of real judgments via vaquill_search.py, clearly
 labelled as "read carefully, not independently verified" -- the two
 tiers are deliberately kept separate, never merged into one confidence
 level.
+
+UPDATE 2026-09-15: 4 more sections added (9, 21, 22, 31) after a real
+gap was found -- a live end-to-end test asked about custody, breach of
+a protection order, and compensation, none of which this file covered
+at all, not even a fallback (PWDVA has no full-Act chunk file the way
+BNS/BNSS do -- see retrieval._STATUTE_CHUNK_FILES, which has no PWDVA
+entry -- so a section outside this curated list has genuinely nothing
+behind it). A web search of real PWDVA guides confirmed custody,
+compensation, and "what happens if he breaks the order" are among the
+most commonly asked real questions, so these 4 were prioritized over
+doing the full Act. Each was independently verified the same way as
+the original 7 -- see the doc-ID comment above each new entry -- plus
+cross-checked against a second, different legal source (AdvocateKhoj)
+for at least one section, since the original 7's own verification had
+relied on Indian Kanoon alone.
 
 Unlike statute_doctrine_map.py (BNS/BNSS), there is no shared
 get_statute_section() table for PWDVA, so the verbatim section text is
@@ -228,6 +244,143 @@ _PWDVA_STATUTE_ANCHORS = [
             "An ex parte order means the Magistrate can act immediately, "
             "before the other side is even heard, if the situation looks "
             "urgent enough on the face of the application."
+        ),
+    },
+    # ------------------------------------------------------------------
+    # 4 more sections added 2026-09-15 -- verbatim PWDVA text, pulled via
+    # Indian Kanoon (indiankanoon.org/doc/711689, 363610, 1797053,
+    # 876400) and read by a person before being added here. Section 19's
+    # own proviso was already cross-checked against a second source
+    # (AdvocateKhoj) the same day; the pattern established there --
+    # never trust one repository alone for the load-bearing text -- was
+    # followed again for this batch by re-reading each page a second
+    # time asking for the LITERAL wording (not a summary) before it was
+    # typed in here.
+    # ------------------------------------------------------------------
+    {
+        "section_number": "9",
+        "triggers": [
+            ("protection officer",), ("who can help",), ("who helps",),
+            ("help me file",), ("legal aid",), ("free lawyer",),
+            ("shelter",), ("shelter home",), ("medical examination",),
+            ("get medically examined",), ("counsell",), ("counsel me",),
+        ],
+        "text": (
+            "9. Duties and functions of Protection Officers. It shall be "
+            "the duty of the Protection Officer (a) to assist the "
+            "Magistrate in the discharge of his functions under this Act; "
+            "(b) to make a domestic incident report to the Magistrate, in "
+            "such form and in such manner as may be prescribed, upon "
+            "receipt of a complaint of domestic violence; (c) to make an "
+            "application in such form and in such manner as may be "
+            "prescribed to the Magistrate, if the aggrieved person so "
+            "desires, claiming relief for issuance of a protection order; "
+            "(d) to ensure that the aggrieved person is provided legal aid "
+            "under the Legal Services Authorities Act, 1987; (e) to "
+            "maintain a list of all service providers providing legal aid "
+            "or counselling, shelter homes and medical facilities in a "
+            "local area; (f) to make available a safe shelter home, if "
+            "the aggrieved person so requires; (g) to get the aggrieved "
+            "person medically examined, if she has sustained bodily "
+            "injuries; (h) to ensure that the order for monetary relief "
+            "under section 20 is complied with and executed."
+        ),
+        "context_note": (
+            "A Protection Officer is a free point of contact set up "
+            "specifically to help someone through this process -- they "
+            "can prepare the paperwork (the 'domestic incident report'), "
+            "apply to the Magistrate on your behalf if you want, connect "
+            "you to free legal aid, a shelter, or medical care, and "
+            "follow up to make sure a monetary-relief order actually gets "
+            "paid."
+        ),
+    },
+    {
+        "section_number": "21",
+        "triggers": [
+            ("custody",), ("my children",), ("my kids",), ("child custody",),
+            ("keep the children",), ("keep my kids",), ("visitation",),
+            ("visit", "children"), ("visit", "kids"), ("take away", "children"),
+            ("take", "kids", "away"), ("children stay with me",),
+        ],
+        "text": (
+            "21. Custody orders. Notwithstanding anything contained in "
+            "any other law for the time being in force, the Magistrate "
+            "may, at any stage of hearing of the application for "
+            "protection order or for any other relief under this Act "
+            "grant temporary custody of any child or children to the "
+            "aggrieved person or the person making an application on her "
+            "behalf and specify, if necessary, the arrangements for visit "
+            "of such child or children by the respondent: Provided that "
+            "if the Magistrate is of opinion that any visit of the "
+            "respondent may be harmful to the interests of the child or "
+            "children, the Magistrate shall refuse to allow such visit."
+        ),
+        "context_note": (
+            "This lets you ask for temporary custody of your children as "
+            "part of the same application -- you do not need a separate "
+            "custody case for this. If letting the other parent visit "
+            "could be harmful to the children, the Magistrate can refuse "
+            "to allow visits at all."
+        ),
+    },
+    {
+        "section_number": "22",
+        "triggers": [
+            ("compensation",), ("damages",), ("mental torture",),
+            ("emotional distress",), ("sue him",), ("make him pay",),
+            ("pay for what he did",), ("trauma",), ("compensate me",),
+        ],
+        "text": (
+            "22. Compensation orders. In addition to other reliefs as "
+            "may be granted under this Act, the Magistrate may on an "
+            "application being made by the aggrieved person, pass an "
+            "order directing the respondent to pay compensation and "
+            "damages for the injuries, including mental torture and "
+            "emotional distress, caused by the acts of domestic violence "
+            "committed by that respondent."
+        ),
+        "context_note": (
+            "This is separate from Section 20's monetary relief -- "
+            "Section 20 reimburses specific expenses and losses (medical "
+            "bills, lost earnings, property damage), while Section 22 is "
+            "compensation for the harm itself, including mental torture "
+            "and emotional distress. You can ask for both."
+        ),
+    },
+    {
+        "section_number": "31",
+        "triggers": [
+            ("violat", "order"), ("broke", "order"), ("breach", "order"),
+            ("ignor", "order"), ("didn't follow", "order"),
+            ("disobey", "order"), ("came anyway",), ("contacted me anyway",),
+            ("came near me anyway",), ("violated the protection order",),
+            ("what if he breaks",), ("what happens if he violates",),
+            ("what if he doesn't follow",), ("broke the order",),
+        ],
+        "text": (
+            "31. Penalty for breach of protection order by respondent. "
+            "(1) A breach of protection order, or of an interim "
+            "protection order, by the respondent shall be an offence "
+            "under this Act and shall be punishable with imprisonment of "
+            "either description for a term which may extend to one year, "
+            "or with fine which may extend to twenty thousand rupees, or "
+            "with both. (2) The offence under sub-section (1) shall as "
+            "far as practicable be tried by the Magistrate who has passed "
+            "the order, the breach of which has been alleged to have been "
+            "caused by the accused. (3) While framing charges under "
+            "sub-section (1), the Magistrate may also frame charges under "
+            "section 498-A of the Indian Penal Code (45 of 1860) or any "
+            "other provision of that Code or the Dowry Prohibition Act, "
+            "1961 (28 of 1961), as the case may be, if the facts disclose "
+            "the commission of an offence under those provisions."
+        ),
+        "context_note": (
+            "Breaking a protection order is not just going back to court "
+            "for the same thing -- it is its own criminal offence, "
+            "punishable with up to a year in prison, a fine up to "
+            "Rs 20,000, or both. You can report the breach to the same "
+            "Magistrate who issued the order."
         ),
     },
 ]

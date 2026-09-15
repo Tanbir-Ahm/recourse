@@ -137,6 +137,35 @@ check(category == "covered_elsewhere_in_tool",
 check(redirect_domain == "domestic_violence",
       f"Senior-Citizens-Act eviction question's redirect_domain is 'domestic_violence' -- got {redirect_domain!r}")
 
+# REGRESSION TEST (2026-09-15): the same class of gap as the S. Vanitha fix
+# above, found immediately after adding 4 new PWDVA sections (9, 21, 22, 31)
+# -- a question about the NEW Section 31 (breach of a protection order) was
+# not yet named anywhere in SCOPE_CLASSIFIER_PROMPT's PWDVA paragraph, so it
+# risked the same "silently adjacent_uncovered" failure. Fixed in the same
+# prompt edit that added coverage for custody/compensation/breach.
+category, reasoning, redirect_domain = classify_scope(
+    "He violated the protection order and came to my house last night, what happens now?"
+)
+check(category == "covered_elsewhere_in_tool",
+      f"protection-order-breach question is covered_elsewhere_in_tool, not adjacent_uncovered -- "
+      f"got {category!r} ({reasoning!r})")
+check(redirect_domain == "domestic_violence",
+      f"protection-order-breach question's redirect_domain is 'domestic_violence' -- got {redirect_domain!r}")
+
+# A custody question WITH some domestic-violence context (the realistic
+# case -- a real user asking this would rarely type it with zero context)
+# must also route correctly, since Section 21 (custody) was one of the 4
+# new sections and has no dedicated test elsewhere in this classify_scope
+# suite.
+category, reasoning, redirect_domain = classify_scope(
+    "I want to leave my husband because he hits me, but can I get custody of my kids?"
+)
+check(category == "covered_elsewhere_in_tool",
+      f"custody question WITH domestic-violence context is covered_elsewhere_in_tool -- "
+      f"got {category!r} ({reasoning!r})")
+check(redirect_domain == "domestic_violence",
+      f"custody-with-context question's redirect_domain is 'domestic_violence' -- got {redirect_domain!r}")
+
 # ---- answer_question: redirect_domain propagates into the returned dict ----
 
 result = answer_question("my bank account got frozen by the police and nobody told me why")

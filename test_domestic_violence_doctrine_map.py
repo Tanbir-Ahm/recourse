@@ -54,6 +54,35 @@ check(
     "Section 19 does NOT fire for a question with no residence/housing keywords -- triggers are real, not decorative",
 )
 
+# ---- 4 sections added 2026-09-15 (a real gap found via live testing) ----
+
+check(
+    "21" in {m["section_number"] for m in get_domestic_violence_override("can I get custody of my children") if m.get("act") == "PWDVA"},
+    "Section 21 (custody orders) fires for a child-custody question",
+)
+check(
+    "22" in {m["section_number"] for m in get_domestic_violence_override("can I claim compensation for the mental torture he caused me") if m.get("act") == "PWDVA"},
+    "Section 22 (compensation orders) fires for a compensation/mental-torture question",
+)
+check(
+    "31" in {m["section_number"] for m in get_domestic_violence_override("he violated the protection order and came to my house anyway") if m.get("act") == "PWDVA"},
+    "Section 31 (penalty for breach) fires for a 'he violated the order' question",
+)
+check(
+    "9" in {m["section_number"] for m in get_domestic_violence_override("how does a protection officer help me file") if m.get("act") == "PWDVA"},
+    "Section 9 (Protection Officer duties) fires for a 'who can help me' question",
+)
+check(
+    "31" not in {m["section_number"] for m in get_domestic_violence_override("what is domestic violence") if m.get("act") == "PWDVA"},
+    "Section 31 does NOT fire for a question with no breach/violation keywords -- triggers are real, not decorative",
+)
+_ALWAYS_ON_COUNT = len({m["section_number"] for m in get_domestic_violence_override("what counts as domestic violence") if m.get("act") == "PWDVA"})
+check(
+    _ALWAYS_ON_COUNT == 2,
+    f"adding 4 new sections did NOT change which ones are always-on (expected still just 2 and 3, "
+    f"got {_ALWAYS_ON_COUNT} always-on sections)",
+)
+
 # ---- judgment anchors: real chunk files, real verbatim text ----
 
 harsora_q = get_domestic_violence_override("my mother in law is the one hurting me, not my husband")
