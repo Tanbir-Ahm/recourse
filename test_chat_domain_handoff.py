@@ -115,6 +115,28 @@ check(category == "in_scope",
       f"LOC/transit-remand detention question (Twitter post mentioned only as background) is "
       f"in_scope, not adjacent_uncovered -- got {category!r} ({reasoning!r})")
 
+# REGRESSION TEST (2026-09-15, caught via live end-to-end testing of the
+# domestic_violence domain): a question describing EXACTLY the S. Vanitha
+# v Deputy Commissioner fact pattern -- in-laws using the Senior Citizens
+# Act to evict a daughter-in-law -- was classified adjacent_uncovered
+# ("a civil property/residence dispute involving the Senior Citizens Act")
+# instead of covered_elsewhere_in_tool/domestic_violence, even though this
+# is precisely the scenario the 6th PWDVA judgment anchor exists for.
+# SCOPE_CLASSIFIER_PROMPT's PWDVA paragraph only listed "hit, threatened,
+# thrown out, denied money" as trigger fact patterns and never mentioned
+# the Senior Citizens Act angle, so the classifier reasoned from the
+# Act named in the question rather than the underlying PWDVA remedy.
+# Fixed by explicitly naming this fact pattern in that paragraph.
+category, reasoning, redirect_domain = classify_scope(
+    "My husband's parents are trying to evict me from the house using the senior citizens act, "
+    "is that allowed?"
+)
+check(category == "covered_elsewhere_in_tool",
+      f"Senior-Citizens-Act eviction question (S. Vanitha fact pattern) is covered_elsewhere_in_tool, "
+      f"not adjacent_uncovered -- got {category!r} ({reasoning!r})")
+check(redirect_domain == "domestic_violence",
+      f"Senior-Citizens-Act eviction question's redirect_domain is 'domestic_violence' -- got {redirect_domain!r}")
+
 # ---- answer_question: redirect_domain propagates into the returned dict ----
 
 result = answer_question("my bank account got frozen by the police and nobody told me why")
