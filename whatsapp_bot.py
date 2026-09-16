@@ -184,6 +184,23 @@ def send_whatsapp_message(phone_number: str, text: str) -> None:
             },
             timeout=15,
         )
+        # DIAGNOSTIC (2026-09-16): logged unconditionally, not just on an
+        # obvious HTTP error -- a real production send silently reached
+        # neither branch below (no error log, no exception, message never
+        # arrived), right after this number was Go-Live'd via Gupshup's
+        # "MM Lite" embedded signup. The existing code only ever checked
+        # resp.status_code, never the response BODY -- if Gupshup accepts
+        # the request (2xx) but the body itself reports a soft failure
+        # (e.g. an app/number mismatch specific to the new production
+        # onboarding), that would previously have been invisible. This
+        # logs source/app-name actually used plus the full raw response
+        # every time, so the next real send reveals the truth instead of
+        # requiring another guess. Safe to remove once the real cause is
+        # confirmed and fixed.
+        logger.info(
+            "Gupshup send to %s -- source=%s app_name=%s status=%s body=%s",
+            phone_number, GUPSHUP_SOURCE_NUMBER, GUPSHUP_APP_NAME, resp.status_code, resp.text[:1000],
+        )
         if resp.status_code >= 400:
             logger.error(
                 "Gupshup send to %s failed (%s): %s",
