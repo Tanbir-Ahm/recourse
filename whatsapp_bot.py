@@ -51,6 +51,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 import tempfile
 import time
@@ -65,6 +66,8 @@ try:
 except ImportError:
     pass  # python-dotenv should already be installed (main.py depends on it)
 
+import case_document
+import case_lookup
 import chat_assistant
 import petition_draft
 import whatsapp_store
@@ -106,16 +109,27 @@ _PENDING_PDF_TTL_SECONDS = 600
 _PENDING_PDFS_CAP = 50
 
 
-def _store_pending_pdf(pdf_bytes: bytes) -> str:
+_PENDING_DOCX = {}  # token -> (docx_bytes, expires_at), same TTL/cap as _PENDING_PDFS
+
+
+def _store_pending(store: dict, data: bytes) -> str:
     now = time.time()
-    for tok in [t for t, (_, exp) in _PENDING_PDFS.items() if exp <= now]:
-        del _PENDING_PDFS[tok]
-    if len(_PENDING_PDFS) >= _PENDING_PDFS_CAP:
-        oldest = min(_PENDING_PDFS, key=lambda t: _PENDING_PDFS[t][1])
-        del _PENDING_PDFS[oldest]
+    for tok in [t for t, (_, exp) in store.items() if exp <= now]:
+        del store[tok]
+    if len(store) >= _PENDING_PDFS_CAP:
+        oldest = min(store, key=lambda t: store[t][1])
+        del store[oldest]
     token = secrets.token_urlsafe(24)
-    _PENDING_PDFS[token] = (pdf_bytes, now + _PENDING_PDF_TTL_SECONDS)
+    store[token] = (data, now + _PENDING_PDF_TTL_SECONDS)
     return token
+
+
+def _store_pending_pdf(pdf_bytes: bytes) -> str:
+    return _store_pending(_PENDING_PDFS, pdf_bytes)
+
+
+def _store_pending_docx(docx_bytes: bytes) -> str:
+    return _store_pending(_PENDING_DOCX, docx_bytes)
 
 
 def _build_petition_pdf(question: str, matches: list):
@@ -258,12 +272,144 @@ def send_whatsapp_document(phone_number: str, url: str, filename: str, caption: 
         return False
 
 
+# --- Case lookup ("CASE: <name>" -> the judgment as a PDF/Word file) --------
+# Designed 2026-09-16 (memory/case-lookup-whatsapp-feature-design.md). A plain
+# keyword command, deliberately NOT routed through classify_scope: a lookup
+# request must never depend on an AI judgment call to be recognised (the same
+# class of misrouting bug found twice on 2026-09-15). A bare "case ..." is NOT
+# a command (people write "case of theft..." in ordinary questions) -- only
+# "CASE:" with a colon, or "FIND CASE ...". Phase 1 covers the Supreme Court.
+_CASE_USAGE = (
+    "To get a judgment as a document, send:\n"
+    "*CASE: <case name>*  (for example: CASE: Arnesh Kumar v State of Bihar)\n"
+    "Add *WORD* at the end for a Word file instead of a PDF.\n"
+    "This currently covers Supreme Court judgments only."
+)
+
+
+def _parse_case_command(text: str):
+    """(query, fmt) if `text` is a case-lookup command, else None. fmt is
+    'pdf' or 'docx'. query may be '' (bare command -> usage help)."""
+    m = re.match(r"^\s*(?:find\s+case\b\s*:?|case\s*:)\s*(.*)$", text or "", re.I | re.S)
+    if not m:
+        return None
+    query, fmt = m.group(1).strip(), "pdf"
+    fm = re.search(r"\b(word|docx|pdf)\s*$", query, re.I)
+    if fm:
+        fmt = "docx" if fm.group(1).lower() in ("word", "docx") else "pdf"
+        query = query[:fm.start()].strip()
+    return query, fmt
+
+
+def _reply(phone_number: str, text: str) -> list:
+    send_whatsapp_message(phone_number, text)
+    return [text]
+
+
+def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
+    """Fetch one confirmed case, build the file, send it. Every failure is
+    a plain sentence to the person -- never a crash, never a guess, never
+    a garbled file. Falls back to plain text if the file can't be built or
+    delivered, so they are never left with nothing."""
+    if not case_lookup.check_and_record(phone_number, "fetch"):
+        return _reply(phone_number, "You've reached today's limit for judgment downloads -- please try again tomorrow.")
+    replies = [_reply(phone_number, "Fetching the judgment -- this can take up to a minute...")[0]]
+    try:
+        case = case_lookup.get_case(case_id) or {"case_id": case_id, "title": "Judgment"}
+        doc = case_lookup.fetch_case_text(case_id)
+    except case_lookup.CaseLookupUnavailable:
+        return replies + _reply(phone_number, "The judgment source isn't reachable right now -- please try again in a few minutes.")
+    except case_lookup.CaseNotFound:
+        return replies + _reply(phone_number, "I couldn't retrieve that record. Please try another search.")
+    except Exception:
+        logger.exception("case lookup: unexpected failure fetching %s", case_id)
+        return replies + _reply(phone_number, "Sorry, something went wrong fetching that judgment. Please try again.")
+
+    if len(doc["text"]) < case_lookup.DOC_MIN_CHARS:
+        return replies + _reply(phone_number, "That record looks broken or almost empty, so I haven't sent it. Please try another search.")
+
+    sent = False
+    try:
+        if fmt == "docx":
+            data, store, ext = case_document.build_docx(case, doc), _store_pending_docx, "docx"
+        else:
+            data, store, ext = case_document.build_pdf(case, doc), _store_pending_pdf, "pdf"
+        if WHATSAPP_PUBLIC_BASE_URL:
+            url = f"{WHATSAPP_PUBLIC_BASE_URL}/whatsapp/files/{store(data)}.{ext}"
+            sent = send_whatsapp_document(phone_number, url, case_document.suggested_filename(case, ext))
+    except Exception:
+        logger.exception("case lookup: building/sending the document for %s failed", case_id)
+
+    if sent:
+        caption = ("Here is the judgment. It comes from an open dataset and has NOT been checked against "
+                   "the official law reporter -- confirm the citation and wording before relying on it.")
+        if doc.get("is_procedural"):
+            caption += " Note: this looks like an interim/procedural order, not a final judgment."
+        if not doc.get("complete"):
+            caption += " Warning: this record may be incomplete."
+        return replies + _reply(phone_number, caption)
+
+    excerpt = doc["text"][:3000].strip()
+    return replies + _reply(
+        phone_number,
+        "I couldn't prepare the file just now, so here is the start of the text instead "
+        "(from an open dataset, not independently verified):\n\n" + excerpt + "\n\n[...truncated]",
+    )
+
+
+def _handle_case_command(phone_number: str, query: str, fmt: str) -> list:
+    if not query:
+        return _reply(phone_number, _CASE_USAGE)
+    if not case_lookup.check_and_record(phone_number, "search"):
+        return _reply(phone_number, "You've reached today's limit for case searches -- please try again tomorrow.")
+    try:
+        found = case_lookup.search_cases_detailed(query)
+    except case_lookup.IndexNotBuilt:
+        return _reply(phone_number, "Judgment lookup isn't available yet -- please check back soon.")
+    except Exception:
+        logger.exception("case lookup: search failed")
+        return _reply(phone_number, "Sorry, the search failed just now. Please try again.")
+    results, exact = found["cases"], found["exact"]
+    if not results:
+        return _reply(
+            phone_number,
+            "I couldn't find a Supreme Court case matching that name. Try just the main party's name, or check "
+            "the spelling. Note that this collection does not contain every judgment (very recent ones in "
+            "particular), so not finding a case here doesn't mean it doesn't exist. (This command only finds "
+            "judgments by name -- if you meant to ask a question, just send it without \"CASE:\".)",
+        )
+    # Auto-send ONLY a single exact match. A fuzzy lookalike sent as though it were
+    # the case asked for is the worst failure this feature can have -- always a menu.
+    if exact and len(results) == 1:
+        return _send_case_document(phone_number, results[0]["case_id"], fmt)
+    case_lookup.save_choices(phone_number, results, fmt)
+    return _reply(phone_number, case_lookup.format_choices(results, exact))
+
+
+def _handle_case_choice(phone_number: str, number: int) -> list:
+    pending = case_lookup.get_choices(phone_number)
+    case_ids, fmt = pending
+    if number > len(case_ids):
+        return _reply(phone_number, f"Please reply with a number from 1 to {len(case_ids)}, or send CASE: <name> to search again.")
+    case_lookup.clear_choices(phone_number)
+    return _send_case_document(phone_number, case_ids[number - 1], fmt)
+
+
 def handle_incoming_message(phone_number: str, message_text: str) -> list:
     """The whole pipeline for one incoming message, kept in its own
     plain function (no FastAPI/HTTP involved) so it can be called
     directly in tests, and later from whatever the real BSP's webhook
     shape turns out to be."""
     message_text = (message_text or "").strip()
+
+    # Case lookup: an explicit command, or a bare 1-9 answering an
+    # unexpired numbered menu. Handled before anything touches chat
+    # history or the AI engine -- these are not questions.
+    case_cmd = _parse_case_command(message_text)
+    if case_cmd is not None:
+        return _handle_case_command(phone_number, *case_cmd)
+    if re.fullmatch(r"[1-9]", message_text) and case_lookup.get_choices(phone_number) is not None:
+        return _handle_case_choice(phone_number, int(message_text))
 
     if message_text.lower() in _RESET_WORDS:
         whatsapp_store.clear_history(phone_number)
@@ -462,3 +608,17 @@ async def whatsapp_file(token: str):
         raise HTTPException(status_code=404)
     pdf_bytes, _expires_at = entry
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+@app.get("/whatsapp/files/{token}.docx")
+async def whatsapp_docx_file(token: str):
+    """Word counterpart of whatsapp_file above -- same unguessable-token
+    access model, its own store so a token can never be served under the
+    wrong content type."""
+    entry = _PENDING_DOCX.get(token)
+    if entry is None or entry[1] <= time.time():
+        raise HTTPException(status_code=404)
+    return Response(
+        content=entry[0],
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )

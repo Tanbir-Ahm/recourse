@@ -60,6 +60,7 @@ pydantic==2.13.4
 pydeck==0.9.2
 pymupdf==1.28.0
 python-dateutil==2.9.0.post0
+python-docx==1.2.0
 python-dotenv==1.2.2
 python-multipart==0.0.32
 PyYAML==6.0.3

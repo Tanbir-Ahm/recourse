@@ -54,3 +54,9 @@ tool_snapshots/
 # that needs to travel with the code so it actually reaches production,
 # the same way chunks/*.json and embeddings/corpus_embeddings.json do.
 !vaquill_search.db
+
+# EXCEPTION: case_lookup_index.db is the WhatsApp case-lookup title index (+ pre-warmed
+# judgments) -- public court data only, built by a person, must ship with deploys.
+# case_lookup_state.db (fetch cache, pending menus, rate-limit log WITH phone numbers)
+# stays ignored by *.db above and lives on the persistent volume.
+!case_lookup_index.db
