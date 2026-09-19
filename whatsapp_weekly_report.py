@@ -47,7 +47,7 @@ def _fetch_rows(days: int) -> list:
     return rows
 
 
-def generate_report(days: int = 7) -> str:
+def _questions_report(days: int = 7) -> str:
     rows = _fetch_rows(days)
     lines = []
     lines.append(f"WhatsApp confidence report -- last {days} day(s)")
@@ -92,6 +92,32 @@ def generate_report(days: int = 7) -> str:
             lines.append(f"  [{ts}] ({state}) {question}")
 
     return "\n".join(lines)
+
+
+def _case_report(days: int = 7) -> str:
+    """The CASE-command section: counts by outcome, cache-hit rate, median live
+    fetch time. Never shows a phone number (case_lookup.event_summary only counts
+    distinct people). A failure here must not take the rest of the report down."""
+    try:
+        import case_lookup
+        s = case_lookup.event_summary(days)
+    except Exception as exc:
+        return f"CASE lookup usage: unavailable ({type(exc).__name__})"
+    lines = [f"CASE lookup usage -- last {days} day(s)", f"Events: {s['total']} from {s['users']} distinct person(s)"]
+    if not s["total"]:
+        lines.append("No CASE commands used in this period.")
+        return "\n".join(lines)
+    for ev, n in sorted(s["by_event"].items(), key=lambda kv: -kv[1]):
+        lines.append(f"  {ev}: {n}")
+    if s["deliveries"]:
+        lines.append(f"Judgments delivered: {s['deliveries']} ({s['cache_hits']} from cache)")
+    if s["median_live_fetch_ms"] is not None:
+        lines.append(f"Median time for a live (uncached) fetch: {s['median_live_fetch_ms'] / 1000:.0f}s")
+    return "\n".join(lines)
+
+
+def generate_report(days: int = 7) -> str:
+    return _questions_report(days) + "\n\n" + _case_report(days)
 
 
 if __name__ == "__main__":

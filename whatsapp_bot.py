@@ -301,6 +301,14 @@ def _parse_case_command(text: str):
     return query, fmt
 
 
+def _log(phone_number: str, event: str, **fields) -> None:
+    """CASE usage log -- fail-open: nothing in here may ever affect the reply."""
+    try:
+        case_lookup.log_event(phone_number, event, **fields)
+    except Exception:
+        logger.exception("case lookup: usage log failed (ignored)")
+
+
 def _reply(phone_number: str, text: str) -> list:
     send_whatsapp_message(phone_number, text)
     return [text]
@@ -312,20 +320,26 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
     a garbled file. Falls back to plain text if the file can't be built or
     delivered, so they are never left with nothing."""
     if not case_lookup.check_and_record(phone_number, "fetch"):
+        _log(phone_number, "fetch_rate_limited", case_id=case_id)
         return _reply(phone_number, "You've reached today's limit for judgment downloads -- please try again tomorrow.")
+    started = time.time()
     replies = [_reply(phone_number, "Fetching the judgment -- this can take up to a minute...")[0]]
     try:
         case = case_lookup.get_case(case_id) or {"case_id": case_id, "title": "Judgment"}
         doc = case_lookup.fetch_case_text(case_id)
     except case_lookup.CaseLookupUnavailable:
+        _log(phone_number, "fetch_unavailable", case_id=case_id)
         return replies + _reply(phone_number, "The judgment source isn't reachable right now -- please try again in a few minutes.")
     except case_lookup.CaseNotFound:
+        _log(phone_number, "fetch_not_found", case_id=case_id)
         return replies + _reply(phone_number, "I couldn't retrieve that record. Please try another search.")
     except Exception:
         logger.exception("case lookup: unexpected failure fetching %s", case_id)
+        _log(phone_number, "fetch_error", case_id=case_id)
         return replies + _reply(phone_number, "Sorry, something went wrong fetching that judgment. Please try again.")
 
     if len(doc["text"]) < case_lookup.DOC_MIN_CHARS:
+        _log(phone_number, "doc_too_short", case_id=case_id)
         return replies + _reply(phone_number, "That record looks broken or almost empty, so I haven't sent it. Please try another search.")
 
     sent = False
@@ -341,6 +355,8 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
         logger.exception("case lookup: building/sending the document for %s failed", case_id)
 
     if sent:
+        _log(phone_number, "doc_delivered", case_id=case_id, detail=fmt,
+             elapsed_ms=int((time.time() - started) * 1000), cached=doc.get("from_cache"))
         caption = ("Here is the judgment. It comes from an open dataset and has NOT been checked against "
                    "the official law reporter -- confirm the citation and wording before relying on it.")
         if doc.get("is_procedural"):
@@ -349,6 +365,7 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
             caption += " Warning: this record may be incomplete."
         return replies + _reply(phone_number, caption)
 
+    _log(phone_number, "doc_text_fallback", case_id=case_id, detail=fmt)
     excerpt = doc["text"][:3000].strip()
     return replies + _reply(
         phone_number,
@@ -357,20 +374,38 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
     )
 
 
+# "CASE Gayatri Balasamy v ISG Novasoft" -- someone forgot the colon. Deliberately narrow:
+# must start with the word CASE, contain a "v"/"vs"/"versus" between two names, be short,
+# and not be a question -- so an ordinary sentence containing "case" is never intercepted.
+_CASE_NO_COLON = re.compile(r"^\s*case\s+(?!of\b)(\S.*?\s+(?:v|vs|vs\.|v\.|versus)\s+\S.*)$", re.I)
+
+
+def _case_hint(text: str):
+    m = _CASE_NO_COLON.match(text or "")
+    if not m or "?" in text or len(text) > 120 or len(text.split()) > 14:
+        return None
+    return m.group(1).strip()
+
+
 def _handle_case_command(phone_number: str, query: str, fmt: str) -> list:
     if not query:
+        _log(phone_number, "usage_help")
         return _reply(phone_number, _CASE_USAGE)
     if not case_lookup.check_and_record(phone_number, "search"):
+        _log(phone_number, "search_rate_limited", query=query)
         return _reply(phone_number, "You've reached today's limit for case searches -- please try again tomorrow.")
     try:
         found = case_lookup.search_cases_detailed(query)
     except case_lookup.IndexNotBuilt:
+        _log(phone_number, "search_unavailable", query=query)
         return _reply(phone_number, "Judgment lookup isn't available yet -- please check back soon.")
     except Exception:
         logger.exception("case lookup: search failed")
+        _log(phone_number, "search_error", query=query)
         return _reply(phone_number, "Sorry, the search failed just now. Please try again.")
     results, exact = found["cases"], found["exact"]
     if not results:
+        _log(phone_number, "search_no_match", query=query)
         return _reply(
             phone_number,
             "I couldn't find a Supreme Court case matching that name. Try just the main party's name, or check "
@@ -381,8 +416,10 @@ def _handle_case_command(phone_number: str, query: str, fmt: str) -> list:
     # Auto-send ONLY a single exact match. A fuzzy lookalike sent as though it were
     # the case asked for is the worst failure this feature can have -- always a menu.
     if exact and len(results) == 1:
+        _log(phone_number, "exact_auto_send", case_id=results[0]["case_id"], query=query, detail=fmt)
         return _send_case_document(phone_number, results[0]["case_id"], fmt)
     case_lookup.save_choices(phone_number, results, fmt)
+    _log(phone_number, "menu_exact" if exact else "menu_fuzzy", query=query, detail=f"{len(results)} options")
     return _reply(phone_number, case_lookup.format_choices(results, exact))
 
 
@@ -390,8 +427,10 @@ def _handle_case_choice(phone_number: str, number: int) -> list:
     pending = case_lookup.get_choices(phone_number)
     case_ids, fmt = pending
     if number > len(case_ids):
+        _log(phone_number, "pick_invalid", detail=str(number))
         return _reply(phone_number, f"Please reply with a number from 1 to {len(case_ids)}, or send CASE: <name> to search again.")
     case_lookup.clear_choices(phone_number)
+    _log(phone_number, "pick_ok", case_id=case_ids[number - 1], detail=str(number))
     return _send_case_document(phone_number, case_ids[number - 1], fmt)
 
 
@@ -408,6 +447,10 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     case_cmd = _parse_case_command(message_text)
     if case_cmd is not None:
         return _handle_case_command(phone_number, *case_cmd)
+    hinted = _case_hint(message_text)
+    if hinted:
+        _log(phone_number, "case_hint", query=hinted)
+        return _reply(phone_number, f"Did you mean to look up a judgment? Send it like this, with a colon:\n\nCASE: {hinted}")
     if re.fullmatch(r"[1-9]", message_text) and case_lookup.get_choices(phone_number) is not None:
         return _handle_case_choice(phone_number, int(message_text))
 

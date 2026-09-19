@@ -111,6 +111,12 @@ def _state_conn():
             kind TEXT NOT NULL, created_at REAL NOT NULL)"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_lookup_log ON lookup_log(phone_number, kind, created_at)")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS case_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, phone_number TEXT NOT NULL, event TEXT NOT NULL,
+            case_id TEXT, query TEXT, detail TEXT, elapsed_ms INTEGER, cached INTEGER, created_at REAL NOT NULL)"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_case_events_time ON case_events(created_at)")
     return conn
 
 
@@ -540,6 +546,61 @@ def check_and_record(phone_number: str, kind: str) -> bool:
         return True
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Usage log: one row per CASE interaction, so the feature can be measured
+# ---------------------------------------------------------------------------
+
+QUERY_LOG_CHARS = 80  # a typed query is stored truncated -- a long message can't be kept whole
+
+
+def log_event(phone_number: str, event: str, *, case_id=None, query=None, detail=None,
+              elapsed_ms=None, cached=None) -> None:
+    """Record what just happened in a CASE interaction. FAIL-OPEN by design: a
+    logging failure must never break or slow the person's real answer, so every
+    error is swallowed (and logged to the server log) instead of raised."""
+    try:
+        conn = _state_conn()
+        try:
+            with conn:
+                conn.execute(
+                    "INSERT INTO case_events (phone_number, event, case_id, query, detail, elapsed_ms, cached, created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (phone_number, event, case_id, (query or None) and query[:QUERY_LOG_CHARS], detail, elapsed_ms,
+                     None if cached is None else int(bool(cached)), time.time()),
+                )
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("case_lookup: could not log event %r (ignored -- logging never blocks a reply)", event)
+
+
+def event_summary(days: int = 7) -> dict:
+    """Aggregate counts for a person to read. NEVER returns a phone number --
+    only how many distinct people there were."""
+    cutoff = time.time() - days * 86400
+    conn = _state_conn()
+    try:
+        rows = conn.execute(
+            "SELECT phone_number, event, elapsed_ms, cached FROM case_events WHERE created_at >= ?", (cutoff,)
+        ).fetchall()
+    finally:
+        conn.close()
+    by_event = {}
+    for _, ev, _, _ in rows:
+        by_event[ev] = by_event.get(ev, 0) + 1
+    delivered = [r for r in rows if r[1] == "doc_delivered"]
+    live_ms = sorted(r[2] for r in delivered if r[2] is not None and not r[3])
+    return {
+        "days": days,
+        "total": len(rows),
+        "users": len({r[0] for r in rows}),
+        "by_event": by_event,
+        "deliveries": len(delivered),
+        "cache_hits": sum(1 for r in delivered if r[3]),
+        "median_live_fetch_ms": live_ms[len(live_ms) // 2] if live_ms else None,
+    }
 
 
 # ---------------------------------------------------------------------------

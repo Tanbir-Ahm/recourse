@@ -9,8 +9,11 @@ import io, os, re, sys, tempfile, time
 
 import case_lookup
 import whatsapp_bot
+import whatsapp_store
 
-case_lookup.STATE_PATH = os.path.join(tempfile.mkdtemp(), "state.db")
+_tmp = tempfile.mkdtemp()
+case_lookup.STATE_PATH = os.path.join(_tmp, "state.db")
+whatsapp_store.DB_PATH = os.path.join(_tmp, "wa.db")  # never write test messages into the real local conversation log
 sent, docs = [], []
 whatsapp_bot.send_whatsapp_message = lambda p, m, *a, **k: sent.append(m) or True
 whatsapp_bot.send_whatsapp_document = lambda p, url, fn, caption=None: docs.append((url, fn, caption)) or True
@@ -86,6 +89,14 @@ case_lookup.SEARCH_DAILY_LIMIT = 2
 say("9004", "CASE: Maneka Gandhi"); say("9004", "CASE: Maneka Gandhi")
 out = say("9004", "CASE: Maneka Gandhi")
 check("limit" in out.lower() or "today" in out.lower(), "3rd search over the daily cap is politely refused")
+
+# 6. Usage log: the flows above must have left the right rows, with real data
+sm = case_lookup.event_summary(days=1)
+check(sm["by_event"].get("doc_delivered", 0) >= 2, f"usage log recorded the real deliveries ({sm['by_event']})")
+check(sm["cache_hits"] >= 1, "usage log recorded a cache hit for the repeat request")
+check(sm["by_event"].get("search_no_match", 0) >= 1 and sm["by_event"].get("search_rate_limited", 0) >= 1,
+      "usage log recorded the no-match and the rate-limited searches")
+check("9002" not in repr(sm), "the usage report shows no phone number")
 
 print("\n" + ("ALL ACCEPTANCE CHECKS PASSED" if not fails else f"{len(fails)} FAILED: {fails}"))
 sys.exit(1 if fails else 0)
