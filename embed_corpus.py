@@ -129,6 +129,7 @@ def load_statute_chunks():
         ("BNS", "chunks/bharatiya_nyaya_sanhita_2023_chunks.json"),
         ("BNSS", "chunks/bharatiya_nagarik_suraksha_sanhita_2023_chunks.json"),
         ("ITACT", "chunks/information_technology_act_2000_chunks.json"),
+        ("NIACT", "chunks/negotiable_instruments_act_1881_chunks.json"),
     ]:
         if not os.path.exists(path):
             print(f"WARNING: {path} not found, skipping {act}")
@@ -168,6 +169,13 @@ def load_judgment_chunks():
         # printed judgment-chunk count against a direct file recount
         # before trusting the embed run, not by inspection alone.
         "information_technology_act_2000_chunks.json",
+        # SAME BUG, REPEATED (2026-09-18): adding "NIACT" to
+        # load_statute_chunks() without this line produced 12 bogus
+        # "judgment:unknown:N:N" records -- caught the same way, by
+        # actually querying find_relevant_sections() after embedding and
+        # noticing a judgment match with an identical score to a real
+        # NIACT statute match, not by the embed run completing cleanly.
+        "negotiable_instruments_act_1881_chunks.json",
     }
     for path in sorted(glob.glob("chunks/*.json")):
         if os.path.basename(path) in skip_basenames:

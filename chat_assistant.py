@@ -400,6 +400,16 @@ IMPORTANT CORRECTION: your previous answer named the WRONG COURT for one or more
 # doesn't search for a string the model would never write.
 _ACT_NAME_CHECK_PATTERNS = {
     "ITACT": re.compile(r"\b(IT\s*Act|Information\s+Technology\s+Act)\b", re.IGNORECASE),
+    # Added 2026-09-18 alongside NIACT's statute sourcing. Must stay
+    # consistent with _ACT_DISPLAY_NAME in format_retrieved_text_for_prompt
+    # (the label actually shown to the model) -- confirmed real bug the
+    # same day: fixing the display label there without ALSO updating this
+    # acceptance pattern here made the model correctly write "NI Act" (a
+    # real term, unlike the raw "NIACT" code) while this check still only
+    # accepted the literal string "NIACT", so it never matched -- the
+    # answer failed verification, retried, failed again, and generate_
+    # grounded_response gave up and returned None every time.
+    "NIACT": re.compile(r"\b(NI\s*Act|Negotiable\s+Instruments\s+Act)\b", re.IGNORECASE),
 }
 
 
@@ -1554,13 +1564,23 @@ def format_retrieved_text_for_prompt(matches):
     e.g. garbled beyond any recognizable condition) is now reserved for
     cases where NEITHER pattern extracts anything usable -- not the
     default whenever the specific rupee-regex happens not to match."""
+    # The embedding pipeline's internal act code (embed_corpus.py's
+    # load_statute_chunks()) is echoed straight into the answer text via
+    # `source` below. For BNS/BNSS/ITACT that's harmless -- those short
+    # codes ARE how people actually refer to those laws. "NIACT" is not a
+    # real term anyone uses; only listed here where the internal code and
+    # the real-world name genuinely diverge. Codes not listed pass through
+    # unchanged.
+    _ACT_DISPLAY_NAME = {"NIACT": "NI Act"}
+
     blocks = []
     for m in matches:
         label = m.get("section_number") or m.get("paragraph_number") or m.get("chunk_id")
         if m.get("case_name"):
             source = m["case_name"]
         elif m.get("act"):
-            source = f"{m['act']} Section {label}"
+            act_display = _ACT_DISPLAY_NAME.get(m["act"], m["act"])
+            source = f"{act_display} Section {label}"
         else:
             source = f"Section {label}"
 

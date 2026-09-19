@@ -1,0 +1,174 @@
+[
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "6",
+    "title": "''Cheque''.",
+    "text": "6. ''Cheque''.\n[A cheque is a bill of exchange drawn on a specified banker and not expressed to be payable otherwise than on demand and it includes the electronic image of a truncated cheque and a cheque in the electronic form.\n Explanation I.-- For the purposes of this section, the expressions\n [(a) a cheque in the electronic form means a cheque drawn in electronic form by using any computer resource and signed in a secure system with digital signature (with or without biometrics signature) and asymmetric crypto system or with electronic signature, as the case may be;]\n (b) a truncated cheque means a cheque which is truncated during the course of a clearing cycle, either by the clearing house or by the bank whether paying or receiving payment, immediately on generation of an electronic image for transmission, substituting the further physical movement of the cheque in writing.\n Explanation II. -- For the purposes of this section, the expression clearing house means the clearing house managed by the Reserve Bank of India or a clearing house recognised as such by the Reserve Bank of India.]\n [Explanation III. -- For the purposes of this section, the expressions asymmetric crypto system, computer resource, digital signature, electronic form and electronic signature shall have the same meanings respectively assigned to them in the Information Technology Act, 2000 (21 of 2000).]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535744",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "20",
+    "title": "Inchoate stamped instruments.",
+    "text": "20. Inchoate stamped instruments.\nWhere one person signs and delivers to another a paper stamped in accordance with the law relating to negotiable instruments then in force in [India], and either wholly blank or having written thereon an incomplete negotiable instrument, he thereby gives prima facie authority to the holder thereof to make or complete, as the case may be, upon it a negotiable instrument, for any amount specified therein and not exceeding the amount covered by the stamp. The person so signing shall be liable upon such instrument, in the capacity in which he signed the same, to any holder in due course for such amount: provided that no person other than a holder in due course shall recover from the person delivering the instrument anything in excess of the amount intended by him to be paid thereunder.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535757",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "30",
+    "title": "Liability of drawer.",
+    "text": "30. Liability of drawer.\nThe drawer of a bill of exchange or cheque is bound, in case of dishonour by the drawee or acceptor thereof, to compensate the holder, provided due notice of dishonour has been given to, or received by, the drawer as hereinafter provided.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535767",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "31",
+    "title": "Liability of drawee of cheque.",
+    "text": "31. Liability of drawee of cheque.\nThe drawee of a cheque having sufficient funds of the drawer in his hands properly applicable to the payment of such cheque must pay the cheque when duly required so to do, and , in default of such payment, must compensate the drawer for any loss or damage caused by such default.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535768",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "87",
+    "title": "Effect of material alteration.",
+    "text": "87. Effect of material alteration.\nAny material alteration of a negotiable instrument renders the same void as against anyone who is a party thereto at the time of making such alteration and does not consent thereto, unless it was made in order to carry out the common intention of the original parties;\n Alteration by indorsee.-- And any such alteration, if made by an indorsee, discharges his indorser from all liability to him in respect of the consideration thereof.\n The provisions of this section are subject to those of sections 20, 49, 86 and 125.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535827",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "118",
+    "title": "Presumptions as to negotiable instruments.",
+    "text": "118. Presumptions as to negotiable instruments.\nUntil the contrary is proved, the following presumptions shall be made:--\n (a) of consideration:-- that every negotiable instrument was made or drawn for consideration, and that every such instrument, when it has been accepted, indorsed, negotiated or transferred, was accepted, indorsed, negotiated or transferred for consideration;\n (b) as to date:-- that every negotiable instrument bearing a date was made or drawn on such date;\n (c) as to time of acceptance: that every accepted bill of exchange was accepted within a reasonable time after its date and before its maturity;\n (d) as to time of transfer:-- that every transfer of a negotiable instrument was made before its maturity;\n (e) as to order of indorsements:-- that the indorsements appearing upon a negotiable instrument were made in the order in which they appear thereon;\n (f) as to stamp:-- that a lost promissory note, bill of exchange or cheque was duly stamped;\n (g) that holder is a holder in due course:-- that the holder of a negotiable instrument is a holder in due course : provided that, where the instrument has been obtained from its lawful owner, or from any person in lawful custody thereof, by means of an offence or fraud, or has been obtained from the maker or acceptor thereof by means of an offence or fraud, or for unlawful consideration, the burden of proving that the holder is a holder in due course lies upon him.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535860",
+    "source_type": "primary",
+    "qa_note": "Source (India Code) had typos here, corrected against Indian Kanoon + a second independent source, 2026-09-18: 'naturity' -> 'maturity'; 'instrutment' -> 'instrument'"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "138",
+    "title": "Dishonour of cheque for insufficiency, etc., of funds in the account.",
+    "text": "138. Dishonour of cheque for insufficiency, etc., of funds in the account.\n[Where any cheque drawn by a person on an account maintained by him with a banker for payment of any amount of money to another person from out of that account for the discharge, in whole or in part, of any debt or other liability, is returned by the bank unpaid, either because of the amount of money standing to the credit of that account is insufficient to honour the cheque or that it exceeds the amount arranged to be paid from that account by an agreement made with that bank, such person shall be deemed to have committed an offence and shall, without prejudice to any other provision of this Act, be punished with imprisonment for [a term which may be extended to two years], or with fine which may extend to twice the amount of the cheque, or with both:\n Provided that nothing contained in this section shall apply unless--\n (a) the cheque has been presented to the bank within a period of six months from the date on which it is drawn or within the period of its validity, whichever is earlier;\n (b) the payee or the holder in due course of the cheque, as the case may be, makes a demand for the payment of the said amount of money by giving a notice; in writing, to the drawer of the cheque, [within thirty days] of the receipt of information by him from the bank regarding the return of the cheque as unpaid; and\n (c) the drawer of such cheque fails to make the payment of the said amount of money to the payee or, as the case may be, to the holder in due course of the cheque, within fifteen days of the receipt of the said notice.\n Explanation.-- For the purposes of this section, debt of other liability means a legally enforceable debt or other liability.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535883",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "139",
+    "title": "Presumption in favour of holder.",
+    "text": "139. Presumption in favour of holder.\nIt shall be presumed, unless the contrary is proved, that the holder of a cheque received the cheque of the nature referred to in section 138 for the discharge, in whole or in part, of any debt or other liability.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535884",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "140",
+    "title": "Defence which may not be allowed in any prosecution under section 138.",
+    "text": "140. Defence which may not be allowed in any prosecution under section 138.\nIt shall not be a defence in a prosecution for an offence under section 138 that the drawer had no reason to believe when he issued the cheque that the cheque may be dishonoured on presentment for the reasons stated in that section.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535886",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "141",
+    "title": "Offences by companies.",
+    "text": "141. Offences by companies.\n(1) If the person committing an offence under section 138 is a company, every person who, at the time the offence was committed, was in charge of, and was responsible to, the company for the conduct of the business of the company, as well as the company, shall be deemed to be guilty of the offence and shall be liable to be proceeded against and punished accordingly:\n Provided that nothing contained in this sub-section shall render any person liable to punishment if he proves that the offence was committed without his knowledge, or that he had exercised all due diligence to prevent the commission of such offence:\n [Provided further that where a person is nominated as a Director of a company by virtue of his holding any office or employment in the Central Government or State Government or a financial corporation owned or controlled by the Central Government or the State Government, as the case may be, he shall not be liable for prosecution under this Chapter.]\n (2) Notwithstanding anything contained in sub-section (1), where any offence under this Act has been committed by a company and it is proved that the offence has been committed with the consent or connivance of, or is attributable to, any neglect on the part of, any director, manager, secretary or other officer of the company, such director, manager, secretary or other officer shall also be deemed to be guilty of that offence and shall be liable to be proceeded against and punished accordingly.\n Explanation.-- For the purposes of this section, -- \n (a) \"company\" means any body corporate and includes a firm or other association of individuals; and\n (b) \"director\", in relation to a firm, means a partner in the firm.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535887",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "142",
+    "title": "Cognizance of offences.",
+    "text": "142. Cognizance of offences.\n[(1)] Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974),\n (a) no court shall take cognizance of any offence punishable under section 138 except upon a complaint, in writing, made by the payee or, as the case may be, the holder in due course of the cheque;\n (b) such complaint is made within one month of the date on which the cause of action arises under clause (c) of the proviso to section 138:\n [Provided that the cognizance of a complaint may be taken by the Court after the prescribed period, if the complainant satisfies the Court that he had sufficient cause for not making a complaint within such period;]\n (c) no court inferior to that of a Metropolitan Magistrate or a Judicial Magistrate of the first class shall try any offence punishable under section 138.].\n [(2) The offence under section 138 shall be inquired into and tried only by a court within whose local jurisdiction,--\n (a) if the cheque is delivered for collection through an account, the branch of the bank where the payee or holder in due course, as the case may be, maintains the account, is situated; or\n (b) if the cheque is presented for payment by the payee or holder in due course, otherwise through an account, the branch of the drawee bank where the drawer maintains the account, is situated.\n Explanation.-- For the purposes of clause (a), where a cheque is delivered for collection at any branch of the bank of the payee or holder in due course, then, the cheque shall be deemed to have been delivered to the branch of the bank in which the payee or holder in due course, as the case may be, maintains the account.]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535888",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "143",
+    "title": "Power of Court to try cases summarily.",
+    "text": "143. Power of Court to try cases summarily.\n[143. Power of Court to try cases summarily.--(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974) all offences under this Chapter shall be tried by a Judicial Magistrate of the first class or by a Metropolitan Magistrate and the provisions of sections 262 to 265 (both inclusive) of the said Code shall, as far as may be, apply to such trials:\n Provided that in the case of any conviction in a summary trial under this section, it shall be lawful for the Magistrate to pass a sentence of imprisonment for a term not exceeding one year and an amount of fine exceeding five thousand rupees:\n Provided further that when at the commencement of, or in the course of, a summary trial under this section, it appears to the Magistrate that the nature of the case is such that a sentence of imprisonment for a term exceeding one year may have to be passed or that it is, for any other reason, undesirable to try the case summarily, the Magistrate shall after hearing the parties, record an order to that effect and thereafter recall any witness who may have been examined and proceed to hear or rehear the case in the manner provided by the said Code.\n (2) The trial of a case under this section shall, so far as practicable, consistently with the interests of justice, be continued from day to day until its conclusion, unless the Court finds the adjournment of the trial beyond the following day to be necessary for reasons to be recorded in writing.\n (3) Every trial under this section shall be conducted as expeditiously as possible and an endeavour shall be made to conclude the trial within six months from the date of filing of the complaint.]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535890",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "144",
+    "title": "Mode of service of summons.",
+    "text": "144. Mode of service of summons.\n(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974) and for the purposes of this Chapter, a Magistrate issuing a summons to an accused or a witness may direct a copy of summons to be served at the place where such accused or witness ordinarily resides or carries on business or personally works for gain, by speed post or by such courier services as are approved by a Court of Session.\n (2) Where an acknowledgment purporting to be signed by the accused or the witness or an endorsement purported to be made by any person authorised by the postal department or the courier services that the accused or the witness refused to take delivery of summons has been received, the Court issuing the summons may declare that the summons has been duly served.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535891",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "145",
+    "title": "Evidence on affidavit.",
+    "text": "145. Evidence on affidavit.\n(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974), the evidence of the complainant may be given by him on affidavit and may, subject to all just exceptions be read in evidence in any enquiry, trial or other proceeding under the said Code.\n (2) The Court may, if it thinks fit, and shall, on the application of the prosecution or the accused, summon and examine any person giving evidence on affidavit as to the facts contained therein.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535892",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "146",
+    "title": "Bank's slip prima facie evidence of certain facts.",
+    "text": "146. Bank's slip prima facie evidence of certain facts.\nThe Court shall, in respect of every proceeding under this Chapter, on production of Bank's slip or memo having thereon the official mark denoting that the cheque has been dishonoured, presume the fact of dishonour of such cheque, unless and until such fact is disproved.",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535893",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "147",
+    "title": "Offences to be compoundable.",
+    "text": "147. Offences to be compoundable.\nNotwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974), every offence punishable under this Act shall be compoundable].",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535894",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "148",
+    "title": "Power of Appellate Court to order payment pending appeal against conviction.",
+    "text": "148. Power of Appellate Court to order payment pending appeal against conviction.\n[148. Power of Appellate Court to order payment pending appeal against conviction.--(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974), in an appeal by the drawer against conviction under section 138, the Appellate Court may order the appellant to deposit such sum which shall be a minimum of twenty per cent. of the fine or compensation awarded by the trial Court:\n Provided that the amount payable under this sub-section shall be in addition to any interim compensation paid by the appellant under section 143A.\n (2) The amount referred to in sub-section (1) shall be deposited within sixty days from the date of the order, or within such further period not exceeding thirty days as may be directed by the Court on sufficient cause being shown by the appellant.\n (3) The Appellate Court may direct the release of the amount deposited by the appellant to the complainant at any time during the pendency of the appeal:\n Provided that if the appellant is acquitted, the Court shall direct the complainant to repay to the appellant the amount so released, with interest at the bank rate as published by the Reserve Bank of India, prevalent at the beginning of the relevant financial year, within sixty days from the date of the order, or within such further period not exceeding thirty days as may be directed by the Court on sufficient cause being shown by the complainant.]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/538063",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "142A",
+    "title": "Validation for transfer of pending cases.",
+    "text": "142A. Validation for transfer of pending cases.\n[142A. Validation for transfer of pending cases.--(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974) or any judgment, decree, order or direction of any court, all cases transferred to the court having jurisdiction under sub-section (2) of section 142, as amended by the Negotiable Instruments (Amendment) Ordinance, 2015 (Ord. 6 of 2015), shall be deemed to have been transferred under this Act, as if that sub-section had been in force at all material times.\n (2) Notwithstanding anything contained in sub-section (2) of section 142 or sub-section (1), where the payee or the holder in due course, as the case may be, has filed a complaint against the drawer of a cheque in the court having jurisdiction under sub-section (2) of section 142 or the case has been transferred to that court under sub-section (1) and such complaint is pending in that court, all subsequent complaints arising out of section 138 against the same drawer shall be filed before the same court irrespective of whether those cheques were delivered for collection or presented for payment within the territorial jurisdiction of that court.\n (3) If, on the date of the commencement of the Negotiable Instruments (Amendment) Act, 2015 (26 of 2015), more than one prosecution filed by the same payee or holder in due course, as the case may be, against the same drawer of cheques is pending before different courts, upon the said fact having been brought to the notice of the court, such court shall transfer the case to the court having jurisdiction under sub-section (2) of section 142, as amended by the Negotiable Instruments (Amendment) Ordinance, 2015 (Ord. 6 of 2015), before which the first case was filed and is pending, as if that sub-section had been in force at all material times.]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/535889",
+    "source_type": "primary"
+  },
+  {
+    "act_name": "Negotiable Instruments Act 1881",
+    "citation": "Act No. 26 of 1881",
+    "section_number": "143A",
+    "title": "Power to direct interim compensation.",
+    "text": "143A. Power to direct interim compensation.\n[143A. Power to direct interim compensation.--(1) Notwithstanding anything contained in the Code of Criminal Procedure, 1973 (2 of 1974), the Court trying an offence under section 138 may order the drawer of the cheque to pay interim compensation to the complainant--\n (a) in a summary trial or a summons case, where he pleads not guilty to the accusation made in the complaint; and\n (b) in any other case, upon framing of charge.\n (2) The interim compensation under sub-section (1) shall not exceed twenty per cent. of the amount of the cheque.\n (3) The interim compensation shall be paid within sixty days from the date of the order under sub-section (1), or within such further period not exceeding thirty days as may be directed by the Court on sufficient cause being shown by the drawer of the cheque..\n (4) If the drawer of the cheque is acquitted, the Court shall direct the complainant to repay to the drawer the amount of interim compensation, with interest at the bank rate as published by the Reserve Bank of India, prevalent at the beginning of the relevant financial year, within sixty days from the date of the order, or within such further period not exceeding thirty days as may be directed by the Court on sufficient cause being shown by the complainant..\n (5) The interim compensation payable under this section may be recovered as if it were a fine under section 421 of the Code of Criminal Procedure, 1973 (2 of 1974)..\n (6) The amount of fine imposed under section 138 or the amount of compensation awarded under section 357 of the Code of Criminal Procedure, 1973 (2 of 1974), shall be reduced by the amount paid or recovered as interim compensation under this section.]",
+    "source_url": "https://indiacode.gov.in/handle/123456789/538062",
+    "source_type": "primary"
+  }
+]

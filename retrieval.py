@@ -38,6 +38,10 @@ _STATUTE_CHUNK_FILES = {
     # is handled by itact_section_status.py's dedicated override instead
     # of a "current text" lookup (see that module's docstring).
     "ITACT": "chunks/information_technology_act_2000_chunks.json",
+    # Negotiable Instruments Act 1881: the 19 cheque-bounce sections (Section 138 domain),
+    # sourced from India Code by build_ni_act_statute_chunks.py. Registered here so it is
+    # never mistaken for a judgment file by _auto_register_judgment_chunks().
+    "NIACT": "chunks/negotiable_instruments_act_1881_chunks.json",
 }
 
 _JUDGMENT_CHUNK_FILES = {
