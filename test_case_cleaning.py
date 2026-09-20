@@ -72,6 +72,34 @@ for keep in ["Accused A and accused B were tried together.", "the accused A and 
              "the appellant D was convicted"]:
     check(clean(keep) == keep, f"legitimate letter left alone: {keep!r} -> {clean(keep)!r}")
 
+# ------------------------------------------------------------------ 2b. margin letters before a CAPITALISED word
+# Riskier: a letter before a capital word can be a person's initial ("Ram B Singh") or a real word ("(3) A
+# Magistrate"). So it is only removed when it FITS THE PAGE'S MARGIN SEQUENCE (A-H run down each page, so the
+# letter must follow, within ~1500 characters, one already confirmed as a margin letter) and passes every keep rule.
+out = clean("Held that the F petitioner was arrested on 5 November. Reference was made to the First G Information Report of the case.")
+check("First Information Report" in out and " G " not in out,
+      f"'First G Information Report' -> the G is removed because it follows the confirmed margin letter F -- got {out!r}")
+out = clean("The Court applied the D principle here and cited E Section 139 of the Act for the point.")
+check(" E " not in out, f"a capital-word margin letter that follows a confirmed one (D then E) is removed -- got {out!r}")
+
+for keep in ["Mr. Ram B Singh appeared for the State.",                       # a person's initial, no margin context
+             "Justice A K Sikri delivered a separate opinion.",               # initials chain
+             "the accused A Kumar was produced before the Magistrate.",        # keep-list word
+             "M/s A Traders Private Limited was the complainant.",             # M/s + name
+             "the D petitioner argued, A Bench of five judges was constituted."]:   # 'A' after punctuation = a real word
+    got = clean(keep)
+    exp = "the petitioner argued, A Bench of five judges was constituted." if keep.startswith("the D petitioner") else keep
+    check(got == exp, f"real text left alone: {keep!r} -> {got!r}")
+
+out = clean("the C petitioner replied.\n\n(3) A Magistrate authorizing detention under this section shall record his reasons.")
+check("(3) A Magistrate authorizing" in out, f"a statute sub-section that starts 'A Magistrate' is never treated as a margin letter -- got {out!r}")
+
+out = clean("the F petitioner said. Later Ram B Singh appeared before the Court in the matter.")
+check("Ram B Singh" in out, f"a capital-word letter that does NOT follow the page sequence (F then B) is kept -- got {out!r}")
+
+far = "the D petitioner argued. " + ("Ordinary sentence about the case goes here. " * 60) + "Reference to Ram E Singh was made."
+check("Ram E Singh" in clean(far), "a capital-word letter far (1500+ chars) from any confirmed margin letter is kept")
+
 # ------------------------------------------------------------------ 3. paragraph breaks that split a sentence
 out = clean("The petitioner relied upon Rajeev Chaudhary v. State\n\n(NCT) of Delhi) case to contend that the term means ten years.")
 check(paras(out) == ["The petitioner relied upon Rajeev Chaudhary v. State (NCT) of Delhi) case to contend that the term means ten years."],

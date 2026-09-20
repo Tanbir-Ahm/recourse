@@ -85,7 +85,7 @@ _DOC_COLUMNS = """case_id TEXT PRIMARY KEY, text TEXT NOT NULL, complete INTEGER
 # The runtime cache table is versioned: copies saved by the older, un-cleaned code sit in
 # 'doc_cache' and are simply never read again, so every case is re-fetched once and cleaned.
 # Bump the suffix whenever the cleaning changes what a saved copy should contain.
-_CACHE_TABLE = "doc_cache_v2"
+_CACHE_TABLE = "doc_cache_v3"   # v2 = first cleaning; v3 = + margin letters before capitalised words
 
 
 def _index_conn():
@@ -422,12 +422,45 @@ def _prev_word(text: str) -> str:
     return words[-1].lower().strip(".,;()") if words else ""
 
 
-def _strip_margin_letters(p: str) -> str:
+# A margin letter can also sit before a CAPITALISED word ("the First G Information Report"). That
+# looks like a person's initial ("Ram B Singh") or a real word ("(3) A Magistrate ..."), so it is
+# removed only when it FITS THE PAGE'S MARGIN SEQUENCE: the letters run A..H down each printed page,
+# so it must be the same/next/next-but-one letter after one already CONFIRMED as a margin letter
+# (one between lowercase words), within ~1500 characters. 'A' is also a real word, so it is only
+# accepted straight after a lowercase letter. Anything that fails a test is kept.
+_MARGIN_ANY_RE = re.compile(
+    r"(?<=[a-z,;)]) ((?:[A-H] )+)(?=[a-z(])"            # confirmed: between lowercase words
+    r"|(?<=[A-Za-z,;]) ([A-H]) (?=[A-Z][a-z]{2,})"      # candidate: before a Capitalised word
+)
+MARGIN_SEQUENCE_WINDOW_CHARS = 1500
+
+
+def _strip_margin_letters(p: str, state: dict = None, offset: int = 0) -> str:
+    """state = {"last": (letter_ordinal, position)} shared across the paragraphs of one judgment."""
+    state = state if state is not None else {}
+
     def run(m):
-        return m.group(0) if _prev_word(m.string[:m.start()]) in _MARGIN_KEEP_AFTER else " "
-    p = _MARGIN_RUN_RE.sub(run, p)
+        prev = _prev_word(m.string[:m.start()])
+        if prev in _MARGIN_KEEP_AFTER:
+            return m.group(0)
+        pos = offset + m.start()
+        if m.group(1) is not None:                       # confirmed margin letter(s)
+            state["last"] = (ord(m.group(1).split()[-1]) - 65, pos)
+            return " "
+        letter = m.group(2)
+        before = m.string[m.start() - 1:m.start()]
+        if letter == "A" and not before.islower():
+            return m.group(0)
+        last = state.get("last")
+        if last and pos - last[1] <= MARGIN_SEQUENCE_WINDOW_CHARS and ((ord(letter) - 65 - last[0]) % 8) in (0, 1, 2):
+            state["last"] = (ord(letter) - 65, pos)
+            return " "
+        return m.group(0)
+
+    p = _MARGIN_ANY_RE.sub(run, p)
     m = _MARGIN_TRAIL_RE.search(p)
     if m and _prev_word(p[:m.start()]) not in _MARGIN_KEEP_AFTER:
+        state["last"] = (ord(p[m.start() + 1:].strip()[:1] or "A") - 65, offset + m.start())
         p = p[:m.start()]
     return p
 
@@ -491,15 +524,18 @@ def clean_judgment_text(chunk_texts: list, with_note: bool = False):
     out = []
     merged = _merge_overlaps(pieces)
     heads = _running_headers(merged)
+    seq, offset = {}, 0
     for p in merged:
         if _norm_ws(p) in heads:
             continue
-        p = _strip_margin_letters(p).strip()
+        p = _strip_margin_letters(p, seq, offset).strip()
+        offset += len(p) + 2
         if not p:
             continue
         if out and _unfinished(out[-1]):
             m = _LEADING_MARGIN_RE.match(p)
             if m and _prev_word(out[-1]) not in _MARGIN_KEEP_AFTER:
+                seq["last"] = (ord(p[0]) - 65, offset)
                 p = p[m.end():]
             if p[:1].islower() or (p[:1] == "(" and not _LIST_MARKER_RE.match(p)):
                 out[-1] = out[-1].rstrip() + " " + p
