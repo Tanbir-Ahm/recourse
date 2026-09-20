@@ -64,6 +64,9 @@ sent, docs = [], []
 whatsapp_bot.send_whatsapp_message = lambda ph, t: sent.append(t)
 whatsapp_bot.send_whatsapp_document = lambda ph, url, fn, caption=None: (docs.append((url, fn)) or True)
 whatsapp_bot.WHATSAPP_PUBLIC_BASE_URL = "https://example.test"
+# These suites test the TEXT pipeline in isolation; the original-PDF path (a plain PDF request tries the
+# original first) is covered, with a fake network, by test_case_original.py.
+whatsapp_bot._try_original_pdf = lambda *a, **k: None
 
 
 def events_of(phone=None):

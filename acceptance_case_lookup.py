@@ -58,7 +58,8 @@ check(not docs and "found these" not in out.lower(), "a normal question starting
 # 3. Full real flow: command -> (menu ->) file, with real fetch
 docs.clear()
 t = time.time()
-out = say("9002", "CASE: Arnesh Kumar v State of Bihar")
+# "text" = OUR re-typed text PDF (a plain PDF request now returns the ORIGINAL pages; see acceptance_case_original.py)
+out = say("9002", "CASE: Arnesh Kumar v State of Bihar text")
 print(f"      first request took {time.time()-t:.0f}s")
 if not docs:  # got a menu instead; pick the first option
     out = say("9002", "1")

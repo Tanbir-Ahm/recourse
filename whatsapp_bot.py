@@ -67,6 +67,7 @@ except ImportError:
     pass  # python-dotenv should already be installed (main.py depends on it)
 
 import case_document
+import case_original
 import case_lookup
 import chat_assistant
 import petition_draft
@@ -107,6 +108,7 @@ WHATSAPP_PUBLIC_BASE_URL = os.environ.get("WHATSAPP_PUBLIC_BASE_URL")
 _PENDING_PDFS = {}  # token -> (pdf_bytes, expires_at)
 _PENDING_PDF_TTL_SECONDS = 600
 _PENDING_PDFS_CAP = 50
+_PENDING_MAX_TOTAL_BYTES = 120 * 1024 * 1024
 
 
 _PENDING_DOCX = {}  # token -> (docx_bytes, expires_at), same TTL/cap as _PENDING_PDFS
@@ -119,6 +121,9 @@ def _store_pending(store: dict, data: bytes) -> str:
     if len(store) >= _PENDING_PDFS_CAP:
         oldest = min(store, key=lambda t: store[t][1])
         del store[oldest]
+    # Original judgment PDFs can be several MB each: also cap the TOTAL bytes held, evicting the oldest.
+    while store and sum(len(v[0]) for v in store.values()) + len(data) > _PENDING_MAX_TOTAL_BYTES:
+        del store[min(store, key=lambda t: store[t][1])]
     token = secrets.token_urlsafe(24)
     store[token] = (data, now + _PENDING_PDF_TTL_SECONDS)
     return token
@@ -282,7 +287,8 @@ def send_whatsapp_document(phone_number: str, url: str, filename: str, caption: 
 _CASE_USAGE = (
     "To get a judgment as a document, send:\n"
     "*CASE: <case name>*  (for example: CASE: Arnesh Kumar v State of Bihar)\n"
-    "Add *WORD* at the end for a Word file instead of a PDF.\n"
+    "You get the original Supreme Court Reports pages as a PDF. Add *WORD* at the end for an editable "
+    "Word file, or *TEXT* for a re-typed text PDF.\n"
     "This currently covers Supreme Court judgments only."
 )
 
@@ -294,9 +300,10 @@ def _parse_case_command(text: str):
     if not m:
         return None
     query, fmt = m.group(1).strip(), "pdf"
-    fm = re.search(r"\b(word|docx|pdf)\s*$", query, re.I)
+    fm = re.search(r"\b(word|docx|pdf|text)\s*$", query, re.I)
     if fm:
-        fmt = "docx" if fm.group(1).lower() in ("word", "docx") else "pdf"
+        kind = fm.group(1).lower()
+        fmt = "docx" if kind in ("word", "docx") else ("textpdf" if kind == "text" else "pdf")
         query = query[:fm.start()].strip()
     return query, fmt
 
@@ -314,6 +321,34 @@ def _reply(phone_number: str, text: str) -> list:
     return [text]
 
 
+def _try_original_pdf(phone_number: str, case_id: str, started: float):
+    """The judgment's ORIGINAL Supreme Court Reports page-image PDF, verified against the case name.
+    Returns the list of reply texts on success, or None (after logging why) so the caller falls back
+    to the re-typed text PDF -- this must never leave the person with nothing, and never raise."""
+    try:
+        case = case_lookup.get_case(case_id)
+        if not case or not WHATSAPP_PUBLIC_BASE_URL:
+            return None
+        result = case_original.get_original(case)
+        if result["status"] != "ok":
+            _log(phone_number, "original_unavailable", case_id=case_id, detail=result["status"])
+            return None
+        url = f"{WHATSAPP_PUBLIC_BASE_URL}/whatsapp/files/{_store_pending_pdf(result['bytes'])}.pdf"
+        if not send_whatsapp_document(phone_number, url, case_document.suggested_filename(case, "pdf")):
+            _log(phone_number, "original_unavailable", case_id=case_id, detail="send_failed")
+            return None
+        _log(phone_number, "doc_delivered", case_id=case_id, detail="pdf_original",
+             elapsed_ms=int((time.time() - started) * 1000), cached=False)
+        return _reply(phone_number, (
+            "Here is the original Supreme Court Reports page-image PDF (headnote and margin letters are as "
+            "printed). " + case_original.CREDIT + " It is NOT independently verified against the official law "
+            "reporter -- confirm the citation before relying on it. For an editable version send the same "
+            "command with WORD at the end."))
+    except Exception:
+        logger.exception("case lookup: original-PDF path failed for %s (falling back to text)", case_id)
+        return None
+
+
 def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
     """Fetch one confirmed case, build the file, send it. Every failure is
     a plain sentence to the person -- never a crash, never a guess, never
@@ -324,6 +359,10 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
         return _reply(phone_number, "You've reached today's limit for judgment downloads -- please try again tomorrow.")
     started = time.time()
     replies = [_reply(phone_number, "Fetching the judgment -- this can take up to a minute...")[0]]
+    if fmt == "pdf":
+        original = _try_original_pdf(phone_number, case_id, started)
+        if original:
+            return replies + original
     try:
         case = case_lookup.get_case(case_id) or {"case_id": case_id, "title": "Judgment"}
         doc = case_lookup.fetch_case_text(case_id)
@@ -355,7 +394,7 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
         logger.exception("case lookup: building/sending the document for %s failed", case_id)
 
     if sent:
-        _log(phone_number, "doc_delivered", case_id=case_id, detail=fmt,
+        _log(phone_number, "doc_delivered", case_id=case_id, detail="docx" if fmt == "docx" else "pdf",
              elapsed_ms=int((time.time() - started) * 1000), cached=doc.get("from_cache"))
         caption = ("Here is the judgment. It comes from an open dataset and has NOT been checked against "
                    "the official law reporter -- confirm the citation and wording before relying on it.")
