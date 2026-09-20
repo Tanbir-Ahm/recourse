@@ -82,6 +82,12 @@ _DOC_COLUMNS = """case_id TEXT PRIMARY KEY, text TEXT NOT NULL, complete INTEGER
             warnings_json TEXT, fetched_at REAL"""
 
 
+# The runtime cache table is versioned: copies saved by the older, un-cleaned code sit in
+# 'doc_cache' and are simply never read again, so every case is re-fetched once and cleaned.
+# Bump the suffix whenever the cleaning changes what a saved copy should contain.
+_CACHE_TABLE = "doc_cache_v2"
+
+
 def _index_conn():
     conn = _open(INDEX_PATH)
     conn.execute(
@@ -99,7 +105,7 @@ def _index_conn():
 
 def _state_conn():
     conn = _open(STATE_PATH)
-    conn.execute(f"CREATE TABLE IF NOT EXISTS doc_cache ({_DOC_COLUMNS})")
+    conn.execute(f"CREATE TABLE IF NOT EXISTS {_CACHE_TABLE} ({_DOC_COLUMNS})")
     conn.execute(
         """CREATE TABLE IF NOT EXISTS pending_choices (
             phone_number TEXT PRIMARY KEY, choices_json TEXT NOT NULL,
@@ -332,7 +338,7 @@ _DOC_SELECT = ("SELECT text, complete, is_procedural, n_chunks, expected_chunks,
 
 def _cache_get(case_id: str):
     """Runtime cache first, then the pre-warmed bundle that ships with the index."""
-    for opener, table in ((_state_conn, "doc_cache"), (_index_conn, "doc_bundle")):
+    for opener, table in ((_state_conn, _CACHE_TABLE), (_index_conn, "doc_bundle")):
         conn = opener()
         try:
             r = conn.execute(_DOC_SELECT.format(table=table), (case_id,)).fetchone()
@@ -348,7 +354,7 @@ def _cache_put(doc: dict) -> None:
     try:
         with conn:
             conn.execute(
-                "INSERT OR REPLACE INTO doc_cache (case_id, text, complete, is_procedural, n_chunks, "
+                f"INSERT OR REPLACE INTO {_CACHE_TABLE} (case_id, text, complete, is_procedural, n_chunks, "
                 "expected_chunks, warnings_json, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
                 (doc["case_id"], doc["text"], int(doc["complete"]),
                  None if doc["is_procedural"] is None else int(doc["is_procedural"]),
@@ -376,6 +382,137 @@ def clean_chunk_text(text: str) -> str:
     return "\n".join(kept).strip()
 
 
+# ---------------------------------------------------------------------------
+# Legibility cleaning. The source stores each judgment as OVERLAPPING pieces (the tail of one
+# piece is repeated at the start of the next), printed-report MARGIN LETTERS (A-H) that the scan
+# left inside sentences, and one paragraph per printed LINE. Measured 2026-09-20 on Rakesh Kumar
+# Paul v State of Assam: 49 repeated paragraphs, 189 stray letters, 525 paragraphs where ~375 are
+# real. This removes ONLY that debris. It never rewrites the judgment's own words -- scan errors
+# such as 'Jn' for 'In' are left as they are, on purpose.
+# ---------------------------------------------------------------------------
+
+CLEANING_MIN_OVERLAP_CHARS = 30      # a shorter repeat is coincidence, not an overlap
+CLEANING_MAX_REMOVED_FRACTION = 0.4  # removing more than this means something is wrong: keep the raw text
+
+# A capital letter A-H after one of these words is the judgment's own text ("accused A", "Schedule C",
+# "A and B"), never a page-margin letter. Keeping a genuine margin letter is a harmless blemish;
+# deleting a real party label would change the meaning -- so when in doubt, keep.
+_MARGIN_KEEP_AFTER = frozenset({
+    "accused", "co-accused", "witness", "petitioner", "respondent", "appellant", "defendant", "plaintiff",
+    "complainant", "victim", "deceased", "person", "party", "prosecutrix", "pw", "dw", "mr", "mrs", "ms",
+    "dr", "shri", "smt", "schedule", "form", "part", "annexure", "annex", "exhibit", "list", "appendix",
+    "category", "class", "group", "clause", "sub-clause", "article", "section", "column", "table", "point",
+    "item", "plan", "block", "type", "grade", "para", "paragraph", "chapter", "rule", "order", "entry",
+    "serial", "tier", "option", "plot", "house", "flat", "unit", "lot", "zone", "ward", "wing", "stage",
+    "phase", "step", "and", "or", "nor", "either", "neither", "between", "v", "vs",
+})
+_MARGIN_RUN_RE = re.compile(r"(?<=[a-z,;)]) ((?:[A-H] )+)(?=[a-z(])")
+_MARGIN_TRAIL_RE = re.compile(r"(?<=[a-z,;·]) [A-H]\s*$")
+_LEADING_MARGIN_RE = re.compile(r"^[A-H] (?=[a-z(])")
+_TERMINAL_RE = re.compile(r"[.?!:;\]\)\"'”’]\s*$")
+_LIST_MARKER_RE = re.compile(r"^\((?:[a-z]{1,4}|\d+)\)")
+
+
+def _norm_ws(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _prev_word(text: str) -> str:
+    words = text.split()
+    return words[-1].lower().strip(".,;()") if words else ""
+
+
+def _strip_margin_letters(p: str) -> str:
+    def run(m):
+        return m.group(0) if _prev_word(m.string[:m.start()]) in _MARGIN_KEEP_AFTER else " "
+    p = _MARGIN_RUN_RE.sub(run, p)
+    m = _MARGIN_TRAIL_RE.search(p)
+    if m and _prev_word(p[:m.start()]) not in _MARGIN_KEEP_AFTER:
+        p = p[:m.start()]
+    return p
+
+
+def _merge_overlaps(chunks: list) -> list:
+    """Paragraph list with the repeated seam between consecutive pieces removed."""
+    out = []
+    for ch in chunks:
+        paras = [p for p in re.split(r"\n\s*\n", ch) if p.strip()]
+        if out and paras:
+            done = False
+            for j in range(min(8, len(out), len(paras)), 0, -1):
+                if [_norm_ws(p) for p in out[-j:]] == [_norm_ws(p) for p in paras[:j]]:
+                    paras, done = paras[j:], True
+                    break
+            if not done:
+                last, first = _norm_ws(out[-1]), _norm_ws(paras[0])
+                for k in range(min(len(last), len(first)), CLEANING_MIN_OVERLAP_CHARS - 1, -1):
+                    if last.endswith(first[:k]):
+                        paras[0] = first[k:]
+                        break
+        out.extend(p for p in paras if p.strip())
+    return out
+
+
+RUNNING_HEADER_MIN_REPEATS = 5
+
+
+def _running_headers(paras: list) -> set:
+    """The law report prints the case name at the top of EVERY page; the scan keeps those lines.
+    A short, mostly-capitals (or bracket-ending) line repeated 5+ times is that header, not text."""
+    counts = {}
+    for p in paras:
+        n = _norm_ws(p)
+        counts[n] = counts.get(n, 0) + 1
+    heads = set()
+    for n, k in counts.items():
+        if k >= RUNNING_HEADER_MIN_REPEATS and 25 <= len(n) <= 250:
+            letters = [ch for ch in n if ch.isalpha()]
+            if letters and (sum(ch.isupper() for ch in letters) / len(letters) > 0.5 or n.endswith("]")):
+                heads.add(n)
+    return heads
+
+
+def _is_heading(p: str) -> bool:
+    s = p.strip()
+    return s.endswith(":") or (len(s) < 80 and s.upper() == s and any(c.isalpha() for c in s))
+
+
+def _unfinished(p: str) -> bool:
+    return bool(p.strip()) and not _is_heading(p) and not _TERMINAL_RE.search(p)
+
+
+def clean_judgment_text(chunk_texts: list, with_note: bool = False):
+    """Readable text from a judgment's pieces (see the block comment above). With
+    with_note=True returns (text, note); note is None unless the safety net fired: if cleaning
+    would remove more than CLEANING_MAX_REMOVED_FRACTION of the text, the raw joined text is
+    returned instead and the note says so -- a judgment is never silently gutted."""
+    pieces = [c for c in (clean_chunk_text(t) for t in chunk_texts) if c]
+    raw = "\n\n".join(pieces)
+    out = []
+    merged = _merge_overlaps(pieces)
+    heads = _running_headers(merged)
+    for p in merged:
+        if _norm_ws(p) in heads:
+            continue
+        p = _strip_margin_letters(p).strip()
+        if not p:
+            continue
+        if out and _unfinished(out[-1]):
+            m = _LEADING_MARGIN_RE.match(p)
+            if m and _prev_word(out[-1]) not in _MARGIN_KEEP_AFTER:
+                p = p[m.end():]
+            if p[:1].islower() or (p[:1] == "(" and not _LIST_MARKER_RE.match(p)):
+                out[-1] = out[-1].rstrip() + " " + p
+                continue
+        out.append(p)
+    text = "\n\n".join(out)
+    note = None
+    if raw and len(text) < (1 - CLEANING_MAX_REMOVED_FRACTION) * len(raw):
+        note = "cleaning skipped: it would have removed an unusually large share of the text"
+        text = raw
+    return (text, note) if with_note else text
+
+
 def assemble_case(case_id: str, rows: list) -> dict:
     """rows: [(chunk_index, text, section_type, total_chunks), ...] for
     ONE language (English), in any order. Reassembles by chunk_index,
@@ -387,7 +524,9 @@ def assemble_case(case_id: str, rows: list) -> dict:
 
     rows = sorted(rows, key=lambda r: r[0])
     warnings = []
-    text = "\n\n".join(c for c in (clean_chunk_text(r[1]) for r in rows) if c)
+    text, clean_note = clean_judgment_text([r[1] for r in rows], with_note=True)
+    if clean_note:
+        warnings.append(clean_note)
     expected = max((r[3] or 0 for r in rows), default=0)
     have = len({r[0] for r in rows})
     complete = True

@@ -90,6 +90,15 @@ say("9004", "CASE: Maneka Gandhi"); say("9004", "CASE: Maneka Gandhi")
 out = say("9004", "CASE: Maneka Gandhi")
 check("limit" in out.lower() or "today" in out.lower(), "3rd search over the daily cap is politely refused")
 
+# 5b. Legibility: the delivered text must not contain the scan debris the cleaner exists to remove
+import collections
+_doc = case_lookup.fetch_case_text("2014_INSC_463")  # cached by the run above
+_paras = [" ".join(p.split()) for p in _doc["text"].split("\n\n") if len(" ".join(p.split())) > 60]
+_dups = sum(n - 1 for n in collections.Counter(_paras).values() if n > 1)
+check(_dups <= 2, f"the retrieved judgment has no repeated paragraphs from overlapping source pieces ({_dups} left)")
+_margin = len(re.findall(r"(?<=[a-z,;\)]) [A-H] (?=[a-z(])", _doc["text"]))
+check(_margin <= 3, f"the retrieved judgment has (almost) no stray page-margin letters inside sentences ({_margin} left)")
+
 # 6. Usage log: the flows above must have left the right rows, with real data
 sm = case_lookup.event_summary(days=1)
 check(sm["by_event"].get("doc_delivered", 0) >= 2, f"usage log recorded the real deliveries ({sm['by_event']})")

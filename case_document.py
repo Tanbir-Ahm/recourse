@@ -21,7 +21,9 @@ DISCLAIMER = (
     "This is a copy of the judgment as retrieved from an open dataset (Vaquill, CC BY 4.0). "
     "It has NOT been independently verified against the official law reporter, and the text may "
     "contain extraction errors. Confirm the citation and the wording against the official source "
-    "before relying on this in any filing or proceeding."
+    "before relying on this in any filing or proceeding. To make it readable, repeated passages, stray page-margin "
+    "letters and broken paragraph breaks left over from the scan have been removed; the wording itself has not "
+    "been changed, so scanning errors in the words (for example 'Jn' for 'In') may remain."
 )
 
 _SUBST = {
