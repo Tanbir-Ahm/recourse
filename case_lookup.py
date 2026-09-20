@@ -94,8 +94,16 @@ def _index_conn():
         """CREATE TABLE IF NOT EXISTS cases (
             case_id TEXT PRIMARY KEY, title TEXT NOT NULL, petitioner TEXT,
             respondent TEXT, court TEXT, decision_date TEXT, citation TEXT,
-            source_url TEXT, n_chunks INTEGER)"""
+            source_url TEXT, n_chunks INTEGER, source TEXT)"""
     )
+    # 'source' marks where a catalogue row came from: NULL = the original Vaquill catalogue (re-typed text
+    # available); 'bucket' = added from the open bucket's own case list (original PDF only). A catalogue file
+    # built before this column existed gains it on open.
+    if "source" not in [r[1] for r in conn.execute("PRAGMA table_info(cases)")]:
+        try:
+            conn.execute("ALTER TABLE cases ADD COLUMN source TEXT")
+        except sqlite3.OperationalError:
+            pass
     conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS cases_fts USING fts5(case_id UNINDEXED, title)")
     # Judgments pre-fetched by a person in ONE batch pass (see prewarm) so the
     # cases people actually ask for are instant instead of a ~30-50s remote fetch.
@@ -253,7 +261,7 @@ def _canon_tokens(text: str) -> list:
 def _row_to_case(r) -> dict:
     return {
         "case_id": r[0], "title": r[1], "court": r[2], "decision_date": r[3],
-        "citation": r[4], "source_url": r[5], "n_chunks": r[6],
+        "citation": r[4], "source_url": r[5], "n_chunks": r[6], "source": r[7] if len(r) > 7 else None,
     }
 
 
@@ -276,7 +284,7 @@ def search_cases_detailed(query: str, limit: int = MAX_CHOICES) -> dict:
     try:
         if conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0:
             raise IndexNotBuilt("case title index is empty -- build_index() has not been run")
-        cols = ("SELECT c.case_id, c.title, c.court, c.decision_date, c.citation, c.source_url, c.n_chunks "
+        cols = ("SELECT c.case_id, c.title, c.court, c.decision_date, c.citation, c.source_url, c.n_chunks, c.source "
                 "FROM cases_fts f JOIN cases c ON c.case_id = f.case_id WHERE cases_fts MATCH ? ")
         # Every word matched: title length says nothing about relevance, so prefer
         # the fuller record (a landmark judgment over a one-page order).
@@ -311,7 +319,7 @@ def get_case(case_id: str):
     conn = _index_conn()
     try:
         r = conn.execute(
-            "SELECT case_id, title, court, decision_date, citation, source_url, n_chunks "
+            "SELECT case_id, title, court, decision_date, citation, source_url, n_chunks, source "
             "FROM cases WHERE case_id = ?", (case_id,),
         ).fetchone()
     finally:
@@ -803,7 +811,7 @@ def format_choices(choices: list, exact: bool = True) -> str:
             bits.append(f"({tail})")
         if c.get("citation"):
             bits.append(c["citation"])
-        if (c.get("n_chunks") or 0) < 3:
+        if c.get("n_chunks") is not None and c["n_chunks"] < 3:     # None = unknown (bucket-added case): say nothing
             bits.append("[very short record -- possibly just an order]")
         lines.append(f"{i}. " + " ".join(bits))
     lines.append("Or send *CASE: <name>* to search again.")

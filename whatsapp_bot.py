@@ -321,7 +321,7 @@ def _reply(phone_number: str, text: str) -> list:
     return [text]
 
 
-def _try_original_pdf(phone_number: str, case_id: str, started: float):
+def _try_original_pdf(phone_number: str, case_id: str, started: float, editable_available: bool = True):
     """The judgment's ORIGINAL Supreme Court Reports page-image PDF, verified against the case name.
     Returns the list of reply texts on success, or None (after logging why) so the caller falls back
     to the re-typed text PDF -- this must never leave the person with nothing, and never raise."""
@@ -339,11 +339,12 @@ def _try_original_pdf(phone_number: str, case_id: str, started: float):
             return None
         _log(phone_number, "doc_delivered", case_id=case_id, detail="pdf_original",
              elapsed_ms=int((time.time() - started) * 1000), cached=False)
+        tail = (" For an editable version send the same command with WORD at the end." if editable_available else
+                " An editable / re-typed version isn't available for this case yet, so this is the original.")
         return _reply(phone_number, (
             "Here is the original Supreme Court Reports page-image PDF (headnote and margin letters are as "
             "printed). " + case_original.CREDIT + " It is NOT independently verified against the official law "
-            "reporter -- confirm the citation before relying on it. For an editable version send the same "
-            "command with WORD at the end."))
+            "reporter -- confirm the citation before relying on it." + tail))
     except Exception:
         logger.exception("case lookup: original-PDF path failed for %s (falling back to text)", case_id)
         return None
@@ -363,6 +364,20 @@ def _send_case_document(phone_number: str, case_id: str, fmt: str) -> list:
         original = _try_original_pdf(phone_number, case_id, started)
         if original:
             return replies + original
+    else:
+        # A case added to the catalogue from the bucket's own list has NO re-typed text (that came from
+        # Vaquill). WORD / TEXT can't be built for it: say so, and send the original instead.
+        try:
+            bucket_only = (case_lookup.get_case(case_id) or {}).get("source") == "bucket"
+        except Exception:
+            bucket_only = False
+        if bucket_only:
+            _log(phone_number, "text_unavailable", case_id=case_id, detail="word" if fmt == "docx" else "text")
+            original = _try_original_pdf(phone_number, case_id, started, editable_available=False)
+            if original:
+                return replies + original
+            return replies + _reply(phone_number, "I couldn't retrieve that record just now, and an editable version "
+                                                  "isn't available for it. Please try again in a few minutes.")
     try:
         case = case_lookup.get_case(case_id) or {"case_id": case_id, "title": "Judgment"}
         doc = case_lookup.fetch_case_text(case_id)
