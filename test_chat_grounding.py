@@ -36,6 +36,7 @@ import json
 import sys
 from unittest.mock import patch, MagicMock
 
+import whatsapp_store
 from chat_assistant import (
     _extract_section_numbers,
     _find_ungrounded_sections,
@@ -555,6 +556,26 @@ check(
     "_gather_offence_variants merges all_variants across every match fed to the prompt",
 )
 
+# ---- _gather_offence_variants(extra_text=...): batch 4, hardening the ----
+# ---- verified-context callback (see test_whatsapp_bot.py for the full ----
+# ---- confirmed-gap writeup and the realistic conversation-history case) --
+check(
+    _gather_offence_variants([], extra_text="Section 318(4) is cognizable and non-bailable.")
+    .get("318(4)", {}).get("bailable") is False,
+    "extra_text alone (no matches at all) resolves a specific subsection's real ground truth",
+)
+check(
+    _gather_offence_variants([], extra_text="Section 303 covers theft.") == {"303(2)": BNS_303_VARIANTS["303(2)"]},
+    "a bare 'Section 303' in extra_text (no bare '303' key exists in BNS_SECTION_DATA) "
+    "resolves to its one real subsection variant, 303(2) -- same lookup _bns_section_variants "
+    "does everywhere else, not a fabricated bare-number entry",
+)
+check(
+    _gather_offence_variants([], extra_text="") == {}
+    and _gather_offence_variants([], extra_text=None) == {},
+    "empty or absent extra_text is a pure no-op",
+)
+
 check(
     _find_cognizable_bailable_mismatches("Section 318(4) is cognizable and non-bailable.", BNS_318_VARIANTS) == [],
     "a CORRECT cognizable/bailable claim for a single-condition section is not flagged",
@@ -734,6 +755,34 @@ with patch("chat_assistant.client") as mock_client:
     )
     check(mock_client.messages.create.call_count == 1, "no retry call when the claim is already correct")
     check(result == "Section 318(4) is cognizable and non-bailable.", "the original text is returned unchanged")
+
+with patch("chat_assistant.client") as mock_client:
+    # BATCH 4 END-TO-END PROOF: matches=[] (THIS TURN's own retrieval found
+    # nothing about 318 -- e.g. the question is genuinely about something
+    # else) but `question` is a realistic whatsapp_store.build_question_
+    # with_context() composite whose folded-in history recalls 318(4).
+    # Before this batch, a WRONG recollection here would sail through
+    # uncaught (variants would have been {}, a guaranteed no-op). Now it's
+    # caught and corrected, exactly like a same-turn mismatch.
+    _composite = whatsapp_store.build_question_with_context(
+        [{"role": "user", "text": "What are the ingredients for 420 IPC?"},
+         {"role": "assistant", "text": "Section 318(4) of the BNS is non-cognizable and bailable."}],
+        "Is that the kind of case where police need a warrant?",
+    )
+    mock_client.messages.create.side_effect = [
+        _fake_response("Right, since Section 318(4) is non-cognizable and bailable, a warrant is "
+                        "generally needed."),
+        _fake_response("Actually, Section 318(4) is cognizable and non-bailable -- a warrant is not "
+                        "required."),
+    ]
+    result = generate_grounded_response(_composite, BNS_318_RETRIEVED_TEXT, matches=[])
+    check(mock_client.messages.create.call_count == 2,
+          "REPRODUCES THE CONFIRMED GAP, NOW FIXED: a WRONG fact recalled from folded-in "
+          "conversation history (not this turn's own retrieval) triggers exactly one retry, "
+          "the same as a same-turn mismatch would")
+    check(result == "Actually, Section 318(4) is cognizable and non-bailable -- a warrant is not "
+                     "required.",
+          "the corrected retry text is returned")
 
 with patch("chat_assistant.client") as mock_client:
     # matches=None (every pre-Phase-2 call site/test shape) -> the

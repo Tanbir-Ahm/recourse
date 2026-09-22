@@ -196,6 +196,58 @@ check(
 )
 
 
+# ---------------------------------------------------------------------------
+# CONFIRMED REAL GAP (2026-09-22, batch 4 -- "harden the verified-context
+# callback"): a real answer correctly RECALLED a cognizable/bailable fact
+# from an earlier, unrelated turn ("Section 318(4)... non-bailable" from a
+# question about cheating, reused answering a LATER question about
+# anticipatory bail) -- but nothing verified that recollection, because
+# chat_assistant._gather_offence_variants only ever read THIS TURN's own
+# retrieval matches, which never mention 318 when the question is about
+# bail. It was right once because the model is competent, not because
+# anything checked it -- the same category of risk this project's entire
+# "Python verifies, LLM only phrases" architecture exists to close
+# everywhere else.
+# ---------------------------------------------------------------------------
+from chat_assistant import _gather_offence_variants
+
+_history_with_318 = [
+    {"role": "user", "text": "What are the ingredients for 420 IPC?"},
+    {"role": "assistant", "text": "Section 318(4) of the BNS is cognizable and non-bailable, "
+                                    "punishable with up to 7 years."},
+]
+_composite_question = whatsapp_store.build_question_with_context(
+    _history_with_318, "What is anticipatory bail?"
+)
+_variants_from_history_alone = _gather_offence_variants([], extra_text=_composite_question)
+check(
+    _variants_from_history_alone.get("318(4)", {}).get("cognizable") is True
+    and _variants_from_history_alone.get("318(4)", {}).get("bailable") is False,
+    "REPRODUCES THE CONFIRMED GAP, NOW FIXED: a section mentioned only in the folded-in "
+    "conversation history (not this turn's own retrieval) still gets its real, fresh "
+    "cognizable/bailable ground truth from the deterministic table -- not just trusted "
+    "from the model's own earlier recollection",
+)
+check(
+    _gather_offence_variants([], extra_text="nothing about any section here") == {},
+    "extra_text with no section mention is a pure no-op",
+)
+check(
+    _gather_offence_variants([], extra_text=None) == {},
+    "extra_text=None (the default -- every pre-batch-4 call site) is unchanged behaviour",
+)
+_current_turn_data = {"318(4)": {"cognizable": False, "bailable": True}}
+_merged_with_both = _gather_offence_variants(
+    [{"all_variants": _current_turn_data}], extra_text=_composite_question
+)
+check(
+    _merged_with_both["318(4)"] == {"cognizable": False, "bailable": True},
+    "when a section appears in both this turn's own matches AND the history text, this "
+    "turn's own data takes precedence (a stable rule -- in practice both read the same "
+    "real table, so they can never actually disagree)",
+)
+
+
 # ---- whatsapp_store.classify_confidence / log_qa: the safe learning loop, part 1 ----
 
 check(

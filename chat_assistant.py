@@ -773,7 +773,7 @@ def _find_court_misattributions(response_text: str, matches) -> list:
 _SECTION_WITH_SUBSECTION_PAT = re.compile(r"\bSection\s+(\d{1,3})(?:\((\d+[a-z]?)\))?", re.IGNORECASE)
 
 
-def _gather_offence_variants(matches) -> dict:
+def _gather_offence_variants(matches, extra_text: str = None) -> dict:
     """Merges every match's 'all_variants' field (subsection key ->
     BNS_SECTION_DATA entry) into one dict, across however many matches
     were fed into this prompt. Judgment matches and BNSS-procedure
@@ -781,10 +781,41 @@ def _gather_offence_variants(matches) -> dict:
     left is exactly the deterministic cognizable/bailable ground truth
     that format_retrieved_text_for_prompt already showed the model, so
     the verification below can never disagree with what the model was
-    actually given (no separate, potentially-drifted lookup)."""
+    actually given (no separate, potentially-drifted lookup).
+
+    extra_text (ADDED 2026-09-22, batch 4 of the ChatGPT side-by-side fix
+    queue -- "harden the verified-context callback"): scans for any
+    "Section N(sub)" mention and merges FRESH ground truth for each,
+    straight from BNS_SECTION_DATA via _bns_section_variants, not the
+    model's own recollection of an earlier answer. This is specifically
+    for whatsapp_store.build_question_with_context()'s conversation
+    history, folded directly into `question` -- e.g. "Earlier... I
+    answered: ...Section 318(4) is cognizable, non-bailable...".
+
+    CONFIRMED REAL GAP this closes: a real answer (round 2 of the same
+    session's side-by-side eval) correctly recalled "Section 318(2) is
+    bailable... 318(3) is bailable... 318(4) is... non-bailable" from an
+    EARLIER turn about cheating while answering a LATER, unrelated
+    question about anticipatory bail -- and got every figure right. But
+    _find_cognizable_bailable_mismatches/_omissions had NOTHING to check
+    it against: `matches` only ever carries what THIS turn's own
+    retrieval found (which never touches 318 when the question is about
+    bail), so a claim recalled from history was completely unchecked. It
+    happened to be correct because the model is competent, not because
+    anything verified it -- which is exactly the gap this project's
+    entire "Python verifies, LLM only phrases" architecture exists to
+    close everywhere else. Uses setdefault so a genuinely-current-turn
+    fact (already in `merged`) is never overridden by a history-derived
+    lookup for the same key -- both read the identical table, so they
+    can never actually disagree, this is just a stable precedence."""
     merged = {}
     for m in matches or []:
         merged.update(m.get("all_variants") or {})
+    if extra_text:
+        for num, sub in _SECTION_WITH_SUBSECTION_PAT.findall(extra_text):
+            key = f"{num}({sub})" if sub else num
+            for k, v in _bns_section_variants(key).items():
+                merged.setdefault(k, v)
     return merged
 
 
@@ -1161,7 +1192,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         )
         response_text = _extract_text_from_response(response).strip()
 
-        variants = _gather_offence_variants(matches)
+        variants = _gather_offence_variants(matches, extra_text=question)
         section_act_map = _section_act_map(matches)
         ungrounded = _find_ungrounded_sections(response_text, retrieved_text)
         mismatches = _find_cognizable_bailable_mismatches(response_text, variants)
