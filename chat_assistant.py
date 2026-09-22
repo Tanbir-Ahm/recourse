@@ -1889,6 +1889,78 @@ def _old_code_refs_note(text: str) -> str:
             + "; ".join(parts) + "]")
 
 
+# BNS subsections whose own text names "grievous hurt" without ever
+# restating what "grievous" actually means -- that definition lives only
+# in a separate section, 116 (a fixed list: emasculation, permanent
+# privation of sight/hearing/a limb, permanent disfigurement of the head
+# or face, fracture/dislocation of a bone or tooth, OR an injury that
+# either endangers life or causes the sufferer 15 days of severe bodily
+# pain / inability to follow their ordinary pursuits). Confirmed by
+# reading every one of these subsections' own real text directly -- none
+# of them repeat 116's list, they all just say "grievous hurt" as if the
+# reader already knows what that means.
+#
+# CONFIRMED REAL GAP (2026-09-22, found via a ChatGPT side-by-side test):
+# a single blow with a wooden stick causing a deep cut that needed
+# stitches, with the person discharged from hospital the SAME DAY, was
+# confidently written up as grievous hurt (BNS 117(2)/122(2)) without
+# ever considering whether it actually clears 116's own bar -- a same-day
+# discharge is a real signal AGAINST the "15 days of severe pain" element,
+# and nothing in the answer engaged with that at all. ChatGPT correctly
+# raised this as a genuinely open question; Recourse did not, because the
+# model writing Recourse's answer never had 116's actual text in front of
+# it to check the facts against -- it was only ever shown 117(2)'s
+# punishment clause, which doesn't restate the definition.
+_GRIEVOUS_HURT_SUBSECTIONS = frozenset({
+    "117(2)", "117(3)", "117(4)",
+    "118(2)",
+    "119(2)",
+    "120(2)",
+    "121(2)",
+    "122(2)",
+    "124(1)",
+})
+
+
+def _inject_definitional_companions(matches: list) -> list:
+    """Appends BNS Section 116 (the real, verbatim definition of what
+    counts as 'grievous' hurt) to `matches` whenever any grievous-hurt
+    subsection (_GRIEVOUS_HURT_SUBSECTIONS) is already present -- so the
+    model writing the answer can actually check the described facts
+    against the real statutory test, rather than only being told a
+    conclusion it has no way to verify or question (see this module's
+    "how do you develop ChatGPT's kind of legal reasoning" discussion,
+    2026-09-22: step 1 of that plan -- give the model the actual
+    definition, not just the punishment clause; step 2, a prompt
+    instruction to actually use it, is separate).
+
+    A no-op (returns `matches` unchanged) when no grievous-hurt
+    subsection is present, or when 116 is already there for some other
+    reason (e.g. the person explicitly asked about it). 116 is added
+    with all_variants={} -- BNS_SECTION_DATA correctly has no cognizable/
+    bailable entry for it, since it's a pure definitions section, not a
+    chargeable offence -- so it can never be mistaken for an additional
+    charge or interfere with the cognizable/bailable checks."""
+    if any(m.get("act") == "BNS" and m.get("section_number") == "116" for m in matches):
+        return matches
+    if not any(
+        m.get("act") == "BNS" and m.get("section_number") in _GRIEVOUS_HURT_SUBSECTIONS
+        for m in matches
+    ):
+        return matches
+    from retrieval import get_statute_section
+    definition = get_statute_section("BNS", "116")
+    if definition is None:
+        return matches
+    return matches + [{
+        "act": "BNS",
+        "section_number": "116",
+        "text": definition["text"],
+        "source": "definitional_companion",
+        "all_variants": {},
+    }]
+
+
 def format_retrieved_text_for_prompt(matches):
     """Formats a list of enriched match dicts (from
     semantic_retrieval.find_relevant_sections) into plain text suitable
@@ -2301,6 +2373,7 @@ def _answer_inline_domain(question, domain):
     # The PROMPT gets everything: curated anchors PLUS the semantic hits
     # (extra factual context helps the model reason).
     prompt_matches = sem_statutes + sem_judgments + overrides
+    prompt_matches = _inject_definitional_companions(prompt_matches)
     retrieved_text = format_retrieved_text_for_prompt(prompt_matches)
     response_text = generate_grounded_response(question, retrieved_text, matches=prompt_matches)
     if not response_text:
@@ -2387,6 +2460,11 @@ def _answer_single_match(question, matches):
             "from_cache": True,
         }
 
+    # Runs AFTER the cache check, deliberately: the cache identity
+    # (batch 6) stays exactly what it was based on the real retrieval,
+    # unaffected by this purely-additive definitional material -- only a
+    # FRESH generation gets the richer context.
+    matches = _inject_definitional_companions(matches)
     retrieved_text = format_retrieved_text_for_prompt(matches)
     response_text = generate_grounded_response(question, retrieved_text, matches=matches)
     situation_detected = _looks_like_situation(response_text)
@@ -2617,6 +2695,7 @@ def answer_question(question, inline_domains=frozenset()):
 
     if result["state"] == "conflicting_matches":
         all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
+        all_matches = _inject_definitional_companions(all_matches)
         retrieved_text = format_retrieved_text_for_prompt(all_matches)
         response_text = generate_grounded_response(question, retrieved_text, is_conflict=True, matches=all_matches)
         return {

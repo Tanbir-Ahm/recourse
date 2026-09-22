@@ -1175,6 +1175,81 @@ with patch("chat_assistant.client") as mock_client:
 
 
 # ---------------------------------------------------------------------------
+# BATCH 7, STEP 1 (2026-09-22): "develop ChatGPT's kind of legal reasoning" --
+# give the model the actual DEFINITION, not just the punishment clause.
+# CONFIRMED REAL GAP: a single blow with a wooden stick causing a deep cut
+# needing stitches, with the person discharged the SAME DAY, was confidently
+# written up as grievous hurt (BNS 117(2)/122(2)) without the model ever
+# being shown BNS 116 -- the section that actually defines what "grievous"
+# means (a fixed list, including a 15-day severe-pain/incapacity bar a
+# same-day discharge is a real signal against). ChatGPT raised this;
+# Recourse's own answer could not, because it never had 116 in front of it.
+# ---------------------------------------------------------------------------
+from chat_assistant import _inject_definitional_companions, _GRIEVOUS_HURT_SUBSECTIONS
+
+check(
+    _inject_definitional_companions([{"act": "BNS", "section_number": "303"}])
+    == [{"act": "BNS", "section_number": "303"}],
+    "a match with no grievous-hurt subsection is left completely unchanged (the common case)",
+)
+check(
+    _inject_definitional_companions([]) == [],
+    "an empty match list is a pure no-op, never crashes",
+)
+
+for _sub in sorted(_GRIEVOUS_HURT_SUBSECTIONS):
+    _injected = _inject_definitional_companions([{"act": "BNS", "section_number": _sub}])
+    check(
+        len(_injected) == 2 and _injected[1]["act"] == "BNS" and _injected[1]["section_number"] == "116",
+        f"REPRODUCES THE CONFIRMED GAP, NOW FIXED: {_sub} pulls in the real BNS 116 definition "
+        f"as a companion",
+    )
+
+_with_116_text = _inject_definitional_companions([{"act": "BNS", "section_number": "117(2)"}])
+check(
+    "grievous" in _with_116_text[1]["text"].lower() and "fifteen days" in _with_116_text[1]["text"],
+    "the injected companion carries 116's REAL verbatim text (the 'fifteen days' severe-pain test), "
+    "not a placeholder or summary",
+)
+check(
+    _with_116_text[1].get("all_variants") == {},
+    "116 carries no all_variants -- it's a definitions section, not a chargeable offence, so it can "
+    "never be mistaken for an additional charge or affect the cognizable/bailable checks",
+)
+
+check(
+    _inject_definitional_companions([
+        {"act": "BNS", "section_number": "117(2)"},
+        {"act": "BNS", "section_number": "116", "text": "already here"},
+    ]) == [
+        {"act": "BNS", "section_number": "117(2)"},
+        {"act": "BNS", "section_number": "116", "text": "already here"},
+    ],
+    "116 already present (e.g. the person asked about it directly) is never duplicated",
+)
+check(
+    _inject_definitional_companions([{"act": "BNSS", "section_number": "117(2)"}])
+    == [{"act": "BNSS", "section_number": "117(2)"}],
+    "a DIFFERENT act's section sharing a grievous-hurt subsection NUMBER (e.g. a hypothetical "
+    "BNSS 117(2)) never triggers this -- BNS specifically is what has this definition split",
+)
+
+# Full pipeline proof: the real BNS 116 text actually reaches format_retrieved_text_for_prompt's
+# output, exactly as the model would see it.
+from chat_assistant import format_retrieved_text_for_prompt
+
+_full_matches = _inject_definitional_companions([
+    {"act": "BNS", "section_number": "122(2)", "text": "122(2) punishment text.", "all_variants": {}},
+])
+_formatted = format_retrieved_text_for_prompt(_full_matches)
+check(
+    "BNS Section 116" in _formatted and "severe bodily pain" in _formatted,
+    "the real 116 definition text reaches the actual prompt text the model is given, not just an "
+    "internal data structure",
+)
+
+
+# ---------------------------------------------------------------------------
 # Case-generalization verification (2026-09-04): CONFIRMED REAL BUG -- a
 # live answer cited "L. Muruganantham v. State of Tamil Nadu" as
 # illustrating "how courts do scrutinise whether an arrest in a personal
