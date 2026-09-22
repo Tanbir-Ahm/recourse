@@ -141,6 +141,65 @@ def _extract_text_from_response(response):
     return text_block.text
 
 
+# A bare section number named next to an Act, either word order ("Section
+# 420 of the BNS" or "BNS 354") -- deliberately broader than
+# _SECTION_REFERENCE_PATTERN (which requires the literal word "Section"),
+# since the confirmed real failures this guards against include "BNS 354"
+# with no "Section" anywhere in the sentence.
+_REASONING_SECTION_PAT = re.compile(
+    r"\b(\d{1,3}[a-z]?)\s*(?:of\s+(?:the\s+)?)?(bnss|bns|ipc|crpc|it\s*act|information\s*technology\s*act)\b"
+    r"|\b(bnss|bns|ipc|crpc|it\s*act|information\s*technology\s*act)\s*(?:section\s+)?(\d{1,3}[a-z]?)\b",
+    re.IGNORECASE,
+)
+
+
+def _reasoning_section_mentions(text: str) -> set:
+    """Every bare section number `text` names directly next to an Act
+    (BNS/BNSS/IPC/CrPC/IT Act), in either word order. Base number only,
+    case-normalised, so "354" and "354" from different phrasings compare
+    equal; a lettered number ('67A') is preserved as-is."""
+    out = set()
+    for m in _REASONING_SECTION_PAT.finditer(text or ""):
+        num = m.group(1) or m.group(4)
+        if num:
+            out.add(num.upper())
+    return out
+
+
+def _find_ungrounded_reasoning_sections(reasoning: str, question: str) -> list:
+    """CONFIRMED REAL FAILURE, TWICE (2026-09-22): classify_scope's own
+    reasoning invented a plausible-but-wrong section number when the user
+    named none at all -- "BNS Section 420" for a cheating question (the
+    real current section is BNS 318), and "BNS 354" for an inappropriate-
+    touching/outraging-modesty question (the real current section is BNS
+    74; 354 appears to be the OLD IPC number for a related offence,
+    stated as if it were the current BNS one). This reasoning field is
+    NOT a purely internal debug string -- it is shown VERBATIM to a real
+    person on both surfaces (see whatsapp_formatter.py's adjacent_
+    uncovered branch and recourse_app.py's), so a wrong number here is a
+    live, user-visible hallucination, not a log-file curiosity.
+
+    The fix is not "get the mapping right" (the earlier IPC-vs-BNS-number
+    prompt fix already tried that, for when the USER names an old number
+    -- it does nothing here, since the user named no number at all in
+    either confirmed failure). The fix is: the classifier has no business
+    volunteering a SPECIFIC section number from its own general knowledge
+    under ANY circumstance -- it can and should describe an offence by
+    NAME ("a cheating offence", "outraging a woman's modesty") without
+    ever citing a number that didn't come from the person themselves.
+
+    Returns the section numbers `reasoning` mentions that do NOT also
+    appear anywhere in the user's own `question` -- empty (the common,
+    reassuring case) means every number reasoning cites is one the person
+    themselves already typed, which is always trustworthy regardless of
+    whether it happens to be the exactly correct current-code number."""
+    mentioned = _reasoning_section_mentions(reasoning)
+    if not mentioned:
+        return []
+    named_by_user = _reasoning_section_mentions(question)
+    return sorted(mentioned - named_by_user)
+
+
 def classify_scope(question):
     """Returns ('in_scope' | 'covered_elsewhere_in_tool' | 'adjacent_uncovered' | 'unrelated',
     reasoning, redirect_domain) or (None, None, None) if the classifier call itself fails --
@@ -178,10 +237,27 @@ def classify_scope(question):
     on failure (matching this project's standing "one retry, then trust
     or honestly give up" pattern elsewhere, e.g. generate_grounded_response),
     and the real exception/raw response is logged on every failure so a
-    genuinely persistent problem is now diagnosable instead of invisible."""
+    genuinely persistent problem is now diagnosable instead of invisible.
+
+    REASONING VERIFICATION added 2026-09-22 (batch 5 of the ChatGPT side-
+    by-side fix queue): the `reasoning` sentence is checked via
+    _find_ungrounded_reasoning_sections() for a section number the model
+    volunteered but the user never named -- CONFIRMED REAL FAILURE, twice
+    ("BNS Section 420" for cheating; "BNS 354" for outraging modesty,
+    which isn't even the real current section, that's BNS 74). This field
+    is shown VERBATIM to a real person on both surfaces (see
+    whatsapp_formatter.py / recourse_app.py's adjacent_uncovered
+    handling), so this is a live, user-visible hallucination risk, not an
+    internal curiosity. One retry for a clean sentence; if the retry
+    still names an ungrounded number, the reasoning text is dropped
+    (blanked to "") rather than shown a second wrong guess -- but
+    category/redirect_domain are NOT discarded, since they're a
+    closed-set classification, not a free-text claim, and this failure
+    mode has never been observed to affect them."""
     if client is None:
         return None, None, None
 
+    retry_correction = ""
     for attempt in range(2):
         try:
             # Haiku, not Sonnet: this is a bounded 4-way routing classification
@@ -195,7 +271,8 @@ def classify_scope(question):
             response = client.messages.create(
                 model=HAIKU_MODEL,
                 max_tokens=1500,
-                messages=[{"role": "user", "content": SCOPE_CLASSIFIER_PROMPT.format(question=question)}],
+                messages=[{"role": "user",
+                           "content": SCOPE_CLASSIFIER_PROMPT.format(question=question) + retry_correction}],
             )
             raw = _extract_text_from_response(response).strip()
             # Defensive: strip markdown code fences if the model adds them
@@ -216,7 +293,38 @@ def classify_scope(question):
             redirect_domain = parsed.get("redirect_domain")
             if category != "covered_elsewhere_in_tool" or redirect_domain not in ("freeze", "cheque_bounce", "domestic_violence"):
                 redirect_domain = None
-            return category, parsed.get("reasoning", ""), redirect_domain
+
+            reasoning = parsed.get("reasoning", "")
+            # CONFIRMED REAL FAILURE, TWICE -- see _find_ungrounded_reasoning_
+            # sections' docstring: the classifier's own reasoning invented a
+            # section number the user never named. Retry once for a genuinely
+            # clean sentence; if it still names an ungrounded number, don't
+            # discard the whole classification over one bad sentence (category/
+            # redirect_domain are a closed-set choice, not a free-text guess,
+            # so they stay reliable) -- just drop the untrustworthy reasoning
+            # text rather than show the person a second wrong guess.
+            ungrounded_numbers = _find_ungrounded_reasoning_sections(reasoning, question)
+            if ungrounded_numbers and attempt == 0:
+                logger.warning(
+                    "classify_scope: reasoning named section(s) %s the user never mentioned "
+                    "(raw reasoning=%r) -- retrying", ungrounded_numbers, reasoning,
+                )
+                retry_correction = (
+                    "\n\nIMPORTANT CORRECTION: your reasoning above stated a specific section "
+                    f"number ({', '.join(ungrounded_numbers)}) that the person never mentioned "
+                    "themselves. Do not cite ANY specific section number in your reasoning unless "
+                    "the person's own question named it -- describe the offence by NAME instead "
+                    "(e.g. \"a cheating offence\", \"outraging a woman's modesty\"). Respond again "
+                    "with the same JSON format."
+                )
+                continue
+            if ungrounded_numbers:
+                logger.warning(
+                    "classify_scope: reasoning still named ungrounded section(s) %s after retry "
+                    "-- dropping reasoning text, keeping category %r", ungrounded_numbers, category,
+                )
+                reasoning = ""
+            return category, reasoning, redirect_domain
         except Exception:
             logger.exception(
                 "classify_scope: attempt %d failed for question=%r", attempt, (question or "")[:200],

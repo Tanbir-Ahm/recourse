@@ -266,6 +266,91 @@ with patch("chat_assistant.client") as mock_client:
     check(result == (None, None, None), "returns the honest (None, None, None) give-up when both attempts fail")
 
 
+# ---------------------------------------------------------------------------
+# BATCH 5 (2026-09-22): CONFIRMED REAL FAILURE, TWICE -- classify_scope's
+# own reasoning invented a plausible-but-wrong section number when the user
+# named none at all ("BNS Section 420" for cheating; "BNS 354" for
+# outraging modesty, when the real current section is BNS 74). This field
+# is shown VERBATIM to a real person (whatsapp_formatter.py / recourse_
+# app.py's adjacent_uncovered handling), so it's a live hallucination risk,
+# not an internal curiosity.
+# ---------------------------------------------------------------------------
+from chat_assistant import _reasoning_section_mentions, _find_ungrounded_reasoning_sections
+
+check(_reasoning_section_mentions("An arrest for cheating falls under BNS Section 420.") == {"420"},
+      "'BNS Section 420' phrasing is extracted")
+check(_reasoning_section_mentions("Inappropriate touching falls under BNS 354, outraging modesty.") == {"354"},
+      "'BNS 354' (no word 'Section' at all -- the harder, real confirmed case) is also extracted")
+check(_reasoning_section_mentions("This is about outraging a woman's modesty, a BNS offence.") == set(),
+      "reasoning naming no number at all extracts nothing")
+
+check(_find_ungrounded_reasoning_sections("BNS Section 420 covers cheating.",
+                                           "my father was arrested for cheating") == ["420"],
+      "REPRODUCES THE CONFIRMED FAILURE: a section number in reasoning the user never mentioned "
+      "is flagged as ungrounded")
+check(_find_ungrounded_reasoning_sections("BNS Section 420 covers cheating.",
+                                           "is this covered under BNS 420?") == [],
+      "the SAME number is NOT flagged when the user named it themselves")
+check(_find_ungrounded_reasoning_sections("This is a cheating offence under the BNS.",
+                                           "my father was arrested for cheating") == [],
+      "reasoning describing the offence by NAME only (no number) is never flagged")
+
+with patch("chat_assistant.client") as mock_client:
+    # A wrong/unprompted number on attempt 1 -> retry WITH a specific
+    # correction (not a blind re-roll) -> a clean, number-free retry
+    # preserves its full, useful reasoning text.
+    mock_client.messages.create.side_effect = [
+        _fake_scope_response("in_scope", "This falls under BNS 354, outraging modesty."),
+        _fake_scope_response("in_scope", "This is an in-scope offence of outraging a woman's modesty."),
+    ]
+    category, reasoning, redirect = _classify_scope_for_mock(
+        "a colleague touched her inappropriately, he was arrested")
+    check(mock_client.messages.create.call_count == 2,
+          "an unprompted section number in reasoning triggers exactly one retry")
+    _retry_prompt = mock_client.messages.create.call_args_list[1].kwargs["messages"][0]["content"]
+    check("IMPORTANT CORRECTION" in _retry_prompt and "354" in _retry_prompt,
+          "the retry prompt carries a specific correction naming the bad number, not a blind re-roll")
+    check(reasoning == "This is an in-scope offence of outraging a woman's modesty.",
+          "a clean, number-free retry's FULL reasoning is preserved (not blanked)")
+
+with patch("chat_assistant.client") as mock_client:
+    # Still names an ungrounded number after retry -> reasoning is
+    # dropped, but category/redirect_domain are NOT discarded (they're a
+    # closed-set classification, not a free-text guess at risk here).
+    mock_client.messages.create.side_effect = [
+        _fake_scope_response("in_scope", "This falls under BNS 354, outraging modesty."),
+        _fake_scope_response("in_scope", "This still falls under BNS 354, outraging modesty."),
+    ]
+    category, reasoning, redirect = _classify_scope_for_mock(
+        "a colleague touched her inappropriately, he was arrested")
+    check(category == "in_scope" and reasoning == "",
+          "REPRODUCES THE CONFIRMED FAILURE, NOW FIXED: a still-fabricated section number after "
+          "retry blanks the reasoning rather than showing a second wrong guess, while the "
+          "reliable category is kept")
+
+with patch("chat_assistant.client") as mock_client:
+    # No number mentioned at all -> no retry, completely unchanged
+    # behaviour for the overwhelming common case.
+    mock_client.messages.create.side_effect = [
+        _fake_scope_response("in_scope", "This is an in-scope cheating offence."),
+    ]
+    category, reasoning, redirect = _classify_scope_for_mock("my father was arrested for cheating")
+    check(mock_client.messages.create.call_count == 1,
+          "no retry call when reasoning names no unprompted section number")
+    check(reasoning == "This is an in-scope cheating offence.", "the original reasoning is returned unchanged")
+
+with patch("chat_assistant.client") as mock_client:
+    # The user naming their OWN number must never be scrubbed, even if
+    # reasoning repeats it back -- only an UNPROMPTED number is a problem.
+    mock_client.messages.create.side_effect = [
+        _fake_scope_response("in_scope", "BNS Section 420 covers cheating, which is what's described."),
+    ]
+    category, reasoning, redirect = _classify_scope_for_mock("is 420 IPC applicable to my father's arrest?")
+    check(mock_client.messages.create.call_count == 1,
+          "no retry when the reasoning's number was already named by the user themselves")
+    check("420" in reasoning, "a user-provided number is never scrubbed from reasoning")
+
+
 # ---- _explicit_section_matches: "what is section N" lookup (real get_statute_section, no API) ----
 
 from chat_assistant import _explicit_section_matches
