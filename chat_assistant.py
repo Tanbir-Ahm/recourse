@@ -1191,7 +1191,95 @@ def _explicit_section_matches(question: str, max_sections: int = 2) -> list:
 # anchor both without one's span incorrectly consuming the other's words
 # -- only possible if both lists are walked in the same pass, hence one
 # list, not two independent BNS-only/ITACT-only ones.
+
+# CONFIRMED REAL GAP (2026-09-22, found via a ChatGPT side-by-side test):
+# "my father hit my uncle during a fight" scored BNS 122 (hurt on grave
+# and sudden provocation -- a NARROW, specific provision) at 0.36,
+# barely above STATUTE_SIMILARITY_THRESHOLD, instead of reliably reaching
+# BNS 115 (plain "voluntarily causing hurt", the section that actually
+# governs an ordinary "he hit him" description). Two anchors below close
+# this the same way every other anchor in this list does: real plain
+# words, one clearly correct target.
+#
+# The grievous-hurt anchor is listed BEFORE the plain-hurt one, same
+# "more specific first" convention as attempt-to-murder before bare
+# murder: "hit him and broke his arm" must anchor ONLY 117(2) (grievous
+# hurt), not ALSO 115 (simple hurt) for the same single injury -- unlike
+# "cheating and breach of trust", these aren't two separate alleged
+# offences, they're two severity tiers of the SAME act, and showing both
+# would misrepresent an unambiguous case as an unresolved "law forks
+# here" one (the identical failure class the goat-theft/318-vs-420 fixes
+# were built to prevent). The grievous pattern's own match span always
+# covers whichever hit-word is present (checked either order, within an
+# 80-char window, same technique as the dowry-death-vs-cruelty split
+# below) so the plain-hurt pattern's later, narrower match falls INSIDE
+# it and is correctly suppressed.
+#
+# Deliberately targets 117(2) specifically, NOT bare "117": 117(3)
+# (permanent disability / persistent vegetative state -- ten years to
+# life, non-bailable) is a wildly more severe charge that "broke his arm,
+# needed surgery" does not remotely establish; anchoring bare "117" would
+# pull 117(3) into all_variants and manufacture a false cognizable/
+# bailable conflict against a subsection the facts never implied. See
+# _bns_section_as_match's docstring for how subsection specificity is
+# preserved end to end. No anchor is added for 117(3) itself -- that
+# needs an explicit, unambiguous signal ("permanent disability",
+# "paralysed for life", "vegetative state") this session found no real
+# example of yet; guessing it from vague injury words would be worse
+# than not anchoring at all, same principle as every other severity
+# escalation in this file.
+_HURT_HIT_WORDS = r"(?:hit|slapped?|punch(?:ed|ing)?|beat(?:en)?\s+up|thrash(?:ed|ing)?|attack(?:ed|ing)?|stabbed?)"
+_HURT_GRIEVOUS_SIGNAL = (
+    r"(?:broke\s+(?:his|her|their|my|our)\s+(?:arm|leg|hand|wrist|ankle|bone|skull|nose|jaw|rib)"
+    r"|fractured?|needed?\s+(?:surgery|stitches|an?\s+operation|hospitali[sz]ation)"
+    r"|(?:deep|serious)\s+(?:cut|wound|injury)|lost\s+consciousness|head\s+injury"
+    r"|internal\s+(?:bleeding|injury)|knocked\s+(?:him|her|them)\s+out)"
+)
+
 _OFFENCE_KEYWORD_ANCHORS = [
+    (re.compile(
+        rf"\b{_HURT_HIT_WORDS}\b[\s\S]{{0,80}}\b{_HURT_GRIEVOUS_SIGNAL}\b"
+        rf"|\b{_HURT_GRIEVOUS_SIGNAL}\b[\s\S]{{0,80}}\b{_HURT_HIT_WORDS}\b"
+        rf"|\b{_HURT_GRIEVOUS_SIGNAL}\b",
+        re.I), "BNS", "117(2)"),
+    # "hit" specifically gets a negative lookahead for its common figurative
+    # idioms ("the news hit me hard", "it really hit home") -- CONFIRMED
+    # REAL FALSE POSITIVE caught in testing: "the news hit me hard when I
+    # heard about the arrest" anchored BNS 115 on "hit me" alone. The
+    # other verbs here (slapped/punched/beaten up/thrashed) have no
+    # equivalent figurative-idiom risk in ordinary usage, so they keep the
+    # plain object list including bare "me" -- needed for the single most
+    # common first-person phrasing ("he hit me", "she slapped me").
+    (re.compile(
+        r"\bhit\s+(?:him|her|them|me|my\s+\w+|the\s+(?:man|woman|boy|girl|person|complainant|victim))\b(?!\s+(?:hard|home))"
+        r"|\b(?:slapped?|punch(?:ed|ing)?|beat(?:en)?\s+up|thrash(?:ed|ing)?)\s+"
+        r"(?:him|her|them|me|my\s+\w+|the\s+(?:man|woman|boy|girl|person|complainant|victim))\b"
+        r"|\bwas\s+hit\b(?!\s+(?:hard|home))"
+        r"|\b(?:was|got|been)\s+(?:slapped|punched|beaten\s+up|thrashed)\b",
+        re.I), "BNS", "115"),
+    # CONFIRMED REAL GAP (2026-09-22, same side-by-side session): "he
+    # touched her inappropriately and made her uncomfortable" returned
+    # no_match outright -- retrieval never even reached the top-7
+    # statute candidates for it. Two distinct offences, not one word list
+    # collapsed together: BNS 75 (sexual harassment -- unwelcome
+    # contact/advances, demands for favours, showing pornography,
+    # sexually coloured remarks -- no force implied) vs BNS 74 (assault
+    # or criminal force intending to outrage modesty -- implies actual
+    # physical force). Both bare-key targets are internally consistent
+    # (75(2)/75(3) and 74's single entry all agree on cognizable/
+    # bailable), so no subsection-specificity concern here the way 117
+    # needed.
+    (re.compile(
+        r"\b(touch(?:ed|ing)?\s+(?:her|him)\s+inappropriately"
+        r"|inappropriate(?:ly)?\s+touch(?:ed|ing)?"
+        r"|unwelcome\s+(?:sexual\s+)?(?:advances?|overtures?)"
+        r"|sexual(?:ly)?\s+(?:coloured|colored)\s+remarks?"
+        r"|ask(?:ed|ing)\s+for\s+sexual\s+favou?rs"
+        r"|show(?:ed|ing)?\s+(?:her|him)\s+(?:pornography|obscene\s+(?:pictures?|images?|videos?))"
+        r"|sent\s+(?:her|him)\s+(?:obscene|indecent)\s+(?:messages?|photos?|pictures?)"
+        r"|made\s+(?:her|him)\s+uncomfortable\s+with\s+(?:comments?|remarks?|touching))\b",
+        re.I), "BNS", "75"),
+    (re.compile(r"\b(molest(?:ed|ing|ation)?|grop(?:ed|ing)|outrag(?:ed|ing)\s+(?:her|his)\s+modesty)\b", re.I), "BNS", "74"),
     # IT Act anchors (2026-09-05, Phase 3b) -- deliberately narrow, same
     # "only words that map to ONE offence unambiguously" bar as the BNS
     # anchors below. 66A is NOT anchored here on purpose -- see
@@ -1301,7 +1389,21 @@ def _bns_section_as_match(num: str) -> "dict | None":
     statute text plus the BNS_SECTION_DATA cognizable/bailable
     enrichment. Shared by _explicit_section_matches (typed section
     numbers) and _offence_keyword_matches (offence words). None if the
-    section doesn't resolve."""
+    section doesn't resolve.
+
+    Uses `num` itself (not get_statute_section's returned section_number,
+    which is always the bare top-level number) for section_number/
+    all_variants -- so a caller that already knows a SPECIFIC subsection
+    (e.g. "117(2)") keeps that precision instead of it being silently
+    collapsed back to the ambiguous bare family. _explicit_section_matches
+    never passes a subsection-qualified num (its own regex deliberately
+    discards the "(...)" part -- see _EXPLICIT_SECTION_PAT), so this is a
+    no-op for that caller; it exists for _offence_keyword_matches, where
+    an anchor CAN name an exact subsection (see the BNS 117(2) grievous-
+    hurt anchor below) precisely to avoid manufacturing a false conflict
+    against a subsection the question never actually implied (117(3),
+    permanent disability, is a wildly different, non-bailable charge that
+    "broke his arm, needed surgery" does not remotely establish)."""
     from retrieval import get_statute_section
 
     data = get_statute_section("BNS", num)
@@ -1309,10 +1411,10 @@ def _bns_section_as_match(num: str) -> "dict | None":
         return None
     return {
         "act": data["act"],
-        "section_number": data["section_number"],
+        "section_number": num,
         "text": data["text"],
         "source": "explicit_section_ref",
-        "all_variants": _bns_section_variants(data["section_number"]),
+        "all_variants": _bns_section_variants(num),
     }
 
 

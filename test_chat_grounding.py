@@ -416,6 +416,51 @@ check({m["section_number"] for m in _death_case} == {"80"},
 
 
 # ---------------------------------------------------------------------------
+# CONFIRMED REAL GAP (2026-09-22, found via a ChatGPT side-by-side test):
+# "my father hit my uncle during a fight" scored BNS 122 (a narrow,
+# provocation-specific section) at 0.36 via semantic search alone -- barely
+# above threshold, and the wrong section for a plain "he hit him" claim.
+# "he touched her inappropriately" returned no_match outright. Four new
+# anchors close this: BNS 115 (simple hurt), 117(2) (grievous hurt,
+# specifically -- never the ambiguous bare 117 family), 75 (sexual
+# harassment), 74 (assault/force intending to outrage modesty).
+# ---------------------------------------------------------------------------
+check(_offence_keyword_matches("my father hit my uncle during a fight at a family "
+                                "function")[0]["section_number"] == "115",
+      "a plain 'X hit Y' claim with no injury detail anchors to BNS 115 (simple hurt)")
+check(_offence_keyword_matches("he slapped me in front of everyone")[0]["section_number"] == "115",
+      "first-person 'slapped me' phrasing also anchors to 115")
+check(_offence_keyword_matches("the news hit me hard when I heard about the arrest") == [],
+      "the figurative idiom 'hit me hard' does NOT anchor 115 -- 'hit' alone is not enough")
+check(_offence_keyword_matches("it really hit home when I saw him in custody") == [],
+      "'hit home' (another figurative idiom) does not anchor 115 either")
+
+_grievous = _offence_keyword_matches("he hit him and broke his arm during the fight")
+check([m["section_number"] for m in _grievous] == ["117(2)"],
+      "'hit him AND broke his arm' anchors ONLY 117(2) (grievous hurt), not also 115 -- one "
+      "injury, one severity tier, not two separate offences")
+check(_grievous[0]["all_variants"] == {"117(2)": _grievous[0]["all_variants"]["117(2)"]},
+      "the grievous-hurt match keeps 117(2) specifically -- 117(3) (permanent disability, "
+      "non-bailable) is never pulled in as a false conflict the facts never implied")
+check(_offence_keyword_matches("they broke his arm and he needed surgery")[0]["section_number"] == "117(2)",
+      "a standalone injury description with no explicit hit-word still anchors 117(2)")
+
+check(_offence_keyword_matches("he touched her inappropriately and made her "
+                                "uncomfortable")[0]["section_number"] == "75",
+      "unwelcome-contact/advance phrasing anchors to BNS 75 (sexual harassment)")
+check(_offence_keyword_matches("he molested her on the bus")[0]["section_number"] == "74",
+      "'molested' anchors to BNS 74 (assault/force intending to outrage modesty) -- a "
+      "distinct offence from 75, not the same word list")
+
+for _q in ("the truck hit a pothole on the highway",
+           "he hit the road early to reach the court on time",
+           "she touched on an important point during the hearing"):
+    check(not any(m["section_number"] in ("115", "117(2)", "74", "75")
+                  for m in _offence_keyword_matches(_q)),
+          f"ordinary non-offence use of these words does not false-positive: {_q!r}")
+
+
+# ---------------------------------------------------------------------------
 # answer_question: 'situation_detected' must survive the statute-override
 # FALLBACK paths too, not just the main single_match / conflicting_matches
 # branches.
