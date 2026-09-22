@@ -351,6 +351,41 @@ with patch("chat_assistant.client") as mock_client:
     check("420" in reasoning, "a user-provided number is never scrubbed from reasoning")
 
 
+# ---------------------------------------------------------------------------
+# BATCH 6 (2026-09-22): CONFIRMED REAL FAILURE -- every deterministic keyword/
+# pattern matcher in chat_assistant.py (offence anchors, explicit-section
+# lookup, statute/judgment doctrine overrides) and the semantic search itself
+# were run against the FULL history-included question on WhatsApp, not just
+# what the person is currently asking. Reproduced directly: a brand-new
+# "my uncle snatched a gold chain" message, sent right after two earlier,
+# unrelated exchanges still sitting in the same conversation, re-anchored
+# their OLD sections instead of the new one (BNS 304, chain-snatching) --
+# see test_whatsapp_bot.py for the full live end-to-end reproduction.
+# ---------------------------------------------------------------------------
+from chat_assistant import _extract_current_message, _find_relevant_sections_for_turn
+
+check(_extract_current_message("a fresh question with no history") == "a fresh question with no history",
+      "no history marker present -> the question is returned unchanged (every non-WhatsApp caller)")
+check(_extract_current_message(
+    "Earlier in this same conversation:\n- The person asked: old question\n- I answered: old answer"
+    "\n\nNow the person says: the actual current question"
+) == "the actual current question",
+      "REPRODUCES THE CONFIRMED FAILURE'S ROOT CAUSE: the folded-in history is stripped, leaving "
+      "only what the person is currently asking")
+check(_extract_current_message("") == "" and _extract_current_message(None) == "",
+      "empty/None input never crashes")
+
+check(_find_relevant_sections_for_turn(
+    "police arrested my brother at night for a fake instagram account", "irrelevant full text"
+).get("state") in ("single_match", "conflicting_matches"),
+      "a narrow search that finds something real is trusted outright, no fallback needed")
+check(_find_relevant_sections_for_turn(
+    "asdkjhasdkjh gibberish nonsense", "asdkjhasdkjh gibberish nonsense"
+).get("state") == "no_match",
+      "when the narrow and full text are IDENTICAL (no history at all) and nothing matches, "
+      "there is no redundant second call -- state is simply no_match")
+
+
 # ---- _explicit_section_matches: "what is section N" lookup (real get_statute_section, no API) ----
 
 from chat_assistant import _explicit_section_matches

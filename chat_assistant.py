@@ -2152,6 +2152,65 @@ def _looks_like_bank_account_freeze(question: str) -> bool:
     return bool(_FREEZE_PHRASE.search(q)) and not _PERSONAL_ARREST_PHRASE.search(q)
 
 
+_CONTEXT_MARKER = "\n\nNow the person says: "
+
+
+def _extract_current_message(question: str) -> str:
+    """The person's actual CURRENT message, stripped of any earlier
+    conversation history whatsapp_store.build_question_with_context() may
+    have folded in ahead of it ("Earlier in this same conversation: ...
+    \\n\\nNow the person says: {current}"). Returns `question` unchanged
+    when there is no such marker -- every non-WhatsApp caller, and a
+    WhatsApp caller with no prior history in this conversation.
+
+    CONFIRMED REAL FAILURE (2026-09-22): every deterministic keyword/
+    pattern match in this file (_offence_keyword_matches,
+    _explicit_section_matches, the statute/judgment doctrine map
+    overrides, _looks_like_bank_account_freeze) AND the semantic search
+    itself were being run against the FULL folded-in history, not just
+    what the person is currently asking. Reproduced directly: a brand-new
+    "my uncle snatched a gold chain" message, sent right after two
+    earlier, unrelated exchanges (grievous hurt, sexual harassment) still
+    sitting in the same conversation, re-anchored BNS 117 and BNS 75 from
+    that OLD text via the keyword anchors -- and separately, on the raw
+    semantic search, 42 statute candidates cleared the similarity
+    threshold on the full composite (versus a clean handful on the
+    current message alone), with the genuinely correct answer (BNS 304,
+    chain-snatching -- ranked #2 by itself) buried at rank 29 and pushed
+    out of the top 5 kept for the prompt, purely because the OLD
+    conversation's own topics scored higher.
+
+    History is valuable for VERIFYING a fact the person is asking about
+    that was already established (see _gather_offence_variants'
+    extra_text parameter) and for classify_scope's judgment call, which
+    stays on the full `question` -- it is actively harmful for deciding
+    what the CURRENT message itself is about, which is what every
+    function above searches or pattern-matches for."""
+    idx = (question or "").find(_CONTEXT_MARKER)
+    if idx == -1:
+        return question or ""
+    return question[idx + len(_CONTEXT_MARKER):]
+
+
+def _find_relevant_sections_for_turn(current_message: str, full_question: str, **kwargs):
+    """Search on the CURRENT message first (see _extract_current_message's
+    docstring for why) -- only fall back to the full, history-included
+    question if that narrow search genuinely finds nothing at all, so a
+    short, context-dependent follow-up ("is that bailable?", with no
+    offence-describing words of its own) can still be answered using
+    earlier context rather than dead-ending on a technicality. A narrow
+    search that finds SOMETHING is trusted outright and never widened --
+    the confirmed failure this fixes is exactly a narrow search that
+    would have worked being drowned out by unrelated history, so falling
+    back unconditionally would undo the fix."""
+    from semantic_retrieval import find_relevant_sections
+
+    result = find_relevant_sections(current_message, **kwargs)
+    if result.get("state") == "no_match" and current_message != full_question:
+        result = find_relevant_sections(full_question, **kwargs)
+    return result
+
+
 _INLINE_DOMAIN_CONFIG = {
     "cheque_bounce": {
         "override_import": ("cheque_bounce_doctrine_map", "get_cheque_bounce_override"),
@@ -2219,15 +2278,18 @@ def _answer_inline_domain(question, domain):
     situation_detected is forced False: the recourse_app upload path feeds
     documents to the arrest analyzer, which has nothing to do with a
     cheque notice or a freeze letter, so no upload prompt should follow.
-    """
-    from semantic_retrieval import find_relevant_sections
 
+    Matching runs on the CURRENT message only (see
+    _extract_current_message's docstring), with a fallback to the full,
+    history-included `question` only if that narrow search finds
+    nothing -- same fix, same reason, as the main answer_question path."""
     cfg = _INLINE_DOMAIN_CONFIG[domain]
     mod_name, fn_name = cfg["override_import"]
     override_fn = getattr(__import__(mod_name), fn_name)
 
-    overrides = override_fn(question)
-    result = find_relevant_sections(question, domain=domain)
+    current_message = _extract_current_message(question)
+    overrides = override_fn(current_message)
+    result = _find_relevant_sections_for_turn(current_message, question, domain=domain)
     state = result.get("state")
 
     sem_judgments = result.get("judgment_matches", []) if state in ("single_match", "conflicting_matches") else []
@@ -2391,11 +2453,20 @@ def answer_question(question, inline_domains=frozenset()):
     statute_doctrine_map.py's module docstring for full reasoning and
     scope limits.
     """
-    from semantic_retrieval import find_relevant_sections
     from statute_doctrine_map import get_statute_doctrine_override
     from itact_section_status import get_itact_status_override
 
+    # classify_scope reads the FULL question (history included where
+    # WhatsApp folds it in) -- a Haiku judgment call genuinely benefits
+    # from earlier context for a short follow-up, and is not vulnerable
+    # to the SAME failure as the deterministic matchers below (a JSON
+    # category choice isn't "diluted" by extra text the way a similarity
+    # score or a keyword scan is). Everything from here on that decides
+    # WHAT THE CURRENT MESSAGE IS ABOUT uses current_message instead --
+    # see _extract_current_message's docstring for the confirmed real
+    # failure this avoids.
     category, reasoning, redirect_domain = classify_scope(question)
+    current_message = _extract_current_message(question)
 
     if category is None:
         return {"state": "classifier_unavailable"}
@@ -2411,7 +2482,7 @@ def answer_question(question, inline_domains=frozenset()):
     # frozen/lien-marked and NOT the person being arrested, force the
     # freeze route so the freeze case law is what answers it. Same
     # "known, verified gap" spirit as the statute/offence anchors below.
-    if _looks_like_bank_account_freeze(question) and category in (
+    if _looks_like_bank_account_freeze(current_message) and category in (
         "in_scope", "adjacent_uncovered", "covered_elsewhere_in_tool",
     ):
         category, redirect_domain = "covered_elsewhere_in_tool", "freeze"
@@ -2443,7 +2514,7 @@ def answer_question(question, inline_domains=frozenset()):
     # BNSS 43(5)) surfaces even if the embedding score alone wouldn't
     # clear SIMILARITY_THRESHOLD. This does NOT replace semantic
     # search -- both run, and both sets of results get combined below.
-    statute_overrides = get_statute_doctrine_override(question)
+    statute_overrides = get_statute_doctrine_override(current_message)
 
     # ITACT Section 66A "zombie law" flag (Phase 3a, loc-transit-remand-
     # plan): struck down in 2015 but still real-world misused to file
@@ -2454,7 +2525,7 @@ def answer_question(question, inline_domains=frozenset()):
     # statute_doctrine_map overrides above, kept in its own module since
     # it does not go through get_statute_section (there is no valid
     # "current text" for a struck-down section to show).
-    statute_overrides = statute_overrides + get_itact_status_override(question)
+    statute_overrides = statute_overrides + get_itact_status_override(current_message)
 
     # Explicit-section lookup: if the person literally names a section
     # ("what is section 318 of BNS", "does BNS 303 apply"), pull that
@@ -2463,7 +2534,7 @@ def answer_question(question, inline_domains=frozenset()):
     # embedded chunk and returned no_match -- a plainly answerable
     # question producing an empty answer. Merged into statute_overrides
     # so it flows through the same combine-and-fallback logic below.
-    explicit = _explicit_section_matches(question)
+    explicit = _explicit_section_matches(current_message)
     if explicit:
         seen = {(o.get("act"), o.get("section_number")) for o in statute_overrides}
         statute_overrides = statute_overrides + [
@@ -2481,7 +2552,7 @@ def answer_question(question, inline_domains=frozenset()):
     if not explicit:
         seen = {(o.get("act"), o.get("section_number")) for o in statute_overrides}
         statute_overrides = statute_overrides + [
-            m for m in _offence_keyword_matches(question)
+            m for m in _offence_keyword_matches(current_message)
             if (m["act"], m["section_number"]) not in seen
         ]
 
@@ -2496,7 +2567,7 @@ def answer_question(question, inline_domains=frozenset()):
     # note would only dilute them, never add to them.
     if not any((o.get("act") or "").upper() == "ITACT" for o in statute_overrides):
         from itact_section_status import get_cyber_backstory_note
-        statute_overrides = statute_overrides + get_cyber_backstory_note(question)
+        statute_overrides = statute_overrides + get_cyber_backstory_note(current_message)
 
     # Curated JUDGMENT anchors -- the case-law counterpart of the statute
     # doctrine overrides above. voyage-law-2 similarity is weak on long
@@ -2506,12 +2577,17 @@ def answer_question(question, inline_domains=frozenset()):
     # the corpus holds them. This wires them by keyword, same as
     # statute_doctrine_map. See judgment_doctrine_map module docstring.
     from judgment_doctrine_map import get_judgment_doctrine_override
-    judgment_overrides = get_judgment_doctrine_override(question)
+    judgment_overrides = get_judgment_doctrine_override(current_message)
 
     # everything curated that must reach the answer regardless of ranking
     overrides = statute_overrides + judgment_overrides
 
-    result = find_relevant_sections(question)
+    # Search on the CURRENT message first, falling back to the full
+    # history-included question only if that narrow search finds nothing
+    # -- see _find_relevant_sections_for_turn's docstring for the
+    # confirmed real failure (old conversation topics crowding out a
+    # brand-new one) this fixes.
+    result = _find_relevant_sections_for_turn(current_message, question)
 
     if result["state"] == "unavailable":
         # Even if retrieval is unavailable, a curated override may

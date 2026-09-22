@@ -11,7 +11,12 @@ run directly: `python test_whatsapp_bot.py`.
 The only real API cost this file could incur is chat_assistant's
 Anthropic calls, so those are mocked exactly the way test_chat_grounding.py
 already does it (patch chat_assistant.client, feed canned responses) --
-this file makes zero real network calls.
+this file makes zero real network calls, with ONE deliberate exception
+(batch 6, near the end): a single real end-to-end case proving the
+history-folding mechanism doesn't corrupt retrieval, which cannot be
+reproduced against a mock -- the bug IS the real embedding search's
+ranking behaviour. Same cost-tradeoff test_chat_domain_handoff.py already
+accepts, kept to one case here too.
 """
 import json
 import os
@@ -712,6 +717,69 @@ check(
     "an expired token (past its TTL) is rejected with 404 even though it was once valid -- "
     "a PDF containing someone's real legal situation shouldn't stay fetchable indefinitely",
 )
+
+
+# ---------------------------------------------------------------------------
+# BATCH 6 (2026-09-22): the ONE deliberate exception to this file's own
+# "zero real network calls" rule (see the module docstring), for the same
+# reason test_chat_domain_handoff.py accepts real API cost -- there is no
+# way to prove this fix without exercising the ACTUAL history-folding
+# mechanism (whatsapp_store.build_question_with_context) plus the real
+# embedding search whose ranking behaviour is exactly what broke. Kept to
+# a single case.
+#
+# CONFIRMED REAL FAILURE this reproduces: on the actual WhatsApp thread
+# used for today's testing, a brand-new "my uncle snatched a gold chain"
+# question -- sent after two earlier, unrelated exchanges (a grievous-hurt
+# question, a sexual-harassment question) were still in the conversation --
+# came back with NO offence identified at all ("I don't have information
+# here on the specific section for chain-snatching/street robbery"), even
+# though the exact same question asked fresh, with no history, was
+# answered correctly and precisely (BNS 304, chain-snatching, cognizable
+# and non-bailable). The old conversation's own sections (117, 75) were
+# both re-anchored from the folded-in history text and out-scored the
+# real answer in semantic search, crowding it out of the top 5 kept for
+# the prompt.
+# ---------------------------------------------------------------------------
+import chat_assistant
+
+_snatch_history = [
+    {"role": "user", "text": "My brother got into an argument with a shopkeeper and ended up hitting "
+                              "him -- the shopkeeper's arm got fractured and he needed surgery. The "
+                              "police have arrested my brother. What offence would this fall under, "
+                              "and is it bailable?"},
+    {"role": "assistant", "text": "What is described -- a fracture requiring surgery -- fits grievous "
+                                   "hurt under Section 117 of the BNS. Section 117(2) of the BNS "
+                                   "applies -- punishable with up to seven years and a fine. This is "
+                                   "cognizable and bailable."},
+    {"role": "user", "text": "A woman at my sister's workplace has accused a colleague of touching her "
+                              "inappropriately and making comments that made her uncomfortable. He has "
+                              "been arrested. What section would this come under, and is it bailable?"},
+    {"role": "assistant", "text": "What is described -- unwelcome physical contact/advances and "
+                                   "sexually coloured remarks -- falls under Section 75 of the BNS, "
+                                   "sexual harassment. This carries up to 3 years under Section 75(2), "
+                                   "and is a cognizable, non-bailable offence."},
+]
+_snatch_question_with_history = whatsapp_store.build_question_with_context(
+    _snatch_history,
+    "The police say my uncle snatched a gold chain from a woman on the street while riding a bike "
+    "with another man, and he has been arrested. What offence would this be, and is it bailable?",
+)
+_snatch_result = chat_assistant.answer_question(
+    _snatch_question_with_history, inline_domains={"cheque_bounce", "freeze", "domestic_violence"}
+)
+_snatch_matches = {(m.get("act"), m.get("section_number")) for m in _snatch_result.get("matches", [])}
+check(("BNS", "304") in _snatch_matches,
+      f"REPRODUCES THE CONFIRMED FAILURE, NOW FIXED: a brand-new chain-snatching question, sent "
+      f"with two earlier, unrelated exchanges still in the conversation, still correctly identifies "
+      f"BNS 304 -- got {_snatch_matches!r}")
+check(not ({("BNS", "117"), ("BNS", "75")} & _snatch_matches),
+      "the OLD conversation's sections (117 grievous hurt, 75 sexual harassment) are NOT "
+      "re-anchored from the folded-in history text into this brand-new question's own matches")
+_snatch_text = (_snatch_result.get("response_text") or "").lower()
+check("304" in _snatch_text,
+      "the actual answer text names the correct section, not a generic 'I don't have information "
+      "on the specific section' dead end")
 
 
 # ---- summary ----
