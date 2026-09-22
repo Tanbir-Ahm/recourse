@@ -56,38 +56,81 @@ check(
     "chunk_id-identified matches (used by hybrid_search results) are respected as the primary identity",
 )
 
-# ---- cache_key: the 2026-09-14 confidence-floor fix -------------------
-# CONFIRMED REAL FINDING: two honestly-similar live questions ("my cousin
-# was picked up... for a road accident, they didn't give any paper" vs
-# "my uncle was picked up... over a minor bike accident and they never
-# handed him any paperwork") matched the SAME curated overrides but
-# DIFFERENT low-confidence (0.34-0.39) semantic statute matches, so the
-# original (pre-fix) cache_key treated them as different questions.
+# ---- cache_key: the 2026-09-14 confidence-floor idea, CORRECTED 2026-09-22 --
+# The ORIGINAL 2026-09-14 finding was real: two honestly-similar live
+# questions ("my cousin was picked up... for a road accident, they didn't
+# give any paper" vs "my uncle was picked up... over a minor bike
+# accident and they never handed him any paperwork") matched the SAME
+# curated overrides but DIFFERENT low-confidence (0.34-0.39) semantic
+# statute matches, so the original cache_key treated them as different
+# questions when they were really the same situation.
+#
+# The FIX chosen that day -- silently DROP any low-confidence match from
+# the identity -- went further than the problem needed and created a far
+# worse one. CONFIRMED REAL BUG, live, 2026-09-22: a chain-snatching
+# question's real, correctly-retrieved match (BNS 304, scoring 0.445 --
+# comfortably above the 0.34 threshold that puts it in the actual answer,
+# but below this cache's stricter 0.55 bar) was silently dropped from the
+# identity, leaving ONLY the universal arrest-safeguard curated overrides
+# (BNSS 47/35/58/187 + the standard judgments) -- IDENTICAL to what a
+# completely unrelated, offence-less arrest question would also produce.
+# Once that generic identity got approved once, it was served for EVERY
+# subsequent question sharing it, regardless of the real, different
+# offence each one was actually about -- reproduced live on the deployed
+# WhatsApp bot, masking a genuinely correct fresh answer.
+#
+# THE CORRECTED RULE: a low-confidence match doesn't get dropped from the
+# identity -- its PRESENCE makes the whole set ineligible for caching at
+# all (cache_key returns None; a real match this uncertain is a signal
+# the tool cannot yet safely say "reuse a past answer here", not a signal
+# to reuse anyway). Safety over hit-rate: this cache exists to save a
+# Sonnet call, never to risk showing the wrong legal situation's answer.
 
 WEAK_MATCH_A = {"act": "BNSS", "section_number": "38", "score": 0.36}
 WEAK_MATCH_B = {"act": "BNSS", "section_number": "478", "score": 0.35}
 STRONG_MATCH = {"act": "BNSS", "section_number": "60", "score": 0.70}
 
 check(
-    answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]) == answer_cache.cache_key([STATUTE_303, WEAK_MATCH_B]),
-    "REPRODUCES THE 2026-09-14 FIX: two questions sharing the same reliable (rule-based) match but differing "
-    "only in which LOW-confidence semantic match tagged along now produce the SAME key -- the exact pair "
-    "that failed to reuse live before this fix",
+    answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]) is None
+    and answer_cache.cache_key([STATUTE_303, WEAK_MATCH_B]) is None,
+    "REPRODUCES THE CONFIRMED REAL BUG, NOW FIXED: a low-confidence semantic match no longer gets silently "
+    "dropped from the identity -- its presence makes the WHOLE set ineligible for caching (None), so two "
+    "questions sharing the same curated overrides but differing in which real, distinct offence they're "
+    "actually about can never again collide into the same key",
 )
 check(
-    answer_cache.cache_key([STATUTE_303, STRONG_MATCH])
-    != answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]),
-    "a CONFIDENT semantic match (>= the confidence floor) is still a real, required part of the key -- "
-    "only near-threshold, low-confidence matches get ignored, not all semantic matches",
+    answer_cache.cache_key([STATUTE_303, STRONG_MATCH]) is not None,
+    "a CONFIDENT semantic match (>= the confidence floor) keeps the set cacheable, and is a real, required "
+    "part of the resulting key",
 )
 check(
-    answer_cache.cache_key([STATUTE_303]) == answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]),
-    "a low-confidence semantic match adds nothing to the key at all -- present or absent makes no difference",
+    answer_cache.cache_key([STATUTE_303, STRONG_MATCH]) != answer_cache.cache_key([STATUTE_303]),
+    "...and is genuinely part of the identity -- adding a confident match changes the key",
 )
 check(
-    answer_cache.describe_matches([STATUTE_303, WEAK_MATCH_A]) == answer_cache.describe_matches([STATUTE_303]),
-    "describe_matches (the review report's summary) reflects the same eligible-only view as cache_key, "
-    "so what a reviewer reads matches what future questions are actually compared against",
+    answer_cache.cache_key([STATUTE_303]) is not None
+    and answer_cache.cache_key([STATUTE_303]) != answer_cache.cache_key([STATUTE_303, WEAK_MATCH_A]),
+    "a set with NO low-confidence match at all is still cacheable on its own -- only the PRESENCE of an "
+    "under-confident match changes anything, never the mere absence of a strong one",
+)
+
+# ---- get_cached / record_candidate: a None key is a guaranteed, silent no-op ----
+# Direct proof at the level a real caller (_answer_single_match) actually sees:
+# an under-confident match must never be recorded as a reusable candidate, and
+# must never register as a cache hit, no matter how many times the same
+# uncacheable set repeats.
+
+check(
+    answer_cache.get_cached([STATUTE_303, WEAK_MATCH_A]) is None,
+    "get_cached never crashes on an ineligible (None-key) match set, and is a guaranteed miss",
+)
+answer_cache.record_candidate([STATUTE_303, WEAK_MATCH_A], "q1", "answer 1", False)
+answer_cache.record_candidate([STATUTE_303, WEAK_MATCH_B], "q2", "answer 2", False)
+check(
+    answer_cache.list_candidates() == [],
+    "REPRODUCES THE CONFIRMED FIX AT THE REAL CALL SITE: an ineligible match set is never recorded as a "
+    "candidate at all -- two DIFFERENT real offences that each happen to include a low-confidence match "
+    "cannot be silently merged into one reviewable (and approvable) row",
 )
 
 # ---- describe_matches: human-readable summary for the review report ----

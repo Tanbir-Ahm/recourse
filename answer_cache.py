@@ -151,16 +151,43 @@ def _match_identity(match: dict):
     )
 
 
-def cache_key(matches: list) -> str:
+def cache_key(matches: list) -> "str | None":
     """A stable key for a set of matches, independent of their order.
     Two questions worded completely differently produce the SAME key if
-    and only if every RELIABLE source (every curated override, and every
-    semantic/lexical match confident enough to trust -- see
-    _eligible_for_cache) lines up exactly. See module docstring for the
-    full design and the 2026-09-14 finding that made this filtering
-    necessary."""
-    eligible = _eligible_for_cache(matches)
-    identities = sorted((_match_identity(m) for m in eligible), key=lambda t: json.dumps(t, default=str))
+    and only if every source present -- every curated override, and every
+    semantic/lexical match -- is confident enough to trust (see
+    _is_confident_enough). See module docstring for the full design and
+    the 2026-09-14 finding that made this filtering necessary.
+
+    Returns None (never cacheable -- caller must generate fresh, no
+    lookup and no candidate recorded) if ANY match in the full list fails
+    the confidence bar, rather than silently DROPPING that match from the
+    identity the way this function used to.
+
+    CONFIRMED REAL BUG (2026-09-22): the previous version computed the
+    key from _eligible_for_cache(matches) alone -- the confident subset --
+    discarding any match that didn't clear _SEMANTIC_CACHE_CONFIDENCE_FLOOR
+    entirely, rather than making the whole set ineligible. A chain-
+    snatching question's real, correctly-retrieved match (BNS 304,
+    scoring 0.445 -- well above the 0.34 threshold that puts it in the
+    actual answer, but below this cache's stricter 0.55 bar) was silently
+    excluded, leaving only the universal arrest-safeguard curated
+    overrides (BNSS 47/35/58/187 + the standard judgments) as the entire
+    identity -- IDENTICAL to what a completely different, offence-less
+    arrest question would also produce. Once that generic identity was
+    approved once, EVERY subsequent question sharing it -- regardless of
+    its real, specific, correctly-identified offence -- was served that
+    same generic answer, with the real offence discussion silently
+    dropped. Reproduced live: this masked a genuinely correct fresh
+    answer that had already been proven to work. Offence-keyword-anchor
+    matches (batch 1) and curated overrides carry no 'score' field at all
+    and are unaffected by this bug either way (always confident by
+    construction) -- only a match found purely by semantic search, with
+    no anchor and no curated entry, was ever at risk."""
+    ineligible = [m for m in matches if not _is_confident_enough(m)]
+    if ineligible:
+        return None
+    identities = sorted((_match_identity(m) for m in matches), key=lambda t: json.dumps(t, default=str))
     canonical = json.dumps(identities, default=str)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -183,8 +210,15 @@ def describe_matches(matches: list) -> str:
 
 def get_cached(matches: list):
     """Returns {'response_text', 'situation_detected'} for an approved,
-    not-yet-expired answer matching this exact set of sources, or None."""
+    not-yet-expired answer matching this exact set of sources, or None.
+
+    cache_key(matches) being None (a real, un-confident-enough match is
+    present -- see its docstring) means this set was never eligible to be
+    cached in the first place, so this is a guaranteed miss -- skip the
+    lookup entirely rather than querying with a None key."""
     key = cache_key(matches)
+    if key is None:
+        return None
     conn = _connect()
     try:
         row = conn.execute(
@@ -205,8 +239,16 @@ def record_candidate(matches: list, question: str, response_text: str, situation
     """Records that this exact set of sources produced a fresh, confident
     ('single_match') answer -- raw material for a person to review later.
     Never changes what any user is told; purely a log for
-    answer_cache_report.py."""
+    answer_cache_report.py.
+
+    A None cache_key (some real match here isn't confident enough --
+    see its docstring) means this exact set is not reusable at all, so
+    there is nothing meaningful to log as a candidate -- skip silently
+    rather than recording an entry that could never be approved into
+    anything but a repeat of this same under-confident answer."""
     key = cache_key(matches)
+    if key is None:
+        return
     description = describe_matches(matches)
     now = time.time()
     conn = _connect()
