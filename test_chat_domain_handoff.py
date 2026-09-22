@@ -293,6 +293,65 @@ if result:
           "chat_history has exactly 2 turns -- arrest answer NOT duplicated by the handoff callback")
 
 
+# ---------------------------------------------------------------------------
+# BATCH 7, STEP 2 (2026-09-22): a real, live proof that the new
+# RESPONSE_GENERATION_PROMPT rule ("check facts against a definition
+# before naming the more serious classification") actually changes
+# behavior on a genuinely borderline case, WITHOUT making the model
+# hedge on cases that are actually clear-cut. Real API cost, same
+# tradeoff this file already accepts for its other end-to-end cases.
+#
+# CONFIRMED REAL GAP this fixes: a single blow with a wooden stick
+# causing a deep cut needing stitches, with the person discharged the
+# SAME DAY, was confidently written up as grievous hurt without ever
+# questioning whether it clears BNS 116's own 15-day-severe-pain/life-
+# endangerment bar -- exactly the nuance ChatGPT caught and Recourse's
+# earlier answer missed.
+from chat_assistant import answer_question as _answer_question_for_reasoning_check
+
+_stick_q = ("A man gets into an argument with his neighbour over a parking dispute. During the "
+            "argument, he picks up a wooden stick and strikes the neighbour once on the head. The "
+            "neighbour suffers a deep cut requiring several stitches but is discharged from hospital "
+            "the same day. The man is arrested by the police.")
+_stick_result = _answer_question_for_reasoning_check(_stick_q)
+_stick_text = (_stick_result.get("response_text") or "")
+check(
+    "116" in _stick_text and ("15" in _stick_text or "fifteen" in _stick_text.lower()),
+    "REPRODUCES THE CONFIRMED GAP, NOW FIXED: the wooden-stick answer engages with BNS 116's real "
+    "15-day/life-endangerment test by name, not just asserting grievous hurt outright"
+)
+_hedge_signals = (
+    "115" in _stick_text, "simple hurt" in _stick_text.lower(), "122(1)" in _stick_text,
+    "does not automatically" in _stick_text.lower(), "not automatically" in _stick_text.lower(),
+    "does not on its own" in _stick_text.lower(), "may not" in _stick_text.lower(),
+    "might not" in _stick_text.lower(), "milder" in _stick_text.lower(),
+    "lighter" in _stick_text.lower(), "less serious" in _stick_text.lower(),
+)
+check(
+    any(_hedge_signals),
+    "the answer names a genuine milder alternative (simple hurt, or provocation-hurt at 122(1)) or "
+    "otherwise explicitly signals the classification isn't settled -- not just reciting 116's "
+    "definition decoratively while still defaulting to grievous hurt as if it were the only option "
+    f"(none of the checked signals matched -- real text: {_stick_text[:600]!r})"
+)
+
+_snatch_q = ("The police say my uncle snatched a gold chain from a woman on the street while riding "
+             "a bike with another man, and he has been arrested. What offence would this be, and is "
+             "it bailable?")
+_snatch_result = _answer_question_for_reasoning_check(_snatch_q)
+_snatch_text = (_snatch_result.get("response_text") or "")
+check(
+    "304" in _snatch_text and "non-bailable" in _snatch_text.lower(),
+    "a genuinely CLEAR-CUT case (chain-snatching) still gets a confident, direct answer -- the new "
+    "rule does not make the model hedge when the facts aren't actually borderline"
+)
+check(
+    "does not automatically" not in _snatch_text.lower() and "borderline" not in _snatch_text.lower(),
+    "...and specifically does not import the wooden-stick case's hedging language into an unrelated, "
+    "unambiguous case -- confirming this is fact-driven caution, not a blanket new hedge"
+)
+
+
 print("\n" + "=" * 70)
 if FAILURES:
     print(f"RESULT: {len(FAILURES)} FAILURE(S)")
