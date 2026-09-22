@@ -46,6 +46,9 @@ from chat_assistant import (
     _gather_offence_variants,
     _find_cognizable_bailable_mismatches,
     _format_mismatch,
+    _find_cognizable_bailable_omissions,
+    _format_omission,
+    _find_unverified_contact_numbers,
     _section_act_map,
     _find_sections_missing_act,
     _find_missing_companion_sections,
@@ -605,6 +608,92 @@ check(
 )
 
 
+# ---------------------------------------------------------------------------
+# CONFIRMED REAL GAP (2026-09-22, batch 3 of the ChatGPT side-by-side fix
+# queue): a real answer stated BOTH cognizable and bailable for one section
+# (117(2)) but only bailable for two others (117(3), 122(2)) discussed the
+# same way, despite having the cognizable fact for all three available.
+# ---------------------------------------------------------------------------
+check(
+    _find_cognizable_bailable_omissions("Section 318(4) is cognizable and non-bailable.", BNS_318_VARIANTS) == [],
+    "both facts stated for a single-condition section -> nothing omitted",
+)
+_bail_only = _find_cognizable_bailable_omissions("Section 318(4) is non-bailable, punishable up to 7 years.",
+                                                   BNS_318_VARIANTS)
+check(_bail_only == [{"section": "318(4)", "missing_field": "cognizable", "value": True}],
+      "REPRODUCES THE CONFIRMED GAP: only bailable stated -> the available cognizable fact is flagged missing")
+_cog_only = _find_cognizable_bailable_omissions("Section 318(4) is cognizable, punishable up to 7 years.",
+                                                  BNS_318_VARIANTS)
+check(_cog_only == [{"section": "318(4)", "missing_field": "bailable", "value": False}],
+      "the reverse also flags: only cognizable stated -> the available bailable fact is flagged missing")
+check(
+    "Section 318(4) is also cognizable -- say so." in {_format_omission(p) for p in _bail_only},
+    "_format_omission renders a clear, specific 'add this' sentence",
+)
+check(
+    _find_cognizable_bailable_omissions(
+        "Section 303(2) is cognizable and non-bailable in the general case.", BNS_303_VARIANTS
+    ) == [],
+    "a multi-condition section (303(2)) is never flagged for omission -- same carve-out as the mismatch check, "
+    "since which of its two real conditions is being described can't be determined from a keyword window alone",
+)
+check(
+    _find_cognizable_bailable_omissions("Section 303 covers theft and is cognizable.", BNS_303_VARIANTS) == [],
+    "a bare 'Section 303' mention (genuinely ambiguous subsection) is not flagged for omission either",
+)
+check(
+    _find_cognizable_bailable_omissions("nothing about any section here", BNS_318_VARIANTS) == [],
+    "a response naming no section is trivially not flagged",
+)
+check(
+    _find_cognizable_bailable_omissions("Section 318(4) is bailable.", {}) == [],
+    "an empty variants dict is a pure no-op, same as the mismatch check",
+)
+
+
+# ---------------------------------------------------------------------------
+# CONFIRMED REAL FAILURE this guards against -- not in this project's own
+# output, but in a direct side-by-side comparison (2026-09-22): ChatGPT
+# stated a specific, invented phone number ("ASLSA helpline: 6901281650")
+# for a state the user never named, for a question that gave no location at
+# all. This project's own generator is checked against exactly that failure
+# class before anything reaches a real user.
+# ---------------------------------------------------------------------------
+_q = "My father was arrested last night, what should we do?"
+_retrieved = "[BNSS Section 41A] Notice of appearance before arrest..."
+check(_find_unverified_contact_numbers(
+    "You should call the ASLSA helpline at 6901281650 for free legal help.", _q, _retrieved
+) == ["6901281650"],
+      "REPRODUCES THE CONFIRMED FAILURE CLASS: a helpline number never given by the user or the "
+      "retrieved material is flagged")
+check(_find_unverified_contact_numbers(
+    "You can dial the national emergency number, 100, right away.", _q, _retrieved
+) == [],
+      "a short (<4-digit) number like the emergency line '100' is below the flag floor -- common "
+      "knowledge, not the kind of specific fabricated contact detail this guards against")
+check(_find_unverified_contact_numbers(
+    "You should consult a lawyer or your nearest District Legal Services Authority.", _q, _retrieved
+) == [],
+      "ordinary advice with no phone number at all is never flagged")
+check(_find_unverified_contact_numbers(
+    "Section 302 is punishable with life imprisonment or up to 10 years.", _q, _retrieved
+) == [],
+      "ordinary legal numbers (punishment years, section numbers) with no contact-type keyword nearby "
+      "never trip this -- it is keyword-gated, not a generic 'flag every number' check")
+check(_find_unverified_contact_numbers(
+    "You can contact the helpline at 6901281650.",
+    "My father was arrested, please call 6901281650 for help", _retrieved,
+) == [],
+      "a number the USER themselves already provided in the question is never flagged -- it wasn't invented")
+check(_find_unverified_contact_numbers(
+    "You can call the helpline mentioned: 1930.",
+    _q, "[Cybercrime helpline] Report financial fraud by calling 1930 immediately.",
+) == [],
+      "a number that genuinely appears in the retrieved material is never flagged")
+check(_find_unverified_contact_numbers("", _q, _retrieved) == [],
+      "empty response text is a no-op, never crashes")
+
+
 with patch("chat_assistant.client") as mock_client:
     # First response gets 318(4)'s status backwards; retry corrects it ->
     # the CORRECTED retry text is returned, mirroring the ungrounded-retry
@@ -657,6 +746,62 @@ with patch("chat_assistant.client") as mock_client:
     check(mock_client.messages.create.call_count == 1,
           "backward compatibility: matches=None makes zero difference to the ungrounded-only path")
     check(result == "Section 35 of the BNSS covers this.", "unchanged result for a call with no matches param")
+
+
+with patch("chat_assistant.client") as mock_client:
+    # Omission check is SOFT: a retry is attempted, and the CORRECTED
+    # (complete) retry text is returned when the retry adds the missing fact.
+    mock_client.messages.create.side_effect = [
+        _fake_response("BNS Section 318(4) is non-bailable, up to 7 years."),
+        _fake_response("BNS Section 318(4) is cognizable and non-bailable, up to 7 years."),
+    ]
+    result = generate_grounded_response(
+        "test question", BNS_318_RETRIEVED_TEXT,
+        matches=[{"all_variants": BNS_318_VARIANTS}],
+    )
+    check(mock_client.messages.create.call_count == 2,
+          "stating only one of two available facts triggers exactly one retry")
+    check(result == "BNS Section 318(4) is cognizable and non-bailable, up to 7 years.",
+          "the completed retry text is returned")
+
+with patch("chat_assistant.client") as mock_client:
+    # Omission check is SOFT: even if the retry is STILL incomplete, the
+    # answer is not discarded -- unlike the hard (correctness) checks.
+    mock_client.messages.create.side_effect = [
+        _fake_response("BNS Section 318(4) is non-bailable, up to 7 years."),
+        _fake_response("BNS Section 318(4) is non-bailable, still up to 7 years."),
+    ]
+    result = generate_grounded_response(
+        "test question", BNS_318_RETRIEVED_TEXT,
+        matches=[{"all_variants": BNS_318_VARIANTS}],
+    )
+    check(result == "BNS Section 318(4) is non-bailable, still up to 7 years.",
+          "a still-incomplete answer after retry is NOT discarded, unlike a wrong (mismatch) claim")
+
+
+with patch("chat_assistant.client") as mock_client:
+    # Contact-number check is HARD: a fabricated helpline number triggers a
+    # retry, and the corrected (number-free) retry text is returned.
+    mock_client.messages.create.side_effect = [
+        _fake_response("Call the ASLSA helpline at 6901281650 for free legal help."),
+        _fake_response("Consult a lawyer or your nearest District Legal Services Authority for free help."),
+    ]
+    result = generate_grounded_response("what should I do if arrested", REAL_RETRIEVED_TEXT_EXCERPT)
+    check(mock_client.messages.create.call_count == 2,
+          "REPRODUCES THE CONFIRMED FAILURE CLASS: a fabricated helpline number triggers exactly one retry")
+    check(result == "Consult a lawyer or your nearest District Legal Services Authority for free help.",
+          "the number-free corrected retry text is returned")
+
+with patch("chat_assistant.client") as mock_client:
+    # Contact-number check is HARD: still-fabricated after retry gives up
+    # honestly (None), unlike the soft completeness checks.
+    mock_client.messages.create.side_effect = [
+        _fake_response("Call the ASLSA helpline at 6901281650 for free legal help."),
+        _fake_response("Call the ASLSA helpline at 6901281650 again for free legal help."),
+    ]
+    result = generate_grounded_response("what should I do if arrested", REAL_RETRIEVED_TEXT_EXCERPT)
+    check(result is None,
+          "a fabricated helpline number still present after retry gives up honestly, unlike a soft omission")
 
 
 # ---------------------------------------------------------------------------

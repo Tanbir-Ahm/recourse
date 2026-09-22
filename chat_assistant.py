@@ -393,6 +393,14 @@ _COURT_MISATTRIBUTION_RETRY_INSTRUCTION = """
 IMPORTANT CORRECTION: your previous answer named the WRONG COURT for one or more cases: {details} Write a new, complete answer from scratch, and state the correct court for each of these cases as given above, following all the same rules."""
 
 
+_UNVERIFIED_CONTACT_RETRY_INSTRUCTION = """
+IMPORTANT CORRECTION: your previous answer stated a phone number, helpline, or contact detail ({numbers}) that was never given by the user and does not appear anywhere in the information provided above. Never state a specific phone number, helpline, or contact detail unless it was explicitly given to you as part of the question or the retrieved material -- remove it rather than guess or recall one from general knowledge. Write a new, complete answer from scratch, following all the same rules."""
+
+
+_OMITTED_CLASSIFICATION_RETRY_INSTRUCTION = """
+One more thing to ADD, not fix: {details} Both facts were available to you -- state cognizable/non-cognizable AND bailable/non-bailable together wherever you mention a section's classification, not just one of the two. Write a new, complete answer from scratch, following all the same rules."""
+
+
 # Real name variants a model's answer might use for each act it can cite
 # a section from -- "BNS"/"BNSS" are literal short forms the model does
 # write verbatim, but "ITACT" is only this project's internal code
@@ -907,6 +915,113 @@ def _format_mismatch(problem: dict) -> str:
     return f"Section {problem['section']} is {correct}, not {word(problem['claimed'])} as you wrote."
 
 
+def _find_cognizable_bailable_omissions(response_text: str, variants: dict) -> list:
+    """CONFIRMED REAL GAP (2026-09-22, found via a ChatGPT side-by-side
+    test): a real answer discussing three sections (117(2), 117(3),
+    122(2)) had the real cognizable fact available for ALL THREE in
+    `variants` (the exact same data _find_cognizable_bailable_mismatches
+    checks), but only stated it for one -- "Section 117(2) ... cognizable
+    and bailable", then "Section 117(3) ... not bailable" and "Section
+    122(2) ... bailable" with cognizable silently dropped both times.
+    Not a wrong claim (the mismatch check above would have caught that);
+    a genuine, available fact simply never made it into the sentence.
+
+    Same windowing/parsing as _find_cognizable_bailable_mismatches (see
+    its docstring for the has_multiple_conditions / bare-number-ambiguity
+    carve-outs, applied identically here so this never flags a section
+    that check itself would treat as genuinely ambiguous) -- but instead
+    of checking a STATED value against the valid set, checks whether one
+    of the two fields was stated while the other, equally available, one
+    was not.
+
+    Returns a list of {'section', 'missing_field', 'value'} dicts. Empty
+    list is the common case, and the immediate return when variants is
+    empty makes this a pure no-op wherever the mismatch check also is."""
+    if not variants:
+        return []
+
+    problems = []
+    section_hits = list(_SECTION_WITH_SUBSECTION_PAT.finditer(response_text))
+    for i, m in enumerate(section_hits):
+        num, sub = m.group(1), m.group(2)
+        key = f"{num}({sub})" if sub else num
+        data = variants.get(key)
+        if data is None and not sub:
+            bare_family = [v for k, v in variants.items() if k == num or k.startswith(f"{num}(")]
+            if len(bare_family) == 1:
+                data = bare_family[0]
+        if data is None or data.get("has_multiple_conditions"):
+            continue
+
+        window_end = section_hits[i + 1].start() if i + 1 < len(section_hits) else len(response_text)
+        window = response_text[m.end(): min(window_end, m.end() + 300)]
+
+        claimed_cog = _claimed_status(window, ["non-cognizable", "not cognizable"], "cognizable")
+        claimed_bail = _claimed_status(window, ["non-bailable", "not bailable"], "bailable")
+        cog_value = data.get("cognizable")
+        bail_value = data.get("bailable")
+
+        if claimed_bail is not None and claimed_cog is None and cog_value is not None:
+            problems.append({"section": key, "missing_field": "cognizable", "value": cog_value})
+        if claimed_cog is not None and claimed_bail is None and bail_value is not None:
+            problems.append({"section": key, "missing_field": "bailable", "value": bail_value})
+
+    return problems
+
+
+def _format_omission(problem: dict) -> str:
+    """'Section 117(3) is also non-cognizable -- say so.'"""
+    field = problem["missing_field"]
+    word = field if problem["value"] else f"non-{field}"
+    return f"Section {problem['section']} is also {word} -- say so."
+
+
+# A number, kept together as digits/spaces/hyphens, immediately preceded
+# (within a short window) by a word that means "here's who to contact" --
+# deliberately narrow, matching the confirmed real failure this guards
+# against (see _find_unverified_contact_numbers' docstring), not a
+# generic "flag every number" check, which would false-positive
+# constantly against ordinary section numbers, years, and punishment
+# ranges that are NOT contact information.
+_CONTACT_NUMBER_PAT = re.compile(
+    r"\b(?:helpline|toll-free|toll free|call|contact(?:ed|ing)?|dial|phone)\b[^.\n]{0,40}?(\d[\d\s-]{3,14}\d)",
+    re.IGNORECASE,
+)
+
+
+def _find_unverified_contact_numbers(response_text: str, question: str, retrieved_text: str) -> list:
+    """CONFIRMED REAL FAILURE -- not in this project's own output, but in
+    a direct side-by-side comparison (2026-09-22) that is exactly why
+    this project's answers are checked the way they are: asked a
+    question that never named any location, ChatGPT confidently stated
+    "the Assam State Legal Services Authority currently lists: NALSA
+    helpline: 15100, ASLSA helpline: 6901281650" -- a specific, dialable
+    phone number, invented from nothing, in a legal-advice context. That
+    class of error is structurally impossible to catch by "does this
+    sound plausible" review; it needs exactly the same discipline as
+    every other checked fact here: a phone number a person might actually
+    call is either something THEY gave us, something the retrieved law/
+    judgment text actually contains (real, so it never does -- statute
+    text and judgments do not contain contact numbers), or it is
+    fabricated. There is no fourth option.
+
+    Returns the list of digit-only unverified numbers found (empty is the
+    common, reassuring case). Deliberately keyword-gated (see
+    _CONTACT_NUMBER_PAT) rather than flagging any digit sequence -- a
+    bare "7 years" or "Section 302" must never trip this."""
+    if not response_text:
+        return []
+    source_digits = re.sub(r"\D", "", (question or "") + (retrieved_text or ""))
+    problems = []
+    for m in _CONTACT_NUMBER_PAT.finditer(response_text):
+        digits = re.sub(r"\D", "", m.group(1))
+        if len(digits) < 4:
+            continue
+        if digits not in source_digits:
+            problems.append(digits)
+    return problems
+
+
 def generate_grounded_response(question, retrieved_text, is_conflict=False, model=SONNET_MODEL, matches=None):
     """Generates a plain-language answer using ONLY the given retrieved
     text. Returns None if the generation call fails -- callers should
@@ -986,12 +1101,41 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
     attempted, but a still-unsupported generalization after the retry
     does not discard an otherwise-correct answer.
 
-    Any of the five problems triggers ONE combined retry with an
+    COGNIZABLE/BAILABLE COMPLETENESS (added 2026-09-22, batch 3 of the
+    ChatGPT side-by-side structural fix queue): separately, checks that
+    when the answer states ONE of a section's cognizable/bailable facts,
+    it states the OTHER too, whenever both were actually available in
+    `matches` -- via _find_cognizable_bailable_omissions(). See its
+    docstring for the confirmed real answer that correctly stated both
+    facts for one section (117(2)) but silently dropped cognizable for
+    two others (117(3), 122(2)) discussed the same way in the same
+    answer, despite having the fact for all three. Unlike the mismatch
+    check above (a WRONG claim), this is soft, like the companion-section
+    and case-generalization checks: a retry is attempted, but a still-
+    incomplete answer after the retry is not discarded.
+
+    UNVERIFIED CONTACT NUMBERS (added 2026-09-22, same batch): separately,
+    checks that the answer never states a phone number/helpline next to
+    contact-type language ("call", "helpline", "contact", "dial") unless
+    that exact number appears in the question or the retrieved material
+    -- via _find_unverified_contact_numbers(). See its docstring for the
+    confirmed real failure this guards against: in a side-by-side test,
+    ChatGPT (not this project) stated a specific, invented phone number
+    for a state the user never named. This is hard, like the grounding
+    and mismatch checks -- a fabricated contact number is a real, checked
+    fact, not a nuance.
+
+    Any of the seven problems triggers ONE combined retry with an
     explicit correction. If the retry still has an ungrounded section, a
-    cognizable/bailable mismatch, or a missing Act name, returns None --
-    the same "give up honestly" signal already used for a failed API
-    call, so callers fall back to showing the raw retrieved text rather
-    than ever displaying a claim that could not be verified."""
+    cognizable/bailable mismatch, a missing Act name, a wrong court, or
+    an unverified contact number, returns None -- the same "give up
+    honestly" signal already used for a failed API call, so callers fall
+    back to showing the raw retrieved text rather than ever displaying a
+    claim that could not be verified. The three completeness-only checks
+    (missing companion sections, unsupported case generalizations, and
+    the cognizable/bailable omission check) never trigger this -- an
+    answer that is merely incomplete is still shown, only one that is
+    actively wrong or unverifiable is discarded."""
     if client is None:
         return None
     try:
@@ -1023,8 +1167,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         missing_companion = _find_missing_companion_sections(response_text, section_act_map)
         unsupported_cases = _find_unsupported_case_generalizations(response_text, matches)
         court_misattributions = _find_court_misattributions(response_text, matches)
+        omissions = _find_cognizable_bailable_omissions(response_text, variants)
+        unverified_contacts = _find_unverified_contact_numbers(response_text, question, retrieved_text)
 
-        if ungrounded or mismatches or missing_act or missing_companion or unsupported_cases or court_misattributions:
+        if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
+                or court_misattributions or omissions or unverified_contacts):
             retry_prompt = prompt
             if ungrounded:
                 retry_prompt += _UNGROUNDED_RETRY_INSTRUCTION.format(sections=", ".join(ungrounded))
@@ -1050,23 +1197,34 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                         for name, claimed, correct in court_misattributions
                     )
                 )
+            if omissions:
+                retry_prompt += _OMITTED_CLASSIFICATION_RETRY_INSTRUCTION.format(
+                    details=" ".join(_format_omission(p) for p in omissions)
+                )
+            if unverified_contacts:
+                retry_prompt += _UNVERIFIED_CONTACT_RETRY_INSTRUCTION.format(
+                    numbers=", ".join(unverified_contacts)
+                )
             retry_response = client.messages.create(
                 model=model,
                 max_tokens=4000,  # same thinking-block headroom as the first call
                 messages=[{"role": "user", "content": retry_prompt}],
             )
             retry_text = _extract_text_from_response(retry_response).strip()
-            # A still-missing companion section or still-unsupported case
-            # generalization is a completeness/nuance gap, not a
-            # correctness error like the other four checks -- neither
-            # justifies discarding an otherwise-correct answer outright.
-            # Give up (None) only for the checks that guard against
-            # showing an actively WRONG or unverifiable claim -- a wrong
-            # court is exactly that: a checkable fact, not a nuance.
+            # A still-missing companion section, still-unsupported case
+            # generalization, or still-incomplete cognizable/bailable pair
+            # is a completeness/nuance gap, not a correctness error like
+            # the others -- none of the three justifies discarding an
+            # otherwise-correct answer outright. Give up (None) only for
+            # the checks that guard against showing an actively WRONG or
+            # unverifiable claim -- a wrong court, or a phone number
+            # nobody gave us, are exactly that: checkable facts, not a
+            # nuance.
             if (_find_ungrounded_sections(retry_text, retrieved_text)
                     or _find_cognizable_bailable_mismatches(retry_text, variants)
                     or _find_sections_missing_act(retry_text, section_act_map)
-                    or _find_court_misattributions(retry_text, matches)):
+                    or _find_court_misattributions(retry_text, matches)
+                    or _find_unverified_contact_numbers(retry_text, question, retrieved_text)):
                 return None
             return retry_text
 
