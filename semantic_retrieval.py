@@ -536,6 +536,12 @@ OUT_OF_CHAT_DOMAIN_CASE_NAMES = frozenset({
     "Malabar Gold and Diamond Limited v Union of India",
     "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India",
     "State of Maharashtra v Tapas D. Neogy",
+    "Hiral P. Harsora v Kusum Narottamdas Harsora",
+    "D. Velusamy v D. Patchaiammal",
+    "Satish Chander Ahuja v Sneha Ahuja",
+    "Indra Sarma v V.K.V. Sarma",
+    "Prabha Tyagi v Kamlesh Devi",
+    "S. Vanitha v Deputy Commissioner, Bengaluru Urban District",
 })
 
 
@@ -557,11 +563,21 @@ FREEZE_CASE_NAMES = frozenset({
     "Malabar Gold and Diamond Limited v Union of India",
 })
 
+DOMESTIC_VIOLENCE_CASE_NAMES = frozenset({
+    "Hiral P. Harsora v Kusum Narottamdas Harsora",
+    "D. Velusamy v D. Patchaiammal",
+    "Satish Chander Ahuja v Sneha Ahuja",
+    "Indra Sarma v V.K.V. Sarma",
+    "Prabha Tyagi v Kamlesh Devi",
+    "S. Vanitha v Deputy Commissioner, Bengaluru Urban District",
+})
+
 # domain= value -> the subset of OUT_OF_CHAT_DOMAIN_CASE_NAMES that
 # becomes admissible for that (and only that) inline answer path.
 _DOMAIN_CARVE_OUT = {
     "cheque_bounce": CHEQUE_BOUNCE_CASE_NAMES,
     "freeze": FREEZE_CASE_NAMES,
+    "domestic_violence": DOMESTIC_VIOLENCE_CASE_NAMES,
 }
 
 
