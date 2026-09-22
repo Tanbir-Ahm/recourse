@@ -581,6 +581,138 @@ _DOMAIN_CARVE_OUT = {
 }
 
 
+# ---------------------------------------------------------------------
+# Named-section fast path: a question that names an exact section number
+# and Act ("420 IPC", "Section 318 BNS", "IT Act 66C") gets that section's
+# real text via a dictionary lookup, never a similarity score.
+#
+# CONFIRMED REAL FAILURE (2026-09-22): "What are the ingredients for 420
+# IPC?" -- arguably the single most commonly cited section number in
+# Indian criminal law -- returned "no_match". BNS Section 318 (cheating,
+# IPC 420's current-law equivalent) is verified, present and correct in
+# the corpus (chunk_id "statute:BNS:318"), but the query text "420 IPC"
+# doesn't resemble the statute's own wording (which never contains the
+# digits "420" -- it uses the new BNS number) closely enough to clear
+# STATUTE_SIMILARITY_THRESHOLD, or even to rank in the top statute
+# candidates at all. A user who names the exact section they mean has
+# already done the disambiguation work; there is no case for routing
+# that through a similarity score at all.
+#
+# Deliberately narrow: only fires when a number sits directly next to an
+# explicit Act name. A bare "u/s 420" with no Act named is left to the
+# existing semantic path -- the Act is genuinely ambiguous (IPC or BNS?)
+# and guessing would be worse than not firing.
+_SECTION_ACT_ALIASES = {
+    "indian penal code": "IPC",
+    "ipc": "IPC",
+    "code of criminal procedure": "CrPC",
+    "crpc": "CrPC",
+    "bharatiya nyaya sanhita": "BNS",
+    "bns": "BNS",
+    "bharatiya nagarik suraksha sanhita": "BNSS",
+    "bnss": "BNSS",
+    "information technology act": "ITACT",
+    "it act": "ITACT",
+    "itact": "ITACT",
+    "negotiable instruments act": "NIACT",
+    "ni act": "NIACT",
+    "niact": "NIACT",
+}
+# Old-code acts need statute_concordance to find the current BNS/BNSS
+# section first; the rest (new-code, or untouched by the recodification)
+# are looked up directly.
+_OLD_CODE_ACTS = frozenset({"IPC", "CrPC"})
+
+# Sorted longest-first purely so the regex engine tries a multi-word alias
+# ("it act") before either of its component words could be mistaken for
+# something else -- \b boundaries already make this collision-proof, this
+# is just the clearer way to read the pattern.
+_SECTION_ACT_PATTERN = "|".join(
+    re.escape(a) for a in sorted(_SECTION_ACT_ALIASES, key=len, reverse=True))
+_SECTION_NUM_PATTERN = r"\d{1,4}[A-Za-z]{0,2}(?:\(\d+\))?"
+_SECTION_PREFIX_PATTERN = r"(?:under\s+section|u/s|section|sec\.?|s\.?)?\s*"
+
+_NUM_THEN_ACT_RE = re.compile(
+    rf"{_SECTION_PREFIX_PATTERN}(?P<num>{_SECTION_NUM_PATTERN})\s*"
+    rf"(?:of\s+(?:the\s+)?)?(?P<act>{_SECTION_ACT_PATTERN})\b",
+    re.IGNORECASE,
+)
+_ACT_THEN_NUM_RE = re.compile(
+    rf"\b(?P<act>{_SECTION_ACT_PATTERN})\s*{_SECTION_PREFIX_PATTERN}(?P<num>{_SECTION_NUM_PATTERN})",
+    re.IGNORECASE,
+)
+
+
+def _detect_named_section(query):
+    """The (act, number) named directly in `query` -- e.g. ("IPC", "420")
+    for "420 IPC", or ("ITACT", "66C") for "IT Act 66C" -- or None if no
+    Act is named right next to a number. Tries "number then Act" before
+    "Act then number" since that is the more common phrasing, but either
+    order is recognised."""
+    for pattern in (_NUM_THEN_ACT_RE, _ACT_THEN_NUM_RE):
+        m = pattern.search(query)
+        if m:
+            act = _SECTION_ACT_ALIASES.get(m.group("act").lower())
+            if act:
+                return act, m.group("num")
+    return None
+
+
+def _named_section_exact_match(query):
+    """A synthetic statute record, same shape find_relevant_sections
+    expects from semantic_search, for a section the question names
+    explicitly -- resolved by exact dictionary lookup
+    (statute_concordance.to_new + retrieval.get_statute_section), never
+    embeddings. Score 1.0: the user named the exact provision, there is
+    nothing to estimate. None if no Act+number is named, the old-code
+    section was repealed with no successor, or the resolved section
+    simply isn't in this project's corpus.
+
+    A genuine one-to-many old-to-new mapping (rare) only surfaces the
+    first listed successor -- a documented simplification, not a hidden
+    failure; the common case (like IPC 420 -> BNS 318) is one-to-one."""
+    detected = _detect_named_section(query)
+    if detected is None:
+        return None
+    act, number = detected
+
+    if act in _OLD_CODE_ACTS:
+        from statute_concordance import to_new
+        mapped = to_new(act, number)
+        if not mapped:
+            return None  # repealed outright, or not in the concordance table
+        new_act, new_number = mapped[0]["act"], mapped[0]["section"]
+    else:
+        new_act, new_number = act, number
+
+    from retrieval import get_statute_section
+    hit = get_statute_section(new_act, new_number)
+    if hit is None:
+        return None
+
+    return {
+        # chunk_id names the real source chunk (always the bare top-level
+        # section -- see retrieval.get_statute_section's docstring on why
+        # a chunk only ever exists at that granularity).
+        "chunk_id": f"statute:{hit['act']}:{hit['section_number']}",
+        "text": hit["text"],
+        "type": "statute",
+        "act": hit["act"],
+        # section_number, by contrast, keeps whatever specificity we
+        # actually resolved (e.g. "318(4)" for IPC 420, not the bare
+        # "318"): unlike an ordinary semantic match, which can only ever
+        # report the bare number and correctly leaves every subsection's
+        # cognizable/bailable status "in play" (see the enrichment loop's
+        # all_variants comment below), an old-code translation or a
+        # user-typed subsection IS that specific -- collapsing it back to
+        # the bare number would manufacture a false conflict between
+        # subsections the question was never actually asking about.
+        "section_number": new_number,
+        "score": 1.0,
+        "exact_section_lookup": True,
+    }
+
+
 def find_relevant_sections(query, domain=None):
     """Higher-level function for BOTH statute and judgment lookup: returns
     a dict describing what was found, in one of four honest states --
@@ -616,14 +748,23 @@ def find_relevant_sections(query, domain=None):
     'judgment_matches' field -- the existing statute-only conflict logic
     is untouched, since that's correctly scoped to a narrower, real
     concern (statutes disagreeing on cognizable/bailable status), not a
-    general "should judgments be included" question."""
+    general "should judgments be included" question.
+
+    ADDED 2026-09-22: before any of the above, check whether the question
+    names an exact section + Act (_named_section_exact_match) -- see that
+    function's docstring for the confirmed real failure ("420 IPC"
+    returning no_match) this closes. A hit there is exact, not similarity-
+    scored, so it works even with embeddings down and is never crowded
+    out by an unrelated, loosely-scoring semantic statute match."""
+    exact_hit = _named_section_exact_match(query)
+
     results = semantic_search(query)
     lex_hits = lexical_search(query) or []
 
     if results is None:
         # Voyage down: fall back to lexical-only rather than the blanket
         # "unavailable" -- strictly more useful, still honest.
-        if not lex_hits:
+        if not lex_hits and exact_hit is None:
             return {"state": "unavailable"}
         results = []
 
@@ -639,7 +780,17 @@ def find_relevant_sections(query, domain=None):
     if domain in _DOMAIN_CARVE_OUT:
         _excluded_cases = OUT_OF_CHAT_DOMAIN_CASE_NAMES - _DOMAIN_CARVE_OUT[domain]
 
-    statute_matches = [r for r in results if r["type"] == "statute" and r["score"] >= STATUTE_SIMILARITY_THRESHOLD]
+    if exact_hit is not None:
+        # The user named the exact provision -- trust that identification
+        # outright rather than filtering it through a similarity score,
+        # and don't let an unrelated, loosely-scoring semantic statute
+        # match manufacture a spurious "conflicting_matches" alongside it
+        # (see CONFLICT_SCORE_MARGIN's goat-theft note above for exactly
+        # that failure mode). Subsection-level conflicts WITHIN this same
+        # section are still fully checked below, via all_variants.
+        statute_matches = [exact_hit]
+    else:
+        statute_matches = [r for r in results if r["type"] == "statute" and r["score"] >= STATUTE_SIMILARITY_THRESHOLD]
     judgment_matches = [r for r in results if r["type"] == "judgment" and r["score"] >= JUDGMENT_SIMILARITY_THRESHOLD
                          and r.get("case_name") not in _excluded_cases]
 
