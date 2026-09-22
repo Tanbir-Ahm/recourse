@@ -166,6 +166,40 @@ check(category == "covered_elsewhere_in_tool",
 check(redirect_domain == "domestic_violence",
       f"custody-with-context question's redirect_domain is 'domestic_violence' -- got {redirect_domain!r}")
 
+# REGRESSION TEST (2026-09-22, found via a ChatGPT side-by-side test):
+# BNS 74/75 (sexual harassment / assault-outraging-modesty) were added as
+# real, working offence-keyword anchors in chat_assistant.py the same
+# session (_offence_keyword_matches already correctly resolves this
+# exact question to BNS 75), but SCOPE_CLASSIFIER_PROMPT never listed
+# them as in_scope offences -- so the classifier never even let the
+# question reach that anchor. CONFIRMED REAL FAILURE: this exact question
+# was classified adjacent_uncovered, reasoning it "typically falls under
+# POCSO... or the Sexual Harassment of Women at Workplace Act" -- neither
+# actually applies to a real arrest for an adult colleague. The retrieval
+# fix alone was not enough; the classifier had to be told separately.
+category, reasoning, redirect_domain = classify_scope(
+    "A woman at my sister's workplace has accused a colleague of touching her inappropriately "
+    "and making comments that made her uncomfortable. He has been arrested. What section would "
+    "this come under, and is it bailable?"
+)
+check(category == "in_scope",
+      f"REPRODUCES THE CONFIRMED FAILURE: an arrest for workplace sexual harassment/inappropriate "
+      f"touching is in_scope (real BNS 74/75 offences), not adjacent_uncovered -- "
+      f"got {category!r} ({reasoning!r})")
+check(redirect_domain is None, "redirect_domain is None for this in_scope question, never guessed")
+
+# The "workplace" framing alone must not be what flips this -- a genuine
+# POCSO fact pattern (an explicit child victim) must still correctly stay
+# adjacent_uncovered, proving the fix didn't just blanket-allow anything
+# sexual-harassment-shaped.
+category, reasoning, redirect_domain = classify_scope(
+    "My 12-year-old daughter's school teacher has been touching her inappropriately, "
+    "he has been arrested, what section would this come under?"
+)
+check(category == "adjacent_uncovered",
+      f"a genuine child-victim (POCSO) fact pattern still correctly stays adjacent_uncovered, "
+      f"not swept into the new BNS 74/75 in_scope rule -- got {category!r} ({reasoning!r})")
+
 # ---- answer_question: redirect_domain propagates into the returned dict ----
 
 result = answer_question("my bank account got frozen by the police and nobody told me why")
