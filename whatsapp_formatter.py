@@ -56,7 +56,10 @@ def _format_unverified_judgments(unverified: list) -> str:
              "before relying on them):"]
     for j in unverified:
         flag = " (may be a procedural/bail order, not a full judgment)" if j.get("procedural_disposal") else ""
-        lines.append(f"- {j['case_name']}{flag}\n  {j['ik_search_url']}")
+        # paragraph_number is only ever set when the source genuinely has a real, earned paragraph
+        # marker (see pilot_tier_search.py / _fetch_pilot_related_judgments) -- never invented here.
+        para = f" -- paragraph {j['paragraph_number']}" if j.get("paragraph_number") else ""
+        lines.append(f"- {j['case_name']}{para}{flag}\n  {j['ik_search_url']}")
     return "\n".join(lines)
 
 

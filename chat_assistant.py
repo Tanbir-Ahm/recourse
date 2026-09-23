@@ -2433,6 +2433,43 @@ def _fetch_unverified_related_judgments(question: str, topic: str, exclude_case_
     return filtered[:top_k]
 
 
+def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, top_k: int = 3) -> list:
+    """The WIDER, hand-verified-but-not-fully-reviewed judgment pool (pilot_tier_search.py --
+    2026-09-23 pilot, hurt/assault domain, 9 cases). Same shape and same caller contract as
+    _fetch_unverified_related_judgments above -- merged into the SAME 'unverified_related_judgments'
+    list both renderers already display, tagged source='pilot_wider_tier' so it's distinguishable
+    from the vaquill pool in code, though shown under the same honest 'read carefully' heading (this
+    pool's cases had their identity confirmed -- real names/dates checked against the real file --
+    but not the full legal-content review the 46 curated cases get, so the same caution applies).
+
+    The 'ik_search_url' field is reused to carry this pool's REAL, human-verified Supreme-Court-of-
+    India link (not an Indian Kanoon search page) -- deliberately reusing the existing field rather
+    than adding a new one, so both renderers work with zero changes. paragraph_number is carried
+    through only when pilot_tier_search itself found a genuine one (never invented here).
+
+    Same fail-open contract as the vaquill fetch: any failure (missing pilot_chunks/, missing
+    embeddings, import error) is swallowed and returns [] rather than ever risking the real answer
+    this is attached to."""
+    try:
+        import pilot_tier_search
+        results = pilot_tier_search.search_pilot_tier(question)
+    except Exception as exc:  # pragma: no cover - defensive, same as the vaquill fetch above
+        logger.warning("_fetch_pilot_related_judgments: pilot_tier_search failed: %s", exc)
+        return []
+
+    out = []
+    for r in results:
+        if r.get("case_name") in exclude_case_names:
+            continue
+        out.append({
+            "source": "pilot_wider_tier",
+            "case_name": r["case_name"],
+            "ik_search_url": r["source_url"],
+            "paragraph_number": r.get("paragraph_number") if r.get("chunk_method") == "paragraph_number" else None,
+        })
+    return out[:top_k]
+
+
 def _answer_single_match(question, matches):
     """Shared by every branch below that produces a 'single_match' result
     (the main path and both statute-override fallbacks) -- previously each
@@ -2459,6 +2496,9 @@ def _answer_single_match(question, matches):
             "response_text": cached["response_text"],
             "situation_detected": cached["situation_detected"],
             "from_cache": True,
+            "unverified_related_judgments": _fetch_pilot_related_judgments(
+                question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
+            ),
         }
 
     # Runs AFTER the cache check, deliberately: the cache identity
@@ -2476,6 +2516,9 @@ def _answer_single_match(question, matches):
         "response_text": response_text,
         "situation_detected": situation_detected,
         "from_cache": False,
+        "unverified_related_judgments": _fetch_pilot_related_judgments(
+            question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
+        ),
     }
 
 

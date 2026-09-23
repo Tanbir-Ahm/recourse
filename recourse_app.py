@@ -879,7 +879,10 @@ def render_answer(result: dict):
                 for j in unverified:
                     warn = (' &mdash; <span class="r-src">may be a procedural/bail order, not a '
                             'full judgment</span>' if j.get("procedural_disposal") else "")
-                    st.markdown(f'- [{esc(j["case_name"])}]({esc(j["ik_search_url"])}){warn}',
+                    # paragraph_number is only ever set when genuinely earned (see pilot_tier_search.py) --
+                    # never invented here.
+                    para = f' &mdash; <span class="r-src">paragraph {esc(str(j["paragraph_number"]))}</span>' if j.get("paragraph_number") else ""
+                    st.markdown(f'- [{esc(j["case_name"])}]({esc(j["ik_search_url"])}){para}{warn}',
                                 unsafe_allow_html=True)
 
         return bool(result.get("situation_detected"))
