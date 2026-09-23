@@ -2747,6 +2747,9 @@ def answer_question(question, inline_domains=frozenset()):
             "matches": all_matches,
             "response_text": response_text,
             "situation_detected": _looks_like_situation(response_text),
+            "unverified_related_judgments": _fetch_pilot_related_judgments(
+                question, exclude_case_names={m.get("case_name") for m in all_matches if m.get("case_name")}
+            ),
         }
 
     # single_match -- combine statute matches with judgment matches

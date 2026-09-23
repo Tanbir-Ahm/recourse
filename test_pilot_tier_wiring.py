@@ -65,6 +65,31 @@ msg = whatsapp_formatter._format_unverified_judgments([{**FAKE_HIT, "ik_search_u
 check(FAKE_HIT["source_url"] in msg and "Prabhu" in msg, "the WhatsApp renderer displays the real case + real link with zero changes needed")
 check("paragraph 12" in msg.lower() or "¶12" in msg, "the WhatsApp message includes the specific paragraph when the entry carries one")
 
+# ---------------------------------------------------------------- 5. answer_question end to end: EVERY branch that
+# shares the single_match/conflicting_matches renderer must carry the field, not just _answer_single_match itself.
+# CONFIRMED REAL FAILURE (2026-09-23, live site): a real question landed on the 'conflicting_matches' branch of
+# answer_question (a separate return statement, never routed through _answer_single_match), so
+# unverified_related_judgments was silently absent from the response entirely -- not empty, MISSING -- and the
+# pilot tier never got a chance to run. Both renderers treat 'single_match' and 'conflicting_matches' identically
+# (recourse_app.py / whatsapp_formatter.py both check `state in ("single_match", "conflicting_matches")`), so both
+# must expose the same field.
+from unittest.mock import MagicMock
+
+with patch("chat_assistant.classify_scope", return_value=("in_scope", None, None)), \
+     patch("chat_assistant._find_relevant_sections_for_turn", return_value={
+         "state": "conflicting_matches",
+         "matches": [{"case_name": None, "act": "BNS", "section_number": "117", "text": "grievous hurt text"}],
+         "judgment_matches": [],
+     }), \
+     patch("chat_assistant.generate_grounded_response", return_value="a grounded answer"), \
+     patch("chat_assistant._fetch_pilot_related_judgments", return_value=[{"case_name": "State of Uttar Pradesh v Ram Kishan"}]) as fake_fetch:
+    result = chat_assistant.answer_question("some question that produces conflicting matches")
+    check(result.get("state") == "conflicting_matches", "sanity: this test actually exercises the conflicting_matches branch")
+    check("unverified_related_judgments" in result, "conflicting_matches carries the SAME field single_match does -- not silently missing")
+    check(result.get("unverified_related_judgments") == [{"case_name": "State of Uttar Pradesh v Ram Kishan"}],
+          "the pilot tier's real result reaches the conflicting_matches response, not just single_match")
+    check(fake_fetch.called, "_fetch_pilot_related_judgments is actually invoked on the conflicting_matches path")
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED")
