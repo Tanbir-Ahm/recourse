@@ -306,7 +306,13 @@ def draft_promotion(case_name: str, citation: str, full_text: str, chunks: list)
 # Cases already promoted into chunks/ + judgment_doctrine_map.py by hand (see that module's
 # verified_note for each) -- kept here so a re-run of the batch doesn't waste an API call re-
 # drafting a case someone already read in full and promoted. Update this set as more get promoted.
-_ALREADY_PROMOTED_STEMS = {"jagrup_singh_v_state_of_haryana"}
+_ALREADY_PROMOTED_STEMS = {
+    "jagrup_singh_v_state_of_haryana",
+    "anwarul_haq_v_state_of_uttar_pradesh",
+    "nanda_gopalan_v_state_of_kerala",
+    "prabhu_v_state_of_madhya_pradesh",
+    "pravat_chandra_mohanty_v_state_of_odisha",
+}
 
 
 def _run_all_pilot_cases():

@@ -835,6 +835,177 @@ JUDGMENT_DOCTRINE_MAP = {
             "verbatim in their chunk files. Added 2026-09-08."
         ),
     },
+    # ---- grievous hurt / dangerous weapon: non-recovery of weapon, what counts as "dangerous" ----
+    "weapon_not_recovered_does_not_defeat_conviction": {
+        "case_key": "anwarul_haq",
+        "paragraph_numbers": ["2"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("knife", "not recovered"), ("weapon", "not recovered"), ("weapon", "never found"),
+            ("knife", "never found"), ("weapon", "never recovered"), ("knife", "not found"),
+            ("stabbed", "weapon not recovered"), ("dangerous weapon", "not proven"),
+            ("was it a dangerous weapon",), ("eyewitness", "weapon not recovered"),
+            ("conviction", "weapon not found"), ("stabbing", "no weapon recovered"),
+            ("knife attack", "no weapon"), ("police never found", "knife"),
+            ("police never found", "weapon"), ("nature of the instrument",),
+        ],
+        "context_note": (
+            "PROMOTED 2026-09-24 from the pilot pool to this fully-verified corpus, after "
+            "independent review found the tool's own draft accurate but incomplete -- see "
+            "verified_note. In Anwarul Haq v State of Uttar Pradesh, (2005) the Supreme Court "
+            "upheld a conviction under Section 324 of the IPC (voluntarily causing hurt by a "
+            "dangerous weapon, now BNS Section 118) for a knife attack, holding that the knife "
+            "never being recovered during investigation does NOT by itself discredit eyewitness "
+            "testimony describing its use, especially when the medical evidence of the injuries "
+            "corroborates it. On what makes something a 'dangerous weapon': the expression 'an "
+            "instrument... likely to cause death' should be construed with reference to the "
+            "NATURE of the instrument, not the manner of its use. The Court also declined to "
+            "consider a 'this wasn't proven to be a dangerous weapon' argument raised for the "
+            "first time on appeal, since it was never raised before the trial court or High "
+            "Court."
+        ),
+        "verified_note": (
+            "Read in full (all 3 pages, pilot_corpus/anwarul_haq_v_state_of_uttar_pradesh.json) at "
+            "the user's request, reviewing judgment_promotion_assistant.py's draft for this case. "
+            "The tool's own verified quote (the non-recovery-of-weapon passage) checked out "
+            "accurately, but independent review found the draft had missed a second, genuinely "
+            "useful sentence in the SAME chunk -- the 'nature of the instrument, not manner of "
+            "use' test -- so both are included here rather than just the one the tool selected. "
+            "paragraph_number '2' is the chunker's label, not a real numbered judgment paragraph "
+            "-- this 2005 judgment has no real paragraph numbering; the chunker's heuristic "
+            "latched onto the doctor's own injury list ('1.', '2.') instead. The label still "
+            "resolves correctly via get_judgment_paragraphs, confirmed by test. Both target "
+            "sentences read verbatim in "
+            "chunks/anwarul_haq_v_state_of_uttar_pradesh_chunks.json. Citation: Appeal (Crl.) "
+            "625-626 of 2005. IPC 324 -> BNS 118 confirmed via "
+            "statute_concordance.to_new('IPC','324') and cross-checked against BNS 118's real "
+            "text (retrieval.get_statute_section) -- the wording is near-identical, a direct "
+            "renumbering, not a substantive change."
+        ),
+    },
+    "compromise_cannot_compound_grievous_hurt_but_can_reduce_sentence": {
+        "case_key": "nanda_gopalan",
+        "paragraph_numbers": ["fallback_4"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("compromise", "324"), ("compromise", "326"), ("settled", "grievous hurt"),
+            ("compromise", "grievous hurt"), ("compound", "324"), ("compound", "326"),
+            ("settle", "assault case"), ("settle", "grievous hurt"),
+            ("drop the case", "compromise"), ("withdraw the case", "compromise"),
+            ("victim", "wants to withdraw", "grievous hurt"),
+            ("reduce", "sentence", "compromise"), ("made up", "reduce", "punishment"),
+            ("relative", "settled", "assault"), ("we settled", "punishment"),
+        ],
+        "context_note": (
+            "In Nanda Gopalan v State of Kerala, (2015) the Supreme Court held that offences under "
+            "Sections 324 and 326 of the IPC (now BNS Sections 118(1) and 118(2)) are "
+            "NON-COMPOUNDABLE -- a private compromise between the parties cannot make the case go "
+            "away, since Section 320 of the CrPC (now Section 359 of the BNSS) exhaustively lists "
+            "which offences may be compounded and by whom, with no scope for a court to add to that "
+            "list on its own. However, a genuine compromise -- especially between close relatives -- "
+            "CAN still be taken into account to reduce the sentence actually imposed, even though "
+            "the conviction itself must stand. This case independently reaffirmed, quoting them "
+            "verbatim, two other holdings already in this tool's sources: Mathai v State of Kerala's "
+            "'dangerous weapon' test, and Anwarul Haq v State of Uttar Pradesh's rule that the "
+            "'was this a dangerous weapon' argument must be raised at trial, not for the first time "
+            "on appeal."
+        ),
+        "verified_note": (
+            "Read in full (all 11 pages, pilot_corpus/nanda_gopalan_v_state_of_kerala.json) at the "
+            "user's request, reviewing judgment_promotion_assistant.py's draft. The draft's quote "
+            "and summary checked out fully accurate on independent review -- unlike Anwarul Haq, "
+            "nothing important was found missing, so this is promoted with the single quote "
+            "originally drafted. Notably well-corroborated: the judgment itself quotes Mathai v "
+            "State of Kerala's paragraphs 16-17 and Anwarul Haq's paragraphs 11-14 verbatim, "
+            "independently reaffirming both as good law as of 2015. Quote reads verbatim in "
+            "chunks/nanda_gopalan_v_state_of_kerala_chunks.json. Citation: Criminal Appeal No. 714 "
+            "of 2015 (arising out of SLP (Crl.) No. 431 of 2015). IPC 324 -> BNS 118(1), IPC 326 -> "
+            "BNS 118(2), both confirmed via statute_concordance.to_new(), both direct renumberings "
+            "with no substantive change flagged."
+        ),
+    },
+    "what_makes_a_weapon_dangerous_for_grievous_hurt": {
+        "case_key": "prabhu",
+        "paragraph_numbers": ["13"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("dangerous weapon", "stick"), ("dangerous weapon", "lathi"),
+            ("dangerous weapon", "grievous hurt"), ("is a stick", "dangerous weapon"),
+            ("does a stick count", "weapon"), ("what counts as", "dangerous weapon"),
+            ("326", "dangerous weapon"), ("weapon used", "grievous hurt"),
+            ("hit with a stick", "326"), ("beaten with", "lathi"),
+            ("only knives", "dangerous weapon"), ("deadly weapon",),
+        ],
+        "context_note": (
+            "In Prabhu v State of Madhya Pradesh, (2008) the Supreme Court set out the real test "
+            "for what makes a weapon 'dangerous' under Section 326 of the IPC (now BNS Section "
+            "118(2), voluntarily causing grievous hurt by dangerous weapons or means): there is NO "
+            "fixed or earmarked category of 'dangerous weapon' -- whether an object (a stick, a "
+            "lathi, anything) qualifies depends entirely on the facts of the case, including "
+            "factors like the weapon's size and sharpness and how the injury was actually caused. "
+            "The essential ingredients to attract this offence are: (1) hurt was voluntarily "
+            "caused; (2) the hurt qualifies as grievous hurt; and (3) it was caused by a weapon or "
+            "means that is genuinely dangerous on the facts. This directly follows and cites Mathai "
+            "v State of Kerala's own reasoning on the same point."
+        ),
+        "verified_note": (
+            "Read in full (all 8 pages, pilot_corpus/prabhu_v_state_of_madhya_pradesh.json) at the "
+            "user's request. The draft's quote and summary checked out fully accurate -- promoted "
+            "with the single quote as originally drafted, same as Nanda Gopalan. Same judge (Dr. "
+            "Arijit Pasayat) as Anwarul Haq; this judgment explicitly names Mathai v State of "
+            "Kerala as the source of its reasoning, a further independent corroboration of "
+            "Mathai's continued good-law status. Note (not added to this entry, a different topic): "
+            "Prabhu's own individual liability turned on a common-intention point -- the "
+            "prosecution failed to prove he shared his co-accused's intention to kill, only "
+            "knowledge that grievous hurt was likely, similar in spirit to Ram Kishan's fact "
+            "pattern (not yet promoted). Quote reads verbatim in "
+            "chunks/prabhu_v_state_of_madhya_pradesh_chunks.json. Citation: Criminal Appeal No. "
+            "1956 of 2008. IPC 326 -> BNS 118(2), IPC 34 -> BNS 3(5), both confirmed via "
+            "statute_concordance.to_new(), no substantive change flagged for either."
+        ),
+    },
+    "compounding_not_automatic_for_custodial_or_public_office_offences": {
+        "case_key": "pravat_chandra_mohanty",
+        "paragraph_numbers": ["30"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("police", "compound", "324"), ("police", "compensation", "compound"),
+            ("custody", "compound"), ("custodial", "compound"),
+            ("officer", "offering", "compensation", "settle"),
+            ("compound", "public servant"), ("compound", "abuse of power"),
+            ("settle", "case", "police officer"), ("compensation", "drop the case", "police"),
+            ("court", "let", "settled", "compound"), ("leave to compound",),
+        ],
+        "context_note": (
+            "In Pravat Chandra Mohanty v State of Odisha, (2021) two police officers had beaten a "
+            "man to death in custody; convicted under Section 324 IPC (now BNS Section 118(2)), "
+            "they later offered compensation and sought to have the offence compounded (settled) "
+            "under Section 320 of the CrPC (now Section 359 of the BNSS). The Supreme Court "
+            "REFUSED, holding that the grant of leave to compound under Section 320(5) is not "
+            "automatic or mechanical just because the accused and the victim's family agree -- the "
+            "Court has a clear duty to independently weigh the nature of the offence and its "
+            "effect on society first. Custodial violence by a public servant is exactly the kind "
+            "of grave, public-interest offence this applies to: 'when the protector of people and "
+            "society himself... adopts brutality... it is a matter of great public concern' -- an "
+            "abuse of public office is not simply a private dispute the parties can settle away."
+        ),
+        "verified_note": (
+            "Read in full (all 35 pages, pilot_corpus/pravat_chandra_mohanty_v_state_of_odisha."
+            "json) at the user's request. The draft's central factual claim -- that this is a "
+            "genuine custodial-death case, not an embellishment -- was independently confirmed "
+            "(paragraph 14's quoted FIR, and paragraphs 36/40's own description of the accused as "
+            "the police-station in-charge and a Senior Inspector). The draft's quote and summary "
+            "checked out fully accurate; promoted with the single quote as originally drafted. "
+            "NOTE: this case also reduces the sentence (1 year to 6 months) citing the settlement "
+            "as a mitigating factor even after refusing to compound (paragraphs 41-43) -- "
+            "deliberately NOT added as a second paragraph here, since that exact point is already "
+            "covered by the Nanda Gopalan v State of Kerala entry promoted the same session; citing "
+            "it again here would be redundant, not additive. Quote reads verbatim in "
+            "chunks/pravat_chandra_mohanty_v_state_of_odisha_chunks.json. Citation: Criminal Appeal "
+            "No. 125 of 2021. IPC 324 -> BNS 118(2) confirmed via statute_concordance.to_new(), no "
+            "substantive change flagged."
+        ),
+    },
     # ---- murder vs. culpable homicide: sudden fight, no premeditation ----
     "sudden_fight_no_premeditation_reduces_murder_to_culpable_homicide": {
         "case_key": "jagrup_singh",
