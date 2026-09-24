@@ -835,6 +835,57 @@ JUDGMENT_DOCTRINE_MAP = {
             "verbatim in their chunk files. Added 2026-09-08."
         ),
     },
+    # ---- murder vs. culpable homicide: sudden fight, no premeditation ----
+    "sudden_fight_no_premeditation_reduces_murder_to_culpable_homicide": {
+        "case_key": "jagrup_singh",
+        "paragraph_numbers": ["fallback_2", "fallback_8"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("sudden fight",), ("sudden quarrel",), ("sudden scuffle",),
+            ("heat of the moment", "died"), ("heat of the moment", "death"),
+            ("heat of passion",), ("without premeditation",), ("no premeditation",),
+            ("without any premeditation",), ("not premeditated",),
+            ("single blow", "died"), ("single blow", "death"),
+            ("one blow", "died"), ("solitary blow",),
+            ("hit him once",), ("hit her once",),
+            ("struck him once",), ("struck her once",),
+            ("no weapon", "sudden", "died"), ("no weapon", "quarrel", "died"),
+            ("unplanned", "fight", "died"), ("spur of the moment", "died"),
+            ("no intention to kill", "sudden"), ("exception 4",),
+        ],
+        "context_note": (
+            "PROMOTED 2026-09-24 from the pilot (wider, not-independently-reviewed) judgment pool "
+            "to this fully-verified corpus, after being personally read in full and confirmed -- see "
+            "verified_note below for what that review found. In Jagrup Singh v State of Haryana, "
+            "1981 AIR 1552 / [1981] 3 S.C.R. 839, the Supreme Court reduced a murder conviction to "
+            "culpable homicide not amounting to murder where the accused struck a single blow with "
+            "the blunt side of a farm tool, in a sudden fight at a wedding, with no prior "
+            "premeditation and no clearly established motive. It held that where an act causing "
+            "death happens 'in the heat of the moment, without pre-meditation and in a sudden "
+            "fight', and the accused did not take undue advantage of the situation or act in a "
+            "cruel or unusual manner, the case falls under Exception 4 to murder (BNS Section 101 -- "
+            "then IPC Section 300) -- the offence is culpable homicide not amounting to murder (BNS "
+            "Section 105, verified via statute_concordance.to_new('IPC','304') -- then IPC Section "
+            "304 Part II), not murder. The Court was equally clear this is NOT an automatic rule: it "
+            "expressly rejected the idea that a single blow on a vital part of the body always "
+            "reduces the offence -- the real intention must still be gathered from the weapon used, "
+            "the part of the body struck, the force used, and the surrounding circumstances of each "
+            "case."
+        ),
+        "verified_note": (
+            "Read in full (all 8 pages, pilot_corpus/jagrup_singh_v_state_of_haryana.json) at the "
+            "user's request, after a live chat answer had described this case (hedged, via the "
+            "pilot-tier mechanism) as dealing with whether a sudden, unpremeditated blow falls under "
+            "the sudden-fight exception. Confirmed: it does, and the description was accurate. "
+            "Paragraph slugs 'fallback_2' (the headnote's own HELD summary, containing 'all the "
+            "requirements of Exception 4') and 'fallback_8' (the Court's final operative order, "
+            "containing the actual alteration of the conviction from s.302 to s.304 Part II) read "
+            "verbatim in chunks/jagrup_singh_v_state_of_haryana_chunks.json -- promoted from "
+            "pilot_chunks/ of the same name (embedding field stripped; the embeddings that made this "
+            "case findable at all live separately, unaffected). Citation [1981] 3 S.C.R. 839. Added "
+            "2026-09-24."
+        ),
+    },
     "default_bail_oral_application_enough_and_courts_duty": {
         "case_key": "rakesh_kumar_paul",
         "paragraph_numbers": [
