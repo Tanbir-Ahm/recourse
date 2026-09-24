@@ -15,6 +15,7 @@ Contract:
   path -- it is proven correct in isolation before anything wires it in.
 Run: python -X utf8 test_pilot_tier_search.py
 """
+import os
 import sys
 
 FAILURES = []
@@ -121,7 +122,8 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 
 # ---------------------------------------------------------------- 6. loading the real 9-case pool (built earlier) doesn't crash
 try:
-    real_pool = p.load_pilot_pool(r"C:\Users\reeti\OneDrive\Documents\My Project\pilot_chunks")
+    real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
+    real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
     check(n_cases == 9 and len(real_pool) > 9, f"the real pilot pool loads chunks spanning all 9 cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),

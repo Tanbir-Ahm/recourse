@@ -48,12 +48,13 @@ checks below also cost real API calls, one per question.
 Run with: python test_chat_domain_handoff.py
 """
 
+import os
 import sys
 
 from chat_assistant import classify_scope, answer_question
 from streamlit.testing.v1 import AppTest
 
-APP_PATH = r"C:\Users\reeti\OneDrive\Documents\My Project\app.py"
+APP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py")
 
 FAILURES = []
 
