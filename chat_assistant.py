@@ -401,7 +401,7 @@ The person's question:
 
 The legal information relevant to it (statute text and court judgments) -- present this as your own direct knowledge of the law:
 {retrieved_text}
-
+{pilot_context}
 Write the answer now, following the shape and length rules above."""
 
 
@@ -409,6 +409,58 @@ _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE wi
   "**If [scenario 1, naming the exact section]:** [what applies]"
   "**If [scenario 2, naming the exact section]:** [what applies]"
   Make the fork in the law visually obvious, not something the reader has to infer from careful reading."""
+
+
+# Bound on how much of a single pilot-tier chunk's raw text reaches the prompt. Not a hard technical
+# limit (max_tokens=4000 on the response leaves plenty of room) -- purely to keep a "describe this
+# briefly" reference proportionate to a passage the model was never asked to analyse deeply, the same
+# spirit as the 900-character excerpt bound used elsewhere for display (recourse_app.py's
+# _clean_excerpt). A chunk longer than this is genuinely a body of text to READ, not to casually
+# gesture at in one sentence, so truncating is the honest choice, not a technical shortcut.
+_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK = 1200
+
+
+def _format_pilot_context_for_prompt(pilot_matches) -> str:
+    """ADDED 2026-09-24, at the user's explicit request after reviewing the alternative (a pilot-
+    tier case shown only as a separate, un-integrated 'you might also want to check' link): lets
+    generate_grounded_response DESCRIBE one of these wider-pool cases in its own prose ("a similar
+    case, X v Y, discusses...") instead of the answer and the pilot pool staying two disconnected
+    things. Kept as its own function, its own clearly-labeled prompt section, and its own
+    deterministic backstop (_find_pilot_tier_overreach) -- never merged into `matches` /
+    format_retrieved_text_for_prompt's output, which also drives the "Read the source" UI section,
+    the answer-cache identity, and record_candidate's approval queue. Pilot-tier material must never
+    silently gain that same weight.
+
+    The instructions below are deliberately explicit and repeated (both here and in
+    RESPONSE_GENERATION_PROMPT's own hard rules would be redundant to also touch, so this function
+    carries the full instruction on its own): this is the one place in the prompt where the model is
+    told a case may be named but NOT relied on -- the opposite default from every other case reaching
+    this prompt, where naming a case implies its excerpt IS trustworthy. _find_pilot_tier_overreach
+    is the real safety net if the instruction alone doesn't hold; this text exists to make that
+    retry rare, not to be the only thing standing between an unverified claim and a real person.
+
+    Returns "" (nothing added to the prompt) when there is no pilot material -- the common case --
+    so every existing call site that doesn't pass pilot_matches is completely unaffected."""
+    if not pilot_matches:
+        return ""
+    blocks = []
+    for m in pilot_matches:
+        text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        citation = f" ({m['citation']})" if m.get("citation") else ""
+        blocks.append(f"[WIDER POOL -- NOT INDEPENDENTLY VERIFIED: {m['case_name']}{citation}]\n{text}")
+    return (
+        "\n\n## A wider, less-reviewed case pool -- use carefully\n"
+        "The case(s) below were found by an automatic search of Supreme Court judgments. Each one's "
+        "document is confirmed to be a real, genuine judgment, but -- UNLIKE every source above -- "
+        "nobody has read it to confirm what it actually decides. You MAY mention one of them by name, "
+        "purely descriptively, as something the person could look into themselves (e.g. \"a similar "
+        "case, X v Y, discusses a comparable situation\" or \"you may also want to look at X v Y\"). "
+        "You must NEVER say it \"held\", \"holds\", \"ruled\", \"shows\", \"establishes\", "
+        "\"illustrates\", or \"demonstrates\" anything, and NEVER use it to support or state any "
+        "conclusion about the person's own situation -- treat everything below as unread, not as "
+        "authority. If you don't have a clear, safe, purely descriptive way to mention one, simply "
+        "don't -- omitting it is always fine.\n\n" + "\n\n".join(blocks) + "\n"
+    )
   
   
 # ---------------------------------------------------------------------
@@ -498,6 +550,10 @@ IMPORTANT CORRECTION: your previous answer to this exact question omitted Sectio
 
 _UNSUPPORTED_GENERALIZATION_RETRY_INSTRUCTION = """
 IMPORTANT CORRECTION: your previous answer made a claim about what {cases} "illustrates" or "shows" that is NOT supported by the excerpt you were actually given for it -- the excerpt only contains background facts (what a party alleged), not a court's own reasoning or ruling on that point. Write a new, complete answer from scratch, and either drop this case entirely or describe it only as what the excerpt literally shows (facts a party alleged, not a court's finding), following all the same rules."""
+
+
+_PILOT_OVERREACH_RETRY_INSTRUCTION = """
+IMPORTANT CORRECTION: your previous answer treated {cases} -- a case from the WIDER, NOT INDEPENDENTLY VERIFIED pool -- as authority: it used words like "held", "shows", "establishes", or similar to state what the case decided, or used it to support a conclusion about the person's own situation. Nobody has confirmed what this case actually holds, so it may NEVER be described this way. Write a new, complete answer from scratch, and either drop {cases} entirely or mention it only as a similar-sounding case the person could look into themselves (e.g. "a similar case, {cases}, discusses a comparable situation"), never as something that "held", "ruled", "shows", "establishes", "illustrates", or proves anything, following all the same rules."""
 
 
 _COURT_MISATTRIBUTION_RETRY_INSTRUCTION = """
@@ -680,7 +736,15 @@ def _find_missing_companion_sections(response_text: str, section_act_map: dict) 
 # opposed to plainly reporting facts from it. Deliberately narrow --
 # only the phrasing that asserts a broader legal proposition, not every
 # mention of a case.
-_CASE_GENERALIZATION_PAT = re.compile(r"\b(illustrates?|shows? that|demonstrates?|establishes?)\b", re.IGNORECASE)
+# Widened 2026-09-24 (found while building _find_pilot_tier_overreach below) to also catch the
+# past-tense form of each verb ("established", "illustrated", ...) -- the original only matched the
+# present tense, so a retry response like "the Court established that..." slipped through both this
+# check and the new pilot-tier one entirely. Strictly additive: only adds matches, never removes any
+# existing one, so it cannot make either check less sensitive.
+_CASE_GENERALIZATION_PAT = re.compile(
+    r"\b(illustrates?|illustrated|shows?\s+that|showed\s+that|demonstrates?|demonstrated|"
+    r"establishes?|established)\b", re.IGNORECASE
+)
 
 # Language that indicates the retrieved excerpt is actually reporting
 # the COURT's own reasoning/ruling, not just a party's allegation or
@@ -747,6 +811,68 @@ def _find_unsupported_case_generalizations(response_text: str, matches) -> list:
         if len(first_party) < 4 or first_party.lower() not in response_lower:
             continue
         if not _HOLDING_LANGUAGE_PAT.search(" ".join(texts)):
+            flagged.append(name)
+    return flagged
+
+
+# Combined pattern for the pilot-tier overreach check below: EITHER the generalization language
+# (illustrates/shows that/...) OR the holding language (held/ruled/...) is enough to flag a pilot
+# case, unlike _find_unsupported_case_generalizations above which only checks the former (the
+# latter is checked separately, against the excerpt, for core-corpus cases).
+_PILOT_OVERREACH_PAT = re.compile(
+    _CASE_GENERALIZATION_PAT.pattern + r"|" + _HOLDING_LANGUAGE_PAT.pattern, re.IGNORECASE
+)
+
+
+def _find_pilot_tier_overreach(response_text: str, pilot_matches) -> list:
+    """ADDED 2026-09-24, at the user's explicit request to let generate_grounded_response describe
+    a pilot-tier (wider, NOT independently reviewed) judgment in its prose instead of only listing
+    it separately -- see _format_pilot_context_for_prompt's docstring for the full feature. This is
+    the deterministic backstop for the one real risk that request carries: unlike a core-corpus
+    case, NOBODY has read a pilot-tier case to confirm what it actually decides, only that its PDF
+    is a real, identity-matched Supreme Court document. If the model is allowed to say "as held in
+    X" or "X illustrates Y" about one, an unverified claim reaches a real person in a real arrest
+    situation with the same confident phrasing as a fully-reviewed source.
+
+    Deliberately STRICTER than _find_unsupported_case_generalizations: that check only flags
+    generalization language when the case's own excerpt does NOT support it (a core-corpus case
+    WITH real holding language in its excerpt is allowed to be described that way). A pilot-tier
+    case is flagged for using EITHER generalization language (illustrates/shows that/demonstrates/
+    establishes) OR holding language (held/ruled/directed/concluded/found that) tied to its name,
+    with NO excerpt-support exception at all -- because the excerpt itself was never reviewed for
+    whether it's representative of the case's real holding, so nothing about it can excuse treating
+    it as authority.
+
+    A purely descriptive mention ("a similar case, X v Y, discusses a comparable situation") is
+    never flagged -- this guards against ASSERTING what a pilot case decided or stands for, not
+    against naming it at all, same spirit as the core-corpus check.
+
+    Returns the list of pilot case names whose mention overreaches. Treated as a HARD check in
+    generate_grounded_response (like an ungrounded section, not a soft completeness gap like the
+    core-corpus generalization check): a retry is attempted, and if the retry still overreaches,
+    the whole answer is discarded (returns None) -- the same honest 'give up' signal already used
+    for a wrong cognizable/bailable claim or a wrong court, never a partially-trusted answer."""
+    if not response_text or not pilot_matches:
+        return []
+    by_case = {}
+    for m in pilot_matches:
+        name = m.get("case_name")
+        if name:
+            by_case.setdefault(name, True)
+
+    flagged = []
+    response_lower = response_text.lower()
+    for name in by_case:
+        # Checks BOTH parties, not just the first (unlike the core-corpus check above): several
+        # pilot cases are STATE-initiated appeals ("State of Uttar Pradesh v Ram Kishan"), where the
+        # first party is the generic, rarely-said-aloud one and the SECOND party is the name a real
+        # answer -- or a real person reading one -- would actually use. Checking only the first party
+        # would be a false NEGATIVE here (the dangerous direction for a safety check: missing a real
+        # overreach), not the safe-by-construction false positive the core-corpus check tolerates.
+        parties = [p.strip() for p in re.split(r"\s+vs?\.?\s+", name, flags=re.IGNORECASE) if len(p.strip()) >= 4]
+        if not any(p.lower() in response_lower for p in parties):
+            continue
+        if _PILOT_OVERREACH_PAT.search(response_text):
             flagged.append(name)
     return flagged
 
@@ -1164,11 +1290,26 @@ def _find_unverified_contact_numbers(response_text: str, question: str, retrieve
     return problems
 
 
-def generate_grounded_response(question, retrieved_text, is_conflict=False, model=SONNET_MODEL, matches=None):
+def generate_grounded_response(question, retrieved_text, is_conflict=False, model=SONNET_MODEL, matches=None,
+                                pilot_matches=None):
     """Generates a plain-language answer using ONLY the given retrieved
     text. Returns None if the generation call fails -- callers should
     fall back to showing the raw retrieved text directly rather than
     inventing a summary.
+
+    pilot_matches: ADDED 2026-09-24, at the user's explicit request. Entries from the wider,
+    NOT-fully-reviewed pilot judgment pool (pilot_tier_search.py) -- see
+    _format_pilot_context_for_prompt's docstring for the full feature and why this is a separate
+    parameter, never merged into `matches`. Optional and defaults to None, so every existing call
+    site that doesn't pass it behaves exactly as before -- no pilot section is added to the prompt
+    and the new overreach check below is a guaranteed no-op.
+
+    PILOT-TIER OVERREACH VERIFICATION (added 2026-09-24): when pilot_matches is given, separately
+    checks that the answer never treats one of them as authority -- via
+    _find_pilot_tier_overreach(). See that function's docstring for why this is a HARD check (like
+    the grounding/mismatch checks), not a soft completeness gap: nobody has reviewed a pilot-tier
+    case's substance, so a confident "as held in X" about one is an unverified claim reaching a real
+    person, not a nuance to tolerate.
  
     is_conflict: set True when called for a 'conflicting_matches' result,
     so the prompt explicitly instructs the model to structure its answer
@@ -1267,24 +1408,26 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
     and mismatch checks -- a fabricated contact number is a real, checked
     fact, not a nuance.
 
-    Any of the seven problems triggers ONE combined retry with an
+    Any of the eight problems triggers ONE combined retry with an
     explicit correction. If the retry still has an ungrounded section, a
-    cognizable/bailable mismatch, a missing Act name, a wrong court, or
-    an unverified contact number, returns None -- the same "give up
-    honestly" signal already used for a failed API call, so callers fall
-    back to showing the raw retrieved text rather than ever displaying a
-    claim that could not be verified. The three completeness-only checks
-    (missing companion sections, unsupported case generalizations, and
-    the cognizable/bailable omission check) never trigger this -- an
-    answer that is merely incomplete is still shown, only one that is
-    actively wrong or unverifiable is discarded."""
+    cognizable/bailable mismatch, a missing Act name, a wrong court, an
+    unverified contact number, or a pilot-tier case treated as authority,
+    returns None -- the same "give up honestly" signal already used for a
+    failed API call, so callers fall back to showing the raw retrieved
+    text rather than ever displaying a claim that could not be verified.
+    The three completeness-only checks (missing companion sections,
+    unsupported case generalizations, and the cognizable/bailable
+    omission check) never trigger this -- an answer that is merely
+    incomplete is still shown, only one that is actively wrong or
+    unverifiable is discarded."""
     if client is None:
         return None
     try:
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
+        pilot_context = _format_pilot_context_for_prompt(pilot_matches)
         prompt = RESPONSE_GENERATION_PROMPT.format(
             question=question, retrieved_text=retrieved_text,
-            conflict_instruction=conflict_instruction,
+            conflict_instruction=conflict_instruction, pilot_context=pilot_context,
         )
         response = client.messages.create(
             model=model,
@@ -1311,9 +1454,10 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         court_misattributions = _find_court_misattributions(response_text, matches)
         omissions = _find_cognizable_bailable_omissions(response_text, variants)
         unverified_contacts = _find_unverified_contact_numbers(response_text, question, retrieved_text)
+        pilot_overreach = _find_pilot_tier_overreach(response_text, pilot_matches)
 
         if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
-                or court_misattributions or omissions or unverified_contacts):
+                or court_misattributions or omissions or unverified_contacts or pilot_overreach):
             retry_prompt = prompt
             if ungrounded:
                 retry_prompt += _UNGROUNDED_RETRY_INSTRUCTION.format(sections=", ".join(ungrounded))
@@ -1347,6 +1491,8 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 retry_prompt += _UNVERIFIED_CONTACT_RETRY_INSTRUCTION.format(
                     numbers=", ".join(unverified_contacts)
                 )
+            if pilot_overreach:
+                retry_prompt += _PILOT_OVERREACH_RETRY_INSTRUCTION.format(cases=", ".join(pilot_overreach))
             retry_response = client.messages.create(
                 model=model,
                 max_tokens=4000,  # same thinking-block headroom as the first call
@@ -1366,7 +1512,8 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                     or _find_cognizable_bailable_mismatches(retry_text, variants)
                     or _find_sections_missing_act(retry_text, section_act_map)
                     or _find_court_misattributions(retry_text, matches)
-                    or _find_unverified_contact_numbers(retry_text, question, retrieved_text)):
+                    or _find_unverified_contact_numbers(retry_text, question, retrieved_text)
+                    or _find_pilot_tier_overreach(retry_text, pilot_matches)):
                 return None
             return retry_text
 
@@ -2466,6 +2613,13 @@ def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, top_k
             "case_name": r["case_name"],
             "ik_search_url": r["source_url"],
             "paragraph_number": r.get("paragraph_number") if r.get("chunk_method") == "paragraph_number" else None,
+            # ADDED 2026-09-24: the UI-list renderers only ever read the fields above, but
+            # generate_grounded_response now also needs the raw chunk text (and citation, for
+            # display alongside a descriptive mention) to let the model reference this case in its
+            # prose -- see _format_pilot_context_for_prompt. Purely additive; existing callers that
+            # only read the fields above are unaffected.
+            "citation": r.get("citation"),
+            "text": r.get("text"),
         })
     return out[:top_k]
 
@@ -2507,7 +2661,14 @@ def _answer_single_match(question, matches):
     # FRESH generation gets the richer context.
     matches = _inject_definitional_companions(matches)
     retrieved_text = format_retrieved_text_for_prompt(matches)
-    response_text = generate_grounded_response(question, retrieved_text, matches=matches)
+    # Fetched ONCE, before generation (2026-09-24, at the user's explicit request): reused both to
+    # let generate_grounded_response describe one of these in its prose (pilot_matches=) and to
+    # populate the UI's separate "Other real court cases" list below -- a cached answer above never
+    # sees this, since its response_text was already generated before this feature existed.
+    pilot_matches = _fetch_pilot_related_judgments(
+        question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
+    )
+    response_text = generate_grounded_response(question, retrieved_text, matches=matches, pilot_matches=pilot_matches)
     situation_detected = _looks_like_situation(response_text)
     record_candidate(matches, question, response_text, situation_detected)
     return {
@@ -2516,9 +2677,7 @@ def _answer_single_match(question, matches):
         "response_text": response_text,
         "situation_detected": situation_detected,
         "from_cache": False,
-        "unverified_related_judgments": _fetch_pilot_related_judgments(
-            question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
-        ),
+        "unverified_related_judgments": pilot_matches,
     }
 
 
@@ -2741,15 +2900,19 @@ def answer_question(question, inline_domains=frozenset()):
         all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
         all_matches = _inject_definitional_companions(all_matches)
         retrieved_text = format_retrieved_text_for_prompt(all_matches)
-        response_text = generate_grounded_response(question, retrieved_text, is_conflict=True, matches=all_matches)
+        # Same fetch-once-reuse-twice pattern as _answer_single_match's fresh path above.
+        pilot_matches = _fetch_pilot_related_judgments(
+            question, exclude_case_names={m.get("case_name") for m in all_matches if m.get("case_name")}
+        )
+        response_text = generate_grounded_response(
+            question, retrieved_text, is_conflict=True, matches=all_matches, pilot_matches=pilot_matches
+        )
         return {
             "state": "conflicting_matches",
             "matches": all_matches,
             "response_text": response_text,
             "situation_detected": _looks_like_situation(response_text),
-            "unverified_related_judgments": _fetch_pilot_related_judgments(
-                question, exclude_case_names={m.get("case_name") for m in all_matches if m.get("case_name")}
-            ),
+            "unverified_related_judgments": pilot_matches,
         }
 
     # single_match -- combine statute matches with judgment matches

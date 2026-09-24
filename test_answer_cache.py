@@ -239,7 +239,7 @@ answer_cache.DB_PATH = tempfile.mktemp(suffix=".db")
 _generate_call_count = [0]
 
 
-def _fake_generate(question, retrieved_text, is_conflict=False, model=None, matches=None):
+def _fake_generate(question, retrieved_text, is_conflict=False, model=None, matches=None, pilot_matches=None):
     _generate_call_count[0] += 1
     return "**Right now**\nFresh generated answer."
 
