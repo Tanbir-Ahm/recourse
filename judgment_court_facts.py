@@ -70,6 +70,10 @@ CASE_NAME_TO_COURT = {
     "Malabar Gold and Diamond Limited v Union of India": "Delhi High Court",
     "Neelkanth Pharma Logistics Pvt. Ltd. v Union of India": "Delhi High Court",
 
+    # ---- the 2 curated in ndps_doctrine_map.py (added 2026-09-25) --------
+    "State of Punjab v Baldev Singh": "Supreme Court of India (Constitution Bench)",
+    "Union of India v Md Nawaz Khan": "Supreme Court of India",
+
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------
     "Arnesh Kumar v State of Bihar": "Supreme Court of India",
