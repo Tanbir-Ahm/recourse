@@ -12,12 +12,26 @@ silently carry the same weight as the core library. So this stays its own search
 already used for the domestic-violence Vaquill pool, applied here with real embeddings instead of
 keyword matching.
 
-STATUS: standalone and proven in isolation (test_pilot_tier_search.py). This module has NO
-connection to chat_assistant.py or the live WhatsApp/website answer path -- wiring it in is a
-separate, deliberate step, not done by this file.
+STATUS: wired into chat_assistant.py's _fetch_pilot_related_judgments (live on both the website
+and WhatsApp answer paths) -- this note used to say "NO connection to chat_assistant.py", true
+when this module was first built standalone, stale since that wiring landed 2026-09-23/24 (see
+memory: "Pilot-tier judgment search"). Left uncorrected until a cost-bug investigation
+(2026-09-25) traced a real production issue back through this exact docstring's outdated claim.
+
+CONFIRMED REAL BUG (2026-09-25), found by an independent test-environment review after the NDPS
+pilot pool grew this file's real chunk count from 114 to 678: search_pilot_tier's per-chunk loop
+called _similarity(question, chunk) -- which re-embeds the SAME question string on every single
+iteration via _embed_one, instead of embedding it once and reusing the vector. That meant one
+real user question triggered one live Voyage API call PER CHUNK IN THE POOL (114, now 678) instead
+of one call total -- a real, unbounded-with-corpus-size cost and latency bug in production, not a
+test-only issue. Fixed by caching _embed_one's real implementation with functools.lru_cache,
+keyed on the exact input text -- the least invasive fix available: _similarity's signature, and
+every existing test's wholesale monkeypatch of _embed_one/_similarity (which fully bypasses this
+cache in tests, same as before), are both untouched.
 """
 import glob
 import json
+from functools import lru_cache
 import math
 import os
 
@@ -40,9 +54,16 @@ def load_pilot_pool(chunk_dir: str) -> list:
     return pool
 
 
+@lru_cache(maxsize=256)
 def _embed_one(text: str) -> list:
     """A single real embedding call (Voyage's voyage-law-2, the same model the core corpus uses).
-    Tests replace this with a synthetic stand-in -- never a real API call in a test."""
+    Tests replace this with a synthetic stand-in -- never a real API call in a test.
+
+    Cached by exact input text (2026-09-25 fix) -- search_pilot_tier calls this once per chunk in
+    the pool with the SAME question string every time; without caching that's one live API call
+    per chunk (114, now 678 with the NDPS pilot pool) instead of one call total per search. A test
+    that monkeypatches this function wholesale (p._embed_one = fake_embed) replaces the cache too,
+    so no test behavior changes."""
     import voyageai
     client = voyageai.Client()
     return client.embed([text], model="voyage-law-2", input_type="query").embeddings[0]

@@ -230,9 +230,23 @@ check(
 # Integration: chat_assistant._answer_single_match actually skips the
 # expensive Sonnet call on a cache hit, and behaves identically to before
 # on a miss. generate_grounded_response is mocked -- no real API cost.
+#
+# CONFIRMED REAL BUG (2026-09-25), found by an independent test-environment
+# review: _answer_single_match also calls _fetch_pilot_related_judgments ->
+# pilot_tier_search.search_pilot_tier internally, which was NOT mocked here
+# -- unlike every other test that touches this path (test_pilot_tier_wiring.py,
+# test_pilot_context_in_generation.py both patch "pilot_tier_search.search_
+# pilot_tier"). That meant this "free" test made real, billed Voyage API
+# calls every run -- 228 of them when the pilot pool was 114 chunks (one per
+# chunk per _answer_single_match call, see pilot_tier_search.py's own
+# 2026-09-25 caching fix for why it was that bad), now silently worse again
+# as the pool grows, without this file's own comment ever saying so. Fixed
+# by patching pilot_tier_search.search_pilot_tier the same way the other
+# pilot-tier-aware tests already do.
 # ---------------------------------------------------------------------------
 
 import chat_assistant
+import pilot_tier_search
 
 answer_cache.DB_PATH = tempfile.mktemp(suffix=".db")
 
@@ -244,7 +258,8 @@ def _fake_generate(question, retrieved_text, is_conflict=False, model=None, matc
     return "**Right now**\nFresh generated answer."
 
 
-with patch("chat_assistant.generate_grounded_response", side_effect=_fake_generate):
+with patch("chat_assistant.generate_grounded_response", side_effect=_fake_generate), \
+     patch("pilot_tier_search.search_pilot_tier", return_value=[]):
     result1 = chat_assistant._answer_single_match("My brother stole a goat", [STATUTE_303])
     check(
         result1["state"] == "single_match" and result1.get("from_cache") is False,

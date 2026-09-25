@@ -44,6 +44,35 @@ imported = {n.names[0].name for n in ast.walk(tree) if isinstance(n, (ast.Import
 check("chat_assistant" not in imported and "whatsapp_bot" not in imported,
       "the module does not import chat_assistant or whatsapp_bot -- proven standalone, not wired into the live answer path")
 
+# ---------------------------------------------------------------- 0.5. _embed_one caches by exact text (2026-09-25 cost bug fix)
+# CONFIRMED REAL BUG, found independently 2026-09-25 after the NDPS pilot pool grew this file's
+# real chunk count from 114 to 678: search_pilot_tier's per-chunk loop re-embedded the SAME
+# question string on every iteration (one live Voyage call PER CHUNK instead of one call total per
+# search). Run BEFORE the p._embed_one/p._similarity monkeypatches below (section 2) so this tests
+# the real, undecorated-by-a-test-mock caching behavior of the actual production function.
+class _FakeVoyageClient:
+    call_count = 0
+
+    def embed(self, texts, model, input_type):
+        _FakeVoyageClient.call_count += len(texts)
+        class _Result:
+            embeddings = [[0.1, 0.2, 0.3] for _ in texts]
+        return _Result()
+
+
+import voyageai
+_real_voyage_client_cls = voyageai.Client
+voyageai.Client = _FakeVoyageClient
+p._embed_one.cache_clear()
+_FakeVoyageClient.call_count = 0
+for _ in range(5):
+    p._embed_one("the exact same question text, asked repeatedly")
+check(_FakeVoyageClient.call_count == 1,
+      f"_embed_one caches by exact input text -- 5 calls with the identical string made only 1 "
+      f"real API call, got {_FakeVoyageClient.call_count}")
+p._embed_one.cache_clear()
+voyageai.Client = _real_voyage_client_cls
+
 # ---------------------------------------------------------------- 1. threshold is stricter than the main corpus
 import semantic_retrieval
 check(p.PILOT_TIER_SIMILARITY_THRESHOLD >= semantic_retrieval.JUDGMENT_SIMILARITY_THRESHOLD,
@@ -121,14 +150,18 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
       "the framing is explicitly 'discussed a similar question', not a conclusion about the user's own case")
 
 # ---------------------------------------------------------------- 6. loading the real pilot pool (built earlier) doesn't crash
-# 8, not 9: Mathai Verghese was promoted OUT of this pool (2026-09-25, wrong domain entirely --
-# it's a currency-counterfeiting case, not hurt/assault) and now lives only in the core corpus,
-# under its own judgment_doctrine_map.py entry. See test_mathai_verghese_promotion.py.
+# 16, not 8: 8 NDPS pilot candidates added 2026-09-25 (Track A of the NDPS domain expansion --
+# Tofan Singh, Mohanlal, Vijaysinh Chandubha Jadeja, Noor Aga, Karnail Singh, Mohan Lal v State
+# of Punjab, State of Rajasthan v Parmanand, Union of India v Shiv Shanker Kesari), sourced from
+# api.sci.gov.in links the user supplied directly per the new judgment-sourcing-policy, alongside
+# the original 8 hurt/assault cases (Mathai Verghese was promoted OUT of this pool earlier the
+# same day -- wrong domain entirely, now lives in the core corpus; see
+# test_mathai_verghese_promotion.py).
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 8 and len(real_pool) > 8, f"the real pilot pool loads chunks spanning all 8 remaining cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 16 and len(real_pool) > 16, f"the real pilot pool loads chunks spanning all 16 cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
 except FileNotFoundError:
