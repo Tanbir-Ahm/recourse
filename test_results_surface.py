@@ -4,15 +4,24 @@ test_results_surface.py
 Covers the UX-redesign plumbing (2026-09-02): the audience-split PDFs
 (main._build_kyr_pdf), the plain-language register of layman_summary,
 the freeze/cheque payload -> full_analysis wrapper, and the
-deterministic plain fallback. No API calls (layman_summary's client is
-absent under a bare import, so it returns None and the fallback path is
-what actually runs here).
+deterministic plain fallback. No API calls -- FIXED 2026-09-25 (found by
+an independent cloud-session review): this docstring used to just claim
+"layman_summary's client is absent under a bare import, so it returns
+None", which is only true when no real ANTHROPIC_API_KEY happens to be
+configured in the environment -- an assumption, not a guarantee. In an
+environment where a real key IS ambiently present (e.g. a cloud session
+with secrets configured), generate_layman_summary's real call would
+actually succeed and cost money, silently, contradicting run_tests.py's
+"free means free" default-mode promise. Now main.client is explicitly
+forced to None for that one call, so this file's zero-cost guarantee
+holds regardless of what's configured in the environment it runs in.
 
 Run: python test_results_surface.py
 """
 
 import os
 import sys
+from unittest.mock import patch
 
 import fitz  # pymupdf
 
@@ -86,13 +95,44 @@ check("[Arnesh Kumar" in _format_compliance_for_prompt(_FA["compliance"], keep_c
       "counsel register keeps the [citation] bracket")
 check("{compliance_summary}" in PLAIN_SUMMARY_PROMPT and "{statute_text}" not in PLAIN_SUMMARY_PROMPT,
       "PLAIN_SUMMARY_PROMPT has no statute_text slot (plain path never quotes statute)")
-# the plain register runs end to end (real API if a key is present, else None)
-_plain = generate_layman_summary(_FA["compliance"], _FA["severity"], None,
-                                 offence_name="theft", audience="plain")
-check(_plain is None or (isinstance(_plain, str) and len(_plain) > 20),
-      "generate_layman_summary(audience='plain') returns a string or None, never raises")
-if _plain:
-    low = _plain.lower()
+# the plain register runs end to end -- main.client forced to None (2026-09-25 fix) so this is
+# guaranteed free regardless of what key is ambiently configured in the environment
+with patch("main.client", None):
+    _plain = generate_layman_summary(_FA["compliance"], _FA["severity"], None,
+                                     offence_name="theft", audience="plain")
+check(_plain is None,
+      "generate_layman_summary(audience='plain') returns None when no client is available, never raises")
+
+# the "real string returned" branch, restored with a deterministic fake client (2026-09-25 fix) --
+# forcing main.client to None above means _plain is never a real string, so this branch would
+# otherwise go untested in a free run rather than just untested-with-a-real-key
+class _FakeTextBlock:
+    def __init__(self, text):
+        self.text = text
+
+
+class _FakeMessage:
+    def __init__(self, text):
+        self.content = [_FakeTextBlock(text)]
+
+
+class _FakeAnthropicClient:
+    class messages:
+        @staticmethod
+        def create(**kwargs):
+            return _FakeMessage(
+                "You may be arrested if the police believe the allegation is true. "
+                "You have the right to know why."
+            )
+
+
+with patch("main.client", _FakeAnthropicClient()):
+    _plain_fake = generate_layman_summary(_FA["compliance"], _FA["severity"], None,
+                                          offence_name="theft", audience="plain")
+check(isinstance(_plain_fake, str) and len(_plain_fake) > 20,
+      "with a client available, generate_layman_summary(audience='plain') returns real text")
+if _plain_fake:
+    low = _plain_fake.lower()
     check("section 35" not in low and "arnesh kumar" not in low and "cognizable" not in low,
           "the plain summary carries no section numbers, case names, or jargon")
 

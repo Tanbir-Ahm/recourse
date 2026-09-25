@@ -682,6 +682,11 @@ check(rj._display_worthy({**corpus_cand_for_finality, "content_score": 0.9,
       "a corpus candidate (procedural_disposal always None, never checked) is unaffected by this gate")
 
 # get_related_judgments with pin=True, everything injected
+# CONFIRMED REAL BUG (found by an independent cloud-session review, 2026-09-25): this call site
+# was the one exception among ~7 similar calls in this file that omitted gloss_fn -- pin=True
+# means candidates genuinely carry pinned paragraphs, so gloss_and_verify's gloss_fn=None default
+# fell through to a REAL Sonnet call. Silent because gloss_and_verify swallows gloss exceptions by
+# design (tested elsewhere in this file) -- it never failed loudly, it just quietly cost money.
 with patch("related_judgments._corpus_para_pool", lambda name: []):
     res2 = rj.get_related_judgments(
         "arrested though his name was not in the FIR, and still no chargesheet",
@@ -690,6 +695,7 @@ with patch("related_judgments._corpus_para_pool", lambda name: []):
         decompose_fn=_fake_decompose, ik_search_many_fn=_fake_ik_search_many,
         local_search_fn=_fake_local_search, rerank_fn=_fake_rerank,
         fetch_many_fn=_fake_fetch_many, clean_fn=_fake_clean, today=datetime.date(2026, 9, 3),
+        gloss_fn=lambda situation, paras: "This case dealt with a similar arrest/default-bail situation.",
     )
 check(res2["status"] == "ok", "pin=True full flow returns ok")
 check(any("pinned" in c for c in res2["candidates"]), "candidates carry a 'pinned' field after pin=True")

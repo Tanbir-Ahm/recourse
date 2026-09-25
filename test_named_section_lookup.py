@@ -18,9 +18,18 @@ candidates at all. See semantic_retrieval._named_section_exact_match's
 docstring for the full writeup.
 
 Run with: python test_named_section_lookup.py
+
+COST NOTE, FIXED 2026-09-25 (found by an independent cloud-session review): find_relevant_sections
+always calls the real semantic_search unconditionally, even when the exact-lookup fast path
+already has an answer -- so this file was making real, unmocked Voyage calls on every run. Fixed
+by mocking semantic_search to return None, which is the EXACT scenario the exact-lookup fast path
+was built to handle ("works even with embeddings down", per that function's own docstring) -- so
+this isn't a compromise that weakens the test, it's actually a more precise test of the specific
+resilience property this file exists to guard.
 """
 
 import sys
+from unittest.mock import patch
 
 FAILURES = []
 
@@ -90,33 +99,33 @@ check(hit_bare is not None and hit_bare["section_number"] == "318",
       "a bare 'BNS 318' (no subsection given) keeps the bare number, not a guessed subsection")
 
 
-# ---- end-to-end: find_relevant_sections (real embeddings call) ----
+# ---- end-to-end: find_relevant_sections, semantic_search mocked to None (see COST NOTE above) ----
 
 from semantic_retrieval import find_relevant_sections
 
-r = find_relevant_sections("What are the ingredients for 420 IPC?")
-check(r.get("state") == "single_match",
-      f"420 IPC -> single_match end-to-end (got {r.get('state')!r}), not no_match")
-matches = r.get("matches", [])
-check(len(matches) == 1 and matches[0].get("section_number") == "318(4)",
-      "the single match is BNS 318(4)")
-check(matches[0].get("section_data", {}).get("cognizable") is True
-      and matches[0].get("section_data", {}).get("bailable") is False,
-      "318(4)'s real cognizable=True/bailable=False data comes through (matches old 420's status)")
+with patch("semantic_retrieval.semantic_search", return_value=None):
+    r = find_relevant_sections("What are the ingredients for 420 IPC?")
+    check(r.get("state") == "single_match",
+          f"420 IPC -> single_match end-to-end (got {r.get('state')!r}), not no_match")
+    matches = r.get("matches", [])
+    check(len(matches) == 1 and matches[0].get("section_number") == "318(4)",
+          "the single match is BNS 318(4)")
+    check(matches[0].get("section_data", {}).get("cognizable") is True
+          and matches[0].get("section_data", {}).get("bailable") is False,
+          "318(4)'s real cognizable=True/bailable=False data comes through (matches old 420's status)")
 
-r_bare = find_relevant_sections("What does BNS Section 318 say?")
-check(r_bare.get("state") == "conflicting_matches",
-      f"a bare, genuinely ambiguous 'BNS 318' still surfaces the real subsection fork "
-      f"(got {r_bare.get('state')!r}) -- the fast path must not paper over a real conflict")
+    r_bare = find_relevant_sections("What does BNS Section 318 say?")
+    check(r_bare.get("state") == "conflicting_matches",
+          f"a bare, genuinely ambiguous 'BNS 318' still surfaces the real subsection fork "
+          f"(got {r_bare.get('state')!r}) -- the fast path must not paper over a real conflict")
 
+    # ---- end-to-end: a normal narrative question is untouched by this change ----
 
-# ---- end-to-end: a normal narrative question is untouched by this change ----
-
-r_ordinary = find_relevant_sections(
-    "police arrested my brother at night for a fake instagram account and have not "
-    "told us where he is held")
-check(not any(m.get("exact_section_lookup") for m in r_ordinary.get("matches", [])),
-      "an ordinary narrative question with no named section never triggers the exact-lookup path")
+    r_ordinary = find_relevant_sections(
+        "police arrested my brother at night for a fake instagram account and have not "
+        "told us where he is held")
+    check(not any(m.get("exact_section_lookup") for m in r_ordinary.get("matches", [])),
+          "an ordinary narrative question with no named section never triggers the exact-lookup path")
 
 
 print("\n" + "=" * 70)

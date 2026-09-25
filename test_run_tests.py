@@ -28,13 +28,18 @@ import run_tests as rt
 
 # ---------------------------------------------------------------- 1. the manifest itself
 check(hasattr(rt, "LIVE_API_TEST_FILES"), "run_tests exposes LIVE_API_TEST_FILES")
+# 8, not 6, as of 2026-09-25: test_interview_flow.py and test_niact_sections.py added, both
+# confirmed (by an independent cloud-session review) to make real calls that were never declared
+# to this manifest. Checked as a superset rather than a fixed set, since this list is expected to
+# keep growing as new live-by-design test files get written -- what actually matters is that the
+# ORIGINAL 6, confirmed via real observed run time, are still present, not that the set is frozen.
 EXPECTED_LIVE = {
     "test_chat_domain_handoff.py", "test_whatsapp_bot.py", "test_freeze_chat.py",
     "test_dv_case_leak_guard.py", "test_cheque_bounce_chat.py", "test_chat_grounding.py",
 }
-check(rt.LIVE_API_TEST_FILES == EXPECTED_LIVE,
-      f"the manifest matches the 6 files confirmed (via real observed run time, not a guess) to "
-      f"make live API calls -- got {rt.LIVE_API_TEST_FILES}")
+check(EXPECTED_LIVE.issubset(rt.LIVE_API_TEST_FILES),
+      f"the manifest still contains the 6 original files confirmed (via real observed run time, "
+      f"not a guess) to make live API calls -- got {rt.LIVE_API_TEST_FILES}")
 
 # ---------------------------------------------------------------- 2. discovery + selection logic
 ALL_FILES = {"test_answer_cache.py", "test_chat_grounding.py", "test_whatsapp_bot.py", "test_case_lookup.py"}

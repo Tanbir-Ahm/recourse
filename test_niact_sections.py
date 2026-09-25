@@ -1,6 +1,15 @@
 """Checks that the 19 Negotiable Instruments Act sections are sourced, registered as a
 STATUTE (not mistaken for a judgment), embedded, and reachable by retrieval.
-Run: python -X utf8 test_niact_sections.py"""
+Run: python -X utf8 test_niact_sections.py
+
+COST NOTE (added 2026-09-25, found by an independent cloud-session review -- this file was
+making real, unmocked, billed calls with no warning at all): most of this file is genuinely free
+(static chunk-file/embeddings-file checks, retrieval.get_statute_section is a pure local lookup).
+The last section, "Retrieval reaches the new sections for real questions", calls
+semantic_retrieval.find_relevant_sections with real question text -- that's a real Voyage embed
+call each time, deliberately not mocked, for the same reason this project's other live tests
+aren't: a mock only proves the mock does what it was told, never that the REAL retrieval actually
+surfaces these sections for a real question. Added to LIVE_API_TEST_FILES accordingly."""
 import json
 import sys
 

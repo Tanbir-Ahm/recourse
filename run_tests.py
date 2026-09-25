@@ -1,13 +1,18 @@
 """
 run_tests.py
 
-Fixes a real, confirmed cost problem: of this repo's 53 test_*.py files, only 6 make live
-Anthropic/Voyage API calls -- the other 47 are already mocked and free. But "run the test suite"
-has meant re-running all 53, identically, every single time, whether local or in a Claude Code
-cloud session -- paying for those 6 again even when nothing in their own code path changed.
+Fixes a real, confirmed cost problem: most test_*.py files in this repo are free/mocked, but a
+minority make live Anthropic/Voyage API calls. "Run the test suite" used to mean re-running ALL of
+them, identically, every single time, whether local or in a Claude Code cloud session -- paying
+for the live ones again even when nothing in their own code path changed.
 
-CONFIRMED (2026-09-24) via two independent full-suite runs (one local, one via a cloud session
-with real keys): the 6 live files and their own real wall-clock time when run for real:
+These counts drift as test files are added -- don't trust a number written here at face value; run
+`len(discover_test_files())` and `len(LIVE_API_TEST_FILES)` yourself if it matters. As of
+2026-09-25: 60 total, 8 live, 52 free.
+
+CONFIRMED (2026-09-24, and again 2026-09-25 by an independent cloud-session review that found 2
+more miscategorized files) via multiple independent full-suite runs: the live files and their own
+real wall-clock time when run for real:
 
     test_chat_domain_handoff.py   ~208s  (classify_scope + interview_flow + full chat pipeline)
     test_whatsapp_bot.py           ~92s  (one deliberate real case, see its own module docstring)
@@ -15,6 +20,10 @@ with real keys): the 6 live files and their own real wall-clock time when run fo
     test_dv_case_leak_guard.py     ~50s  (classify_scope)
     test_cheque_bounce_chat.py     ~21s  (generation)
     test_chat_grounding.py         ~29s  (grounding-check behaviour against a real model)
+    test_niact_sections.py         ~10s  (retrieval reaching real NIACT sections, added 2026-09-25)
+    test_interview_flow.py         not yet independently timed (added 2026-09-25 -- was ALREADY
+                                    making real calls all along, just never added to this list;
+                                    see its own "COST NOTE" docstring)
 
 Every one of these was made live DELIBERATELY, not by oversight -- each has its own "COST NOTE"
 or equivalent docstring explaining why a mock can't prove what it needs to prove (you cannot mock
@@ -24,13 +33,13 @@ does what you told it to). This tool does not change that. It changes WHEN they 
 USAGE
 -----
     python run_tests.py            # the default, and what "run the tests" should mean day to day:
-                                    # only the 47 free files. No API cost.
-    python run_tests.py --live     # only the 6 live files. Real cost -- run this deliberately,
+                                    # only the free files. No API cost.
+    python run_tests.py --live     # only the live files. Real cost -- run this deliberately,
                                     # e.g. right before a deploy, or after touching their code path
                                     # (chat_assistant's generation/scope logic, the WhatsApp flow).
-    python run_tests.py --all      # all 53. The full, expensive check -- same as this project's
-                                    # pre-deploy discipline already called for, just explicit now
-                                    # instead of accidentally re-triggered by habit.
+    python run_tests.py --all      # everything. The full, expensive check -- same as this
+                                    # project's pre-deploy discipline already called for, just
+                                    # explicit now instead of accidentally re-triggered by habit.
 
 A test file this manifest doesn't know about (a new one someone just wrote) defaults to the FREE
 set, never silently treated as live -- being live is something a file's own author must opt into
@@ -49,6 +58,15 @@ LIVE_API_TEST_FILES = {
     "test_dv_case_leak_guard.py",
     "test_cheque_bounce_chat.py",
     "test_chat_grounding.py",
+    # Added 2026-09-25, found by an independent cloud-session review: this file's own docstring
+    # already says "COST NOTE: ... make real calls ... and incur small real costs", and its own
+    # section headers say "[LIVE API -- real cost incurred]" -- it was simply never added here, a
+    # plain omission, not a design choice. Confirmed making real Voyage + Anthropic calls.
+    "test_interview_flow.py",
+    # Added 2026-09-25, same review: mostly free (static chunk/embeddings-file checks), but its
+    # final section deliberately calls the real retrieval path with real question text to prove
+    # NIACT sections are actually reachable, not just present -- see its own COST NOTE.
+    "test_niact_sections.py",
 }
 
 
