@@ -195,6 +195,20 @@ automated chunking to have handled a document correctly by default --
 check the specific paragraph being cited actually appears clean and
 whole before using it, every single promotion, not just the first one
 where a problem was found.
+
+NOOR AGA -- CHECKED, AND ACTUALLY FINE (2026-09-25)
+----------------------------------------------------------------------
+Noor Aga v State of Punjab, (2008) 16 SCC 417: checked the same way as
+the three above before trusting it. This time the check came back
+clean -- the document's own final "CONCLUSION" section (a genuine,
+correctly-numbered 1-6 list) chunked correctly with real, resolvable
+paragraph numbers; only the un-numbered main body ahead of it landed
+in one big "preamble" bucket, which is fine since the conclusion list
+is what's cited here. Used directly from the pilot chunk file (minus
+the embedding field), no manual reconstruction needed. Recorded
+deliberately, not just the failures: checking every citation before
+trusting it does not mean assuming every document is broken -- it
+means not assuming either way until actually looked at.
 """
 import logging
 
@@ -614,6 +628,38 @@ _NDPS_JUDGMENT_ANCHORS = [
             "the person before a Magistrate rather than a Gazetted Officer, since "
             "a Magistrate 'enjoys more confidence of the common man' and adds "
             "legitimacy to the search."
+        ),
+    },
+    {
+        "doctrine": "reverse_burden_is_valid_but_recovery_must_first_be_proven",
+        "case_key": "noor_aga_v_state_of_punjab",
+        "paragraph_numbers": ["1", "5"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("reverse burden",), ("burden of proof",), ("presumption of guilt",),
+            ("innocent until proven",), ("do i have to prove",), ("prove i didn't",),
+            ("prove innocence",), ("unlawful possession", "presume"),
+            ("is that even constitutional",), ("can they just presume",),
+        ],
+        "context_note": (
+            "Noor Aga v State of Punjab, (2008) 16 SCC 417: two things, read "
+            "together. First, Sections 35 and 54 of the NDPS Act (the sections "
+            "that let a court presume guilt/unlawful possession once certain "
+            "facts are shown, shifting the burden onto the accused) are 'not "
+            "ultra vires the Constitution' -- they are valid law, not something "
+            "that can be challenged as unconstitutional on that basis alone. "
+            "Second, and just as important: 'the fact of recovery has not been "
+            "proved beyond all reasonable doubt which is required to be "
+            "established before the doctrine of reverse burden is applied.' In "
+            "other words, the reverse burden is a real, lawful tool, but it only "
+            "switches on AFTER the prosecution has itself first proven, beyond "
+            "reasonable doubt and following the proper legal procedure, that the "
+            "drug was actually recovered from the accused -- it is never a "
+            "shortcut that lets the prosecution skip proving the basic facts of "
+            "the case in the first place. Here, real discrepancies in the "
+            "evidence, an unfair investigation, and recovery not made 'as per "
+            "the procedure established by law' meant that starting point was "
+            "never established, so the conviction was set aside."
         ),
     },
     {

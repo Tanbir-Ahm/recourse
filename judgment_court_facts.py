@@ -76,6 +76,7 @@ CASE_NAME_TO_COURT = {
     "Tofan Singh v State of Tamil Nadu": "Supreme Court of India",
     "Union of India v Mohanlal": "Supreme Court of India",
     "Vijaysinh Chandubha Jadeja v State of Gujarat": "Supreme Court of India (Constitution Bench)",
+    "Noor Aga v State of Punjab": "Supreme Court of India",
 
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------

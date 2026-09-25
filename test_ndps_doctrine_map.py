@@ -193,6 +193,27 @@ if jadeja_hits:
         "the real, verified Jadeja citation is attached, not a placeholder",
     )
 
+noor_aga_q = get_ndps_override("can they just presume he's guilty because drugs were found, isn't that unconstitutional?")
+noor_aga_hits = [m for m in noor_aga_q if m.get("case_name") == "Noor Aga v State of Punjab"]
+check(
+    len(noor_aga_hits) == 2,
+    f"a reverse-burden question surfaces both real Noor Aga holding paragraphs -- got {len(noor_aga_hits)}",
+)
+if noor_aga_hits:
+    combined = " ".join(" ".join(m["text"].split()).lower() for m in noor_aga_hits)
+    check(
+        "not ultra vires the" in combined,
+        "the constitutionality holding (paragraph 1, verbatim) is present",
+    )
+    check(
+        "fact of recovery has not been proved beyond all reasonable doubt" in combined,
+        "the recovery-must-be-proven-first holding (paragraph 5, verbatim) is present",
+    )
+    check(
+        all(m["citation"] == "(2008) 16 SCC 417" for m in noor_aga_hits),
+        "the real, verified Noor Aga citation is attached to both paragraphs",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",
