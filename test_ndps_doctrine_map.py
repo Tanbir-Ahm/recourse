@@ -243,6 +243,61 @@ if karnail_hits:
         "the real, verified Karnail Singh citation is attached, not a placeholder",
     )
 
+# ---- Mukesh Singh (current law) / Mohan Lal (overruled, historical context only) ----
+
+general_q = get_ndps_override("the same officer who arrested him is also investigating, is that fair?")
+general_names = {m.get("case_name") for m in general_q if m.get("type") == "judgment"}
+check(
+    "Mukesh Singh v State (Narcotic Branch of Delhi)" in general_names,
+    f"a general 'same officer investigating' question surfaces Mukesh Singh (current law) -- got {general_names}",
+)
+check(
+    "Mohan Lal v State of Punjab" not in general_names,
+    "the SAME general question does NOT surface Mohan Lal -- its overruled holding must never appear "
+    "without the user specifically naming that case, so it's never mistaken for current law",
+)
+
+mukesh_hits = [m for m in general_q if m.get("case_name") == "Mukesh Singh v State (Narcotic Branch of Delhi)"]
+check(len(mukesh_hits) == 1, f"exactly one Mukesh Singh paragraph returned -- got {len(mukesh_hits)}")
+if mukesh_hits:
+    text_norm = " ".join(mukesh_hits[0]["text"].split()).lower()
+    check(
+        "not good law and they are specifically overruled" in text_norm,
+        "the real Mukesh Singh conclusion text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        "case to case basis" in text_norm,
+        "the actual current-law standard (case-by-case, not automatic bias) is present, not paraphrased",
+    )
+    check(
+        mukesh_hits[0]["citation"] == "(2020) 10 SCC 120",
+        "the real, verified Mukesh Singh citation is attached, not a placeholder",
+    )
+
+named_q = get_ndps_override("is Mohan Lal still good law for informant being the investigator?")
+named_names = {m.get("case_name") for m in named_q if m.get("type") == "judgment"}
+check(
+    {"Mukesh Singh v State (Narcotic Branch of Delhi)", "Mohan Lal v State of Punjab"}.issubset(named_names),
+    f"naming Mohan Lal specifically surfaces BOTH cases together, never Mohan Lal alone -- got {named_names}",
+)
+mohan_lal_hits2 = [m for m in named_q if m.get("case_name") == "Mohan Lal v State of Punjab"]
+if mohan_lal_hits2:
+    text_norm = " ".join(mohan_lal_hits2[0]["text"].split()).lower()
+    check(
+        "informant and the investigator must not be the same person" in text_norm,
+        "the real Mohan Lal holding text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        mohan_lal_hits2[0]["citation"] == "(2018) 17 SCC 627",
+        "the real, verified Mohan Lal citation is attached, not a placeholder",
+    )
+    # the OVERRULED framing lives in context_note, not the verbatim judgment text itself
+    ctx_norm = mohan_lal_hits2[0]["context_note"].lower()
+    check(
+        "overruled" in ctx_norm and "not current law" in ctx_norm,
+        "the Mohan Lal entry's context_note explicitly and unmissably flags it as overruled",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",

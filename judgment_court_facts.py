@@ -78,6 +78,8 @@ CASE_NAME_TO_COURT = {
     "Vijaysinh Chandubha Jadeja v State of Gujarat": "Supreme Court of India (Constitution Bench)",
     "Noor Aga v State of Punjab": "Supreme Court of India",
     "Karnail Singh v State of Haryana": "Supreme Court of India (Constitution Bench)",
+    "Mukesh Singh v State (Narcotic Branch of Delhi)": "Supreme Court of India (Constitution Bench)",
+    "Mohan Lal v State of Punjab": "Supreme Court of India",
 
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------

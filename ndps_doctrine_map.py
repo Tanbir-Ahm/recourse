@@ -240,6 +240,42 @@ phrase than "excused") -- a critique being wrong on its central claim
 doesn't mean every point in it is worthless, but the central claim
 itself was checked and rejected, not assumed correct because a tool
 asserted it confidently with citations attached.
+
+MUKESH SINGH / MOHAN LAL -- A CRITIQUE THAT WAS RIGHT, AND A PATTERN FOR AN
+OVERRULED PRECEDENT (2026-09-25)
+----------------------------------------------------------------------
+While reviewing Mohan Lal v State of Punjab, (2018) 17 SCC 627 (the "the
+informant and the investigator must not be the same person" case) for
+promotion, the user was shown a second third-party critique -- this one
+correct, unlike the Karnail Singh one. Checked independently before
+accepting it (same discipline either way, not just when skeptical):
+Mohan Lal was EXPRESSLY OVERRULED by a 5-judge Constitution Bench in
+Mukesh Singh v State (Narcotic Branch of Delhi), (2020) 10 SCC 120,
+confirmed via multiple independent sources and by reading Mukesh
+Singh's actual operative paragraph 12 directly, not just the critique's
+summary. Promoting Mohan Lal's old rule as if it were still current law
+would have been a real, substantive error, not a stylistic one.
+
+Sourced Mukesh Singh fresh (not part of the original 8-case pilot
+batch) per the standing judgment-sourcing-policy -- user supplied the
+real api.sci.gov.in link. Same paragraph-collision problem as every
+other document tonight: this 107K-char, 62-page judgment quotes an
+earlier precedent's own "paragraph 12" at length before reaching its
+own real paragraph 12 conclusion -- fixed the same way, a manually
+verified single-paragraph core chunk.
+
+DESIGN PATTERN for an overruled case the user wants kept for context,
+not as current law: two separate doctrine-map entries. Mukesh Singh
+carries the general topical triggers (informant/investigator questions)
+and states the current, correct rule. Mohan Lal carries ONLY a narrow
+trigger keyed to the user naming that case specifically ("mohan lal"),
+and its context_note is framed entirely around being overruled, in
+capital letters, pointing back to Mukesh Singh -- structurally, Mohan
+Lal's holding can never surface on its own without Mukesh Singh's
+correct current-law context also being retrievable for the same
+general question. Verified directly (not assumed): a general question
+about the same-officer scenario returns only Mukesh Singh; naming
+"Mohan Lal" specifically returns both, together.
 """
 import logging
 
@@ -726,6 +762,60 @@ _NDPS_JUDGMENT_ANCHORS = [
             "(public-place seizure) and Section 50 (personal-search rights) "
             "coverage by adding the specific test for Section 42 procedural "
             "compliance."
+        ),
+    },
+    {
+        "doctrine": "informant_being_investigator_is_not_automatic_bias",
+        "case_key": "mukesh_singh_v_state_narcotic_branch_of_delhi",
+        "paragraph_numbers": ["12"],
+        "court": "Supreme Court of India (Constitution Bench)",
+        "triggers": [
+            ("same officer", "investigat"), ("same police officer",),
+            ("officer who caught", "investigat"), ("informant", "investigat"),
+            ("complainant", "investigat"), ("arrested him", "investigat"),
+            ("same person", "arrest", "investigat"), ("is that fair",),
+            ("is that biased",), ("conflict of interest", "police"),
+        ],
+        "context_note": (
+            "Mukesh Singh v State (Narcotic Branch of Delhi), (2020) 10 SCC 120, "
+            "a 5-judge Constitution Bench: the same officer who reported/arrested "
+            "someone also being the one who investigates is NOT, by itself, "
+            "automatic proof of bias or unfairness. The Court held: 'merely "
+            "because the informant is the investigator... the accused is not "
+            "entitled to acquittal... The matter has to be decided on a case to "
+            "case basis' -- meaning something more specific has to actually be "
+            "shown (a real reason to think that particular officer was biased or "
+            "acted unfairly), not just the dual role on its own. This is the "
+            "current, controlling law -- it EXPRESSLY OVERRULED an earlier, "
+            "stricter Supreme Court ruling (Mohan Lal v State of Punjab, 2018) "
+            "that had treated the dual role as automatically fatal to the "
+            "prosecution's case. If someone specifically asks about that older "
+            "Mohan Lal case, see the separate, clearly-labelled entry for it "
+            "below -- it is kept only as historical context, not as current law."
+        ),
+    },
+    {
+        "doctrine": "mohan_lal_historical_context_only_overruled",
+        "case_key": "mohan_lal_v_state_of_punjab",
+        "paragraph_numbers": ["25"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("mohan lal",),
+        ],
+        "context_note": (
+            "OVERRULED -- NOT CURRENT LAW. Mohan Lal v State of Punjab, (2018) 17 "
+            "SCC 627, once held that an informant also acting as the "
+            "investigating officer automatically made the investigation unfair, "
+            "entitling the accused to acquittal without needing to show any "
+            "specific bias. A 5-judge Constitution Bench in Mukesh Singh v State "
+            "(Narcotic Branch of Delhi), (2020) 10 SCC 120, EXPRESSLY OVERRULED "
+            "this: 'A contrary decision of this Court in the case of Mohan Lal "
+            "v. State of Punjab... and any other decision taking a contrary view "
+            "... are not good law and they are specifically overruled.' Kept "
+            "here only so the tool recognises the case by name and can correctly "
+            "say it no longer reflects the law -- see the Mukesh Singh entry "
+            "above for what actually applies today. Never cite Mohan Lal's own "
+            "holding as current law."
         ),
     },
     {
