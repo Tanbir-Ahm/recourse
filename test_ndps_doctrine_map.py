@@ -166,6 +166,33 @@ if mohanlal_hits:
         "the real, verified Mohanlal citation is attached, not a placeholder",
     )
 
+jadeja_q = get_ndps_override("the officer just vaguely told me I could be searched by a gazetted officer, was that enough?")
+jadeja_hits = [m for m in jadeja_q if m.get("case_name") == "Vijaysinh Chandubha Jadeja v State of Gujarat"]
+check(
+    len(jadeja_hits) == 1,
+    f"a 'was that enough' question surfaces the real Jadeja holding paragraph -- got {len(jadeja_hits)}",
+)
+if jadeja_hits:
+    text_norm = " ".join(jadeja_hits[0]["text"].split()).lower()
+    check(
+        "mandatory and requires a strict compliance" in text_norm,
+        "the real Jadeja holding text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        "substantial compliance" in text_norm and "more confidence of the common man" in text_norm,
+        "both the rejection of 'substantial compliance' and the Magistrate-preference guidance are present",
+    )
+    check(
+        # regression guard for the chunking bug found on promotion: the extraction must not
+        # contain a bare page-number digit landing mid-sentence (e.g. "exercise the 2 right")
+        "exercise the 2 right" not in text_norm and "poll14" not in text_norm,
+        "no stray page-break digit or footnote-number artifact survived into the stored text",
+    )
+    check(
+        jadeja_hits[0]["citation"] == "(2011) 1 SCC 609",
+        "the real, verified Jadeja citation is attached, not a placeholder",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",

@@ -167,6 +167,34 @@ single-paragraph chunks/union_of_india_v_mohanlal_chunks.json (chunk_
 method "manual_verified_extraction"), verified against the real source
 text read in full before promotion. The pilot_chunks/ copy is
 unchanged, for the same reason as Tofan Singh's.
+
+VIJAYSINH CHANDUBHA JADEJA -- A THIRD, DIFFERENT CHUNKING FAILURE (2026-09-25)
+----------------------------------------------------------------------
+Vijaysinh Chandubha Jadeja v State of Gujarat, (2011) 1 SCC 609: a
+clean, unanimous 5-judge Constitution Bench decision, no dissent, no
+large data tables -- the simplest of the four judgments promoted so
+far. Even so, checked directly before trusting the automated chunk
+file, and found a third, distinct chunking failure: the pilot_chunks
+file only has 10 chunks, with real paragraph detection stopping after
+"9" and the entire rest of the judgment (23,733 chars, including the
+actual paragraph 22 holding) dumped into one oversized leftover chunk
+labelled "9". Root cause here is neither a false opinion-split (Tofan
+Singh) nor a data-table collision (Mohanlal): this PDF extraction left
+a bare page-number digit on its own line after every page break (e.g.
+a stray "1" or "2"), which interrupted chunk_judgments.py's ascending-
+paragraph-sequence detector partway through a genuinely simple,
+correctly-numbered document. Fixed the same way as the other two: a
+manually constructed, single-paragraph core chunk
+(chunks/vijaysinh_chandubha_jadeja_v_state_of_gujarat_chunks.json,
+chunk_method "manual_verified_extraction"), with the stray page-break
+digits and a footnote-number artifact ("Poll14," -> "Poll,") cleaned
+out of the stored text -- confirmed by direct comparison against the
+real source, not assumed. Three different judgments promoted tonight,
+three different root causes, the same fix each time: never trust
+automated chunking to have handled a document correctly by default --
+check the specific paragraph being cited actually appears clean and
+whole before using it, every single promotion, not just the first one
+where a problem was found.
 """
 import logging
 
@@ -557,6 +585,35 @@ _NDPS_JUDGMENT_ANCHORS = [
             "against them -- if the Magistrate-supervised sampling procedure "
             "wasn't properly followed in a specific case, that is a real, "
             "Supreme-Court-backed point a defence can raise."
+        ),
+    },
+    {
+        "doctrine": "section_50_needs_genuine_not_merely_substantial_compliance",
+        "case_key": "vijaysinh_chandubha_jadeja_v_state_of_gujarat",
+        "paragraph_numbers": ["22"],
+        "court": "Supreme Court of India (Constitution Bench)",
+        "triggers": [
+            ("substantial compliance",), ("kind of told me",), ("sort of told me",),
+            ("vaguely told me", "search"), ("mentioned", "gazetted officer"),
+            ("asked if i wanted", "search"), ("did they really tell",),
+            ("was that enough",), ("good enough", "search"), ("is that compliance",),
+        ],
+        "context_note": (
+            "Vijaysinh Chandubha Jadeja v State of Gujarat, (2011) 1 SCC 609, a "
+            "5-judge Constitution Bench: closes a loophole some courts had opened "
+            "after Baldev Singh -- a vague or half-hearted mention of the right to "
+            "be searched before a Gazetted Officer or Magistrate is NOT enough. "
+            "The Court expressly rejected the idea that 'substantial compliance' "
+            "(e.g. an officer merely asking 'if you wish you may be searched in "
+            "the presence of a gazetted officer or a Magistrate') satisfies "
+            "Section 50 -- holding instead that informing the person of this "
+            "right 'is mandatory and requires a strict compliance.' It also added "
+            "a practical preference beyond what Baldev Singh said: where the Act "
+            "gives the officer a choice between a Gazetted Officer and a "
+            "Magistrate, the officer should, in the first instance, try to take "
+            "the person before a Magistrate rather than a Gazetted Officer, since "
+            "a Magistrate 'enjoys more confidence of the common man' and adds "
+            "legitimacy to the search."
         ),
     },
     {
