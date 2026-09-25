@@ -87,6 +87,28 @@ not the naive post-"_v_" split -- the same "State/Union of X v Y"
 registration trap already documented on the Ram Kishan and Haidarali
 Kalubhai entries in judgment_doctrine_map.py, checked directly against
 retrieval._JUDGMENT_CHUNK_FILES before use here, not assumed.
+
+STATUTE TEXT CROSS-CHECKED AGAINST A GOVERNMENT SOURCE (2026-09-25)
+----------------------------------------------------------------------
+All 8 sections above were originally sourced from Indian Kanoon (a
+private, widely-used legal database, not a government site) -- raised
+by the user as a real gap, since the two judgments above got a more
+careful sourcing pass than the statute text did. Closed the same day:
+downloaded the actual Government of India bare-act PDF from
+dor.gov.in/files/acts_files/Narcotic-Drugs-and-Psychotropic-Substances-
+Act-1985_0.pdf (Department of Revenue, Ministry of Finance -- the
+indiacode.nic.in copy itself blocked automated access, both directly
+and via WebFetch, with a 403/timeout) and located each of Sections 2
+(small/commercial quantity), 8, 20, 21, 27, 37, 43, and 50 in it
+directly. Every one matches what is stored here word for word, clause
+for clause, number for number -- zero discrepancies found. (That PDF's
+own OCR text is noisy -- e.g. "PoPPy", "aPplication", "riSorous" --
+but the underlying legal text is identical to the clean version
+already stored in this file, which is what matters.) Section 2's
+actual gram/kilogram thresholds remain outside the Act itself, set by
+a separate Central Government notification, exactly as already noted
+in that section's context_note above -- this cross-check confirms the
+Act's OWN text says so, not a threshold table this file was missing.
 """
 import logging
 
