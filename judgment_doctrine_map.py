@@ -1209,6 +1209,75 @@ JUDGMENT_DOCTRINE_MAP = {
             "of that tool, not verified here via its automated lookup."
         ),
     },
+    # ---- accidental death / rash driving: 304A vs 304 Part II vs 302 ----
+    "rash_or_negligent_act_causing_death_is_not_culpable_homicide": {
+        "case_key": "state_of_gujarat_v_haidarali_kalubhai",
+        "paragraph_numbers": ["fallback_4", "fallback_5"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("accident", "died"), ("accident", "death"), ("accidentally", "died"),
+            ("accidentally", "killed"), ("lost control", "vehicle"),
+            ("lost control", "died"), ("rash driving",), ("negligent driving",),
+            ("rash and negligent",), ("charged with murder", "accident"),
+            ("charged", "302", "accident"), ("wasn't intentional", "died"),
+            ("didn't mean to kill",), ("didn't intend to kill",),
+            ("304a",), ("304 part ii",), ("culpable homicide", "accident"),
+            ("vehicle", "hit", "died"), ("truck", "hit", "died"),
+            ("car accident", "died"), ("run over", "died"),
+        ],
+        "context_note": (
+            "In State of Gujarat v Haidarali Kalubhai, 1976 AIR 1012 / [1976] 3 S.C.R. 303, the "
+            "Supreme Court explained the line between a genuine accident and a crime when a death "
+            "happens without anyone meaning to kill. The accused lost control of a truck he was "
+            "driving at speed and struck a cot, fatally injuring the person resting on it. He was "
+            "originally convicted of culpable homicide (old IPC Section 304 Part II, now BNS Section "
+            "105); the High Court reduced this to the lesser offence of causing death by a rash or "
+            "negligent act (old IPC Section 304A, now BNS Section 106(1)), and the Supreme Court "
+            "upheld that. The Court held that Section 304A 'carves out a specific offence where "
+            "death is caused by doing a rash or negligent act' and 'by its own definition totally "
+            "excludes the ingredients of' culpable homicide (old IPC Sections 299/300, now BNS "
+            "Sections 100/101) -- what separates the two is intent or knowledge: 'when intent or "
+            "knowledge is the direct motivating force of the act complained of', the graver charge "
+            "of culpable homicide applies instead. On the facts, 'the tangential track of the "
+            "speeding truck coming in contact with the corner of the steel cot... would not reveal "
+            "the accused['s] intention or any deliberate act with the requisite knowledge', and the "
+            "facts fit 'more reasonably with the theory of loss of control by the accused of the "
+            "vehicle in high speed'. Worth flagging: BNS 106 is not identical to old IPC 304A -- BNS "
+            "106(2) adds a specific hit-and-run aggravation (fleeing the scene without reporting to "
+            "police, up to 10 years) that IPC 304A did not have; that provision plays no part in this "
+            "case, since the accused here did not flee."
+        ),
+        "verified_note": (
+            "The key sentence -- 'Section 304A by its own definition totally excludes the "
+            "ingredients of section 299 or section 300 IPC' -- is split by the fixed-size chunk "
+            "boundary exactly across fallback_4/fallback_5 (the same class of chunk-boundary "
+            "sentence-split confirmed earlier on the Ram Kishan entry above); both are cited "
+            "together so the model sees the complete sentence, not just its second half. "
+            "PROMOTED 2026-09-25, the first case not sourced from the original 9-case pilot pool -- "
+            "found via a scratch exploration of api.sci.gov.in's sequential JUDIS numbering scheme "
+            "(ID 5735, adjacent to Ram Kishan's ID 5725), read in full before any decision was made "
+            "to build with it, and approved by the user for a NEW domain (accidental death / rash "
+            "driving) rather than being forced into hurt/assault. Fetched directly from "
+            "https://api.sci.gov.in/jonew/judis/5735.pdf via PyMuPDF; per-page JUDIS.NIC.IN / "
+            "SUPREME COURT OF INDIA / 'Page N of 5' footer stamps and bare SCR volume page numbers "
+            "(304-308, an artifact of pagination, not paragraph markers) stripped before chunking. "
+            "This is a 1976 judgment with no modern numbered-paragraph structure, so it chunked via "
+            "the fixed-size fallback (5 chunks, fallback_1..fallback_5), same as Arnesh Kumar and "
+            "Mathai Verghese. Both quotes above -- the 304A/culpable-homicide test and its "
+            "application to these facts -- sit together in fallback_5; verified verbatim against "
+            "chunks/state_of_gujarat_v_haidarali_kalubhai_chunks.json. case_key is the FULL stem "
+            "'state_of_gujarat_v_haidarali_kalubhai', not the naive post-split 'state_of_gujarat' -- "
+            "this filename hits the exact same 'State of X v Y' registration trap documented on the "
+            "Ram Kishan entry above (retrieval.py's auto-registration keys 'State of X v Y' files on "
+            "the state's name unless disambiguated), confirmed safe by direct inspection of "
+            "retrieval._JUDGMENT_CHUNK_FILES before use, not assumed. Citation 1976 AIR 1012, "
+            "[1976] 3 S.C.R. 303 as printed on the judgment itself. IPC 299 -> BNS 100, IPC 300 -> "
+            "BNS 101, IPC 304 -> BNS 105, IPC 304A -> BNS 106 all confirmed via "
+            "statute_concordance.to_new('IPC', n) (no gaps for these sections); BNS 106's actual "
+            "text read via retrieval.get_statute_section to confirm the sub-section split (106(1) "
+            "rash/negligent act, 106(2) hit-and-run) and surface the hit-and-run caveat above."
+        ),
+    },
     # ---- murder vs. culpable homicide: sudden fight, no premeditation ----
     "sudden_fight_no_premeditation_reduces_murder_to_culpable_homicide": {
         "case_key": "jagrup_singh",
