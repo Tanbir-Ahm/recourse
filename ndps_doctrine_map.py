@@ -145,6 +145,28 @@ paragraph number matters less -- this fix only applies to the trusted
 core citation. Improving chunk_judgments.py's opinion-detection to
 generally resist quoted judge-signature blocks is a real, separate
 piece of future work, not done here.
+
+MOHANLAL -- THE SAME COLLISION PATTERN, A DIFFERENT CAUSE (2026-09-25)
+----------------------------------------------------------------------
+Union of India v Mohanlal, (2016) 3 SCC 379: a single-opinion judgment
+(T.S. Thakur, CJI and Kurian Joseph, J., no dissent) -- but most of it
+is a nationwide data-gathering exercise, with page after page of
+state-by-state seizure/storage/destruction tables, each internally
+numbered "1) ANDHRA PRADESH", "2) ASSAM", etc. up past 20. Checked
+directly before trusting the automated chunk file (same discipline as
+Tofan Singh, not repeated blindly): paragraph_number "20" in
+pilot_chunks/union_of_india_v_mohanlal_chunks.json collided with item
+#20 of that state list ("Ministry of Home Affairs NCB"), not the real
+paragraph 20 ("To sum up we direct as under..."). A different root
+cause than Tofan Singh's (plain sequential numbering inside a big data
+table colliding with real paragraph numbers, not a quoted-judgment
+opinion-detection failure) but the same practical risk -- citing
+"paragraph 20" unmodified would have surfaced a meaningless data row
+alongside the real holding. Fixed the same way: a manually constructed,
+single-paragraph chunks/union_of_india_v_mohanlal_chunks.json (chunk_
+method "manual_verified_extraction"), verified against the real source
+text read in full before promotion. The pilot_chunks/ copy is
+unchanged, for the same reason as Tofan Singh's.
 """
 import logging
 
@@ -502,6 +524,39 @@ _NDPS_JUDGMENT_ANCHORS = [
             "where the Supreme Court SET ASIDE a High Court's decision to grant "
             "bail, for glossing over this test -- an honest sign of how strictly "
             "it is actually applied, not just a favourable example."
+        ),
+    },
+    {
+        "doctrine": "seized_drugs_must_be_sampled_before_a_magistrate_and_stored_securely",
+        "case_key": "union_of_india_v_mohanlal",
+        "paragraph_numbers": ["20"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("sample", "drug"), ("sample", "seized"), ("tested",),
+            ("was it tested",), ("who tested",), ("magistrate", "sample"),
+            ("chain of custody",), ("tampered",), ("switched", "drug"),
+            ("how is evidence stored",), ("where is the drug kept",),
+            ("storage", "seized"), ("disposal of drug",), ("destroyed", "drug"),
+        ],
+        "context_note": (
+            "Union of India v Mohanlal, (2016) 3 SCC 379: this case is not a "
+            "single person's appeal -- it is the Supreme Court's own nationwide "
+            "supervisory inquiry (with a court-appointed Amicus Curiae gathering "
+            "data from every state) into how seized drugs are actually sampled, "
+            "stored, and disposed of after arrest. The Court held that samples of "
+            "the seized drug must be drawn in the presence of, and certified by, "
+            "a Magistrate -- there is no legal basis for sampling at the moment "
+            "of seizure itself -- and that this must happen 'without undue "
+            "delay' after seizure. It found, bluntly, that no state or central "
+            "agency had actually built the secure double-locked storage the law "
+            "requires (everyone was using ordinary police 'malkhana' rooms meant "
+            "for all kinds of seized property), calling this 'a complete failure "
+            "bordering criminal negligence', and that only 16% of drugs seized "
+            "over a 10-year period had actually been disposed of. Less about any "
+            "one person's guilt, more about the integrity of the evidence used "
+            "against them -- if the Magistrate-supervised sampling procedure "
+            "wasn't properly followed in a specific case, that is a real, "
+            "Supreme-Court-backed point a defence can raise."
         ),
     },
     {

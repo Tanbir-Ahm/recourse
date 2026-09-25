@@ -143,6 +143,29 @@ if tofan_hits:
         "reliably tell the two opinions' paragraph 155s apart",
     )
 
+mohanlal_q = get_ndps_override("was the sample of the drug tested and certified before a magistrate?")
+mohanlal_hits = [m for m in mohanlal_q if m.get("case_name") == "Union of India v Mohanlal"]
+check(
+    len(mohanlal_hits) == 1,
+    f"a 'was the sample tested before a magistrate' question surfaces the real Mohanlal holding paragraph -- got {len(mohanlal_hits)}",
+)
+if mohanlal_hits:
+    text_norm = " ".join(mohanlal_hits[0]["text"].split()).lower()
+    check(
+        "to sum up we direct as under" in text_norm and "section 52a" in text_norm,
+        "the real Mohanlal directions text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        "andhra pradesh" not in text_norm and "ministry of home affairs" not in text_norm,
+        "regression guard for the chunking bug found on promotion: the real paragraph 20 (the "
+        "directions) must never be confused with the unrelated state-data-table row also numbered "
+        "20 ('Ministry of Home Affairs NCB')",
+    )
+    check(
+        mohanlal_hits[0]["citation"] == "(2016) 3 SCC 379",
+        "the real, verified Mohanlal citation is attached, not a placeholder",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",

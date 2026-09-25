@@ -74,6 +74,7 @@ CASE_NAME_TO_COURT = {
     "State of Punjab v Baldev Singh": "Supreme Court of India (Constitution Bench)",
     "Union of India v Md Nawaz Khan": "Supreme Court of India",
     "Tofan Singh v State of Tamil Nadu": "Supreme Court of India",
+    "Union of India v Mohanlal": "Supreme Court of India",
 
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------
