@@ -1159,6 +1159,56 @@ JUDGMENT_DOCTRINE_MAP = {
             "-> BNS 115(2), IPC 109 -> BNS 49, all confirmed unchanged."
         ),
     },
+    # ---- counterfeiting currency: not limited to Indian notes -------------
+    # NOT a hurt/assault case -- kept in its own section, deliberately separate from the
+    # hurt/assault entries above. See verified_note for why this case was moved here at all.
+    "counterfeiting_currency_covers_foreign_notes_too": {
+        "case_key": "mathai_verghese",
+        "paragraph_numbers": ["fallback_2"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("fake", "dollar", "notes"), ("counterfeit", "currency"), ("counterfeit", "notes"),
+            ("fake currency",), ("fake notes",), ("forged currency", "foreign"),
+            ("counterfeit", "foreign currency"), ("fake", "foreign notes"),
+            ("counterfeit", "dollar bill"), ("489a",), ("489c",),
+            ("only indian currency", "counterfeit"), ("law cover", "foreign currency"),
+        ],
+        "context_note": (
+            "In Mathai Verghese v State of Kerala, [1987] 1 S.C.R. 317, the Supreme Court held "
+            "that India's counterfeiting-currency law is NOT limited to Indian rupee notes -- "
+            "Section 489A of the IPC (counterfeiting a currency note or bank note, now BNS Section "
+            "178) and Section 489C (possessing a forged currency note knowing it to be forged, "
+            "intending to use it as genuine, now BNS Section 180) cover the currency notes of ANY "
+            "country. A High Court had held that counterfeiting or possessing counterfeit American "
+            "dollar notes was not an offence under Indian law because the sections only named "
+            "'currency notes' without saying 'Indian currency notes' -- the Supreme Court reversed "
+            "this, holding the expression 'currency note' is 'large enough in its amplitude to "
+            "cover the currency notes of any country', and that it 'would, therefore, in any case, "
+            "be an offence to counterfeit a dollar bill or to be in possession of a counterfeit "
+            "dollar bill.'"
+        ),
+        "verified_note": (
+            "PROMOTED 2026-09-25 out of the hurt/assault pilot pool, at the user's explicit "
+            "instruction, after discovering (via a full independent read, the case the automated "
+            "promotion tool could never verify a quote for across two separate runs) that this "
+            "case has NOTHING to do with hurt or assault -- it's about counterfeiting currency, "
+            "entirely different subject matter. It was almost certainly pulled into that pool by "
+            "mistake, due to its similar-sounding name to Mathai v State of Kerala (2005) 3 SCC "
+            "260, an unrelated, already-trusted case already in this corpus (different citation, "
+            "different year, different holding -- confirmed by reading both). This explains the "
+            "tool's repeated rejection: its drafting prompt asks for a holding 'relevant to "
+            "criminal law/procedure... the kind of point a layperson's arrest/FIR question might "
+            "turn on', which this case doesn't naturally offer, so the AI likely strained for a fit "
+            "and misquoted each time. Read in full (all 9 pages, formerly pilot_corpus/mathai_"
+            "verghese_v_state_of_kerala.json, now deleted -- the case is preserved only here, in "
+            "the promoted core corpus). Quote reads verbatim in chunks/mathai_verghese_v_state_of_"
+            "kerala_chunks.json. Citation [1987] 1 S.C.R. 317. IPC 489A -> BNS 178 confirmed via "
+            "statute_concordance.to_new(); IPC 489C -> BNS 180 confirmed by matching the exact "
+            "wording quoted inside this judgment against BNS 180's real text -- "
+            "statute_concordance's own table has a gap for 489C (returns None), a known limitation "
+            "of that tool, not verified here via its automated lookup."
+        ),
+    },
     # ---- murder vs. culpable homicide: sudden fight, no premeditation ----
     "sudden_fight_no_premeditation_reduces_murder_to_culpable_homicide": {
         "case_key": "jagrup_singh",
