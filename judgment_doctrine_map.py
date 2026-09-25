@@ -1006,6 +1006,159 @@ JUDGMENT_DOCTRINE_MAP = {
             "substantive change flagged."
         ),
     },
+    "fir_ante_timing_delay_not_automatically_fatal": {
+        "case_key": "hori_lal",
+        "paragraph_numbers": ["fallback_3", "fallback_5"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("fir", "sent late", "magistrate"), ("fir", "delay", "magistrate"),
+            ("special report", "late"), ("ante-timed", "fir"), ("ante timed", "fir"),
+            ("fir", "reached", "magistrate", "late"), ("delay", "reaching", "magistrate"),
+            ("fir", "day late"), ("crime number", "not mentioned"),
+            ("part of a group", "responsible"), ("part of the group", "held responsible"),
+            ("standing with a group", "attacked"), ("common object",),
+            ("unlawful assembly",), ("didn't do anything myself", "group"),
+            ("group", "attacked someone", "held responsible"),
+        ],
+        "context_note": (
+            "In Hori Lal & Anr. v State of Uttar Pradesh, (2006) the Supreme Court addressed two "
+            "separate points that come up often in group-violence cases. First, on FIR timing: a "
+            "delay in the special report reaching the Magistrate (here, one day) does not by "
+            "itself invalidate the prosecution's case -- the Court will weigh it against the "
+            "practical circumstances (distance travelled, urgency of medical help, the magnitude "
+            "of the incident) rather than treat any delay as automatically fatal; similarly, not "
+            "mentioning the crime number on every ancillary document (like a doctor's letter) is "
+            "not significant if it's recorded in the inquest/panchnama. Second, on group liability "
+            "under Section 149 of the IPC (now BNS Section 190, 'common object' of an unlawful "
+            "assembly, defined in IPC Section 141 / now BNS Section 189): a person can be held "
+            "liable for an offence committed by another member of the same assembly if they "
+            "shared the assembly's common object -- either because the offence was committed in "
+            "direct furtherance of that shared purpose, or because it was something the members "
+            "knew was likely to happen in pursuing it. Whether someone actually shared the common "
+            "object is judged from their own acts, conduct, and the surrounding circumstances, not "
+            "just their presence."
+        ),
+        "verified_note": (
+            "Read in full (all 7 pages, pilot_corpus/hori_lal_v_state_of_uttar_pradesh.json) at the "
+            "user's request. The tool's own draft (fallback_3, the FIR-timing quote) checked out "
+            "accurate -- it had been flagged 'needs extra scrutiny' by the holding-language check "
+            "only because the real sentence ('we do not think that...') doesn't match any of the "
+            "tool's keyword markers, a confirmed false alarm in the CHECK, not a problem with the "
+            "quote. Independent review of the full judgment found a second, genuinely separate "
+            "passage (fallback_5) the tool's draft did not select -- the Court's own explanation of "
+            "the Section 149 'common object' test -- added here since it answers a different real "
+            "question than the FIR point. Both paragraphs read verbatim in "
+            "chunks/hori_lal_v_state_of_uttar_pradesh_chunks.json. Citation: Appeal (Crl.) 97 of "
+            "2000. IPC 149 -> BNS 190, IPC 141 -> BNS 189, both confirmed via "
+            "statute_concordance.to_new(), no substantive change flagged for either."
+        ),
+    },
+    "mere_presence_and_circumstantial_evidence_insufficient_for_murder": {
+        "case_key": "sakharam",
+        "paragraph_numbers": ["fallback_3", "fallback_4"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("present", "circumstantial", "murder"), ("was there", "no other evidence", "murder"),
+            ("present at the scene", "charged with murder"), ("no direct evidence", "murder"),
+            ("no motive", "circumstantial"), ("no motive shown", "murder"),
+            ("alibi", "rejected", "guilty"), ("alibi", "didn't hold up"),
+            ("defence", "failed", "evidence against"), ("plea", "failed", "look guilty"),
+            ("suicide theory", "rejected"), ("juvenile", "circumstantial evidence"),
+            ("minor", "presumption of innocence"), ("accused was a minor", "circumstantial"),
+        ],
+        "context_note": (
+            "In Sakharam v State of Madhya Pradesh, (1992) the Supreme Court ACQUITTED an accused "
+            "whose murder conviction rested entirely on circumstantial evidence, setting out several "
+            "distinct, still-relevant principles. First: being present at the scene when a death "
+            "occurred is not, by itself, enough to convict someone of causing it -- 'this "
+            "circumstance alone is not sufficient to conclude that it was the appellant who fired "
+            "the gun-shot and he did so with the intention of killing the deceased.' Second: absence "
+            "of a proven motive is a genuine 'plus-point' for the accused specifically in a "
+            "circumstantial-evidence case (though it matters less where the evidence is otherwise "
+            "overwhelming). Third, and often misunderstood: if the accused's own defence (an alibi, "
+            "a suicide theory) fails at trial, that failure is NOT itself evidence of guilt -- 'that "
+            "cannot be taken as a circumstance against him... no adverse inference can be drawn "
+            "against the appellant' -- the prosecution still has to prove its own case beyond "
+            "reasonable doubt on its own evidence. Fourth: where the accused is a minor, "
+            "circumstantial evidence must 'unmistakably' prove guilt to displace the presumption of "
+            "juvenile innocence -- the specific Act cited (the Children Act, 1960) has since been "
+            "superseded by later juvenile justice legislation, but the underlying principle (a "
+            "stricter proof standard where youth is relevant) is the reusable point, not that "
+            "specific old citation."
+        ),
+        "verified_note": (
+            "Read in full (all 4 pages, pilot_corpus/sakharam_v_state_of_madhya_pradesh.json) at "
+            "the user's request. The tool's own verified quote (fallback_3) checked out accurate, "
+            "AND on independent review that same chunk turned out to already contain two more real, "
+            "separate holdings the draft's quote and summary hadn't surfaced directly -- the "
+            "absence-of-motive point and, notably, the failed-defence-plea point (a real, commonly "
+            "relevant worry: 'does a rejected alibi make me look guilty'). A fourth point "
+            "(juvenile-innocence) lives in a different chunk (fallback_4), added as a second "
+            "paragraph, with an explicit caution in this note about the cited Act being outdated -- "
+            "the LLM's own draft never mentioned the Act's age, this was caught only by reading the "
+            "full case and checking the citation. Both paragraphs read verbatim in "
+            "chunks/sakharam_v_state_of_madhya_pradesh_chunks.json. Citation: Criminal Appeal No. "
+            "370 of 1980. IPC 302 -> BNS 103 (change flagged -- BNS 103 restructures murder into "
+            "subsections rather than a single provision; not relied on directly in this entry's "
+            "quoted text, so not further verified here)."
+        ),
+    },
+    "altering_conviction_on_appeal_is_not_material_prejudice": {
+        # NOT "ram_kishan": the case is "State of Uttar Pradesh v Ram Kishan" (state listed
+        # first), so retrieval.py's auto-registration key (stem.split("_v_")[0]) is
+        # "state_of_uttar_pradesh", not the more distinctive second party -- confirmed by a real
+        # test failure before this was caught. The FULL stem is used here, not that shorter key,
+        # to avoid ever colliding with a different "State of Uttar Pradesh v ..." case promoted later.
+        "case_key": "state_of_uttar_pradesh_v_ram_kishan",
+        "paragraph_numbers": ["fallback_7", "fallback_8"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("change the charge", "without telling"), ("convict", "alone", "grievous hurt"),
+            ("charged", "murder", "convict", "grievous hurt"), ("material prejudice",),
+            ("alter", "conviction", "appeal"), ("different offence", "same trial"),
+            ("group attack", "only shouted"), ("didn't touch", "guilty"),
+            ("instigated", "guilty", "same"), ("shouted", "beat", "stabbing"),
+            ("only encouraged", "attacked"), ("common intention", "role"),
+            ("restrained", "guilty", "stabbing"), ("held him", "guilty"),
+        ],
+        "context_note": (
+            "In State of Uttar Pradesh v Ram Kishan, [1976] 3 S.C.R. 379, several co-accused in a "
+            "group assault were originally charged with murder (IPC 302/149, now BNS 103/190) but "
+            "the Supreme Court convicted them individually based on their ACTUAL role, not a "
+            "blanket verdict. Two points from this: First, on 'material prejudice' -- converting a "
+            "conviction from murder to a lesser offence (grievous hurt, IPC 326/34, now BNS "
+            "118(2)/3(5)) on appeal does NOT, by itself, unfairly prejudice the accused, where the "
+            "underlying facts the accused had to meet at trial are the same either way. Second, and "
+            "just as important: the Court looked at what EACH accused actually did. Two accused who "
+            "physically restrained the victim while another stabbed him were held to share the "
+            "intention to cause grievous hurt (BNS 118(2)/3(5)). But the accused who only verbally "
+            "instigated the attack ('beat him') and never touched anyone was held NOT to share that "
+            "intention -- only simple assault (IPC 323/109, now BNS 115(2)/49). Shouting "
+            "encouragement and physically restraining someone are not automatically treated the "
+            "same, even within the same group incident."
+        ),
+        "verified_note": (
+            "Read in full (all 8 pages, pilot_corpus/state_of_uttar_pradesh_v_ram_kishan.json) at "
+            "the user's request -- this is the case that originally exposed the pilot-tier-to-prose "
+            "gap (the first live Q1 test this session): its summary claimed a material-prejudice "
+            "holding, but the tool's verified quote (fallback_5, the generic 'slow to interfere in "
+            "an appeal against acquittal' standard) never actually contained it. Found the real "
+            "sentence on independent review -- and found it is literally SPLIT by the chunker "
+            "across fallback_7 and fallback_8 ('...no prejudice is caused to the accused by "
+            "alteration of the conviction to section 326/34' ends one chunk; 'although they had "
+            "been originally charged under section 302/149... which they had to meet in the trial' "
+            "continues in the next). fallback_7 also holds a genuinely separate, case-specific "
+            "holding neither tool draft surfaced: the individual-liability-by-role finding. "
+            "judgment_doctrine_map's own round-robin caps each entry at 2 paragraphs "
+            "(_MAX_PARAGRAPHS_PER_ENTRY), so fallback_5 (the generic quote) was dropped in favour "
+            "of these two case-specific ones. Both read verbatim, in order, in "
+            "chunks/state_of_uttar_pradesh_v_ram_kishan_chunks.json. Citation: Criminal Appeal No. "
+            "253 of 1971. IPC 302 -> BNS 103, IPC 307 -> BNS 109 (both change-flagged by "
+            "statute_concordance -- not relied on directly in the quoted text, so not further "
+            "verified here); IPC 149 -> BNS 190, IPC 326 -> BNS 118(2), IPC 34 -> BNS 3(5), IPC 323 "
+            "-> BNS 115(2), IPC 109 -> BNS 49, all confirmed unchanged."
+        ),
+    },
     # ---- murder vs. culpable homicide: sudden fight, no premeditation ----
     "sudden_fight_no_premeditation_reduces_murder_to_culpable_homicide": {
         "case_key": "jagrup_singh",

@@ -312,6 +312,9 @@ _ALREADY_PROMOTED_STEMS = {
     "nanda_gopalan_v_state_of_kerala",
     "prabhu_v_state_of_madhya_pradesh",
     "pravat_chandra_mohanty_v_state_of_odisha",
+    "hori_lal_v_state_of_uttar_pradesh",
+    "sakharam_v_state_of_madhya_pradesh",
+    "state_of_uttar_pradesh_v_ram_kishan",
 }
 
 
