@@ -209,6 +209,37 @@ the embedding field), no manual reconstruction needed. Recorded
 deliberately, not just the failures: checking every citation before
 trusting it does not mean assuming every document is broken -- it
 means not assuming either way until actually looked at.
+
+KARNAIL SINGH -- A CHUNKING FAILURE, AND AN EXTERNAL CLAIM THAT DIDN'T
+HOLD UP UNDER CHECKING (2026-09-25)
+----------------------------------------------------------------------
+Karnail Singh v State of Haryana, (2009) 8 SCC 539, a Constitution
+Bench: the pilot chunk file's paragraph detector found NO genuine
+ascending sequence anywhere in this document at all (likely confused
+by the many numbered case citations sprinkled through the text, e.g.
+"4 (2004) 11 SCC 576") and fell back entirely to 14 fixed-size chunks,
+none of them aligned to the judgment's real paragraph numbers. Fixed
+the same way as the others: a manually constructed, single-paragraph
+core chunk (paragraph 17, the real 4-point (a)-(d) conclusion), text
+clean, no page-break artifacts this time.
+
+Separately, the user was shown (by a third-party tool, pasted in) a
+critique claiming the real holding was actually in "paragraph 35", not
+17. Checked directly rather than accepted: the source PDF this project
+actually uses (api.sci.gov.in/jonew/judis/35186.pdf) has only 18
+paragraphs total, and paragraph 17 is the exact four-point conclusion
+already cited -- confirmed a second way by fetching Indian Kanoon's own
+copy of the same case directly (the very source the pasted critique
+claimed to cite), which independently confirmed 18 paragraphs total
+and the same paragraph 17 text verbatim. The "paragraph 35" claim did
+not hold up on either source and was not used. Two smaller, genuinely
+useful precision points FROM that same critique were incorporated into
+the context_note anyway (the 72-hour detail added by the 2001
+amendment; "may constitute sufficient compliance" as a more precise
+phrase than "excused") -- a critique being wrong on its central claim
+doesn't mean every point in it is worthless, but the central claim
+itself was checked and rejected, not assumed correct because a tool
+asserted it confidently with citations attached.
 """
 import logging
 
@@ -660,6 +691,41 @@ _NDPS_JUDGMENT_ANCHORS = [
             "evidence, an unfair investigation, and recovery not made 'as per "
             "the procedure established by law' meant that starting point was "
             "never established, so the conviction was set aside."
+        ),
+    },
+    {
+        "doctrine": "section_42_needs_the_paperwork_but_genuine_urgency_can_delay_it",
+        "case_key": "karnail_singh_v_state_of_haryana",
+        "paragraph_numbers": ["17"],
+        "court": "Supreme Court of India (Constitution Bench)",
+        "triggers": [
+            ("did they record", "information"), ("wrote it down",),
+            ("informed", "superior"), ("no warrant",), ("without a warrant",),
+            ("acted on a tip",), ("acted on information",), ("section 42",),
+            ("did they follow procedure",), ("proper procedure", "search"),
+        ],
+        "context_note": (
+            "Karnail Singh v State of Haryana, (2009) 8 SCC 539, a Constitution "
+            "Bench: resolves a conflict between two earlier rulings on Section 42 "
+            "-- the power to enter, search, seize, and arrest WITHOUT a warrant, "
+            "based on information the officer already had. Normally, compliance "
+            "with Sections 42(1) and 42(2) -- recording that information in "
+            "writing and sending a copy to the superior officer (72 hours, after "
+            "the 2001 amendment) -- 'should normally precede the entry, search "
+            "and seizure.' But where the information comes in during a genuinely "
+            "urgent situation -- 'the question is one of urgency and expediency' "
+            "-- and any delay risks the evidence being destroyed or the person "
+            "escaping, the recording and reporting may reasonably be postponed "
+            "and done as soon as practical afterward; a satisfactory explanation "
+            "for that delay may constitute sufficient compliance. What is never "
+            "acceptable, urgency or not: total non-compliance. If the officer "
+            "never records the information and never informs a superior at all "
+            "-- especially if they had the time to do so, e.g. while sitting at "
+            "the police station -- that remains 'a clear violation of section "
+            "42', full stop. This complements the tool's existing Section 43 "
+            "(public-place seizure) and Section 50 (personal-search rights) "
+            "coverage by adding the specific test for Section 42 procedural "
+            "compliance."
         ),
     },
     {

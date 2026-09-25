@@ -77,6 +77,7 @@ CASE_NAME_TO_COURT = {
     "Union of India v Mohanlal": "Supreme Court of India",
     "Vijaysinh Chandubha Jadeja v State of Gujarat": "Supreme Court of India (Constitution Bench)",
     "Noor Aga v State of Punjab": "Supreme Court of India",
+    "Karnail Singh v State of Haryana": "Supreme Court of India (Constitution Bench)",
 
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------

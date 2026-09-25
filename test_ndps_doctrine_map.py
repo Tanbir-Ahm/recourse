@@ -214,6 +214,35 @@ if noor_aga_hits:
         "the real, verified Noor Aga citation is attached to both paragraphs",
     )
 
+karnail_q = get_ndps_override("the police acted on a tip without a warrant, did they follow proper procedure?")
+karnail_hits = [m for m in karnail_q if m.get("case_name") == "Karnail Singh v State of Haryana"]
+check(
+    len(karnail_hits) == 1,
+    f"a 'no warrant, proper procedure' question surfaces the real Karnail Singh holding paragraph -- got {len(karnail_hits)}",
+)
+if karnail_hits:
+    text_norm = " ".join(karnail_hits[0]["text"].split()).lower()
+    check(
+        "should normally precede the entry, search and seizure" in text_norm,
+        "the real Karnail Singh conclusion text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        "clear violation of section 42" in text_norm,
+        "the total-non-compliance holding is present, not paraphrased",
+    )
+    check(
+        # regression guard for the pasted-but-unverified external critique claiming this was
+        # "paragraph 35" -- checked directly against 2 independent sources (the real source PDF
+        # and Indian Kanoon's own copy), both confirm this judgment has only 18 paragraphs total
+        karnail_hits[0]["paragraph_number"] == "17",
+        f"cited paragraph is the real, twice-verified 17, not an unverified external claim of "
+        f"'35' -- got {karnail_hits[0]['paragraph_number']!r}",
+    )
+    check(
+        karnail_hits[0]["citation"] == "(2009) 8 SCC 539",
+        "the real, verified Karnail Singh citation is attached, not a placeholder",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",
