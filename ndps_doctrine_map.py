@@ -109,6 +109,42 @@ actual gram/kilogram thresholds remain outside the Act itself, set by
 a separate Central Government notification, exactly as already noted
 in that section's context_note above -- this cross-check confirms the
 Act's OWN text says so, not a threshold table this file was missing.
+
+TOFAN SINGH -- A NEW CHUNKING FAILURE MODE FOUND ON PROMOTION (2026-09-25)
+----------------------------------------------------------------------
+Tofan Singh v State of Tamil Nadu, (2021) 4 SCC 1: read in full BEFORE
+promotion, including Indira Banerjee, J.'s full dissent (not just the
+majority's conclusion) at the user's explicit request -- summarized in
+this entry's own context_note below (the dissent's substance, not just
+that it existed). Promoting it also surfaced a real, confirmed
+limitation of chunk_judgments.py distinct
+from every prior one documented in this project: this 308-page
+judgment quotes ENTIRE other judgments' judge-signed passages inline
+(including Baldev Singh's own "conclusions arise" list, word for word)
+-- not just a paragraph or two, the way the project's known "quoted
+paragraph retains its original number" collision usually looks. Those
+inline judge signatures ("Nariman", "Bobde", "Kaul", "Chelameswar" --
+names from an UNRELATED case, K.S. Puttaswamy, quoted for its privacy
+discussion) fooled chunk_judgments.py's opinion-splitter into detecting
+6 "opinions" in a document that genuinely has only 2 (Nariman for the
+majority, Banerjee dissenting) -- which then cascaded into paragraph-
+number collisions severe enough that automated chunking could not be
+trusted to correctly resolve "paragraph 155" for this document at all
+(it returned two DIFFERENT wrong paragraph-155 chunks, both from
+Banerjee's opinion, and the real Nariman paragraph 155 ended up merged
+into a giant fixed-size chunk mislabeled "57"). Confirmed by direct
+inspection of pilot_chunks/tofan_singh_v_state_of_tamil_nadu_chunks.json
+against the real, character-position-verified source text -- not
+assumed. Fixed for THIS promotion by manually constructing
+chunks/tofan_singh_v_state_of_tamil_nadu_chunks.json with a single,
+hand-verified paragraph 155 (chunk_method "manual_verified_extraction",
+confirmed to appear exactly once in Nariman's real, correctly-bounded
+opinion text). The pilot_chunks/ copy is left as-is, still usable for
+the wider pilot-tier semantic search where an occasional mislabeled
+paragraph number matters less -- this fix only applies to the trusted
+core citation. Improving chunk_judgments.py's opinion-detection to
+generally resist quoted judge-signature blocks is a real, separate
+piece of future work, not done here.
 """
 import logging
 
@@ -466,6 +502,40 @@ _NDPS_JUDGMENT_ANCHORS = [
             "where the Supreme Court SET ASIDE a High Court's decision to grant "
             "bail, for glossing over this test -- an honest sign of how strictly "
             "it is actually applied, not just a favourable example."
+        ),
+    },
+    {
+        "doctrine": "section_67_statement_cannot_be_used_as_a_confession",
+        "case_key": "tofan_singh_v_state_of_tamil_nadu",
+        "paragraph_numbers": ["155"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("made a statement", "ncb"), ("made a statement", "narcotics"),
+            ("told the officer",), ("signed a statement",), ("gave a statement",),
+            ("confession",), ("confessed",), ("section 67",), ("statement", "used against"),
+            ("can they use what he said",), ("can they use what she said",),
+            ("used against him in court",), ("used against her in court",),
+        ],
+        "context_note": (
+            "Tofan Singh v State of Tamil Nadu, (2021) 4 SCC 1: a statement made "
+            "to an NDPS enforcement officer during investigation cannot be used as "
+            "a confession to convict the accused. By a 2:1 majority (R.F. Nariman, "
+            "J. and Navin Sinha, J.; Indira Banerjee, J. dissenting), the Court "
+            "held that officers empowered under Section 53 of the NDPS Act count "
+            "as 'police officers' for the purpose of Section 25 of the Evidence "
+            "Act, so any confessional statement made to them is barred the same "
+            "way a confession to an ordinary police officer would be -- and a "
+            "statement recorded under Section 67 of the NDPS Act specifically "
+            "'cannot be used as a confessional statement in the trial of an "
+            "offence under the NDPS Act.' This is the current, binding law, "
+            "followed since 2021 -- worth knowing that it was genuinely, "
+            "substantively contested (not a technicality the dissent raised): "
+            "Banerjee, J.'s dissent argued three existing Constitution Bench "
+            "rulings already set the real test (whether the officer can file a "
+            "formal Section 173 CrPC police report, which NDPS officers cannot), "
+            "and that a 3-judge bench could not properly revisit what three "
+            "5-judge Constitution Benches had settled -- a real disagreement, "
+            "not a weak one, though it did not carry the day."
         ),
     },
 ]

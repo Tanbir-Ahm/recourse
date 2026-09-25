@@ -116,9 +116,36 @@ if nawaz_hits:
         "the real, verified Md Nawaz Khan citation is attached to every returned paragraph",
     )
 
+tofan_q = get_ndps_override("my brother made a statement to the NCB officer, can they use it against him in court?")
+tofan_hits = [m for m in tofan_q if m.get("case_name") == "Tofan Singh v State of Tamil Nadu"]
+check(
+    len(tofan_hits) == 1,
+    f"a 'statement used against him' question surfaces the real Tofan Singh holding paragraph -- got {len(tofan_hits)}",
+)
+if tofan_hits:
+    text_norm = " ".join(tofan_hits[0]["text"].split()).lower()
+    check(
+        "we answer the reference by stating" in text_norm and "police officers" in text_norm,
+        "the real Tofan Singh conclusions text (verbatim, manually-verified extraction) is present",
+    )
+    check(
+        "cannot be used as a confessional statement" in text_norm,
+        "the actual holding (section 67 statement barred as a confession) is present, not paraphrased",
+    )
+    check(
+        tofan_hits[0]["citation"] == "(2021) 4 SCC 1",
+        "the real, verified Tofan Singh citation is attached, not a placeholder",
+    )
+    check(
+        tofan_hits[0]["opinion_author"] == "R.F. Nariman",
+        "correctly attributed to the majority opinion (Nariman, J.), not the dissent (Banerjee, J.) -- "
+        "regression guard for the chunking bug found on promotion, where automated chunking could not "
+        "reliably tell the two opinions' paragraph 155s apart",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
-    "a question with no bail/search keywords does NOT pull in either judgment -- triggers are real, not decorative",
+    "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",
 )
 
 check(
