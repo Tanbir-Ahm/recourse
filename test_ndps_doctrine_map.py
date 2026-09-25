@@ -298,6 +298,34 @@ if mohan_lal_hits2:
         "the Mohan Lal entry's context_note explicitly and unmissably flags it as overruled",
     )
 
+parmanand_q = get_ndps_override("we were arrested together and only one of us signed the search notice")
+parmanand_hits = [m for m in parmanand_q if m.get("case_name") == "State of Rajasthan v Parmanand"]
+check(
+    len(parmanand_hits) == 2,
+    f"a 'signed for both of us' question surfaces both real Parmanand holding paragraphs -- got {len(parmanand_hits)}",
+)
+if parmanand_hits:
+    combined = " ".join(" ".join(m["text"].split()).lower() for m in parmanand_hits)
+    check(
+        "clear, unambiguous and individual" in combined,
+        "the individual-communication holding (paragraph 14, verbatim) is present",
+    )
+    check(
+        "third option" in combined and "could not have given a third option" in combined,
+        "the third-option holding (paragraph 15, verbatim) is present",
+    )
+    check(
+        # regression guard for a real omission an external critique caught: the Court's own
+        # caveat that a VOLUNTARY request to be searched by the raiding-party officer is a
+        # different question from the police OFFERING it -- must survive in the stored text
+        "voluntarily expressed" in combined,
+        "the voluntary-request caveat (found missing by review, now included) is present",
+    )
+    check(
+        all(m["citation"] == "(2014) 5 SCC 345" for m in parmanand_hits),
+        "the real, verified Parmanand citation is attached to both paragraphs",
+    )
+
 check(
     not [m for m in get_ndps_override("what is even illegal under this law") if m.get("type") == "judgment"],
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",

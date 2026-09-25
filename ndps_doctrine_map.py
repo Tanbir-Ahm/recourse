@@ -276,6 +276,32 @@ correct current-law context also being retrievable for the same
 general question. Verified directly (not assumed): a general question
 about the same-officer scenario returns only Mukesh Singh; naming
 "Mohan Lal" specifically returns both, together.
+
+STATE OF RAJASTHAN V PARMANAND -- ANOTHER CRITIQUE, MOSTLY RIGHT, ONE REAL
+OMISSION CAUGHT (2026-09-25)
+----------------------------------------------------------------------
+A third critique, checked the same way as the other two (never accepted
+on tone or confident-looking citations alone). This one's central
+claims held up against direct re-reading of the already-in-hand source
+text -- no new external fetch needed, the primary source was already
+fully read. Two real, worthwhile corrections taken from it: (1) calling
+paragraph 14 the "primary" ground overstated what the Court itself
+said -- it presented paragraphs 14 and 15 as two independent breaches,
+neither formally ranked above the other ("this... is AGAIN a breach...
+ON THIS GROUND ALSO"), so the entry now describes them as two
+independent problems, not primary/secondary. (2) A genuine omission:
+the original summary left out that the Court explicitly declined to
+say whether the result would differ if the accused had *voluntarily*
+asked to be searched before the raiding-party officer -- what's
+actually prohibited is the POLICE offering that as a third option, not
+a person choosing it themselves. Confirmed present verbatim in the
+source ("We are not expressing any opinion on the question whether if
+the respondents had voluntarily expressed...") and now included in the
+context_note. Chunk file itself had page-break artifacts around both
+paragraphs (and paragraph 15 ran into the judge-signature block) but no
+paragraph-number collision this time -- fixed with the same manual,
+cleaned extraction as every other promotion, not because collision was
+assumed, but because it was checked.
 """
 import logging
 
@@ -816,6 +842,40 @@ _NDPS_JUDGMENT_ANCHORS = [
             "say it no longer reflects the law -- see the Mukesh Singh entry "
             "above for what actually applies today. Never cite Mohan Lal's own "
             "holding as current law."
+        ),
+    },
+    {
+        "doctrine": "section_50_right_must_be_told_individually_not_as_a_group",
+        "case_key": "state_of_rajasthan_v_parmanand",
+        "paragraph_numbers": ["14", "15"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("arrested together",), ("both of us", "search"), ("two of us", "search"),
+            ("same notice",), ("one notice", "both"), ("group notice",),
+            ("only one of us signed",), ("signed for both",), ("signed for me",),
+            ("third option", "search"), ("offered", "raiding"),
+        ],
+        "context_note": (
+            "State of Rajasthan v Parmanand, (2014) 5 SCC 345: two independent "
+            "problems, both breaches of Section 50 on their own. First -- where "
+            "more than one person is searched, EACH person must be individually "
+            "told about their right to be searched before a Gazetted Officer or "
+            "Magistrate; one shared notice for two people is not enough, even if "
+            "one of them signs 'for' the other. The Court held the communication "
+            "'has to be clear, unambiguous and individual' -- 'a joint "
+            "communication of the right may not be clear or unequivocal... may "
+            "create confusion... may result in diluting the right.' Second, "
+            "separately -- an officer offering a third choice beyond the two the "
+            "law actually allows (here, a member of the SAME raiding party, "
+            "instead of only a Gazetted Officer or Magistrate) is also a breach, "
+            "because that person isn't genuinely independent. Worth knowing: the "
+            "Court left open whether it would be different if the person had "
+            "*voluntarily* asked to be searched before that raiding-party "
+            "member themselves -- what's not allowed is the officer offering it "
+            "as an alternative. Also worth noting: Section 50 only applies when "
+            "the PERSON is searched, not merely a bag or container someone is "
+            "carrying -- but if both the bag and the person are searched (as "
+            "here), the whole exercise falls under Section 50."
         ),
     },
     {
