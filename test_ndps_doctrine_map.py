@@ -331,6 +331,44 @@ check(
     "a question with no bail/search/confession keywords does NOT pull in any judgment -- triggers are real, not decorative",
 )
 
+# ---- Union of India v Shiv Shanker Kesari ----
+
+kesari_hits = [
+    m for m in get_ndps_override(
+        "does the judge basically have to declare him innocent to give bail, and what counts as reasonable grounds anyway"
+    )
+    if m.get("type") == "judgment" and m.get("case_name") == "Union of India v Shiv Shanker Kesari"
+]
+check(
+    {m["paragraph_number"] for m in kesari_hits} == {"7", "11"},
+    "Shiv Shanker Kesari fires both anchored paragraphs (7 and 11) on a realistic combined question",
+)
+check(
+    all(m["case_name"] == "Union of India v Shiv Shanker Kesari" for m in kesari_hits),
+    "both paragraphs are correctly attributed to Shiv Shanker Kesari",
+)
+kesari_combined = " ".join(m["text"] for m in kesari_hits)
+check(
+    "substantial probable cause" in kesari_combined,
+    "paragraph 7's 'reasonable grounds' definition is present",
+)
+check(
+    "not called upon to record a" in kesari_combined and "finding of not guilty" in kesari_combined,
+    "paragraph 11's 'not a mini-trial' holding is present",
+)
+check(
+    all(m["citation"] == "(2007) 7 SCC 798" for m in kesari_hits),
+    "the real, verified Shiv Shanker Kesari citation is attached to both paragraphs",
+)
+check(
+    not [
+        m for m in get_ndps_override("can he get bail") if m.get("type") == "judgment"
+        and m["case_name"] == "Union of India v Shiv Shanker Kesari"
+    ],
+    "a bare bail question without 'reasonable grounds'/'prima facie'/mini-trial wording does NOT fire Kesari "
+    "(that stays Nawaz Khan's twin-conditions entry, per the deliberate division of labour between the two)",
+)
+
 check(
     get_ndps_override("can he get bail") == get_ndps_override("can he get bail"),
     "the same question always produces the same result -- fully deterministic, no randomness",

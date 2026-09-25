@@ -1,0 +1,22 @@
+[
+  {
+    "case_name": "Union of India v Shiv Shanker Kesari",
+    "citation": "(2007) 7 SCC 798",
+    "source_url": "https://api.sci.gov.in/jonew/judis/29564.pdf",
+    "source_type": "primary",
+    "opinion_author": "Arijit Pasayat",
+    "paragraph_number": "7",
+    "text": "7.      The expression used in Section 37 (1)(b) (ii) is \"reasonable \ngrounds\". The expression means something more than prima \nfacie grounds. It connotes substantial probable causes for \nbelieving that the accused is not guilty of the offence charged \nand this reasonable belief contemplated in turn points to \nexistence of such facts and circumstances as are sufficient in \nthemselves to justify recording of satisfaction that the accused \nis not guilty of the offence charged.",
+    "chunk_method": "manual_verified_extraction"
+  },
+  {
+    "case_name": "Union of India v Shiv Shanker Kesari",
+    "citation": "(2007) 7 SCC 798",
+    "source_url": "https://api.sci.gov.in/jonew/judis/29564.pdf",
+    "source_type": "primary",
+    "opinion_author": "Arijit Pasayat",
+    "paragraph_number": "11",
+    "text": "11.     The Court while considering the application for bail with \nreference to Section 37 of the Act is not called upon to record a \nfinding of not guilty. It is for the limited purpose essentially \nconfined to the question of releasing the accused on bail that \nthe Court is called upon to see if there are reasonable grounds \nfor believing that the accused is not guilty and records its \nsatisfaction  about the existence of such grounds. But the \nCourt has not to consider the matter as if it is pronouncing a \njudgment of acquittal and recording a finding of not guilty.",
+    "chunk_method": "manual_verified_extraction"
+  }
+]

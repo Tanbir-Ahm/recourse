@@ -81,6 +81,7 @@ CASE_NAME_TO_COURT = {
     "Mukesh Singh v State (Narcotic Branch of Delhi)": "Supreme Court of India (Constitution Bench)",
     "Mohan Lal v State of Punjab": "Supreme Court of India",
     "State of Rajasthan v Parmanand": "Supreme Court of India",
+    "Union of India v Shiv Shanker Kesari": "Supreme Court of India",
 
     # ---- the wider general arrest/FIR corpus (judgment_doctrine_map.py
     # and unanchored semantic-only judgments) -- verified 2026-09-15 -------

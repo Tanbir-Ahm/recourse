@@ -302,6 +302,31 @@ paragraphs (and paragraph 15 ran into the judge-signature block) but no
 paragraph-number collision this time -- fixed with the same manual,
 cleaned extraction as every other promotion, not because collision was
 assumed, but because it was checked.
+
+UNION OF INDIA V SHIV SHANKER KESARI -- THE FINAL CASE OF THIS BATCH,
+CLEAN, AND A CRITIQUE THAT TURNED OUT TO BE A REWORDING, NOT A CORRECTION
+(2026-09-25)
+----------------------------------------------------------------------
+Auto-chunking worked perfectly here -- all 15 paragraphs matched their
+real numbers with no collision and no fallback, verified directly
+against the raw source text before use. A pasted critique of the
+analysis was checked the same way as the other three this batch; it
+turned out to be a legitimate rewording, not a substantive fact-check
+catch, but it did surface one real imprecision worth fixing: the
+original analysis said the High Court's bail order was set aside because
+it recorded "no finding at all on either twin condition." The judgment's
+own case-specific application paragraph (paragraph 13) explicitly names
+only ONE concrete defect -- the High Court gave no reason for its view
+that the contraband wasn't from the accused's exclusive possession. The
+broader point, that the High Court never properly engaged with EITHER of
+Section 37's two conditions at all, is the Court's remand instruction
+(paragraph 14, "afresh... keeping in view THE PARAMETERS of Section 37"
+-- plural) and the appellant's own argument (paragraph 3), not a
+separately stated paragraph-13 finding. The context_note below is
+written to match that precision: it states what paragraph 7 and
+paragraph 11 hold as general law (what "reasonable grounds" means, and
+that a bail court is not conducting a mini-trial), without overstating
+what the case-specific application paragraph itself says.
 """
 import logging
 
@@ -910,6 +935,35 @@ _NDPS_JUDGMENT_ANCHORS = [
             "and that a 3-judge bench could not properly revisit what three "
             "5-judge Constitution Benches had settled -- a real disagreement, "
             "not a weak one, though it did not carry the day."
+        ),
+    },
+    {
+        "doctrine": "reasonable_grounds_for_bail_means_more_than_a_plausible_story",
+        "case_key": "union_of_india_v_shiv_shanker_kesari",
+        "paragraph_numbers": ["7", "11"],
+        "court": "Supreme Court of India",
+        "triggers": [
+            ("reasonable grounds",), ("prima facie",), ("substantial probable cause",),
+            ("do they have to prove", "innocent"), ("does the judge have to", "innocent"),
+            ("mini trial",), ("mini-trial",), ("find him not guilty", "bail"),
+            ("declare", "innocent", "bail"), ("what counts as reasonable",),
+            ("how strong", "grounds", "bail"), ("what does reasonable grounds mean",),
+        ],
+        "context_note": (
+            "Union of India v Shiv Shanker Kesari, (2007) 7 SCC 798: explains what "
+            "Section 37's first bail condition -- 'reasonable grounds for believing "
+            "the accused is not guilty' -- actually requires. 'Reasonable grounds' "
+            "means more than a prima facie (surface-level plausible) case; it "
+            "requires 'substantial probable cause' -- real facts and circumstances "
+            "sufficient in themselves to justify that satisfaction, not just an "
+            "absence of an obviously weak case. At the same time, the bail court is "
+            "NOT being asked to hold a mini-trial or pronounce a finding of 'not "
+            "guilty' -- that satisfaction is for the limited purpose of deciding "
+            "bail only, nothing more. In this case, the Supreme Court set aside a "
+            "High Court bail grant because the High Court's own order gave no "
+            "reason at all for its conclusion that the seized drugs weren't from "
+            "the accused's exclusive possession, and sent the bail application back "
+            "to be decided afresh applying Section 37 properly."
         ),
     },
 ]
