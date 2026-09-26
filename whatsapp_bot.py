@@ -587,8 +587,29 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # WhatsApp-formatted messages (which may include the "reply DRAFT"
     # nudge) -- that keeps future follow-up context readable and doesn't
     # replay UI-only prompts back into the engine later.
-    reply_for_history = result.get("response_text") or (messages[0] if messages else "")
-    whatsapp_store.add_message(phone_number, "assistant", reply_for_history)
+    #
+    # CONFIRMED REAL FAILURE (2026-09-26, found via live testing): this used to fall back to
+    # storing messages[0] -- the FULL formatted refusal text, including classify_scope's own
+    # "this is out of scope because X" verdict -- whenever there was no real response_text
+    # (unrelated, adjacent_uncovered, a technical failure, nothing found, or a redirect with no
+    # real inline answer). That stored verdict then got folded back into classify_scope's own
+    # history for this phone number's NEXT message -- and the model, seeing its own past "this is
+    # out of scope" conclusion sitting right there as history, kept repeating it, even after the
+    # underlying classification bug that caused it was already fixed. Verified live: a fresh
+    # question with no history got the correct answer every time; the SAME question with this
+    # phone number's old poisoned history folded in reproduced the wrong answer every time.
+    #
+    # Fix: only remember what was actually SAID, never the fact that nothing could be said. One
+    # general rule, not a list of which states to exclude -- it covers every non-answer state
+    # (unrelated, adjacent_uncovered, classifier_unavailable, retrieval_unavailable, no_match, or
+    # covered_elsewhere_in_tool with no real inline answer) the same way, without naming any of
+    # them, the same principle _old_code_note_for_classifier's fix in chat_assistant.py already
+    # follows for a different bug. The person's own question is still always recorded separately
+    # (add_message("user", ...) above), so a genuine follow-up on a real answer is unaffected --
+    # this only stops a REFUSAL from being remembered as if it were a real reply.
+    reply_for_history = result.get("response_text")
+    if reply_for_history:
+        whatsapp_store.add_message(phone_number, "assistant", reply_for_history)
 
     for msg in messages:
         send_whatsapp_message(phone_number, msg)

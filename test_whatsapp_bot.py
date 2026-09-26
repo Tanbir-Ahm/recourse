@@ -392,11 +392,70 @@ with patch("chat_assistant.answer_question") as mock_answer_question:
     whatsapp_bot.handle_incoming_message(PHONE, "my bank account got frozen without notice")
     call_kwargs = mock_answer_question.call_args.kwargs
     check(
-        call_kwargs.get("inline_domains") == {"cheque_bounce", "freeze", "domestic_violence"},
+        call_kwargs.get("inline_domains") == {"cheque_bounce", "freeze", "domestic_violence", "ndps"},
         "handle_incoming_message calls answer_question with inline_domains={'cheque_bounce','freeze',"
-        "'domestic_violence'}, matching recourse_app.py's own fix for the exact same dead-end redirect "
-        "problem -- WhatsApp has no separate UI to redirect these questions to, so they must be answered inline",
+        "'domestic_violence','ndps'}, matching recourse_app.py's own fix for the exact same dead-end "
+        "redirect problem -- WhatsApp has no separate UI to redirect these questions to, so they must "
+        "be answered inline (stale until 2026-09-26: this assertion predated the NDPS domain being "
+        "added to inline_domains and was never updated, even though the real code already included it)",
     )
+
+# ---- CONFIRMED REAL FAILURE (2026-09-26): a refusal used to get remembered as if it were a real
+# reply, and a future message for the SAME phone number folded that refusal back into
+# classify_scope's own history -- the model then repeated its own past "out of scope" verdict even
+# after the underlying bug was fixed. Only a real response_text should ever be stored. ----
+
+for _state in ("unrelated", "adjacent_uncovered", "classifier_unavailable", "retrieval_unavailable", "no_match"):
+    whatsapp_store.clear_history(PHONE)
+    with patch("chat_assistant.answer_question") as mock_answer_question:
+        mock_answer_question.return_value = {"state": _state, "reasoning": "some reasoning"}
+        whatsapp_bot.handle_incoming_message(PHONE, "a question that gets refused")
+    history = whatsapp_store.get_recent_history(PHONE)
+    check(
+        len(history) == 1 and history[0]["role"] == "user",
+        f"state={_state!r}: no response_text means NOTHING is remembered as the assistant's reply -- "
+        f"only the person's own question stays in history, got {len(history)} message(s)",
+    )
+
+whatsapp_store.clear_history(PHONE)
+with patch("chat_assistant.answer_question") as mock_answer_question:
+    mock_answer_question.return_value = {"state": "single_match", "response_text": "A real, grounded answer."}
+    whatsapp_bot.handle_incoming_message(PHONE, "a question that gets answered")
+history = whatsapp_store.get_recent_history(PHONE)
+check(
+    len(history) == 2 and history[1]["role"] == "assistant" and history[1]["text"] == "A real, grounded answer.",
+    "a genuine answer (single_match with response_text) IS still remembered as before -- "
+    "this fix only removes refusals, not real replies",
+)
+
+whatsapp_store.clear_history(PHONE)
+with patch("chat_assistant.answer_question") as mock_answer_question:
+    mock_answer_question.return_value = {
+        "state": "covered_elsewhere_in_tool", "redirect_domain": "freeze", "response_text": "",
+    }
+    whatsapp_bot.handle_incoming_message(PHONE, "a redirect with no real inline answer")
+history = whatsapp_store.get_recent_history(PHONE)
+check(
+    len(history) == 1 and history[0]["role"] == "user",
+    "covered_elsewhere_in_tool with an EMPTY response_text (the inline domain found nothing) "
+    "is treated as a non-answer too, same as any other refusal -- an empty string is still falsy",
+)
+
+whatsapp_store.clear_history(PHONE)
+with patch("chat_assistant.answer_question") as mock_answer_question:
+    mock_answer_question.return_value = {
+        "state": "covered_elsewhere_in_tool", "redirect_domain": "freeze",
+        "response_text": "Here is the real inline freeze-domain answer.",
+    }
+    whatsapp_bot.handle_incoming_message(PHONE, "a redirect that DID get a real inline answer")
+history = whatsapp_store.get_recent_history(PHONE)
+check(
+    len(history) == 2 and history[1]["text"] == "Here is the real inline freeze-domain answer.",
+    "covered_elsewhere_in_tool WITH a real inline response_text is remembered normally -- "
+    "this fix distinguishes a real answer from a bare redirect by content, not by state name alone",
+)
+
+whatsapp_store.clear_history(PHONE)
 
 # ---- "Reply DRAFT": CONFIRMED REAL GAP fixed 2026-09-14 -- the formatter has
 #      always invited this reply, but nothing ever caught it. See
@@ -766,7 +825,7 @@ _snatch_question_with_history = whatsapp_store.build_question_with_context(
     "with another man, and he has been arrested. What offence would this be, and is it bailable?",
 )
 _snatch_result = chat_assistant.answer_question(
-    _snatch_question_with_history, inline_domains={"cheque_bounce", "freeze", "domestic_violence"}
+    _snatch_question_with_history, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"}
 )
 _snatch_matches = {(m.get("act"), m.get("section_number")) for m in _snatch_result.get("matches", [])}
 check(("BNS", "304") in _snatch_matches,
