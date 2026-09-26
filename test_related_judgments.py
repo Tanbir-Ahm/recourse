@@ -429,6 +429,15 @@ res = rj.get_related_judgments(
     "arrested though his name was not in the FIR, and still no chargesheet after 2 months",
     grounded_answer_text="Section 35 of the BNSS governs arrest; Section 187 governs default bail.",
     write_bundle=False,
+    # CONFIRMED REAL BUG (found by an independent cloud-session review, 2026-09-26): this call
+    # used to omit pin/fetch_many_fn/clean_fn/gloss_fn entirely, so with pin=True (the default)
+    # it fell through to REAL fetch_and_pin + REAL _default_gloss_fn -- a live, billable
+    # Anthropic call (and a live IndianKanoon fetch, had a real INDIANKANOON_API_KEY been
+    # present) on every "free" run. This call only asserts on status/candidates/anchors below,
+    # none of which need pinning -- pin=False is the same escape hatch already used at the two
+    # sibling calls further down this file, and is exactly what related_judgments.py's own
+    # docstring says it's for ("stops after ranking, no IK-doc credits").
+    pin=False,
     decompose_fn=_fake_decompose, ik_search_many_fn=_fake_ik_search_many,
     local_search_fn=_fake_local_search, rerank_fn=_fake_rerank,
     today=datetime.date(2026, 9, 3),
