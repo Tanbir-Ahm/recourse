@@ -150,18 +150,25 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
       "the framing is explicitly 'discussed a similar question', not a conclusion about the user's own case")
 
 # ---------------------------------------------------------------- 6. loading the real pilot pool (built earlier) doesn't crash
-# 16, not 8: 8 NDPS pilot candidates added 2026-09-25 (Track A of the NDPS domain expansion --
-# Tofan Singh, Mohanlal, Vijaysinh Chandubha Jadeja, Noor Aga, Karnail Singh, Mohan Lal v State
-# of Punjab, State of Rajasthan v Parmanand, Union of India v Shiv Shanker Kesari), sourced from
-# api.sci.gov.in links the user supplied directly per the new judgment-sourcing-policy, alongside
-# the original 8 hurt/assault cases (Mathai Verghese was promoted OUT of this pool earlier the
-# same day -- wrong domain entirely, now lives in the core corpus; see
+# Back to 8, not 16: the 8 NDPS pilot candidates added 2026-09-25 (Tofan Singh, Mohanlal,
+# Vijaysinh Chandubha Jadeja, Noor Aga, Karnail Singh, Mohan Lal v State of Punjab, State of
+# Rajasthan v Parmanand, Union of India v Shiv Shanker Kesari) were ALL promoted to the core
+# corpus by 2026-09-25 -- their leftover pilot copies were deliberately deleted 2026-09-26 after
+# a real production bug: a promoted case's old copy could still surface here, mislabeled "not
+# independently verified" (false -- it had been) and with no topic boundary at all (an NDPS case
+# surfaced as "possibly relevant" under an unrelated BNS religious-offence question). Once a case
+# is promoted, its pilot copy is deleted, not kept as a "backup" search path -- a real trigger-
+# phrase gap found later gets fixed by widening the core doctrine map's triggers, the same
+# precise, controllable fix already used elsewhere in this project, not by leaving a second,
+# harder-to-keep-honest copy lying around. See memory: "pilot tier leftover copy cleanup". This
+# leaves the original 8 hurt/assault cases (Mathai Verghese was promoted OUT of this pool earlier
+# the same day -- wrong domain entirely, now lives in the core corpus; see
 # test_mathai_verghese_promotion.py).
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 16 and len(real_pool) > 16, f"the real pilot pool loads chunks spanning all 16 cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 8 and len(real_pool) > 8, f"the real pilot pool loads chunks spanning all 8 remaining (non-promoted) cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
 except FileNotFoundError:
