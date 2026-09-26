@@ -56,6 +56,30 @@ check(
     "same for BNSS/BNS section numbers generally -- this fix is old-code-specific, not a general section detector",
 )
 
+# ---- the BNS-107/BNSS-107 collision, found testing this fix live in production ----
+# (IPC 305 -> BNS 107 is correct, but BNSS 106/107 is the UNRELATED bank-freeze provision named
+# elsewhere in the classifier's own prompt -- without an explicit warning, the classifier
+# conflated the two purely because both mention "107", routing a real abetment-of-suicide
+# question to the freeze domain and producing no answer at all)
+
+note_305 = _old_code_note_for_classifier("What is section 305 of IPC")
+check(
+    "IPC Section 305" in note_305 and "BNS 107" in note_305,
+    "IPC 305 correctly translates to BNS 107 (abetment of suicide of a vulnerable person)",
+)
+check(
+    "completely different Act from BNSS" in note_305 and "coincidence" in note_305,
+    "the note explicitly warns against confusing this with BNSS 106/107 (the unrelated freeze "
+    "provision) precisely because the section NUMBER happens to match",
+)
+
+note_318 = _old_code_note_for_classifier("What is section 420 of IPC")
+check(
+    "completely different Act from BNSS" not in note_318,
+    "the collision warning is narrow and targeted -- it does NOT fire for every old-code "
+    "translation, only the two numbers (106/107) that actually collide with the freeze domain",
+)
+
 # ---- honest edge cases ----
 
 check(

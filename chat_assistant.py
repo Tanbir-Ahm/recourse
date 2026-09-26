@@ -77,7 +77,7 @@ SONNET_MODEL = "claude-sonnet-5"  # per this environment's current model list
 
 SCOPE_CLASSIFIER_PROMPT = """You are a scope classifier for a legal tool that helps with Indian criminal procedure. This chat feature specifically covers BNS/BNSS arrest, FIR, and police procedure topics, grounded in Arnesh Kumar, D.K. Basu, Vihaan Kumar, Satender Kumar Antil, Youth Bar Association, Prabir Purkayastha, Pankaj Bansal, NALSA, and applying High Court judgments.
 
-The WIDER tool (outside this chat feature, via document upload) ALSO has working, real compliance-check logic for two other domains: bank account freezing (BNS Sections 106/107) and cheque bounce notices (Section 138, Negotiable Instruments Act). This chat feature's own search corpus does not yet include those domains' case law, but the tool as a whole genuinely handles them -- a question about them should be redirected to the document-upload feature, NOT told "this isn't covered" or "consult a lawyer", since that would be inaccurate.
+The WIDER tool (outside this chat feature, via document upload) ALSO has working, real compliance-check logic for two other domains: bank account freezing (BNSS Sections 106/107) and cheque bounce notices (Section 138, Negotiable Instruments Act). This chat feature's own search corpus does not yet include those domains' case law, but the tool as a whole genuinely handles them -- a question about them should be redirected to the document-upload feature, NOT told "this isn't covered" or "consult a lawyer", since that would be inaccurate.
 
 This chat feature ALSO now has real, curated coverage (added 2026-09-14, expanded 2026-09-15) of the Protection of Women from Domestic Violence Act, 2005 (PWDVA) -- domestic violence between people in a domestic relationship (spouse, live-in partner, or a relative in the same household), including protection orders, the right to stay in the shared household, monetary relief, compensation, temporary child custody, breach of a protection order, and who can be named as the person responsible (this now explicitly includes female relatives, not only a husband). A question specifically about domestic violence under this Act (being hit, threatened, thrown out of the shared home, denied money, by a spouse/partner/in-law) is "covered_elsewhere_in_tool" with redirect_domain "domestic_violence" -- NOT adjacent_uncovered. This EXPLICITLY includes in-laws trying to evict a wife/daughter-in-law from the shared household by invoking the Maintenance and Welfare of Parents and Senior Citizens Act, 2007 (e.g. "my in-laws are using the senior citizens act to evict me", "the house was transferred to my mother-in-law's name and now they want me out") -- do NOT classify this as an out-of-scope civil property/eviction dispute just because a different Act (the Senior Citizens Act) is named; the PWDVA governs exactly this fact pattern (see S. Vanitha v Deputy Commissioner, Bengaluru) and it is covered_elsewhere_in_tool/domestic_violence. It ALSO EXPLICITLY includes: asking what happens if the other side breaks/violates/ignores a protection order (this is itself a criminal offence under PWDVA Section 31, e.g. "he violated the order and came to my house anyway", "what if he doesn't follow the order"); asking for compensation or damages for the abuse itself, including mental torture or emotional distress (Section 22, distinct from Section 20's expense reimbursement); and asking for custody of children AS PART OF a domestic violence situation (Section 21) -- e.g. "can I get custody of my kids", "can I keep my children with me" said by someone describing or having already described abuse. This is DIFFERENT from GENERAL family law with NO domestic-violence element at all -- a custody or alimony question arising purely from an amicable divorce or separation, with no abuse, threat, or violence described anywhere in the conversation, remains adjacent_uncovered; but do not require the word "violence" to be repeated in every follow-up question in an ongoing domestic-violence conversation -- a bare "can I get custody of my kids" with no other context should still be treated as PWDVA-adjacent (covered_elsewhere_in_tool/domestic_violence) rather than assumed to be an unrelated family-law matter, since PWDVA's own Section 21 is a common, realistic reason someone would ask exactly that question. This is also DIFFERENT from dowry-death or a Dowry Prohibition Act-specific charge (still adjacent_uncovered) and from BNS 85/86 cruelty-by-husband-or-relatives (a criminal FIR/arrest scenario, which stays in_scope as before) -- PWDVA coverage is specifically for the CIVIL protection-order/residence/maintenance/custody/compensation remedy under the 2005 Act itself.
 
@@ -99,7 +99,7 @@ Classify the user's question into exactly one category:
 
 "in_scope" -- plausibly about arrest, FIR, police procedure, bail, or a criminal offence's classification (cognizable/non-cognizable) under BNS/BNSS or the specific IT Act sections listed above, where the offence involved (if named) is genuinely one of those, or the question is purely about general arrest PROCEDURE with no other-law offence named. Includes vague or layman-phrased questions about "being arrested", "police took my X", "is this a crime", specific offence names (theft, cheating, forgery, assault, rioting, cruelty, hacking, identity theft, etc.), FIR copies, notice before arrest, etc. -- REGARDLESS of how much civil/family/property backstory surrounds the description of the arrest itself (see above).
 
-"covered_elsewhere_in_tool" -- specifically about bank account freezing (BNS 106/107), cheque bounce (Section 138 NI Act), domestic violence under the PWDVA 2005, or an NDPS drug offence (see above), including arrest threats or police involvement in any of them. This wider tool has real, working logic for these, even though this chat feature's own general search corpus does not yet include their case law.
+"covered_elsewhere_in_tool" -- specifically about bank account freezing (BNSS 106/107), cheque bounce (Section 138 NI Act), domestic violence under the PWDVA 2005, or an NDPS drug offence (see above), including arrest threats or police involvement in any of them. This wider tool has real, working logic for these, even though this chat feature's own general search corpus does not yet include their case law.
 
 "adjacent_uncovered" -- genuinely about Indian law, but NOT about BNS/BNSS criminal procedure, bank freezing, cheque bounce, PWDVA domestic violence, or NDPS drug offences -- either a purely civil question with no arrest/FIR involved, or an arrest for an offence genuinely outside BNS/BNSS. Examples: POCSO, UAPA, a dowry-DEATH or dowry-Act-specific charge, a civil suit or property dispute with NO arrest/FIR described, divorce/child-custody/alimony with no domestic-violence element, employment law, consumer complaints, contract disputes, tax law, company law offences.
 
@@ -241,12 +241,30 @@ def _old_code_note_for_classifier(question: str) -> str:
     except Exception:
         logger.exception("_old_code_note_for_classifier: lookup failed for %r", (question or "")[:200])
         return ""
+    # CONFIRMED REAL FAILURE (2026-09-26, found testing this very fix live): IPC 305 correctly
+    # translates to BNS 107 -- but the classifier then conflated it with BNSS Sections 106/107
+    # (the UNRELATED bank-account-freezing provision named a few paragraphs above in this same
+    # prompt), routing a real abetment-of-suicide question to the freeze domain and producing no
+    # answer at all. A PLAIN "what is BNS section 107" with no old-code note attached does NOT
+    # trigger this -- it is specifically the combination of this note's own text sitting near the
+    # freeze domain's "BNSS 106/107" text that causes the mix-up, since BNS and BNSS are one
+    # letter apart and here also share the same section number. Narrow, targeted warning, only
+    # emitted for the two colliding numbers, rather than a general (and likely ineffective)
+    # instruction to "not confuse BNS and BNSS" everywhere.
+    collision_warning = ""
+    if any(m["act"] == "BNS" and re.match(r"10[67]\b", m["section"]) for m in mapped):
+        collision_warning = (
+            " IMPORTANT: this is BNS (the penal code) -- a completely different Act from BNSS "
+            "(the procedure code) Sections 106/107, the unrelated bank-account-freezing "
+            "provision mentioned elsewhere in these instructions. The matching number is a "
+            "coincidence; do not route this to the freeze domain because of it."
+        )
     return (
         f"\n\n[Note for classification only, from a verified lookup table -- do not state this "
         f"mapping to the user yourself: the person named {act} Section {number}, which is "
-        f"{new_ref} under the current law. Treat this exactly as if the current-law section had "
-        f"been named -- the current in_scope/covered_elsewhere_in_tool rules above apply to it "
-        f"the same way they would to {new_ref}.]"
+        f"{new_ref} under the current law.{collision_warning} Treat this exactly as if the "
+        f"current-law section had been named -- the current in_scope/covered_elsewhere_in_tool "
+        f"rules above apply to it the same way they would to {new_ref}.]"
     )
 
 
