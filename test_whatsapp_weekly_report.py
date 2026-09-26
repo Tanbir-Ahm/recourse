@@ -101,6 +101,49 @@ check(
     "widening the window to 30 days picks up the backdated row too -- the time filter is real, not decorative",
 )
 
+# --- --show: confident/out_of_scope text is opt-in, never shown by default ---
+
+default_report = report.generate_report(days=7)
+check(
+    "My brother was arrested for stealing a goat" not in default_report,
+    "the one confident question's text is NOT printed by default -- only its count is",
+)
+check(
+    "Random small talk" not in report.generate_report(days=30),
+    "the one out_of_scope question's text is NOT printed by default either, even in a window wide enough to include it",
+)
+
+confident_report = report.generate_report(days=7, show=("confident",))
+check(
+    "My brother was arrested for stealing a goat" in confident_report
+    and "confidently-answered question(s)" in confident_report,
+    "--show confident makes the confident bucket's real text appear, with its own labelled section",
+)
+check(
+    "What is criminal intimidation?" in confident_report,
+    "asking for --show confident does not remove the always-on thin section",
+)
+
+out_of_scope_report = report.generate_report(days=30, show=("out_of_scope",))
+check(
+    "Random small talk" in out_of_scope_report,
+    "--show out_of_scope surfaces that bucket's text too, on request",
+)
+
+all_report = report.generate_report(days=30, show=("all",))
+check(
+    all(
+        text in all_report
+        for text in (
+            "My brother was arrested for stealing a goat",  # confident
+            "What is criminal intimidation?",                 # thin
+            "API hiccup case",                                # technical_failure
+            "Random small talk",                              # out_of_scope
+        )
+    ),
+    "--show all prints every category's real question text, all four buckets at once",
+)
+
 try:
     os.remove(_tmp_db)
 except OSError:
