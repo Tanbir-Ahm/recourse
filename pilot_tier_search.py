@@ -45,7 +45,16 @@ MAX_RESULTS = 3
 
 
 def load_pilot_pool(chunk_dir: str) -> list:
-    """All chunks from every *_chunks.json file in chunk_dir, each tagged with a stable chunk_id."""
+    """All chunks from every *_chunks.json file in chunk_dir, each tagged with a stable chunk_id.
+
+    Every chunk also carries a `topic` field (e.g. 'hurt_assault', 'anticipatory_bail') as of
+    2026-09-26 -- added after a real production bug where a case from one subject area (an NDPS
+    drug case) surfaced as "possibly relevant" under a completely unrelated question (a BNS
+    religious-offence question), because this pool had no way to tell the two apart. That specific
+    case has since been removed (it was promoted to core), but the underlying gap -- an
+    undifferentiated pool mixing genuinely unrelated subjects -- would recur the moment a second
+    real topic was added, which is exactly what happened when anticipatory bail sourcing began.
+    search_pilot_tier's `topic` parameter is what actually uses this field to keep topics apart."""
     pool = []
     for path in sorted(glob.glob(os.path.join(chunk_dir, "*_chunks.json"))):
         chunks = json.load(open(path, encoding="utf-8"))
@@ -82,11 +91,21 @@ def _similarity(question: str, chunk: dict) -> float:
     return _cosine(_embed_one(question), chunk["embedding"])
 
 
-def search_pilot_tier(question: str, pool: list = None, chunk_dir: str = "pilot_chunks") -> list:
+def search_pilot_tier(question: str, pool: list = None, chunk_dir: str = "pilot_chunks", topic: str = None) -> list:
     """The wider-tier matches for a free-text question, above PILOT_TIER_SIMILARITY_THRESHOLD,
-    best first, capped at MAX_RESULTS. Never raises on an empty/no-match pool -- returns []."""
+    best first, capped at MAX_RESULTS. Never raises on an empty/no-match pool -- returns [].
+
+    `topic`, added 2026-09-26: every chunk in the pool now carries its own `topic` field (e.g.
+    'hurt_assault', 'anticipatory_bail') -- see load_pilot_pool's docstring for why this exists.
+    When `topic` is given here, the search is restricted to chunks tagged with that exact topic,
+    so a question already known to be about one subject can never surface a case about a
+    completely different one just because the wording happens to overlap. When `topic` is None
+    (the default, and every existing caller as of this change), behaviour is UNCHANGED -- the
+    whole pool is searched, exactly as before this parameter existed."""
     if pool is None:
         pool = load_pilot_pool(chunk_dir)
+    if topic is not None:
+        pool = [c for c in pool if c.get("topic") == topic]
     scored = []
     for chunk in pool:
         score = _similarity(question, chunk)

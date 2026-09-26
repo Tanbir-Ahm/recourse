@@ -1,6 +1,7 @@
 """
-test_pilot_tier_search.py -- the WIDER, less-reviewed judgment pool (built from the 9 hand-verified
-hurt/assault cases), kept deliberately separate from Recourse's 46 core, fully-reviewed cases.
+test_pilot_tier_search.py -- the WIDER, less-reviewed judgment pool (10 hand-verified cases across
+two topics: 7 hurt_assault, 3 anticipatory_bail), kept deliberately separate from Recourse's 46
+core, fully-reviewed cases.
 Written BEFORE the code. Synthetic fixtures throughout -- never real judgment text in a test file,
 same convention as every other test suite in this project.
 
@@ -117,6 +118,39 @@ check(all(r["case_name"] != "Test Case C v State" for r in results),
 results2 = p.search_pilot_tier("weather forecast rainfall patterns next monsoon season", pool=POOL)
 check(results2 == [], "a question matching nothing in the pool returns an empty list, not a forced weak match")
 
+# ---------------------------------------------------------------- 2b. topic filtering (added 2026-09-26)
+# CONFIRMED REAL BUG this closes: a case from one subject area (NDPS) surfaced as "possibly
+# relevant" under a completely unrelated question (a BNS religious-offence question) because the
+# pool had no way to tell subjects apart. `topic` on search_pilot_tier is the fix.
+TOPIC_POOL = [
+    {"case_name": "Assault Case v State", "citation": "[2010] 1 S.C.R. 1", "source_url": "https://api.sci.gov.in/jonew/judis/10.pdf",
+     "chunk_method": "fixed_size_fallback", "paragraph_number": None, "topic": "hurt_assault",
+     "text": "synthetic passage sharing bail words with the query below", "chunk_id": "assault-1"},
+    {"case_name": "Anticipatory Bail Case v State", "citation": "[2020] 2 S.C.R. 2", "source_url": "https://api.sci.gov.in/jonew/judis/20.pdf",
+     "chunk_method": "fixed_size_fallback", "paragraph_number": None, "topic": "anticipatory_bail",
+     "text": "synthetic passage sharing bail words with the query below", "chunk_id": "bail-1"},
+]
+p._similarity = lambda q, chunk: 0.9  # both chunks score equally high on pure wording -- topic must be what separates them
+
+check(
+    {r["case_name"] for r in p.search_pilot_tier("q", pool=TOPIC_POOL, topic="anticipatory_bail")} == {"Anticipatory Bail Case v State"},
+    "topic='anticipatory_bail' returns ONLY the anticipatory-bail chunk, even though the hurt/assault "
+    "chunk scores identically on wording alone -- topic is a hard filter, not a tiebreaker",
+)
+check(
+    {r["case_name"] for r in p.search_pilot_tier("q", pool=TOPIC_POOL, topic="hurt_assault")} == {"Assault Case v State"},
+    "the same filter works the other way round too",
+)
+check(
+    {r["case_name"] for r in p.search_pilot_tier("q", pool=TOPIC_POOL)} == {"Assault Case v State", "Anticipatory Bail Case v State"},
+    "with NO topic given (every caller before this change), behaviour is unchanged -- the whole pool is searched",
+)
+check(
+    p.search_pilot_tier("q", pool=TOPIC_POOL, topic="some_topic_that_does_not_exist") == [],
+    "an unrecognised topic returns an honest empty list, not an error or the whole pool",
+)
+p._similarity = fake_similarity  # restore for the sections below
+
 # ---------------------------------------------------------------- 3. formatting: paragraph number cited only when earned
 with_para = {"case_name": "Test Case A v State", "citation": "[2000] 1 S.C.R. 1", "source_url": "https://api.sci.gov.in/jonew/judis/1.pdf",
              "chunk_method": "paragraph_number", "paragraph_number": "12", "text": "synthetic passage text here"}
@@ -175,13 +209,45 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # CORE-tier promotions this same week. Removed from the active pool (its original full text is
 # preserved in pilot_corpus/, so nothing is lost -- it can be properly re-chunked if anyone ever
 # wants to promote it) rather than left live with half its citations unreliable.
+#
+# UP TO 9, not 7, as of 2026-09-26: Gurbaksh Singh Sibbia AND Siddharam Satlingappa Mhetre v State
+# of Maharashtra both added -- the first genuinely deliberate additions under the new sourcing plan
+# (real government link, full read, 2 automated + 3 manual checks, explicit approval, THEN pilot
+# entry -- not core yet). Sibbia is the case that made topic-tagging necessary rather than
+# premature: it's the second real subject in the pool (the first 7 are hurt_assault; Sibbia and
+# Mhetre are anticipatory_bail), so every chunk in the pool -- old and new -- now carries a `topic`
+# field, checked below. Mhetre's own chunk file also had 2 of its own real paragraph numbers (1
+# and 19) colliding with an unrelated appendix/index list's independent numbering inside the same
+# document -- the same failure class as Pravat Chandra Mohanty above; the 4 ambiguous chunks (2
+# labels x 2 texts each) were removed, keeping the other 150 genuinely clean ones.
+#
+# UP TO 10, not 9, as of 2026-09-26: Sushila Aggarwal v State (NCT of Delhi) added, the third and
+# final case approved under the anticipatory-bail plan (also anticipatory_bail topic). Its source
+# PDF is a 5-judge Constitution Bench ruling with two separately-numbered opinions (M.R. Shah, S.
+# Ravindra Bhat); the audit above flagged 36 colliding paragraph numbers (1-43, plus 438-439) --
+# far more than a simple two-opinion restart would explain. The real cause: M.R. Shah's opinion
+# embeds an illustrative bail-bond-conditions template (a numbered list "1. the applicant shall
+# furnish personal bond...", "2. ... shall remain present...", etc.) whose own numbering collided
+# with his real paragraph numbers, and both opinions quote Sibbia/Mhetre's own numbered paragraphs
+# at length while analysing them. All 36 flagged numbers were removed rather than guessed apart
+# (99 of the original 175 chunks) -- this happens to remove nearly all of M.R. Shah's opinion (35
+# of 36 chunks; only his one-paragraph preamble survives, since virtually all his real content sat
+# inside the colliding 1-43 range) while leaving S. Ravindra Bhat's opinion largely intact,
+# including its actual holding (paragraphs 77-81, "the reference is hereby answered in the above
+# terms", confirmed clean before and after the fix) and paragraphs 94-125. Losing Shah's opinion
+# from this pool is a real, deliberate cost of the fix, not an oversight.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 7 and len(real_pool) > 7, f"the real pilot pool loads chunks spanning all 7 remaining (clean, non-promoted) cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 10 and len(real_pool) > 10, f"the real pilot pool loads chunks spanning all 10 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
+    check(all(c.get("topic") for c in real_pool),
+          "every chunk in the real pool now carries a topic -- none were left untagged by the retrofit")
+    real_topics = {c["topic"] for c in real_pool}
+    check(real_topics == {"hurt_assault", "anticipatory_bail"},
+          f"exactly the two real topics currently in the pool, nothing unexpected -- got {real_topics}")
 except FileNotFoundError:
     check(False, "pilot_chunks directory not found -- run build_pilot_corpus first")
 
