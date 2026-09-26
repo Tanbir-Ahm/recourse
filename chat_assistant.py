@@ -202,6 +202,54 @@ def _find_ungrounded_reasoning_sections(reasoning: str, question: str) -> list:
     return sorted(mentioned - named_by_user)
 
 
+def _old_code_note_for_classifier(question: str) -> str:
+    """CONFIRMED REAL FAILURE (2026-09-26, found via real WhatsApp use): 'What is section 302 of
+    IPC' was refused as adjacent_uncovered ('a general criminal law question outside this chat
+    feature's scope'); 'What is section 302 BNS' -- the identical question, one minute later, same
+    person -- was answered in full. Neither mentioned an arrest; the only difference was which
+    name for the same law was used. SCOPE_CLASSIFIER_PROMPT's own in_scope definition is worded
+    'under BNS/BNSS' -- it has no way to know IPC/CrPC are that same law's old names, so it
+    guesses, inconsistently, exactly like this.
+
+    Fix: detect an old-code section reference BEFORE the question ever reaches the classifier, and
+    hand it the real current-law equivalent as a plain fact, using the SAME detector already
+    proven correct for retrieval's named-section fast path (_named_section_exact_match) -- not a
+    narrower one, and not a new regex. This closes the whole category (every section number in
+    statute_concordance's table, not just 302) in one change, instead of adding one more
+    hand-written example to an already-long prompt per section number, which is what every earlier
+    fix for this class of bug has done.
+
+    Returns a short note to APPEND to the prompt text (never state anything from it directly to
+    the user -- it says so itself), or '' if no old-code section is named. Fails silently to ''
+    on any error (a missing/unexpected concordance entry must never block classification)."""
+    try:
+        from semantic_retrieval import _detect_named_section
+        from statute_concordance import to_new
+    except Exception:
+        return ""
+    try:
+        detected = _detect_named_section(question or "")
+        if detected is None:
+            return ""
+        act, number = detected
+        if act not in ("IPC", "CrPC"):
+            return ""
+        mapped = to_new(act, number)
+        if not mapped:
+            return ""
+        new_ref = "; ".join(f"{m['act']} {m['section']}" for m in mapped)
+    except Exception:
+        logger.exception("_old_code_note_for_classifier: lookup failed for %r", (question or "")[:200])
+        return ""
+    return (
+        f"\n\n[Note for classification only, from a verified lookup table -- do not state this "
+        f"mapping to the user yourself: the person named {act} Section {number}, which is "
+        f"{new_ref} under the current law. Treat this exactly as if the current-law section had "
+        f"been named -- the current in_scope/covered_elsewhere_in_tool rules above apply to it "
+        f"the same way they would to {new_ref}.]"
+    )
+
+
 def classify_scope(question):
     """Returns ('in_scope' | 'covered_elsewhere_in_tool' | 'adjacent_uncovered' | 'unrelated',
     reasoning, redirect_domain) or (None, None, None) if the classifier call itself fails --
@@ -259,6 +307,7 @@ def classify_scope(question):
     if client is None:
         return None, None, None
 
+    old_code_note = _old_code_note_for_classifier(question)
     retry_correction = ""
     for attempt in range(2):
         try:
@@ -274,7 +323,7 @@ def classify_scope(question):
                 model=HAIKU_MODEL,
                 max_tokens=1500,
                 messages=[{"role": "user",
-                           "content": SCOPE_CLASSIFIER_PROMPT.format(question=question) + retry_correction}],
+                           "content": SCOPE_CLASSIFIER_PROMPT.format(question=question) + old_code_note + retry_correction}],
             )
             raw = _extract_text_from_response(response).strip()
             # Defensive: strip markdown code fences if the model adds them
@@ -305,7 +354,13 @@ def classify_scope(question):
             # redirect_domain are a closed-set choice, not a free-text guess,
             # so they stay reliable) -- just drop the untrustworthy reasoning
             # text rather than show the person a second wrong guess.
-            ungrounded_numbers = _find_ungrounded_reasoning_sections(reasoning, question)
+            #
+            # question + old_code_note (not bare question): a number named only
+            # inside old_code_note (e.g. "BNS 103" translated from the user's own
+            # "IPC 302") came from a verified lookup table, not the model's
+            # imagination -- it must never be flagged as an invented, ungrounded
+            # number just because the user themselves typed the OLD number.
+            ungrounded_numbers = _find_ungrounded_reasoning_sections(reasoning, question + old_code_note)
             if ungrounded_numbers and attempt == 0:
                 logger.warning(
                     "classify_scope: reasoning named section(s) %s the user never mentioned "

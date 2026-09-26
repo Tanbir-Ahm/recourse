@@ -164,11 +164,22 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # leaves the original 8 hurt/assault cases (Mathai Verghese was promoted OUT of this pool earlier
 # the same day -- wrong domain entirely, now lives in the core corpus; see
 # test_mathai_verghese_promotion.py).
+#
+# DOWN TO 7, not 8, as of 2026-09-26: audit_pilot_paragraph_labels.py (built the same day, after
+# the NDPS cleanup above prompted a closer look at what else might be sitting in this pool
+# undetected) found that Pravat Chandra Mohanty v State of Odisha had roughly half its paragraph
+# numbers pointing to TWO different, unrelated pieces of text each -- the judgment quotes an
+# injury list and cites another case (Jetha Ram v State of Rajasthan) whose own internal
+# numbering got mistaken for this judgment's own paragraphs by the automatic chunker, the same
+# failure class documented extensively in ndps_doctrine_map.py's module docstring for several
+# CORE-tier promotions this same week. Removed from the active pool (its original full text is
+# preserved in pilot_corpus/, so nothing is lost -- it can be properly re-chunked if anyone ever
+# wants to promote it) rather than left live with half its citations unreliable.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 8 and len(real_pool) > 8, f"the real pilot pool loads chunks spanning all 8 remaining (non-promoted) cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 7 and len(real_pool) > 7, f"the real pilot pool loads chunks spanning all 7 remaining (clean, non-promoted) cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
 except FileNotFoundError:
