@@ -90,6 +90,85 @@ with patch("chat_assistant.classify_scope", return_value=("in_scope", None, None
           "the pilot tier's real result reaches the conflicting_matches response, not just single_match")
     check(fake_fetch.called, "_fetch_pilot_related_judgments is actually invoked on the conflicting_matches path")
 
+# ---------------------------------------------------------------- 6. topic inference (added 2026-09-27)
+# CONFIRMED REAL BUG, found by re-checking wiring before adding a third pilot topic: search_pilot_tier's
+# `topic` parameter existed and was tested since 2026-09-26, but the only real caller never passed it --
+# every question searched the WHOLE pilot pool (hurt_assault + anticipatory_bail together) regardless of
+# topic, silently defeating the cross-topic-leakage protection the parameter exists for. See the
+# CONFIRMED REAL BUG comment directly above _infer_pilot_topic in chat_assistant.py for the full story.
+
+HURT_MATCH = {"type": "statute", "act": "BNS", "section_number": "117"}
+BAIL_MATCH = {"type": "statute", "act": "BNSS", "section_number": "482"}
+THEFT_MATCH = {"type": "statute", "act": "BNS", "section_number": "304"}  # real signal: snatching, not hurt
+DEFAULT_BAIL_MATCH = {"type": "statute", "act": "BNSS", "section_number": "479"}  # real signal: default bail, not anticipatory
+JUDGMENT_MATCH = {"type": "judgment", "case_name": "Arnesh Kumar v State of Bihar"}  # no act/section_number at all
+
+check(chat_assistant._infer_pilot_topic([HURT_MATCH]) == "hurt_assault",
+      "a real hurt-chapter BNS section (confirmed empirically: 115/117/122 fire for genuine hurt/assault questions) infers hurt_assault")
+check(chat_assistant._infer_pilot_topic([BAIL_MATCH]) == "anticipatory_bail",
+      "BNSS 482 (confirmed empirically: fires only for genuine anticipatory-bail questions) infers anticipatory_bail")
+check(chat_assistant._infer_pilot_topic([HURT_MATCH, BAIL_MATCH]) is None,
+      "both signals present at once (ambiguous) -- deliberately falls back to None, never guesses which one wins")
+check(chat_assistant._infer_pilot_topic([THEFT_MATCH]) is None,
+      "an unrelated statute section (theft, not hurt) infers no topic -- never wrongly narrows to hurt_assault")
+check(chat_assistant._infer_pilot_topic([DEFAULT_BAIL_MATCH]) is None,
+      "default bail's own section (479) is deliberately NOT in the anticipatory-bail signal set -- the two are different doctrines")
+check(chat_assistant._infer_pilot_topic([]) is None, "no matches at all -> None, not an error")
+check(chat_assistant._infer_pilot_topic([JUDGMENT_MATCH]) is None,
+      "a judgment match with no act/section_number is skipped cleanly, not treated as a signal")
+check(chat_assistant._infer_pilot_topic([JUDGMENT_MATCH, HURT_MATCH]) == "hurt_assault",
+      "a real signal is still found even when mixed with non-statute matches that carry no act/section_number")
+
+# ---------------------------------------------------------------- 7. the inferred topic actually reaches search_pilot_tier
+with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
+    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set(), matches=[HURT_MATCH])
+    check(fake_search.call_args.kwargs.get("topic") == "hurt_assault",
+          "a hurt-shaped question's real statute matches narrow the pilot search to topic='hurt_assault'")
+
+with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
+    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set(), matches=[BAIL_MATCH])
+    check(fake_search.call_args.kwargs.get("topic") == "anticipatory_bail",
+          "an anticipatory-bail-shaped question's real statute matches narrow the pilot search to topic='anticipatory_bail'")
+
+with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
+    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set(), matches=[THEFT_MATCH])
+    check(fake_search.call_args.kwargs.get("topic") is None,
+          "a question with no confident topic signal still searches the whole pool -- old behaviour, nothing hidden")
+
+with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
+    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set())  # matches omitted entirely
+    check(fake_search.call_args.kwargs.get("topic") is None,
+          "a caller that doesn't pass matches at all keeps the exact old, unfiltered behaviour -- fully backward compatible")
+
+# ---------------------------------------------------------------- 8. end-to-end proof the leakage is actually closed:
+# a real hurt_assault question's inferred topic must exclude a real anticipatory_bail case even if it would have
+# scored higher on plain similarity -- this is the actual bug from the top of this section, closed for real.
+import pilot_tier_search as _pts
+
+REAL_POOL = [
+    {"case_name": "Jagrup Singh v State of Haryana", "citation": "", "source_url": "https://example.test/jagrup",
+     "chunk_method": "paragraph_number", "paragraph_number": "9", "topic": "hurt_assault",
+     "text": "grievous hurt by a dangerous weapon", "embedding": [1.0, 0.0]},
+    {"case_name": "Gurbaksh Singh Sibbia v State of Punjab", "citation": "", "source_url": "https://example.test/sibbia",
+     "chunk_method": "fixed_size_fallback", "paragraph_number": "fallback_0", "topic": "anticipatory_bail",
+     "text": "anticipatory bail under section 438", "embedding": [1.0, 0.0]},  # deliberately IDENTICAL embedding
+]
+with patch("pilot_tier_search._embed_one", return_value=[1.0, 0.0]), \
+     patch("pilot_tier_search.load_pilot_pool", return_value=REAL_POOL):
+    unfiltered = _pts.search_pilot_tier("some question")
+    check({r["case_name"] for r in unfiltered} == {"Jagrup Singh v State of Haryana", "Gurbaksh Singh Sibbia v State of Punjab"},
+          "sanity: with identical scores and no topic filter, BOTH cases are eligible -- reproducing the pre-fix bug")
+
+with patch("pilot_tier_search.search_pilot_tier", wraps=_pts.search_pilot_tier) as wrapped_search, \
+     patch("pilot_tier_search._embed_one", return_value=[1.0, 0.0]), \
+     patch("pilot_tier_search.load_pilot_pool", return_value=REAL_POOL):
+    out = chat_assistant._fetch_pilot_related_judgments("some hurt question", exclude_case_names=set(), matches=[HURT_MATCH])
+    names = {o["case_name"] for o in out}
+    check("Gurbaksh Singh Sibbia v State of Punjab" not in names,
+          "THE ACTUAL FIX: a hurt_assault-shaped question no longer surfaces an anticipatory_bail case, even with an identical similarity score")
+    check("Jagrup Singh v State of Haryana" in names,
+          "the genuinely on-topic case still comes through correctly")
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED")

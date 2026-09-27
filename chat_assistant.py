@@ -2665,7 +2665,51 @@ def _fetch_unverified_related_judgments(question: str, topic: str, exclude_case_
     return filtered[:top_k]
 
 
-def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, top_k: int = 3) -> list:
+# CONFIRMED REAL BUG (2026-09-27), found by re-checking wiring before adding a third pilot topic:
+# pilot_tier_search.search_pilot_tier's `topic` parameter has existed since 2026-09-26 (built
+# specifically to stop one topic's cases surfacing for an unrelated topic's question -- see
+# memory/pilot-tier-judgment-search.md and the NDPS cross-topic-leakage incident that motivated
+# it), fully implemented and tested in pilot_tier_search.py itself -- but the ONLY real (non-test)
+# caller, _fetch_pilot_related_judgments below, never actually passed it. Every question has been
+# searching the WHOLE pilot pool regardless of topic since the day the second topic
+# (anticipatory_bail) was added, silently defeating the exact protection the parameter exists for.
+#
+# Fix: infer the topic from statute sections ALREADY found in `matches` (a signal that's free,
+# deterministic, and confirmed by real testing -- BNS 115/117/122, the "Of Hurt" chapter, fire
+# reliably and ONLY for genuine hurt/assault fact patterns; BNSS 482 fires reliably and ONLY for
+# genuine anticipatory-bail questions; an unrelated theft question citing BNS 134/304 or a
+# default-bail question citing BNSS 479/480 correctly triggers neither). Deliberately conservative:
+# only narrows the search when exactly one topic's signal is present. Anything ambiguous (both
+# signals) or absent (neither signal, e.g. a topic pilot_chunks has no case for yet) falls back to
+# topic=None -- the exact old behaviour, searching everything -- so this can only ever REDUCE
+# false-positive cross-topic leakage, never risk hiding a genuinely relevant pilot case behind an
+# overconfident topic guess.
+_HURT_ASSAULT_BNS_SECTIONS = frozenset(str(n) for n in range(114, 126))
+_ANTICIPATORY_BAIL_BNSS_SECTIONS = frozenset({"482"})
+
+
+def _infer_pilot_topic(matches: list) -> str:
+    """Returns 'hurt_assault' or 'anticipatory_bail' only when its signal is present and the
+    other topic's signal is not -- otherwise None (search the whole pilot pool, unchanged from
+    before this function existed). Never raises: an unexpected match shape is just skipped."""
+    has_hurt = False
+    has_bail = False
+    for m in matches:
+        if m.get("type") != "statute":
+            continue
+        act, section = m.get("act"), m.get("section_number")
+        if act == "BNS" and section in _HURT_ASSAULT_BNS_SECTIONS:
+            has_hurt = True
+        elif act == "BNSS" and section in _ANTICIPATORY_BAIL_BNSS_SECTIONS:
+            has_bail = True
+    if has_hurt and not has_bail:
+        return "hurt_assault"
+    if has_bail and not has_hurt:
+        return "anticipatory_bail"
+    return None
+
+
+def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, matches: list = None, top_k: int = 3) -> list:
     """The WIDER, hand-verified-but-not-fully-reviewed judgment pool (pilot_tier_search.py --
     2026-09-23 pilot, hurt/assault domain, 9 cases). Same shape and same caller contract as
     _fetch_unverified_related_judgments above -- merged into the SAME 'unverified_related_judgments'
@@ -2673,6 +2717,11 @@ def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, top_k
     from the vaquill pool in code, though shown under the same honest 'read carefully' heading (this
     pool's cases had their identity confirmed -- real names/dates checked against the real file --
     but not the full legal-content review the 46 curated cases get, so the same caution applies).
+
+    `matches`, ADDED 2026-09-27: the caller's already-computed statute/judgment matches, used only
+    to infer a topic filter via _infer_pilot_topic (see that function's docstring for why and how).
+    Optional and defaults to None so any caller that hasn't been updated keeps the old, unfiltered
+    behaviour rather than erroring.
 
     The 'ik_search_url' field is reused to carry this pool's REAL, human-verified Supreme-Court-of-
     India link (not an Indian Kanoon search page) -- deliberately reusing the existing field rather
@@ -2682,9 +2731,10 @@ def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, top_k
     Same fail-open contract as the vaquill fetch: any failure (missing pilot_chunks/, missing
     embeddings, import error) is swallowed and returns [] rather than ever risking the real answer
     this is attached to."""
+    topic = _infer_pilot_topic(matches) if matches else None
     try:
         import pilot_tier_search
-        results = pilot_tier_search.search_pilot_tier(question)
+        results = pilot_tier_search.search_pilot_tier(question, topic=topic)
     except Exception as exc:  # pragma: no cover - defensive, same as the vaquill fetch above
         logger.warning("_fetch_pilot_related_judgments: pilot_tier_search failed: %s", exc)
         return []
@@ -2736,7 +2786,7 @@ def _answer_single_match(question, matches):
             "situation_detected": cached["situation_detected"],
             "from_cache": True,
             "unverified_related_judgments": _fetch_pilot_related_judgments(
-                question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
+                question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}, matches=matches
             ),
         }
 
@@ -2751,7 +2801,7 @@ def _answer_single_match(question, matches):
     # populate the UI's separate "Other real court cases" list below -- a cached answer above never
     # sees this, since its response_text was already generated before this feature existed.
     pilot_matches = _fetch_pilot_related_judgments(
-        question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}
+        question, exclude_case_names={m.get("case_name") for m in matches if m.get("case_name")}, matches=matches
     )
     response_text = generate_grounded_response(question, retrieved_text, matches=matches, pilot_matches=pilot_matches)
     situation_detected = _looks_like_situation(response_text)
@@ -2987,7 +3037,7 @@ def answer_question(question, inline_domains=frozenset()):
         retrieved_text = format_retrieved_text_for_prompt(all_matches)
         # Same fetch-once-reuse-twice pattern as _answer_single_match's fresh path above.
         pilot_matches = _fetch_pilot_related_judgments(
-            question, exclude_case_names={m.get("case_name") for m in all_matches if m.get("case_name")}
+            question, exclude_case_names={m.get("case_name") for m in all_matches if m.get("case_name")}, matches=all_matches
         )
         response_text = generate_grounded_response(
             question, retrieved_text, is_conflict=True, matches=all_matches, pilot_matches=pilot_matches
