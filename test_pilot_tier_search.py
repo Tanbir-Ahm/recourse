@@ -248,11 +248,21 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # check to a dict-driven one, and fixing a real latent bug found while doing so: BNS 318 (cheating)
 # comes back from the real answer pipeline as "318(4)" (a sub-clause), which the original
 # hurt/bail-only exact-string check would never have been tested against, but would have missed.
+#
+# UP TO 12, not 11, as of 2026-09-27: G. Sagar Suri and Anr. v State of U.P. and Ors. added, second
+# case in cheating_civil_dispute -- an even more directly on-point precedent (a loan secured by
+# cheques that bounced, with a cheating FIR filed on top of a Section 138 NI Act complaint over the
+# same money; the Court quashed the cheating prosecution). Also fixed entirely via
+# fixed_size_fallback (16 chunks), no collision risk. Confirmed live against 3 real loan/cheque
+# phrasings: it correctly ranks ABOVE Hridaya Rangan Pd. Verma for all three (0.44/0.50/0.46 vs
+# 0.42/0.41/0.29) -- but two of those three sit at or just under the pool's strict 0.50 threshold,
+# so this case will not surface for every real phrasing of the same underlying question. That's the
+# pool's own deliberately conservative threshold working as designed, not a defect in this case.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 11 and len(real_pool) > 11, f"the real pilot pool loads chunks spanning all 11 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 12 and len(real_pool) > 12, f"the real pilot pool loads chunks spanning all 12 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
     check(all(c.get("topic") for c in real_pool),
