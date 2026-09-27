@@ -102,13 +102,24 @@ BAIL_MATCH = {"type": "statute", "act": "BNSS", "section_number": "482"}
 THEFT_MATCH = {"type": "statute", "act": "BNS", "section_number": "304"}  # real signal: snatching, not hurt
 DEFAULT_BAIL_MATCH = {"type": "statute", "act": "BNSS", "section_number": "479"}  # real signal: default bail, not anticipatory
 JUDGMENT_MATCH = {"type": "judgment", "case_name": "Arnesh Kumar v State of Bihar"}  # no act/section_number at all
+# CHEATING_MATCH deliberately carries a sub-clause ("318(4)"), the exact real shape confirmed live
+# 2026-09-27 for "does non-payment of a loan count as cheating" -- a bare string-equality check
+# against "318" would silently miss this; _base_section_number exists specifically to catch it.
+CHEATING_MATCH = {"type": "statute", "act": "BNS", "section_number": "318(4)"}
+BREACH_OF_TRUST_MATCH = {"type": "statute", "act": "BNS", "section_number": "316"}
 
 check(chat_assistant._infer_pilot_topic([HURT_MATCH]) == "hurt_assault",
       "a real hurt-chapter BNS section (confirmed empirically: 115/117/122 fire for genuine hurt/assault questions) infers hurt_assault")
 check(chat_assistant._infer_pilot_topic([BAIL_MATCH]) == "anticipatory_bail",
       "BNSS 482 (confirmed empirically: fires only for genuine anticipatory-bail questions) infers anticipatory_bail")
+check(chat_assistant._infer_pilot_topic([CHEATING_MATCH]) == "cheating_civil_dispute",
+      "BNS 318 (confirmed empirically for a real loan-non-payment question) infers cheating_civil_dispute, even with a sub-clause suffix")
+check(chat_assistant._infer_pilot_topic([BREACH_OF_TRUST_MATCH]) == "cheating_civil_dispute",
+      "BNS 316 (confirmed empirically for a real breach-of-trust question) also infers cheating_civil_dispute -- same topic, sibling doctrine")
 check(chat_assistant._infer_pilot_topic([HURT_MATCH, BAIL_MATCH]) is None,
-      "both signals present at once (ambiguous) -- deliberately falls back to None, never guesses which one wins")
+      "two signals present at once (ambiguous) -- deliberately falls back to None, never guesses which one wins")
+check(chat_assistant._infer_pilot_topic([HURT_MATCH, CHEATING_MATCH]) is None,
+      "ambiguity check generalises to the third topic too, not just the original two")
 check(chat_assistant._infer_pilot_topic([THEFT_MATCH]) is None,
       "an unrelated statute section (theft, not hurt) infers no topic -- never wrongly narrows to hurt_assault")
 check(chat_assistant._infer_pilot_topic([DEFAULT_BAIL_MATCH]) is None,
@@ -118,6 +129,9 @@ check(chat_assistant._infer_pilot_topic([JUDGMENT_MATCH]) is None,
       "a judgment match with no act/section_number is skipped cleanly, not treated as a signal")
 check(chat_assistant._infer_pilot_topic([JUDGMENT_MATCH, HURT_MATCH]) == "hurt_assault",
       "a real signal is still found even when mixed with non-statute matches that carry no act/section_number")
+check(chat_assistant._base_section_number("318(4)") == "318" and chat_assistant._base_section_number("122") == "122"
+      and chat_assistant._base_section_number(None) is None,
+      "_base_section_number strips a sub-clause suffix, leaves a bare number unchanged, and never raises on None")
 
 # ---------------------------------------------------------------- 7. the inferred topic actually reaches search_pilot_tier
 with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:

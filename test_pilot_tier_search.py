@@ -236,18 +236,30 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # including its actual holding (paragraphs 77-81, "the reference is hereby answered in the above
 # terms", confirmed clean before and after the fix) and paragraphs 94-125. Losing Shah's opinion
 # from this pool is a real, deliberate cost of the fix, not an oversight.
+#
+# UP TO 11, not 10, as of 2026-09-27: Hridaya Rangan Pd. Verma and Ors. v State of Bihar and Anr.
+# added -- the first case in a new third topic, `cheating_civil_dispute`, sourced the same way as
+# the anticipatory-bail batch (real api.sci.gov.in link supplied by the user, full read, citation
+# cross-checked against an independent source, explicit approval). Its own decision reads as
+# continuous prose with no internal paragraph numbering, so it chunked entirely via
+# fixed_size_fallback (14 chunks) -- no paragraph-label collision risk since there are no
+# paragraph-number labels to collide. This addition is also what motivated generalising
+# chat_assistant._infer_pilot_topic (see that function's own comment) from a hardcoded two-topic
+# check to a dict-driven one, and fixing a real latent bug found while doing so: BNS 318 (cheating)
+# comes back from the real answer pipeline as "318(4)" (a sub-clause), which the original
+# hurt/bail-only exact-string check would never have been tested against, but would have missed.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 10 and len(real_pool) > 10, f"the real pilot pool loads chunks spanning all 10 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 11 and len(real_pool) > 11, f"the real pilot pool loads chunks spanning all 11 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
     check(all(c.get("topic") for c in real_pool),
           "every chunk in the real pool now carries a topic -- none were left untagged by the retrofit")
     real_topics = {c["topic"] for c in real_pool}
-    check(real_topics == {"hurt_assault", "anticipatory_bail"},
-          f"exactly the two real topics currently in the pool, nothing unexpected -- got {real_topics}")
+    check(real_topics == {"hurt_assault", "anticipatory_bail", "cheating_civil_dispute"},
+          f"exactly the three real topics currently in the pool, nothing unexpected -- got {real_topics}")
 except FileNotFoundError:
     check(False, "pilot_chunks directory not found -- run build_pilot_corpus first")
 

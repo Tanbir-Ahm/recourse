@@ -2684,29 +2684,41 @@ def _fetch_unverified_related_judgments(question: str, topic: str, exclude_case_
 # topic=None -- the exact old behaviour, searching everything -- so this can only ever REDUCE
 # false-positive cross-topic leakage, never risk hiding a genuinely relevant pilot case behind an
 # overconfident topic guess.
-_HURT_ASSAULT_BNS_SECTIONS = frozenset(str(n) for n in range(114, 126))
-_ANTICIPATORY_BAIL_BNSS_SECTIONS = frozenset({"482"})
+#
+# EXTENDED 2026-09-27 for the third topic, cheating_civil_dispute (Hridaya Rangan Pd. Verma):
+# confirmed empirically that "does non-payment of a loan count as cheating" reliably produces BNS
+# 318 (cheating) and a breach-of-trust question reliably produces BNS 316 -- and neither fires for
+# a hurt or bail question. Generalised to a dict so a future topic is one line, not a rewrite. Also
+# fixed a real gap found while doing this: BNS 318 came back as "318(4)" (a sub-clause), which a
+# bare string-equality check against "318" would have silently missed -- section numbers are now
+# compared on their base number only (before any "(").
+_PILOT_TOPIC_SECTION_SIGNALS = {
+    "hurt_assault": {("BNS", str(n)) for n in range(114, 126)},
+    "anticipatory_bail": {("BNSS", "482")},
+    "cheating_civil_dispute": {("BNS", "318"), ("BNS", "316")},
+}
+
+
+def _base_section_number(section) -> str:
+    """'318(4)' -> '318'; '122' unchanged. None/'' pass through unchanged -- never raises."""
+    if not section:
+        return section
+    return section.split("(")[0].strip()
 
 
 def _infer_pilot_topic(matches: list) -> str:
-    """Returns 'hurt_assault' or 'anticipatory_bail' only when its signal is present and the
-    other topic's signal is not -- otherwise None (search the whole pilot pool, unchanged from
-    before this function existed). Never raises: an unexpected match shape is just skipped."""
-    has_hurt = False
-    has_bail = False
+    """Returns a pilot topic name only when EXACTLY ONE topic's signal is present across every
+    statute match -- otherwise None (search the whole pilot pool, the safe default, unchanged
+    from before this function existed). Never raises: an unexpected match shape is just skipped."""
+    signalled = set()
     for m in matches:
         if m.get("type") != "statute":
             continue
-        act, section = m.get("act"), m.get("section_number")
-        if act == "BNS" and section in _HURT_ASSAULT_BNS_SECTIONS:
-            has_hurt = True
-        elif act == "BNSS" and section in _ANTICIPATORY_BAIL_BNSS_SECTIONS:
-            has_bail = True
-    if has_hurt and not has_bail:
-        return "hurt_assault"
-    if has_bail and not has_hurt:
-        return "anticipatory_bail"
-    return None
+        key = (m.get("act"), _base_section_number(m.get("section_number")))
+        for topic, signals in _PILOT_TOPIC_SECTION_SIGNALS.items():
+            if key in signals:
+                signalled.add(topic)
+    return signalled.pop() if len(signalled) == 1 else None
 
 
 def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, matches: list = None, top_k: int = 3) -> list:
