@@ -258,11 +258,15 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # 0.42/0.41/0.29) -- but two of those three sit at or just under the pool's strict 0.50 threshold,
 # so this case will not surface for every real phrasing of the same underlying question. That's the
 # pool's own deliberately conservative threshold working as designed, not a defect in this case.
+#
+# UP TO 13, as of 2026-09-28: S.W. Palanitkar and Ors. v State of Bihar and Anr. -- third case in
+# cheating_civil_dispute, and the first added with add_pilot_case.py (stage, then approve). Partly
+# allowed: cheating process kept alive against one appellant, so the topic is not one-directional.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 12 and len(real_pool) > 12, f"the real pilot pool loads chunks spanning all 12 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 13 and len(real_pool) > 13, f"the real pilot pool loads chunks spanning all 13 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
     check(all(c.get("topic") for c in real_pool),
