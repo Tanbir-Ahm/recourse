@@ -122,7 +122,8 @@ def format_answer_for_whatsapp(result: dict) -> list:
                 "don't all say the same thing -- here's each one, "
                 "rather than picking one for you:",
             )
-        if result.get("situation_detected"):
+        pdf_n = result.get("pdf_offer_count")
+        if result.get("situation_detected") and not pdf_n:
             messages.append(
                 "Want a draft court petition based on this? Reply *DRAFT* and I'll prepare one you can download."
             )
@@ -132,6 +133,16 @@ def format_answer_for_whatsapp(result: dict) -> list:
         unverified = result.get("unverified_related_judgments")
         if unverified:
             messages.append(_format_unverified_judgments(unverified))
+        if pdf_n:
+            # ADDED 2026-09-28: the closing offer -- always the LAST message, after any links and the other-cases list.
+            # One message carries both offers when a petition is also on offer, so the person sees a single closing line.
+            offer = "Reply *PDF* to get this answer as a PDF"
+            if pdf_n > 1:
+                offer += f", or *PDF ALL* for all {pdf_n} of your questions so far"
+            offer += "."
+            if result.get("situation_detected"):
+                offer += " Want a draft court petition based on this? Reply *DRAFT* and I'll prepare one you can download."
+            messages.append(offer)
         return messages
 
     # Unknown/unhandled state -- fail honestly, never silently.

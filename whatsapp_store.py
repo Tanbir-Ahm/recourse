@@ -98,6 +98,19 @@ def _connect():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS answer_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone_number TEXT NOT NULL,
+            record_json TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_answer_records_phone_time ON answer_records(phone_number, created_at)"
+    )
     return conn
 
 
@@ -236,13 +249,61 @@ def get_recent_history(phone_number: str, *, max_messages: int = MAX_HISTORY_MES
 
 
 def clear_history(phone_number: str) -> None:
-    """Explicit reset -- e.g. the person types "new question"."""
+    """Explicit reset -- e.g. the person types "new question". Also wipes the saved answers behind the PDF
+    command (see save_answer_record): starting fresh means starting fresh."""
     conn = _connect()
     try:
         with conn:
             conn.execute("DELETE FROM messages WHERE phone_number = ?", (phone_number,))
+            conn.execute("DELETE FROM answer_records WHERE phone_number = ?", (phone_number,))
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Saved answers for the "reply PDF" command (ADDED 2026-09-28, see answer_pdf.py).
+#
+# The conversation memory above keeps only each answer's plain text, only the last few turns. A PDF of "everything the
+# answer had" also needs the sources and links, so a small JSON RECORD of every answer is saved here as it is produced.
+# Privacy: these are sensitive matters, so records live only as long as the conversation memory (24 hours), are wiped
+# on "new question", and at most MAX_ANSWER_RECORDS are kept per phone number. The record never contains the phone
+# number, and the PDF built from it does not either.
+# ---------------------------------------------------------------------------
+MAX_ANSWER_RECORDS = 20
+
+
+def save_answer_record(phone_number: str, record: dict) -> None:
+    conn = _connect()
+    try:
+        now = time.time()
+        with conn:
+            conn.execute(
+                "INSERT INTO answer_records (phone_number, record_json, created_at) VALUES (?, ?, ?)",
+                (phone_number, json.dumps(record), float(record.get("created_at") or now)),
+            )
+            # expire anything past the retention window (for everyone), then keep only the newest N for this person
+            conn.execute("DELETE FROM answer_records WHERE created_at < ?", (now - MAX_AGE_SECONDS,))
+            conn.execute(
+                "DELETE FROM answer_records WHERE phone_number = ? AND id NOT IN "
+                "(SELECT id FROM answer_records WHERE phone_number = ? ORDER BY created_at DESC, id DESC LIMIT ?)",
+                (phone_number, phone_number, MAX_ANSWER_RECORDS),
+            )
+    finally:
+        conn.close()
+
+
+def get_answer_records(phone_number: str, *, max_age_seconds: int = MAX_AGE_SECONDS) -> list:
+    """This person's saved answers, oldest first; anything older than max_age_seconds is left out."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT record_json FROM answer_records WHERE phone_number = ? AND created_at >= ? "
+            "ORDER BY created_at ASC, id ASC",
+            (phone_number, time.time() - max_age_seconds),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [json.loads(r[0]) for r in rows]
 
 
 def build_question_with_context(history: list, new_message: str) -> str:

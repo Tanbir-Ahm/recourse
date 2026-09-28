@@ -66,6 +66,7 @@ try:
 except ImportError:
     pass  # python-dotenv should already be installed (main.py depends on it)
 
+import answer_pdf
 import case_document
 import case_original
 import case_lookup
@@ -158,6 +159,43 @@ def _build_petition_pdf(question: str, matches: list):
     except Exception:
         logger.exception("Failed to build petition PDF for a WhatsApp DRAFT request")
         return None
+
+def _pdf_command(message_text: str):
+    """'one' for a message that is exactly PDF, 'all' for PDF ALL (any case / spacing / punctuation); None otherwise.
+    A long sentence that merely contains the word "pdf" is a normal question, not this command."""
+    t = re.sub(r"[^a-z]+", " ", (message_text or "").lower()).strip()
+    return {"pdf": "one", "pdf all": "all"}.get(t)
+
+
+def _handle_pdf_request(phone_number: str, kind: str) -> list:
+    """Builds the PDF from the answers saved for this person and sends it as a document. No AI call. Every failure is
+    reported honestly; nothing here can affect the conversation."""
+    records = whatsapp_store.get_answer_records(phone_number)
+    if not records:
+        reply = "I don't have an answer to put in a PDF yet -- ask me a question first, then reply PDF."
+        send_whatsapp_message(phone_number, reply)
+        return [reply]
+    chosen = records if kind == "all" else records[-1:]
+    data, info = answer_pdf.build_verified_pdf(chosen)
+    sent = False
+    if data is not None and WHATSAPP_PUBLIC_BASE_URL:
+        token = _store_pending_pdf(data)
+        url = f"{WHATSAPP_PUBLIC_BASE_URL}/whatsapp/files/{token}.pdf"
+        sent = send_whatsapp_document(phone_number, url, "recourse_answer.pdf")
+    if sent:
+        if len(chosen) == 1:
+            reply = (f"Here's your answer as a PDF (answer ID {chosen[0]['answer_id']}). It's an information summary, "
+                     "not legal advice -- take it to a lawyer.")
+        else:
+            reply = (f"Here's your {len(chosen)} questions and answers as one PDF. It's an information summary, "
+                     "not legal advice -- take it to a lawyer.")
+        if not info.get("ok"):
+            logger.warning("answer PDF sent without a passed completeness check: %s", info)
+    else:
+        reply = "Sorry, I couldn't prepare the PDF just now -- please try again in a moment."
+    send_whatsapp_message(phone_number, reply)
+    return [reply]
+
 
 # CONFIRMED REAL VULNERABILITY (found by security review, 2026-09-14): this
 # webhook had NO authentication at all -- anyone who found the URL could
@@ -539,6 +577,12 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
         send_whatsapp_message(phone_number, reply)
         return [reply]
 
+    # ADDED 2026-09-28: "PDF" / "PDF ALL" -- the answer(s) as a PDF. Handled here, before the message would be stored as a
+    # conversation turn or sent to the engine: it costs no AI call and is not a question.
+    pdf_kind = _pdf_command(message_text)
+    if pdf_kind:
+        return _handle_pdf_request(phone_number, pdf_kind)
+
     whatsapp_store.add_message(phone_number, "user", message_text)
     history = whatsapp_store.get_recent_history(phone_number)[:-1]  # exclude the message just added
     question = whatsapp_store.build_question_with_context(history, message_text)
@@ -568,6 +612,17 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # for the same reason: no separate UI to redirect to here either.
     result = chat_assistant.answer_question(
         question, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"})
+
+    # ADDED 2026-09-28: keep a record of this answer (the person's own words, the answer, its sources and links) so the
+    # PDF command can build a document from it later -- see answer_pdf.py. Fail-open: if this ever breaks the real
+    # answer still goes out, just without the PDF offer.
+    try:
+        record = answer_pdf.record_from_result(message_text, result)
+        if record:
+            whatsapp_store.save_answer_record(phone_number, record)
+            result["pdf_offer_count"] = len(whatsapp_store.get_answer_records(phone_number))
+    except Exception:
+        logger.exception("could not save an answer record for the PDF command")
     messages = format_answer_for_whatsapp(result)
 
     # The safe learning loop, part 1: quietly note how confident the
