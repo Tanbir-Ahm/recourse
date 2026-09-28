@@ -2706,10 +2706,46 @@ def _base_section_number(section) -> str:
     return section.split("(")[0].strip()
 
 
-def _infer_pilot_topic(matches: list) -> str:
+# CONFIRMED REAL BUG (2026-09-28, live WhatsApp test, "When can a court issue a non-bailable warrant?"): the
+# section signal alone is not enough. Semantic retrieval returned BNSS 482 as one of several side matches for a
+# WARRANT question, the inference above read it as "this is an anticipatory-bail question", and the pilot search was
+# narrowed to the 3 anticipatory-bail cases (best score 0.454, under the 0.50 bar) -- so Inder Mohan Goswami, the
+# case that actually answers the question (score 0.596 unfiltered), was hidden. The comment above claiming BNSS 482
+# fires "ONLY for genuine anticipatory-bail questions" was wrong: it is a similarity match, so it also arrives with
+# arrest/warrant questions.
+#
+# Fix: a topic is inferred only when BOTH agree -- a statute signal in the matches AND the question's own words
+# carry that topic's cue. Anything else falls back to topic=None (search everything, the safe old default), so this
+# can only make the inference MORE conservative. Cues are deliberately broad within their topic: missing one costs
+# only an unfiltered search, whereas a wrong narrowing hides a relevant case. Note "482" is NOT an anticipatory-bail
+# cue: under the old CrPC, s.482 is the High Court's power to QUASH (the Goswami case itself); it is BNSS 482 that
+# is anticipatory bail, and a user quoting "482" usually means quashing.
+_PILOT_TOPIC_QUESTION_CUES = {
+    "hurt_assault": re.compile(
+        r"\b(hit|hits|beat|beaten|beating|assault\w*|injur\w*|hurt|attack\w*|slap\w*|punch\w*|stab\w*|wound\w*|"
+        r"fight|fought|blow|struck|thrash\w*|broke|broken|fracture\w*|bleed\w*|bled|grievous|weapon|stick|rod|knife|lathi)\b",
+        re.IGNORECASE),
+    "anticipatory_bail": re.compile(
+        r"anticipatory|pre[- ]?arrest|advance bail|protection from arrest|\b438\b|"
+        r"before (?:i am |i get |being |he is |she is |they |the police |police )?(?:arrest|arrested)|"
+        r"(?:apprehend\w*|fear\w*|afraid|scared|worried)\s+(?:of\s+|that\s+)?(?:\w+\s+){0,3}?arrest",
+        re.IGNORECASE),
+    "cheating_civil_dispute": re.compile(
+        r"cheat\w*|fraud\w*|deceiv\w*|dishonest\w*|\b420\b|\b318\b|breach of trust|misappropriat\w*|\bloan\b|"
+        r"repay\w*|\bdefault\w*|forg\w*|\b467\b|civil (?:dispute|matter|suit|case)|sale deed|land (?:dispute|deal)",
+        re.IGNORECASE),
+}
+
+
+def _infer_pilot_topic(matches: list, question: str = None) -> str:
     """Returns a pilot topic name only when EXACTLY ONE topic's signal is present across every
     statute match -- otherwise None (search the whole pilot pool, the safe default, unchanged
-    from before this function existed). Never raises: an unexpected match shape is just skipped."""
+    from before this function existed). Never raises: an unexpected match shape is just skipped.
+
+    `question` (ADDED 2026-09-28, see the CONFIRMED REAL BUG comment above): when given, a topic's
+    section signal only counts if the question's own words also carry that topic's cue
+    (_PILOT_TOPIC_QUESTION_CUES). When omitted (None) behaviour is the old signal-only inference, so
+    a caller that has not been updated is unchanged."""
     signalled = set()
     for m in matches:
         if m.get("type") != "statute":
@@ -2718,6 +2754,9 @@ def _infer_pilot_topic(matches: list) -> str:
         for topic, signals in _PILOT_TOPIC_SECTION_SIGNALS.items():
             if key in signals:
                 signalled.add(topic)
+    if question is not None:
+        signalled = {t for t in signalled
+                     if (t not in _PILOT_TOPIC_QUESTION_CUES or _PILOT_TOPIC_QUESTION_CUES[t].search(question))}
     return signalled.pop() if len(signalled) == 1 else None
 
 
@@ -2743,7 +2782,7 @@ def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, match
     Same fail-open contract as the vaquill fetch: any failure (missing pilot_chunks/, missing
     embeddings, import error) is swallowed and returns [] rather than ever risking the real answer
     this is attached to."""
-    topic = _infer_pilot_topic(matches) if matches else None
+    topic = _infer_pilot_topic(matches, question) if matches else None
     try:
         import pilot_tier_search
         results = pilot_tier_search.search_pilot_tier(question, topic=topic)

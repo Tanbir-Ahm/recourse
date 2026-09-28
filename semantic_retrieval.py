@@ -852,53 +852,10 @@ def find_relevant_sections(query, domain=None):
     # Pull each matched section's actual compliance data via the SAME
     # deterministic table used everywhere else in this project -- this
     # function's job ends at "which sections look relevant"; it does not
-    # decide cognizability itself.
-    try:
-        from main import BNS_SECTION_DATA
-    except ImportError:
-        BNS_SECTION_DATA = {}
-    try:
-        from itact_section_data import ITACT_SECTION_DATA
-    except ImportError:
-        ITACT_SECTION_DATA = {}
-    # act -> its structured compliance table. CONFIRMED REAL GAP
-    # (2026-09-05, Phase 3b): this block used to read BNS_SECTION_DATA
-    # unconditionally regardless of a match's own "act" field -- harmless
-    # for BNSS matches (they simply have no First-Schedule entries, so
-    # .get() always missed anyway) but a real silent data-loss risk for
-    # an IT Act match reached via unaided semantic search (not through
-    # chat_assistant.py's keyword-anchor/explicit-section paths, which
-    # already attach their own all_variants): BNS_SECTION_DATA.get("66C")
-    # is always None, so its real cognizable/bailable classification
-    # would have been silently dropped rather than looked up in the
-    # right table.
-    _SECTION_DATA_BY_ACT = {"BNS": BNS_SECTION_DATA, "ITACT": ITACT_SECTION_DATA}
-
-    enriched = []
-    for m in statute_matches:
-        sec_key = m["section_number"]
-        section_table = _SECTION_DATA_BY_ACT.get((m.get("act") or "").upper(), BNS_SECTION_DATA)
-        # CONFIRMED REAL BUG (2026-08-27): a direct .get(sec_key) only
-        # finds an EXACT match. BNS_SECTION_DATA keys 239 of 436 entries
-        # (55%) by subsection (e.g. "191(2)", "191(3)"), not the bare
-        # top-level number semantic search always returns (statute
-        # chunks are split at the top-level section boundary only, per
-        # chunk_corpus.py). Confirmed real case: "191" has no bare-key
-        # entry at all -- only "191(2)" and "191(3)" exist, both
-        # cognizable. A direct .get("191") silently returned None,
-        # meaning this section's real compliance data was never actually
-        # checked for conflicts. Fixed by pulling every subsection
-        # variant of the matched bare number and treating them as this
-        # match's full data set, same as retrieval.py's exact-lookup
-        # code already does for the equivalent problem elsewhere.
-        exact = section_table.get(sec_key)
-        subsection_variants = {
-            k: v for k, v in section_table.items()
-            if k == sec_key or k.startswith(f"{sec_key}(")
-        }
-        if exact is not None and sec_key not in subsection_variants:
-            subsection_variants[sec_key] = exact
-        enriched.append({**m, "section_data": exact, "all_variants": subsection_variants})
+    # decide cognizability itself. See _enrich_statute_match for which table
+    # each act reads (and why a law with no table of its own gets none).
+    tables = _section_tables()
+    enriched = [_enrich_statute_match(m, tables) for m in statute_matches]
 
     # A conflict is only checked across statute matches, since it's
     # specifically about disagreeing cognizable/bailable classifications
@@ -980,6 +937,51 @@ def _shares_enough_terms(query, chunk_text, minimum=_MIN_SHARED_TERMS):
     if len(q) < minimum:
         return False
     return len(q & _content_terms(chunk_text)) >= minimum
+
+
+def _section_tables() -> dict:
+    """act (upper case) -> its structured compliance table (bare or subsection key -> row)."""
+    try:
+        from main import BNS_SECTION_DATA
+    except ImportError:
+        BNS_SECTION_DATA = {}
+    try:
+        from itact_section_data import ITACT_SECTION_DATA
+    except ImportError:
+        ITACT_SECTION_DATA = {}
+    return {"BNS": BNS_SECTION_DATA, "ITACT": ITACT_SECTION_DATA}
+
+
+def _enrich_statute_match(m: dict, tables: dict = None) -> dict:
+    """Attach a statute match's compliance rows ('section_data', 'all_variants') from ITS OWN act's table.
+
+    A law with no table of its own (BNSS, the NI Act, any future act) gets NONE -- never another act's row.
+    REAL BUG, fixed 2026-09-28: this used to fall back to the BNS table for any act it did not recognise, on the
+    belief that it was harmless because those acts "have no First-Schedule entries". But the tables are keyed by
+    bare section NUMBER, and the numbers overlap: BNSS 83 silently received BNS 83's row (an offence, 7 years,
+    non-cognizable), BNSS 73 received BNS 73's (2 years, bailable), BNSS 92 BNS 92's (10 years). A live WhatsApp
+    answer then told a user those procedural sections were "cognizable, bailable, up to 2 years", and the invented
+    differences between them forced the 'conflicting_matches' state. 285 of 531 BNSS sections and 12 of 19 NI Act
+    sections share a number with a BNS row. The cognizable/bailable checks in chat_assistant read this field as
+    ground truth (_gather_offence_variants), so a wrong row here is wrong everywhere downstream.
+
+    CONFIRMED REAL GAP (2026-09-05, Phase 3b, kept): the lookup must read the match's OWN act's table, or an IT Act
+    match reached by unaided semantic search would silently lose its real classification.
+
+    CONFIRMED REAL BUG (2026-08-27, kept): a direct .get(sec_key) only finds an EXACT key, but BNS_SECTION_DATA keys
+    239 of 436 entries (55%) by subsection ("191(2)", "191(3)"), not the bare number semantic search returns. So
+    every subsection variant of the bare number is pulled and treated as the match's full data set."""
+    tables = tables if tables is not None else _section_tables()
+    section_table = tables.get((m.get("act") or "").upper()) or {}
+    sec_key = m["section_number"]
+    exact = section_table.get(sec_key)
+    subsection_variants = {
+        k: v for k, v in section_table.items()
+        if k == sec_key or k.startswith(f"{sec_key}(")
+    }
+    if exact is not None and sec_key not in subsection_variants:
+        subsection_variants[sec_key] = exact
+    return {**m, "section_data": exact, "all_variants": subsection_variants}
 
 
 def _cap_matches(matches, max_keep, gap=MATCH_SCORE_GAP):

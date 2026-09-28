@@ -135,12 +135,12 @@ check(chat_assistant._base_section_number("318(4)") == "318" and chat_assistant.
 
 # ---------------------------------------------------------------- 7. the inferred topic actually reaches search_pilot_tier
 with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
-    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set(), matches=[HURT_MATCH])
+    chat_assistant._fetch_pilot_related_judgments("He hit me with a stick and broke my arm", exclude_case_names=set(), matches=[HURT_MATCH])
     check(fake_search.call_args.kwargs.get("topic") == "hurt_assault",
           "a hurt-shaped question's real statute matches narrow the pilot search to topic='hurt_assault'")
 
 with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
-    chat_assistant._fetch_pilot_related_judgments("q", exclude_case_names=set(), matches=[BAIL_MATCH])
+    chat_assistant._fetch_pilot_related_judgments("Can I get anticipatory bail before they arrest me?", exclude_case_names=set(), matches=[BAIL_MATCH])
     check(fake_search.call_args.kwargs.get("topic") == "anticipatory_bail",
           "an anticipatory-bail-shaped question's real statute matches narrow the pilot search to topic='anticipatory_bail'")
 
@@ -182,6 +182,62 @@ with patch("pilot_tier_search.search_pilot_tier", wraps=_pts.search_pilot_tier) 
           "THE ACTUAL FIX: a hurt_assault-shaped question no longer surfaces an anticipatory_bail case, even with an identical similarity score")
     check("Jagrup Singh v State of Haryana" in names,
           "the genuinely on-topic case still comes through correctly")
+
+# ---------------------------------------------------------------- 9. a statute signal alone must not pick the topic
+# CONFIRMED REAL BUG (2026-09-28, live WhatsApp): "When can a court issue a non-bailable warrant?" retrieved BNSS 482
+# among its side matches; the old inference read that as an anticipatory-bail question and narrowed the pilot search to
+# the 3 bail cases (best score 0.454, below the 0.50 bar), hiding Inder Mohan Goswami (0.596 unfiltered) -- the case
+# that answers the question. A topic is now inferred only when the section signal AND the question's own wording agree.
+WARRANT_Q = "When can a court issue a non-bailable warrant?"
+BAIL_Q = "I am scared the police will arrest me. Can I get anticipatory bail?"
+WARRANT_SIDE_MATCHES = [{"type": "statute", "act": "BNSS", "section_number": s} for s in ("482", "83", "92", "132", "73")]
+
+check(chat_assistant._infer_pilot_topic(WARRANT_SIDE_MATCHES, WARRANT_Q) is None,
+      "THE LIVE BUG: BNSS 482 among a warrant question's side matches no longer infers anticipatory_bail")
+check(chat_assistant._infer_pilot_topic(WARRANT_SIDE_MATCHES, BAIL_Q) == "anticipatory_bail",
+      "the same matches with a genuine anticipatory-bail question still infer anticipatory_bail")
+for phrasing in ("Can I get bail before I am arrested?", "Sessions court advance bail for my brother", "police may arrest me tomorrow, what is section 438?",
+                 "I fear arrest in a false case, what can I do to be protected?"):
+    check(chat_assistant._infer_pilot_topic([BAIL_MATCH], phrasing) == "anticipatory_bail",
+          f"anticipatory-bail wording is recognised -- {phrasing!r}")
+check(chat_assistant._infer_pilot_topic([BAIL_MATCH], "Can the High Court quash the FIR under section 482?") is None,
+      "'482' alone is NOT an anticipatory-bail cue (old CrPC 482 is the power to quash, the Goswami case itself)")
+check(chat_assistant._infer_pilot_topic([CHEATING_MATCH], WARRANT_Q) is None,
+      "a stray BNS 318 side match on a warrant question does not narrow to cheating_civil_dispute either")
+for phrasing in ("Is not repaying a loan cheating under section 420?", "Can a cheating and forgery FIR be quashed when it is a civil land dispute?",
+                 "my partner committed breach of trust with my money"):
+    check(chat_assistant._infer_pilot_topic([CHEATING_MATCH], phrasing) == "cheating_civil_dispute",
+          f"cheating wording is recognised -- {phrasing!r}")
+check(chat_assistant._infer_pilot_topic([HURT_MATCH], "What is the punishment for it?") is None,
+      "a hurt-chapter side match on a question with no hurt wording does not narrow to hurt_assault")
+check(chat_assistant._infer_pilot_topic([HURT_MATCH], "He beat me with a lathi and I was injured") == "hurt_assault",
+      "genuine hurt wording still narrows to hurt_assault")
+check(chat_assistant._infer_pilot_topic([HURT_MATCH, BAIL_MATCH], "He hit me and now I fear arrest, is anticipatory bail possible?") is None,
+      "two topics BOTH confirmed by wording is still ambiguous -> None, never a guess")
+check(chat_assistant._infer_pilot_topic([BAIL_MATCH]) == "anticipatory_bail",
+      "with no question passed, the old signal-only inference is unchanged (backward compatible)")
+
+with patch("pilot_tier_search.search_pilot_tier", return_value=[]) as fake_search:
+    chat_assistant._fetch_pilot_related_judgments(WARRANT_Q, exclude_case_names=set(), matches=WARRANT_SIDE_MATCHES)
+    check(fake_search.call_args.kwargs.get("topic") is None,
+          "the fetch path passes NO topic for the warrant question -> the whole pilot pool is searched")
+
+# end to end, on a pool shaped like the real one: the warrant question must reach a cheating-topic case that answers it
+WARRANT_POOL = [
+    {"case_name": "Inder Mohan Goswami and Anr. v State of Uttaranchal and Ors.", "citation": "", "source_url": "https://example.test/goswami",
+     "chunk_method": "fixed_size_fallback", "paragraph_number": "fallback_26", "topic": "cheating_civil_dispute",
+     "text": "non-bailable warrants should be avoided", "embedding": [1.0, 0.0]},
+    {"case_name": "Gurbaksh Singh Sibbia v State of Punjab", "citation": "", "source_url": "https://example.test/sibbia",
+     "chunk_method": "fixed_size_fallback", "paragraph_number": "fallback_0", "topic": "anticipatory_bail",
+     "text": "anticipatory bail under section 438", "embedding": [0.0, 1.0]},   # orthogonal: scores 0 for this question
+]
+with patch("pilot_tier_search._embed_one", return_value=[1.0, 0.0]), patch("pilot_tier_search.load_pilot_pool", return_value=WARRANT_POOL):
+    out = chat_assistant._fetch_pilot_related_judgments(WARRANT_Q, exclude_case_names=set(), matches=WARRANT_SIDE_MATCHES)
+    check([o["case_name"] for o in out] == ["Inder Mohan Goswami and Anr. v State of Uttaranchal and Ors."],
+          "END TO END: the warrant question now surfaces Goswami despite BNSS 482 among its matches")
+    out = chat_assistant._fetch_pilot_related_judgments(BAIL_Q, exclude_case_names=set(), matches=WARRANT_SIDE_MATCHES)
+    check(all(o["case_name"] != "Inder Mohan Goswami and Anr. v State of Uttaranchal and Ors." for o in out),
+          "and a genuine anticipatory-bail question is still confined to the bail topic (cross-topic protection intact)")
 
 print()
 if FAILURES:
