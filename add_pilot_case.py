@@ -142,6 +142,49 @@ IK_SAME_SOURCE_NOTE = ("NOTE: this copy comes from the same source as the offici
 
 
 _PAGE_HEADER = re.compile(r"http://JUDIS\.NIC\.IN\s*SUPREME\s+COURT\s+OF\s+INDIA\s*Page\s+\d+\s+of\s+\d+", re.I)
+_PAGE_HEADER_NUMS = re.compile(r"http://JUDIS\.NIC\.IN\s*SUPREME\s+COURT\s+OF\s+INDIA\s*Page\s+(\d+)\s+of\s+(\d+)", re.I)
+_DISPOSAL_WORDS = re.compile(r"\b(dismiss\w*|allow\w*|dispos\w*|set\s+aside|quash\w*|remand\w*|answered|affirm\w*|confirm\w*|partly)\b", re.I)
+
+
+def check_page_completeness(text: str, pdf_page_count: int) -> dict:
+    """Is every page of the judgment in the text we extracted? Both the person and the second reader read
+    THIS text, so if a page were missing from it they would agree with each other and nothing would notice --
+    an outside copy (Indian Kanoon) can catch that, but every judis page also carries its own running header
+    ("Page 3 of 6"), which lets the file vouch for itself, free and instantly.
+
+    Returns {'found_headers', 'total', 'missing', 'blockers', 'warnings', 'line'}. A missing page, or a PDF with
+    fewer pages than its own header says, is a BLOCKER. No headers at all (a PDF of a different format) is a
+    warning, not a block -- completeness just can't be verified this way. Also warns if the end of the text has
+    none of the words an operative order uses (allowed / dismissed / disposed / set aside / ...), which is what a
+    lost final page would look like."""
+    heads = [(int(m.group(1)), int(m.group(2))) for m in _PAGE_HEADER_NUMS.finditer(text)]
+    out = {"found_headers": len(heads), "total": None, "missing": [], "blockers": [], "warnings": [], "line": ""}
+    if not heads:
+        out["warnings"].append("no 'Page N of M' running headers found in this PDF, so its completeness could not be "
+                               "checked from the file itself -- compare the page count with the PDF by eye")
+        out["line"] = "Page completeness: no page headers found in this PDF (different format) -- NOT verified"
+        return out
+    totals = sorted({m for _, m in heads})
+    total = totals[-1]
+    out["total"] = total
+    if len(totals) > 1:
+        out["warnings"].append(f"the page headers disagree about the total number of pages: {totals}")
+    found = {n for n, _ in heads}
+    missing = sorted(set(range(1, total + 1)) - found)
+    out["missing"] = missing
+    if missing:
+        out["blockers"].append(f"page(s) {missing} of {total} are missing from the extracted text")
+    if pdf_page_count < total:
+        out["blockers"].append(f"the PDF has only {pdf_page_count} pages but its own headers say {total} -- a truncated download?")
+    elif pdf_page_count > total:
+        out["warnings"].append(f"the PDF has {pdf_page_count} pages but its headers say {total} -- an extra page? look at the file")
+    if not _DISPOSAL_WORDS.search(text[-2500:]):
+        out["warnings"].append("the end of the text has none of the words an operative order uses (allowed, dismissed, "
+                               "disposed, set aside...) -- is the final page missing or cut short?")
+    out["line"] = ("Page completeness: " + (f"all {total} pages present (headers 'Page 1 of {total}' to 'Page {total} of {total}'); "
+                                             f"the PDF has {pdf_page_count}" if not out["blockers"]
+                                             else "PROBLEM -- " + "; ".join(out["blockers"])))
+    return out
 
 
 def _squash(s: str) -> str:
@@ -479,6 +522,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
     text, chunks = "", []
     quotes_ok, vaquill_status, ik_summary = False, "not_checked", {"ran": False}
     reader_summary = {"ran": False}
+    completeness_summary = {}
     if not _looks_like_pdf(data):
         blockers.append("the downloaded file is not a PDF (no %PDF marker) -- wrong link, or the site returned a web page")
     else:
@@ -497,6 +541,11 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                     warnings.append(f"page {i} has only {n} characters -- blank or scanned? read the PDF itself")
             if len(text) < MIN_TOTAL_CHARS:
                 blockers.append(f"only {len(text)} characters of text in the whole PDF -- probably a scanned image, no usable text")
+            completeness = check_page_completeness(text, len(page_lens))
+            lines.append(completeness["line"])
+            blockers += completeness["blockers"]
+            warnings += completeness["warnings"]
+            completeness_summary = {k: completeness[k] for k in ("found_headers", "total", "missing")}
 
     if text and not blockers:
         header = parse_header(text)
@@ -626,6 +675,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                  "quotes_verified": bool(quotes_ok and not blockers), "quotes": list(quotes),
                  "independent_copy": vaquill_status,
                  "indian_kanoon": ik_summary, "second_reader": reader_summary,
+                 "page_completeness": completeness_summary,
                  "blockers": blockers, "warnings": warnings})
     out(report)
     return {"slug": slug, "status": status, "blockers": blockers, "warnings": warnings, "case_dir": case_dir}

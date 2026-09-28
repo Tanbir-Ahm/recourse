@@ -404,6 +404,65 @@ with tempfile.TemporaryDirectory() as tmp:
         except apc.CaseError:
             check(True, f"second-read refuses {why}")
 
+# ---------------------------------------------------------------- 12c. page completeness (the file vouching for itself)
+def hdr(n, m):
+    return f"http://JUDIS.NIC.IN \nSUPREME COURT OF INDIA\nPage {n} of {m} \n"
+
+
+def doc(pages, total, last="The appeal is dismissed."):
+    return "".join(hdr(n, total) + f"body text of page {n}. " + (last if n == pages[-1] else "") + "\n" for n in pages)
+
+
+c_ok = apc.check_page_completeness(doc([1, 2, 3], 3), 3)
+check(not c_ok["blockers"] and not c_ok["warnings"] and c_ok["missing"] == [] and c_ok["total"] == 3 and "all 3 pages present" in c_ok["line"],
+      f"a complete document passes with nothing to flag -- {c_ok['line']}")
+c_gap = apc.check_page_completeness(doc([1, 3], 3), 3)
+check(c_gap["missing"] == [2] and any("[2] of 3" in b for b in c_gap["blockers"]), "a missing MIDDLE page is a blocker and names the page")
+c_cut = apc.check_page_completeness(doc([1, 2], 3, last="still arguing"), 2)
+check(c_cut["missing"] == [3] and any("only 2 pages" in b for b in c_cut["blockers"]) and any("operative order" in w for w in c_cut["warnings"]),
+      "a truncated download (last page gone) is a blocker three ways over: the missing page, the short PDF, and no operative order at the end")
+c_extra = apc.check_page_completeness(doc([1, 2, 3], 3), 4)
+check(not c_extra["blockers"] and any("4 pages" in w for w in c_extra["warnings"]), "a PDF with MORE pages than its headers say is a warning, not a block")
+c_none = apc.check_page_completeness("A judgment in some other format with no running header.", 5)
+check(not c_none["blockers"] and c_none["total"] is None and any("could not be checked" in w for w in c_none["warnings"]) and "NOT verified" in c_none["line"],
+      "a PDF with no page headers can't be verified this way: a loud 'NOT verified' warning, never a silent pass, never a false block")
+c_mix = apc.check_page_completeness(hdr(1, 3) + "x dismissed\n" + hdr(2, 4) + "y\n" + hdr(3, 3) + "z\n" + hdr(4, 4) + "w\n", 4)
+check(any("disagree" in w for w in c_mix["warnings"]), "headers that disagree about the total are flagged")
+check(not apc.check_page_completeness(doc([1], 1, last="Accordingly the reference is answered in the above terms."), 1)["warnings"],
+      "an operative order phrased as 'answered in the above terms' (a reference, not an appeal) is recognised")
+
+
+def make_paged_pdf(numbers, total, last="The appeal is dismissed."):
+    d = fitz.open()
+    for n in numbers:
+        p = d.new_page()
+        lines = ["http://JUDIS.NIC.IN", "SUPREME COURT OF INDIA", f"Page {n} of {total}"]
+        if n == numbers[0]:
+            lines += ["PETITIONER:", "JOHN QUINCEDOE AND ANR.", "RESPONDENT:", "STATE OF NOWHERE AND ORS.",
+                      "DATE OF JUDGMENT: 01/02/2003", "BENCH:", "A. BEE & C. DEE", "JUDGMENT:"]
+        lines += [f"This is line {j} of page {n} of a synthetic judgment used only for testing the tool." for j in range(12)]
+        if n == numbers[-1]:
+            lines.append(last)
+        p.insert_text((40, 40), "\n".join(lines), fontsize=8)
+    data = d.tobytes()
+    d.close()
+    return b"\x00\x00\x00\x00" + data
+
+
+PQUOTE = "This is line 3 of page 1 of a synthetic judgment used only for testing the tool."
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, pdf_bytes=make_paged_pdf([1, 2, 3], 3), quotes=[PQUOTE])
+    check(res["status"] == "staged" and "all 3 pages present" in report, "stage on a complete paged PDF reports 'all 3 pages present'")
+    st = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+    check(st["page_completeness"]["total"] == 3 and st["page_completeness"]["missing"] == [], "and records it in status.json")
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, pdf_bytes=make_paged_pdf([1, 3], 3), quotes=[PQUOTE], embed_fn=lambda t: 1 / 0)
+    check(res["status"] == "blocked" and "PROBLEM" in report and any("[2] of 3" in b for b in res["blockers"]),
+          "a paged PDF with a page missing BLOCKS the case, and no embedding money is spent")
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, pdf_bytes=make_paged_pdf([1, 2], 3, last="still arguing"), quotes=[PQUOTE], embed_fn=lambda t: 1 / 0)
+    check(res["status"] == "blocked" and any("only 2 pages" in b for b in res["blockers"]), "a truncated PDF (2 of 3 pages) BLOCKS the case")
+
 # ---------------------------------------------------------------- 13. claims files, verify-quotes, review-pack
 with tempfile.TemporaryDirectory() as tmp:
     cf = os.path.join(tmp, "claims.txt")
