@@ -128,6 +128,16 @@ def check_identity(name: str, header: dict, head_text: str, expected_date=None):
     return blockers, warnings
 
 
+def _chunk_fixed(record: dict) -> list:
+    from chunk_judgments import split_by_opinion, chunk_by_fixed_size
+    base = {"case_name": record["case_name"], "citation": record["citation"], "source_url": record["source_url"],
+            "source_type": record["source_type"]}
+    out = []
+    for author, txt in split_by_opinion(record["text"]):
+        out += chunk_by_fixed_size(txt, {**base, "opinion_author": author})
+    return out
+
+
 def _collisions(chunk_dir: str) -> list:
     from audit_pilot_paragraph_labels import find_paragraph_label_collisions
     return find_paragraph_label_collisions(chunk_dir)
@@ -503,7 +513,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR, chunks_dir=DEFAULT_CHUNKS_DIR,
                embed_fn=None, query_fn=None, replace=False, out=print,
                use_ik=True, ik_doc_id=None, ik_search_fn=None, ik_doc_fn=None, vaquill_fn=None,
-               claims=(), use_reader=True, reader_fn=None, drop_paragraphs=()) -> dict:
+               claims=(), use_reader=True, reader_fn=None, drop_paragraphs=(), fixed_size_chunks=False) -> dict:
     from chunk_judgments import chunk_judgment
 
     slug = slugify(name)
@@ -568,7 +578,15 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
         record = {"case_name": name, "citation": citation, "source_url": link,
                   "source_type": SOURCE_TYPE, "text": text}
         _write_json(os.path.join(case_dir, "record.json"), record)
-        chunks = chunk_judgment(record)
+        if fixed_size_chunks:
+            # A person's deliberate, recorded decision for a judgment with NO reliable paragraph numbers (found live
+            # 2026-09-28, Inder Mohan Goswami: a 3-item quoted list "1. 2. 3." fooled the chunker into calling the
+            # whole judgment "paragraph 1"). Cut it into ordinary fixed-size pieces; no paragraph number is claimed.
+            chunks = _chunk_fixed(record)
+            lines.append("Chunking:       FIXED-SIZE, by decision (--fixed-size-chunks): no paragraph numbers are claimed for this case")
+            warnings.append("chunked into fixed-size pieces by decision -- this case's chunks carry no paragraph numbers")
+        else:
+            chunks = chunk_judgment(record)
         methods = {}
         for c in chunks:
             methods[c["chunk_method"]] = methods.get(c["chunk_method"], 0) + 1
@@ -579,7 +597,9 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
         if len(authors) > 1:
             warnings.append(f"{len(authors)} separate opinions detected ({authors}) -- read each; numbering restarts per opinion")
         if max(sizes) > BIG_CHUNK_CHARS:
-            warnings.append(f"a chunk is {max(sizes):,} characters -- chunking probably failed on part of this file")
+            blockers.append(f"a chunk is {max(sizes):,} characters -- chunking failed on part of this file (often a short quoted "
+                            f"numbered list mistaken for paragraph numbers). If the judgment has no reliable paragraph numbers, "
+                            f"re-stage with --fixed-size-chunks")
 
         chunks_path = os.path.join(case_dir, f"{slug}_chunks.json")
         _write_json(chunks_path, chunks)
@@ -706,6 +726,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                  "independent_copy": vaquill_status,
                  "indian_kanoon": ik_summary, "second_reader": reader_summary,
                  "page_completeness": completeness_summary, "dropped_paragraphs": dropped_summary,
+                 "chunking": "fixed_size (by decision)" if fixed_size_chunks else "automatic",
                  "blockers": blockers, "warnings": warnings})
     out(report)
     return {"slug": slug, "status": status, "blockers": blockers, "warnings": warnings, "case_dir": case_dir}
@@ -910,6 +931,9 @@ def main(argv=None):
     s.add_argument("--no-ik", action="store_true", help="skip the (paid) Indian Kanoon checks")
     s.add_argument("--claims-file", help="the summary as one claim per line -- checked by the blind second reader")
     s.add_argument("--no-reader", action="store_true", help="skip the automatic second reader")
+    s.add_argument("--fixed-size-chunks", action="store_true",
+                   help="cut the judgment into fixed-size pieces with no paragraph numbers (for a judgment whose numbering is "
+                        "unreliable or absent); recorded in the report and status.json")
     s.add_argument("--drop-paragraphs", default="",
                    help="comma-separated paragraph labels to DROP because they collide (e.g. 1,2,3,4); refused for a label that "
                         "does not collide; recorded in the report and status.json")
@@ -941,7 +965,8 @@ def main(argv=None):
                              use_ik=not args.no_ik, ik_doc_id=args.ik_doc_id,
                              claims=read_claims(args.claims_file) if args.claims_file else (),
                              use_reader=not args.no_reader,
-                             drop_paragraphs=[x for x in args.drop_paragraphs.split(",") if x.strip()])
+                             drop_paragraphs=[x for x in args.drop_paragraphs.split(",") if x.strip()],
+                             fixed_size_chunks=args.fixed_size_chunks)
             return 0 if res["status"] == "staged" else 2
         if args.cmd == "second-read":
             second_read_case(args.slug, read_claims(args.claims_file), quotes=args.quote or None, staging_dir=args.staging_dir)

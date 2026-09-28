@@ -210,6 +210,23 @@ try:
         res, report = run(tmp, drop_paragraphs=["1"], embed_fn=lambda t: 1 / 0)
         check(res["status"] == "blocked" and any("paragraph 2" in b for b in res["blockers"]),
               "dropping only some colliding labels still BLOCKS on the ones left")
+    # --- an oversize chunk BLOCKS (a short quoted list mistaken for paragraph numbers swallowing the whole judgment),
+    #     and --fixed-size-chunks is the recorded way through
+    chunk_judgments.chunk_judgment = _fake_chunker([("preamble", "x" * 25000), ("1", "1. a quoted list item")])
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, embed_fn=lambda t: 1 / 0)
+        check(res["status"] == "blocked" and any("chunking failed" in b and "--fixed-size-chunks" in b for b in res["blockers"]),
+              "a 25,000-character chunk BLOCKS the case and names the way through (no embedding spend)")
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, fixed_size_chunks=True)
+        st = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+        kept = json.load(open(os.path.join(res["case_dir"], f"{res['slug']}_chunks.json"), encoding="utf-8"))
+        check(res["status"] == "staged" and kept and all(c["chunk_method"] == "fixed_size_fallback" for c in kept)
+              and all(len(c["embedding"]) == 3 for c in kept),
+              f"--fixed-size-chunks stages the case with ordinary fixed-size pieces, all embedded -- {res['blockers']}")
+        check(st["chunking"] == "fixed_size (by decision)" and "FIXED-SIZE, by decision" in report
+              and any("no paragraph numbers" in w for w in res["warnings"]),
+              "the fixed-size choice is RECORDED in status.json, shown in the report and raised as a warning")
 finally:
     chunk_judgments.chunk_judgment = _real_chunker
 
