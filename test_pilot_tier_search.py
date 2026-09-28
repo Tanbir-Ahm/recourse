@@ -266,11 +266,14 @@ check("discussed a similar" in p.format_pilot_result(with_para).lower() or "simi
 # UP TO 14, as of 2026-09-28: Alpic Finance Ltd. v P. Sadasivan and Anr. -- fourth case in
 # cheating_civil_dispute (appeal dismissed; the High Court's quashing of a cheating complaint over a
 # hire-purchase default stood). First case checked by the automatic second reader (7 of 7 claims confirmed).
+# UP TO 15, as of 2026-09-28: All Cargo Movers (I) Pvt. Ltd. v Dhanesh Badarmal Jain -- fifth case in
+# cheating_civil_dispute (appeal allowed; cognizance set aside). 9 chunks labelled 1-4 deliberately dropped
+# (quoted fax/defendants lists reuse those numbers); 19 chunks, paragraphs 5-22, remain.
 try:
     real_chunk_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pilot_chunks")
     real_pool = p.load_pilot_pool(real_chunk_dir)
     n_cases = len({c["case_name"] for c in real_pool})
-    check(n_cases == 14 and len(real_pool) > 14, f"the real pilot pool loads chunks spanning all 14 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
+    check(n_cases == 15 and len(real_pool) > 15, f"the real pilot pool loads chunks spanning all 15 current cases -- got {n_cases} cases, {len(real_pool)} chunks")
     check(all("source_url" in c and c["source_url"].startswith("https://api.sci.gov.in") for c in real_pool),
           "every real case in the pool carries its verified api.sci.gov.in link")
     check(all(c.get("topic") for c in real_pool),
