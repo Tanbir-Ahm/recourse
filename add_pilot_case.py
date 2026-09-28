@@ -141,6 +141,9 @@ IK_SAME_SOURCE_NOTE = ("NOTE: this copy comes from the same source as the offici
                        "confirm the court's own wording.")
 
 
+_PAGE_HEADER = re.compile(r"http://JUDIS\.NIC\.IN\s*SUPREME\s+COURT\s+OF\s+INDIA\s*Page\s+\d+\s+of\s+\d+", re.I)
+
+
 def _squash(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
@@ -163,6 +166,10 @@ def check_quote(quote: str, text: str, context: int = 150) -> dict:
     q = "".join(ch.lower() for ch in quote if ch.isalnum())
     if len(q) < 20:
         return {"status": "too_short"}
+    # Every judis page carries a running header ("http://JUDIS.NIC.IN / SUPREME COURT OF INDIA / Page 2 of 6");
+    # a sentence that runs across a page break has that header in the middle of it. Found live 2026-09-28: a true
+    # claim's supporting quote was reported "not found" for exactly this reason. Match without it.
+    text = _PAGE_HEADER.sub(" ", text)
     hay, idx = _letters_index(text)
     pos = hay.find(q)
     if pos < 0:
@@ -616,7 +623,8 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
         f.write(report)
     _write_json(os.path.join(case_dir, "status.json"),
                 {"slug": slug, "status": status, "case_name": name, "topic": topic,
-                 "quotes_verified": bool(quotes_ok and not blockers), "independent_copy": vaquill_status,
+                 "quotes_verified": bool(quotes_ok and not blockers), "quotes": list(quotes),
+                 "independent_copy": vaquill_status,
                  "indian_kanoon": ik_summary, "second_reader": reader_summary,
                  "blockers": blockers, "warnings": warnings})
     out(report)
@@ -712,6 +720,52 @@ def review_pack(slug, claims_file, *, quotes=(), staging_dir=DEFAULT_STAGING_DIR
     return {"step1": p1, "step2": p2, "claims": len(claims)}
 
 
+def second_read_case(slug, claims, *, quotes=None, staging_dir=DEFAULT_STAGING_DIR, reader_fn=None, out=print) -> dict:
+    """Runs the automatic second reader on an ALREADY-STAGED case -- the normal order, because the summary's
+    claims are only written after the case has been staged and read (re-staging just to add them would repeat
+    the paid Indian Kanoon calls and the embeddings). Updates the case's report and status.json."""
+    import second_reader
+    case_dir = os.path.join(staging_dir, slug)
+    status_path = os.path.join(case_dir, "status.json")
+    if not os.path.isfile(status_path):
+        raise CaseError(f"no staged case called '{slug}' in {staging_dir}")
+    with open(status_path, encoding="utf-8") as f:
+        st = json.load(f)
+    if st.get("status") != "staged":
+        raise CaseError(f"'{slug}' is {st.get('status')}, not staged")
+    if not claims:
+        raise CaseError("no claims given -- pass --claims-file with the summary, one claim per line")
+    with open(os.path.join(case_dir, "record.json"), encoding="utf-8") as f:
+        text = json.load(f)["text"]
+    quotes = list(quotes) if quotes else list(st.get("quotes") or [])
+    st["warnings"] = [w for w in st.get("warnings", [])
+                      if not (w.startswith("no --claims-file") or w.startswith("second reader")
+                              or w.startswith("the second reader"))]
+    try:
+        raw = (reader_fn or second_reader.run_second_reader)(official_text=text, claims=list(claims), quotes=quotes)
+    except second_reader.ReaderUnavailable as exc:
+        st["second_reader"] = {"ran": False}
+        st["warnings"].append(f"second reader unavailable ({exc}) -- NOT a pass; use `review-pack` and the ChatGPT step")
+        _write_json(status_path, st)
+        out(f"Second reader unavailable ({exc}) -- NOT a pass.")
+        return {"ran": False}
+    audit = second_reader.audit_result(raw, text, list(claims), quotes, check_fn=check_quote)
+    lines = second_reader.format_report(audit)
+    _write_json(os.path.join(case_dir, "second_reader.json"), {"raw": raw, "audit": audit})
+    st["second_reader"] = {"ran": True, "models": audit["models"], "claims_total": audit["claims_total"],
+                           "supported_verified": audit["supported_verified"], "flagged_claims": audit["flagged_claims"],
+                           "quotes_not_courts_own": audit["quotes_not_courts_own"], "missing_points": len(audit["missing_points"])}
+    if audit["flagged_claims"]:
+        st["warnings"].append(f"the second reader flagged summary claim(s) {audit['flagged_claims']} -- read them before approving")
+    if audit["quotes_not_courts_own"]:
+        st["warnings"].append(f"the second reader says quote(s) {audit['quotes_not_courts_own']} are NOT the Court's own words -- attribute them correctly")
+    _write_json(status_path, st)
+    with open(os.path.join(case_dir, "report.txt"), "a", encoding="utf-8") as f:
+        f.write("\n\n" + "\n".join(lines))
+    out("\n".join(lines))
+    return {"ran": True, **st["second_reader"]}
+
+
 def approve_case(slug, *, staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR,
                  chunks_dir=DEFAULT_CHUNKS_DIR, out=print) -> dict:
     case_dir = os.path.join(staging_dir, slug)
@@ -779,13 +833,17 @@ def main(argv=None):
     vq = sub.add_parser("verify-quotes")
     vq.add_argument("slug")
     vq.add_argument("--file", required=True, help="a text file with an answer (e.g. from ChatGPT) whose quotes should be checked")
+    sd = sub.add_parser("second-read")
+    sd.add_argument("slug")
+    sd.add_argument("--claims-file", required=True)
+    sd.add_argument("--quote", action="append", default=[], help="quotes to attribute-check (default: the ones given at stage)")
     rp = sub.add_parser("review-pack")
     rp.add_argument("slug")
     rp.add_argument("--claims-file", required=True)
     rp.add_argument("--quote", action="append", default=[])
     a = sub.add_parser("approve")
     a.add_argument("slug")
-    for p in (s, a, vq, rp):
+    for p in (s, a, vq, rp, sd):
         p.add_argument("--staging-dir", default=DEFAULT_STAGING_DIR)
         p.add_argument("--corpus-dir", default=DEFAULT_CORPUS_DIR)
         p.add_argument("--chunks-dir", default=DEFAULT_CHUNKS_DIR)
@@ -801,6 +859,9 @@ def main(argv=None):
                              claims=read_claims(args.claims_file) if args.claims_file else (),
                              use_reader=not args.no_reader)
             return 0 if res["status"] == "staged" else 2
+        if args.cmd == "second-read":
+            second_read_case(args.slug, read_claims(args.claims_file), quotes=args.quote or None, staging_dir=args.staging_dir)
+            return 0
         if args.cmd == "verify-quotes":
             verify_quotes(args.slug, args.file, staging_dir=args.staging_dir, corpus_dir=args.corpus_dir)
             return 0

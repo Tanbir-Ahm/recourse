@@ -192,6 +192,13 @@ check(apc.check_quote("A mere failure to keep up promise subsequently WILL be tr
       "a quote with even one word changed is MISSING -- it can't be passed off as verbatim")
 check(apc.check_quote("too short", OFFICIAL)["status"] == "too_short", "a quote too short to mean anything is refused, not waved through")
 
+PAGED = ("The appellant company filed a private complaint under Section 200 before the Chief Metropolitan Magistrate, Bangalore alleging\n"
+         "http://JUDIS.NIC.IN \nSUPREME COURT OF INDIA\nPage 2 of 6 \n"
+         "that the respondents had committed offences under Sections 420, 406 and 423. The Magistrate took cognizance.")
+r_paged = apc.check_quote("before the Chief Metropolitan Magistrate, Bangalore alleging that the respondents had committed offences under Sections 420, 406 and 423.", PAGED)
+check(r_paged["status"] == "exact" and "JUDIS" not in r_paged["matched"],
+      f"a quote that runs across a PDF page break (the running header sits mid-sentence) is still found -- the real Alpic case; got {r_paged['status']}")
+
 # ---------------------------------------------------------------- 7. the similarity score
 base_text = " ".join(f"word{i % 97} filler{i} sentence{i % 13}" for i in range(400))
 same = apc.compare_texts(base_text, base_text)
@@ -360,6 +367,42 @@ with tempfile.TemporaryDirectory() as tmp:
 with tempfile.TemporaryDirectory() as tmp:
     res, report = run(tmp, claims=["claim a"], use_reader=False, reader_fn=lambda **k: 1 / 0)
     check("Second reader: skipped" in report, "--no-reader skips it and never calls it")
+
+# ---------------------------------------------------------------- 12b. second-read on an ALREADY-staged case (the normal order)
+with tempfile.TemporaryDirectory() as tmp:
+    res, _ = run(tmp)          # staged with no claims, as happens before the summary is written
+    stg, corp, chk = os.path.join(tmp, "stg"), os.path.join(tmp, "corp"), os.path.join(tmp, "chunks")
+    st0 = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+    check(st0["quotes"] == [QUOTE] and any("no --claims-file" in w for w in st0["warnings"]),
+          "staging remembers the quotes, and warns that no claims were second-read yet")
+    seen = {}
+
+    def spy_reader(**kw):
+        seen.update(kw)
+        return canned_reader(**kw)
+
+    lines_out = []
+    r2 = apc.second_read_case(res["slug"], ["claim a", "claim b"], staging_dir=stg, reader_fn=spy_reader, out=lines_out.append)
+    st1 = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+    check(r2["ran"] and seen["quotes"] == [QUOTE] and st1["second_reader"]["flagged_claims"] == [2],
+          "second-read reuses the quotes given at stage and records the result")
+    check(not any("no --claims-file" in w for w in st1["warnings"]) and any("flagged summary claim(s) [2]" in w for w in st1["warnings"]),
+          "the 'not second-read' warning is replaced by the reader's real flags")
+    check("Second reader (blind" in open(os.path.join(res["case_dir"], "report.txt"), encoding="utf-8").read()
+          and os.path.isfile(os.path.join(res["case_dir"], "second_reader.json")),
+          "the report file gets the second-reader section, and the raw answer is kept")
+    check(st1["status"] == "staged" and st1["quotes_verified"], "a flagged claim never changes the case's status -- flags are for a person")
+    apc.second_read_case(res["slug"], ["claim a"], staging_dir=stg, reader_fn=unavailable, out=lambda s: None)
+    st2 = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+    check(not st2["second_reader"]["ran"] and any("NOT a pass" in w for w in st2["warnings"]) and not any("flagged summary claim" in w for w in st2["warnings"]),
+          "if the reader is unavailable on a re-run, the old flags are cleared and a 'NOT a pass' warning takes their place")
+    for bad, why in (((), "empty claims"), (None, "unknown case")):
+        try:
+            apc.second_read_case("nope" if why == "unknown case" else res["slug"], ["c"] if why == "unknown case" else bad,
+                                 staging_dir=stg, reader_fn=canned_reader, out=lambda s: None)
+            check(False, f"second-read must refuse {why}")
+        except apc.CaseError:
+            check(True, f"second-read refuses {why}")
 
 # ---------------------------------------------------------------- 13. claims files, verify-quotes, review-pack
 with tempfile.TemporaryDirectory() as tmp:
