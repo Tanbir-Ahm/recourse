@@ -448,7 +448,8 @@ def _search_report(questions, chunks, topic, chunks_dir, query_fn, lines):
 def stage_case(*, link, name, citation, topic, expected_date=None, questions=(), quotes=(), pdf_bytes=None,
                staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR, chunks_dir=DEFAULT_CHUNKS_DIR,
                embed_fn=None, query_fn=None, replace=False, out=print,
-               use_ik=True, ik_doc_id=None, ik_search_fn=None, ik_doc_fn=None, vaquill_fn=None) -> dict:
+               use_ik=True, ik_doc_id=None, ik_search_fn=None, ik_doc_fn=None, vaquill_fn=None,
+               claims=(), use_reader=True, reader_fn=None) -> dict:
     from chunk_judgments import chunk_judgment
 
     slug = slugify(name)
@@ -470,6 +471,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
 
     text, chunks = "", []
     quotes_ok, vaquill_status, ik_summary = False, "not_checked", {"ran": False}
+    reader_summary = {"ran": False}
     if not _looks_like_pdf(data):
         blockers.append("the downloaded file is not a PDF (no %PDF marker) -- wrong link, or the site returned a web page")
     else:
@@ -559,6 +561,30 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
         else:
             lines.append("Indian Kanoon checks: skipped (--no-ik)")
 
+        if claims and use_reader:
+            import second_reader
+            try:
+                raw = (reader_fn or second_reader.run_second_reader)(
+                    official_text=text, claims=list(claims), quotes=list(quotes))
+                audit = second_reader.audit_result(raw, text, list(claims), list(quotes), check_fn=check_quote)
+                lines.extend(second_reader.format_report(audit))
+                reader_summary = {"ran": True, "models": audit["models"], "claims_total": audit["claims_total"],
+                                  "supported_verified": audit["supported_verified"],
+                                  "flagged_claims": audit["flagged_claims"],
+                                  "quotes_not_courts_own": audit["quotes_not_courts_own"],
+                                  "missing_points": len(audit["missing_points"])}
+                _write_json(os.path.join(case_dir, "second_reader.json"), {"raw": raw, "audit": audit})
+                if audit["flagged_claims"]:
+                    warnings.append(f"the second reader flagged summary claim(s) {audit['flagged_claims']} -- read them before approving")
+                if audit["quotes_not_courts_own"]:
+                    warnings.append(f"the second reader says quote(s) {audit['quotes_not_courts_own']} are NOT the Court's own words -- attribute them correctly")
+            except second_reader.ReaderUnavailable as exc:
+                warnings.append(f"second reader unavailable ({exc}) -- NOT a pass; use `review-pack` and the ChatGPT step")
+        elif not claims:
+            warnings.append("no --claims-file: the summary was NOT checked by a second reader")
+        else:
+            lines.append("Second reader: skipped (--no-reader)")
+
     if chunks and not blockers:
         embeds = (embed_fn or _real_embed)([c["text"] for c in chunks])
         if len(embeds) != len(chunks) or not embeds or not embeds[0] or all(v == 0 for v in embeds[0]):
@@ -591,9 +617,99 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
     _write_json(os.path.join(case_dir, "status.json"),
                 {"slug": slug, "status": status, "case_name": name, "topic": topic,
                  "quotes_verified": bool(quotes_ok and not blockers), "independent_copy": vaquill_status,
-                 "indian_kanoon": ik_summary, "blockers": blockers, "warnings": warnings})
+                 "indian_kanoon": ik_summary, "second_reader": reader_summary,
+                 "blockers": blockers, "warnings": warnings})
     out(report)
     return {"slug": slug, "status": status, "blockers": blockers, "warnings": warnings, "case_dir": case_dir}
+
+
+def read_claims(path: str) -> list:
+    """One claim per line (a leading '1.' is fine); blank lines and lines starting with '#' are ignored."""
+    out = []
+    with open(path, encoding="utf-8") as f:
+        for ln in f:
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(re.sub(r"^\d+[\.\)]\s*", "", s))
+    return out
+
+
+def _case_text(slug, staging_dir, corpus_dir) -> str:
+    for p in (os.path.join(staging_dir, slug, "record.json"), os.path.join(corpus_dir, f"{slug}.json")):
+        if os.path.isfile(p):
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)["text"]
+    raise CaseError(f"no staged or approved case called '{slug}'")
+
+
+def extract_quoted_passages(answer: str) -> list:
+    """Every passage inside double quotation marks (straight or curly) with at least 20 letters -- what
+    ChatGPT (or anyone) puts in quotes when it says 'the Court said ...'."""
+    found = re.findall(r"“([^”]+?)”|\"([^\"\n]+?)\"", answer)
+    return [p.strip() for p in (a or b for a, b in found) if sum(ch.isalnum() for ch in p) >= 20]
+
+
+def verify_quotes(slug, answer_file, *, staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR, out=print) -> dict:
+    """Checks every quoted passage in a pasted answer (e.g. from ChatGPT) against the official text -- so a
+    quote the model paraphrased or invented is caught, not trusted."""
+    import second_reader
+    text = _case_text(slug, staging_dir, corpus_dir)
+    with open(answer_file, encoding="utf-8") as f:
+        passages = extract_quoted_passages(f.read())
+    counts = {"exact": 0, "cosmetic": 0, "missing": 0, "too_short": 0}
+    lines = [f"Quotes found in {answer_file}: {len(passages)}"]
+    for i, q in enumerate(passages, 1):
+        st = second_reader._qstatus(q, text, check_quote)
+        counts[st] = counts.get(st, 0) + 1
+        label = {"exact": "EXACT", "cosmetic": "SAME WORDS (hyphens/punctuation/spacing differ)",
+                 "missing": "NOT IN THE OFFICIAL TEXT (paraphrased or invented?)",
+                 "too_short": "too short to verify"}.get(st, st)
+        lines.append(f"  [{i}] {label}: \"{q[:100]}{'...' if len(q) > 100 else ''}\"")
+    lines.append(f"Summary: {counts['exact']} exact, {counts['cosmetic']} same-words, {counts['missing']} NOT FOUND, {counts['too_short']} too short")
+    out("\n".join(lines))
+    return {"passages": len(passages), **counts}
+
+
+BLIND_PACK = """This is the full text of a Supreme Court of India judgment. Use ONLY this text, not what you remember about the case.
+
+List: the parties; the bench and who wrote the judgment; whether any judge dissented; the facts in 5 lines; each question the Court decided and its answer; the final order; and the 5 most important sentences, quoted exactly. For each important sentence, say whether the words are the Court's own or a quotation of an earlier case, statute or counsel.
+
+=== JUDGMENT TEXT ===
+{text}
+=== END ===
+"""
+
+CHECK_PACK = """Here is a summary of the judgment above, written by someone else, as numbered claims. Assume it may contain mistakes. Check it claim by claim against the judgment text.
+
+For each claim, answer SUPPORTED, NOT SUPPORTED or MISLEADING, and quote the exact sentence from the text that decides it. Do not say SUPPORTED without a quote. Then list anything important the summary left out, especially any exception, condition, or part that goes the other way.
+{quotes_block}
+CLAIMS:
+{claims}
+"""
+
+
+def review_pack(slug, claims_file, *, quotes=(), staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR, out=print) -> dict:
+    """Writes the two ChatGPT prompts for a case -- for disputes, or when the automatic reader was unavailable --
+    into the case's staging folder, so the routine is: open a new chat, paste file 1, then paste file 2."""
+    text = _case_text(slug, staging_dir, corpus_dir)
+    claims = read_claims(claims_file)
+    case_dir = os.path.join(staging_dir, slug)
+    if not os.path.isdir(case_dir):
+        raise CaseError(f"'{slug}' is not in {staging_dir} -- review packs are written into the staging folder")
+    qb = ""
+    if quotes:
+        qb = ("\nAlso, for each of these quotes, say whether the words are the Court's own or a quotation of another case, "
+              "statute or counsel:\n" + "\n".join(f"Q{i}. {q}" for i, q in enumerate(quotes, 1)) + "\n")
+    p1 = os.path.join(case_dir, "chatgpt_step1_blind.txt")
+    p2 = os.path.join(case_dir, "chatgpt_step2_check.txt")
+    with open(p1, "w", encoding="utf-8") as f:
+        f.write(BLIND_PACK.format(text=text))
+    with open(p2, "w", encoding="utf-8") as f:
+        f.write(CHECK_PACK.format(claims="\n".join(f"{i}. {c}" for i, c in enumerate(claims, 1)), quotes_block=qb))
+    out(f"Wrote {p1}\nWrote {p2}\nOpen a NEW ChatGPT chat, paste file 1 and send; when it answers, paste file 2. "
+        f"Then save its answers to a text file and run: python add_pilot_case.py verify-quotes {slug} --file <that file>")
+    return {"step1": p1, "step2": p2, "claims": len(claims)}
 
 
 def approve_case(slug, *, staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR,
@@ -658,9 +774,18 @@ def main(argv=None):
                    help="a key sentence to verify word for word against the official text (repeatable, at least one)")
     s.add_argument("--ik-doc-id", help="Indian Kanoon document id, if the automatic pick can't be made")
     s.add_argument("--no-ik", action="store_true", help="skip the (paid) Indian Kanoon checks")
+    s.add_argument("--claims-file", help="the summary as one claim per line -- checked by the blind second reader")
+    s.add_argument("--no-reader", action="store_true", help="skip the automatic second reader")
+    vq = sub.add_parser("verify-quotes")
+    vq.add_argument("slug")
+    vq.add_argument("--file", required=True, help="a text file with an answer (e.g. from ChatGPT) whose quotes should be checked")
+    rp = sub.add_parser("review-pack")
+    rp.add_argument("slug")
+    rp.add_argument("--claims-file", required=True)
+    rp.add_argument("--quote", action="append", default=[])
     a = sub.add_parser("approve")
     a.add_argument("slug")
-    for p in (s, a):
+    for p in (s, a, vq, rp):
         p.add_argument("--staging-dir", default=DEFAULT_STAGING_DIR)
         p.add_argument("--corpus-dir", default=DEFAULT_CORPUS_DIR)
         p.add_argument("--chunks-dir", default=DEFAULT_CHUNKS_DIR)
@@ -672,8 +797,16 @@ def main(argv=None):
                              expected_date=args.date, questions=args.question, quotes=args.quote, pdf_bytes=pdf,
                              staging_dir=args.staging_dir, corpus_dir=args.corpus_dir,
                              chunks_dir=args.chunks_dir, replace=args.replace,
-                             use_ik=not args.no_ik, ik_doc_id=args.ik_doc_id)
+                             use_ik=not args.no_ik, ik_doc_id=args.ik_doc_id,
+                             claims=read_claims(args.claims_file) if args.claims_file else (),
+                             use_reader=not args.no_reader)
             return 0 if res["status"] == "staged" else 2
+        if args.cmd == "verify-quotes":
+            verify_quotes(args.slug, args.file, staging_dir=args.staging_dir, corpus_dir=args.corpus_dir)
+            return 0
+        if args.cmd == "review-pack":
+            review_pack(args.slug, args.claims_file, quotes=args.quote, staging_dir=args.staging_dir, corpus_dir=args.corpus_dir)
+            return 0
         approve_case(args.slug, staging_dir=args.staging_dir, corpus_dir=args.corpus_dir, chunks_dir=args.chunks_dir)
         return 0
     except CaseError as exc:

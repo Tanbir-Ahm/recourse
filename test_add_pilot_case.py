@@ -319,6 +319,84 @@ with tempfile.TemporaryDirectory() as tmp:
     check(res["status"] == "blocked" and "NOT FOUND" in report and any("NOT in the official text" in b for b in res["blockers"]),
           "a quote that is not in the official text BLOCKS the case before any embedding spend")
 
+# ---------------------------------------------------------------- 12. the automatic second reader, wired into stage
+import second_reader as sr
+
+
+def canned_reader(**kw):
+    return {"models": ["fake-model", "fake-model"], "usage": [None, None],
+            "blind": {"key_points": [{"point": "p", "quote": QUOTE, "whose_words": "court's own reasoning"}],
+                      "final_order": "x", "dissent": "none"},
+            "compare": {"claims": [{"id": 1, "verdict": "SUPPORTED", "reason": "r", "quote": QUOTE},
+                                   {"id": 2, "verdict": "NOT_SUPPORTED", "reason": "the text says otherwise", "quote": QUOTE}],
+                        "quotes": [{"id": 1, "whose_words": "quotation of an earlier case", "quoted_source": "Some v Case"}],
+                        "missing_important_points": []}}
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, claims=["claim a", "claim b"], reader_fn=canned_reader)
+    check(res["status"] == "staged" and "Second reader (blind, different model: fake-model)" in report,
+          "with a claims list, stage runs the second reader and prints its section")
+    check("FLAG claim 2" in report and "FLAG quote 1" in report, "the reader's flags appear in the report")
+    check(any("flagged summary claim(s) [2]" in w for w in res["warnings"]) and any("NOT the Court's own words" in w for w in res["warnings"]),
+          "flags become warnings a person must read -- but never blockers, the reader approves and rejects nothing")
+    st = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+    check(st["second_reader"]["ran"] and st["second_reader"]["supported_verified"] == 1 and st["second_reader"]["flagged_claims"] == [2],
+          "the outcome is recorded in status.json")
+    check(os.path.isfile(os.path.join(res["case_dir"], "second_reader.json")), "the reader's full raw answer is kept in the case folder for audit")
+
+
+def unavailable(**kw):
+    raise sr.ReaderUnavailable("gemini-x: HTTP 503")
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, claims=["claim a"], reader_fn=unavailable)
+    check(res["status"] == "staged" and any("second reader unavailable" in w and "NOT a pass" in w for w in res["warnings"]),
+          "if no model answers, the case still stages, with a loud 'NOT a pass' warning pointing at the ChatGPT step")
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp)
+    check(any("no --claims-file" in w for w in res["warnings"]), "no claims given -> a warning that the summary was NOT second-read")
+with tempfile.TemporaryDirectory() as tmp:
+    res, report = run(tmp, claims=["claim a"], use_reader=False, reader_fn=lambda **k: 1 / 0)
+    check("Second reader: skipped" in report, "--no-reader skips it and never calls it")
+
+# ---------------------------------------------------------------- 13. claims files, verify-quotes, review-pack
+with tempfile.TemporaryDirectory() as tmp:
+    cf = os.path.join(tmp, "claims.txt")
+    with open(cf, "w", encoding="utf-8") as fh:
+        fh.write("# a comment\n1. First claim here.\n\n2) Second claim here.\nThird claim, no number.\n")
+    check(apc.read_claims(cf) == ["First claim here.", "Second claim here.", "Third claim, no number."],
+          "a claims file: numbering stripped, comments and blank lines ignored")
+
+check(apc.extract_quoted_passages('He said “the Court held that this is a long enough quoted sentence” and "another quoted passage that is long enough" but "short".')
+      == ["the Court held that this is a long enough quoted sentence", "another quoted passage that is long enough"],
+      "quoted passages are pulled out of a pasted answer, curly or straight quotes, and short ones are ignored")
+
+with tempfile.TemporaryDirectory() as tmp:
+    res, _ = run(tmp)
+    stg, corp = os.path.join(tmp, "stg"), os.path.join(tmp, "corp")
+    af = os.path.join(tmp, "chatgpt_answer.txt")
+    with open(af, "w", encoding="utf-8") as fh:
+        fh.write(f'The Court said "{QUOTE}" and also "This sentence was invented by the assistant and is nowhere in the judgment."')
+    out_lines = []
+    vq = apc.verify_quotes(res["slug"], af, staging_dir=stg, corpus_dir=corp, out=out_lines.append)
+    check(vq["passages"] == 2 and vq["exact"] == 1 and vq["missing"] == 1, f"verify-quotes: one real quote passes, one invented quote is caught -- got {vq}")
+    check("NOT IN THE OFFICIAL TEXT" in "\n".join(out_lines), "and it says plainly that the missing one may have been paraphrased or invented")
+
+    cf = os.path.join(tmp, "claims.txt")
+    with open(cf, "w", encoding="utf-8") as fh:
+        fh.write("Cheating needs dishonest intent at the start.\nThe appeal was dismissed.\n")
+    pk = apc.review_pack(res["slug"], cf, quotes=[QUOTE], staging_dir=stg, corpus_dir=corp, out=lambda s: None)
+    s1 = open(pk["step1"], encoding="utf-8").read()
+    s2 = open(pk["step2"], encoding="utf-8").read()
+    check("synthetic judgment used only for testing" in s1 and "Cheating needs dishonest intent" not in s1 and "ONLY this text" in s1,
+          "review-pack step 1 is BLIND: the judgment text, an instruction to use only it, and none of our claims")
+    check("1. Cheating needs dishonest intent" in s2 and "2. The appeal was dismissed." in s2 and "Do not say SUPPORTED without a quote" in s2 and "Q1." in s2,
+          "step 2 carries the numbered claims, the quote-attribution question, and the no-verdict-without-a-quote rule")
+    check("This is line 5 of page 0" not in s2 and "This is line 5 of page 0" in s1,
+          "step 2 does not repeat the judgment text (it is pasted in the same chat after step 1) -- only the quote we pass in appears")
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED")
