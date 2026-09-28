@@ -140,6 +140,14 @@ def citation_corroboration_check(case_name: str, key_phrase_groups: list, max_do
         logger.warning("citation_corroboration_check: IK search failed for %r: %s", case_name, exc)
         return {"checked": False, "documents_scanned": 0, "corroborating_documents": []}
 
+    return corroboration_from_search_result(result, key_phrase_groups, max_docs)
+
+
+def corroboration_from_search_result(result: dict, key_phrase_groups: list, max_docs: int = _MAX_CITING_DOCS_TO_SCAN) -> dict:
+    """The counting half of citation_corroboration_check, split out (2026-09-28) so a caller that
+    already holds an Indian Kanoon search result -- e.g. add_pilot_case.py, which searches once to find
+    the case's document id -- can reuse it instead of paying for a second identical search. Pure: no
+    network. Same return shape as citation_corroboration_check."""
     docs = (result or {}).get("docs", [])[:max_docs]
     corroborating = []
     seen_tids = set()
