@@ -167,6 +167,52 @@ with tempfile.TemporaryDirectory() as tmp:
     check(res["status"] == "staged" and any("qwerty" in w for w in res["warnings"]),
           "a name word missing from the PDF header is a WARNING (a person decides), not a block")
 
+# ---- --drop-paragraphs: a deliberate, recorded decision to drop chunks whose label collides (real collision, real check)
+import chunk_judgments
+
+
+def _fake_chunker(labels_and_texts):
+    def chunker(record):
+        return [{"case_name": record["case_name"], "citation": record["citation"], "chunk_method": "paragraph_number",
+                 "paragraph_number": lab, "text": txt} for lab, txt in labels_and_texts]
+    return chunker
+
+
+_COLLIDING = [("1", "Leave granted."), ("1", "1. ACE Lines Ltd (a quoted defendants list)"),
+              ("2", "The real paragraph two."), ("2", "2. A quoted second list item"), ("5", "The real paragraph five."),
+              ("6", "The real paragraph six.")]
+_real_chunker = chunk_judgments.chunk_judgment
+try:
+    chunk_judgments.chunk_judgment = _fake_chunker(_COLLIDING)
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, embed_fn=lambda t: 1 / 0)
+        check(res["status"] == "blocked" and any("paragraph 1" in b for b in res["blockers"]),
+              "without the flag, colliding labels still BLOCK the case (nothing changed by default)")
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, drop_paragraphs=["1", "2"])
+        st = json.load(open(os.path.join(res["case_dir"], "status.json"), encoding="utf-8"))
+        kept = json.load(open(os.path.join(res["case_dir"], f"{res['slug']}_chunks.json"), encoding="utf-8"))
+        check(res["status"] == "staged" and not res["blockers"], f"dropping the colliding labels lets the case stage -- {res['blockers']}")
+        check([c["paragraph_number"] for c in kept] == ["5", "6"] and all(len(c["embedding"]) == 3 for c in kept),
+              "only the healthy labelled chunks remain, and they are embedded")
+        check(st["dropped_paragraphs"] == {"labels": ["1", "2"], "chunks_dropped": 4}
+              and any("deliberately dropped" in w for w in res["warnings"]),
+              "the drop is RECORDED in status.json and raised as a warning -- never silent")
+        check("Dropped by decision" in report and "Leave granted." in report and "ACE Lines" in report,
+              "the report lists every dropped chunk's text so a person sees exactly what was removed")
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, drop_paragraphs=["1", "5"], embed_fn=lambda t: 1 / 0)
+        check(res["status"] == "blocked" and any("do not collide" in b and "'5'" in b for b in res["blockers"]),
+              "naming a label that does NOT collide (a healthy paragraph) is refused -- the flag can't hide good text")
+        kept = json.load(open(os.path.join(res["case_dir"], f"{res['slug']}_chunks.json"), encoding="utf-8"))
+        check(len(kept) == len(_COLLIDING), "and in that case nothing was dropped")
+    with tempfile.TemporaryDirectory() as tmp:
+        res, report = run(tmp, drop_paragraphs=["1"], embed_fn=lambda t: 1 / 0)
+        check(res["status"] == "blocked" and any("paragraph 2" in b for b in res["blockers"]),
+              "dropping only some colliding labels still BLOCKS on the ones left")
+finally:
+    chunk_judgments.chunk_judgment = _real_chunker
+
 # ---------------------------------------------------------------- 5. it never overwrites work in progress
 with tempfile.TemporaryDirectory() as tmp:
     run(tmp)
@@ -198,6 +244,15 @@ PAGED = ("The appellant company filed a private complaint under Section 200 befo
 r_paged = apc.check_quote("before the Chief Metropolitan Magistrate, Bangalore alleging that the respondents had committed offences under Sections 420, 406 and 423.", PAGED)
 check(r_paged["status"] == "exact" and "JUDIS" not in r_paged["matched"],
       f"a quote that runs across a PDF page break (the running header sits mid-sentence) is still found -- the real Alpic case; got {r_paged['status']}")
+
+ESCAPED = "8. The substance of the complaint is to be seen. Mere use of the expression \\023cheating\\024 in the \ncomplaint is of no consequence. Except mention of the words \\023deceive\\024 and \\023cheat\\024 in the complaint."
+r_esc = apc.check_quote("Mere use of the expression “cheating” in the complaint is of no consequence.", ESCAPED)
+check(r_esc["status"] in ("exact", "cosmetic"),
+      f"a quote crossing raw octal codes (\\023 \\024, as in the real All Cargo Movers PDF) is found -- got {r_esc['status']}")
+check(apc.check_quote("Mere use of the expression cheating in the complaint is of no consequence.", ESCAPED)["status"] in ("exact", "cosmetic"),
+      "and so is the same quote written without any quotation marks")
+check(apc.check_quote("Mere use of the expression forgery in the complaint is of no consequence.", ESCAPED)["status"] == "missing",
+      "but a quote with one word changed is still MISSING -- ignoring the codes doesn't make matching loose")
 
 # ---------------------------------------------------------------- 7. the similarity score
 base_text = " ".join(f"word{i % 97} filler{i} sentence{i % 13}" for i in range(400))

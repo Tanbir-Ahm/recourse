@@ -142,6 +142,7 @@ IK_SAME_SOURCE_NOTE = ("NOTE: this copy comes from the same source as the offici
 
 
 _PAGE_HEADER = re.compile(r"http://JUDIS\.NIC\.IN\s*SUPREME\s+COURT\s+OF\s+INDIA\s*Page\s+\d+\s+of\s+\d+", re.I)
+_OCTAL_ESCAPES = re.compile(r"\\0\d\d")
 _PAGE_HEADER_NUMS = re.compile(r"http://JUDIS\.NIC\.IN\s*SUPREME\s+COURT\s+OF\s+INDIA\s*Page\s+(\d+)\s+of\s+(\d+)", re.I)
 _DISPOSAL_WORDS = re.compile(r"\b(dismiss\w*|allow\w*|dispos\w*|set\s+aside|quash\w*|remand\w*|answered|affirm\w*|confirm\w*|partly)\b", re.I)
 
@@ -213,6 +214,9 @@ def check_quote(quote: str, text: str, context: int = 150) -> dict:
     # a sentence that runs across a page break has that header in the middle of it. Found live 2026-09-28: a true
     # claim's supporting quote was reported "not found" for exactly this reason. Match without it.
     text = _PAGE_HEADER.sub(" ", text)
+    # Some judis PDFs print curly quotes and dashes as raw octal codes (\023 \024 \022 \026 in All Cargo Movers).
+    # Their digits would count as letters and make a real sentence look "missing"; ignore them when matching.
+    text = _OCTAL_ESCAPES.sub(" ", text)
     hay, idx = _letters_index(text)
     pos = hay.find(q)
     if pos < 0:
@@ -499,7 +503,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                staging_dir=DEFAULT_STAGING_DIR, corpus_dir=DEFAULT_CORPUS_DIR, chunks_dir=DEFAULT_CHUNKS_DIR,
                embed_fn=None, query_fn=None, replace=False, out=print,
                use_ik=True, ik_doc_id=None, ik_search_fn=None, ik_doc_fn=None, vaquill_fn=None,
-               claims=(), use_reader=True, reader_fn=None) -> dict:
+               claims=(), use_reader=True, reader_fn=None, drop_paragraphs=()) -> dict:
     from chunk_judgments import chunk_judgment
 
     slug = slugify(name)
@@ -523,6 +527,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
     quotes_ok, vaquill_status, ik_summary = False, "not_checked", {"ran": False}
     reader_summary = {"ran": False}
     completeness_summary = {}
+    dropped_summary = {}
     if not _looks_like_pdf(data):
         blockers.append("the downloaded file is not a PDF (no %PDF marker) -- wrong link, or the site returned a web page")
     else:
@@ -579,6 +584,31 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
         chunks_path = os.path.join(case_dir, f"{slug}_chunks.json")
         _write_json(chunks_path, chunks)
         found = _collisions(case_dir)
+        if drop_paragraphs:
+            # A person's deliberate, recorded decision (never automatic): a numbered list quoted INSIDE the judgment
+            # (a fax, a list of defendants) reuses paragraph numbers 1-4, so those labels point at several texts.
+            # Drop every chunk carrying such a label; refuse if a named label is not really colliding, so this flag
+            # can't be used to quietly remove a healthy paragraph.
+            wanted = {str(p_).strip() for p_ in drop_paragraphs}
+            colliding = {str(f_["paragraph_number"]) for f_ in found if not f_.get("error")}
+            not_colliding = sorted(wanted - colliding, key=lambda x: (len(x), x))
+            if not_colliding:
+                blockers.append(f"--drop-paragraphs names label(s) {not_colliding} that do not collide -- refusing to drop a "
+                                f"healthy paragraph. Colliding labels: {sorted(colliding, key=lambda x: (len(x), x))}")
+            else:
+                gone = [c for c in chunks if c.get("chunk_method") == "paragraph_number"
+                        and str(c.get("paragraph_number")) in wanted]
+                gone_ids = {id(c) for c in gone}
+                chunks = [c for c in chunks if id(c) not in gone_ids]
+                dropped_summary = {"labels": sorted(wanted, key=lambda x: (len(x), x)), "chunks_dropped": len(gone)}
+                lines.append(f"Dropped by decision (--drop-paragraphs {','.join(dropped_summary['labels'])}): "
+                             f"{len(gone)} chunk(s) removed because their paragraph label was ambiguous:")
+                for c in gone:
+                    lines.append(f"    label {c.get('paragraph_number')}: \"{_squash(c['text'])[:90]}...\"")
+                warnings.append(f"{len(gone)} chunk(s) labelled {dropped_summary['labels']} were deliberately dropped "
+                                f"(ambiguous numbering) -- that text will NOT be searchable in the pilot tier")
+                _write_json(chunks_path, chunks)
+                found = _collisions(case_dir)
         for f_ in found:
             blockers.append(f"paragraph-number collision: {f_.get('error') or ('paragraph ' + str(f_['paragraph_number']) + ' points to ' + str(f_['distinct_texts']) + ' different texts')}")
         lines.append("Collision check: " + ("clean" if not found else f"{len(found)} PROBLEM(S) -- see BLOCKED below"))
@@ -675,7 +705,7 @@ def stage_case(*, link, name, citation, topic, expected_date=None, questions=(),
                  "quotes_verified": bool(quotes_ok and not blockers), "quotes": list(quotes),
                  "independent_copy": vaquill_status,
                  "indian_kanoon": ik_summary, "second_reader": reader_summary,
-                 "page_completeness": completeness_summary,
+                 "page_completeness": completeness_summary, "dropped_paragraphs": dropped_summary,
                  "blockers": blockers, "warnings": warnings})
     out(report)
     return {"slug": slug, "status": status, "blockers": blockers, "warnings": warnings, "case_dir": case_dir}
@@ -880,6 +910,9 @@ def main(argv=None):
     s.add_argument("--no-ik", action="store_true", help="skip the (paid) Indian Kanoon checks")
     s.add_argument("--claims-file", help="the summary as one claim per line -- checked by the blind second reader")
     s.add_argument("--no-reader", action="store_true", help="skip the automatic second reader")
+    s.add_argument("--drop-paragraphs", default="",
+                   help="comma-separated paragraph labels to DROP because they collide (e.g. 1,2,3,4); refused for a label that "
+                        "does not collide; recorded in the report and status.json")
     vq = sub.add_parser("verify-quotes")
     vq.add_argument("slug")
     vq.add_argument("--file", required=True, help="a text file with an answer (e.g. from ChatGPT) whose quotes should be checked")
@@ -907,7 +940,8 @@ def main(argv=None):
                              chunks_dir=args.chunks_dir, replace=args.replace,
                              use_ik=not args.no_ik, ik_doc_id=args.ik_doc_id,
                              claims=read_claims(args.claims_file) if args.claims_file else (),
-                             use_reader=not args.no_reader)
+                             use_reader=not args.no_reader,
+                             drop_paragraphs=[x for x in args.drop_paragraphs.split(",") if x.strip()])
             return 0 if res["status"] == "staged" else 2
         if args.cmd == "second-read":
             second_read_case(args.slug, read_claims(args.claims_file), quotes=args.quote or None, staging_dir=args.staging_dir)
