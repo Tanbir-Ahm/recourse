@@ -118,4 +118,7 @@ CASE_NAME_TO_COURT = {
     "Vijay Kumar Ghai v State of West Bengal": "Supreme Court of India",
     "Viraj Chetan Shah v Union of India & Anr (& Connected Matters)": "Bombay High Court",
     "Youth Bar Association v Union of India": "Supreme Court of India",
+
+    # ---- promoted 2026-09-28 (warrant guidance) -- PDF header reads "SUPREME COURT OF INDIA"; cited (2007) 12 SCC 1 ----
+    "Inder Mohan Goswami and Anr. v State of Uttaranchal and Ors.": "Supreme Court of India",
 }

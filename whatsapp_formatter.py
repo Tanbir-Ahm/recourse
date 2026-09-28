@@ -63,6 +63,16 @@ def _format_unverified_judgments(unverified: list) -> str:
     return "\n".join(lines)
 
 
+def _format_cited_judgments(links: list) -> str:
+    """The judgments this answer actually relies on, each with the real link stored for it (ADDED 2026-09-28 -- see
+    chat_assistant._attach_cited_judgment_links). Unlike the hedged 'other cases' list below it, these are the
+    tool's own verified sources, so no 'not checked' caution -- but the person is still told to read them."""
+    lines = ["*Judgments this answer relies on* -- you can read each one yourself:"]
+    for l in links:
+        lines.append(f"- {l['case_name']} ({l.get('source_label', 'source link')})\n  {l['url']}")
+    return "\n".join(lines)
+
+
 def format_answer_for_whatsapp(result: dict) -> list:
     """Returns a list of message strings to send, in order. Never
     returns an empty list -- every state gets at least one honest
@@ -116,6 +126,9 @@ def format_answer_for_whatsapp(result: dict) -> list:
             messages.append(
                 "Want a draft court petition based on this? Reply *DRAFT* and I'll prepare one you can download."
             )
+        cited = result.get("cited_judgment_links")
+        if cited:
+            messages.append(_format_cited_judgments(cited))
         unverified = result.get("unverified_related_judgments")
         if unverified:
             messages.append(_format_unverified_judgments(unverified))

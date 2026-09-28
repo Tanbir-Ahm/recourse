@@ -869,6 +869,17 @@ def render_answer(result: dict):
         # see its module docstring and memory/vaquill-search-pool.md).
         # Deliberately its OWN expander, separate from "Read the source"
         # above -- never implies the same confidence level.
+        # ADDED 2026-09-28: a real, stored link for every judgment the answer above actually relies on
+        # (chat_assistant._attach_cited_judgment_links) -- these are the tool's own verified sources, unlike
+        # the unverified expander below, so they are shown plainly, not hidden behind a caution.
+        cited_links = result.get("cited_judgment_links")
+        if cited_links:
+            st.markdown('<div class="r-label">Judgments this answer relies on</div>', unsafe_allow_html=True)
+            for cl in cited_links:
+                st.markdown(f'- [{esc(cl["case_name"])}]({esc(cl["url"])}) &nbsp;&middot;&nbsp; '
+                            f'<span class="r-src">{esc(cl.get("source_label", "source link"))}</span>',
+                            unsafe_allow_html=True)
+
         unverified = result.get("unverified_related_judgments")
         if unverified:
             with st.expander("Other real court cases that might be relevant (not independently verified)"):

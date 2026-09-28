@@ -1369,6 +1369,68 @@ JUDGMENT_DOCTRINE_MAP = {
             "flooding a default-bail answer."
         ),
     },
+    # ---- warrants: when a court may issue a NON-BAILABLE warrant (no other entry in this map covers warrants) ----
+    "non_bailable_warrant_summons_first_then_bailable_then_nbw": {
+        "case_key": "inder_mohan_goswami_and_anr",
+        "paragraph_numbers": ["fallback_26", "fallback_27"],
+        "opinion_author": None,
+        "trigger_groups": [
+            ("non-bailable warrant",), ("non bailable warrant",), ("nonbailable warrant",),
+            ("non-bailable arrest warrant",), ("nbw",), ("bailable warrant",),
+            ("warrant", "not appear"), ("warrant", "did not appear"), ("warrant", "didn't appear"),
+            ("warrant", "failed to appear"), ("warrant", "skipped", "hearing"),
+            ("warrant", "missed", "hearing"), ("court", "warrant", "summons"),
+        ],
+        "context_note": (
+            "In Inder Mohan Goswami v State of Uttaranchal, (2007) 12 SCC 1 (Supreme Court of India, 9 October "
+            "2007, Dalveer Bhandari J. writing for a bench that included the Chief Justice), after quashing an "
+            "FIR over what it held was a purely civil dispute about land, the Court added guidance on 'an issue "
+            "which is of great public importance': how and when courts should issue warrants. It said bailable "
+            "and non-bailable warrants were being issued casually and mechanically. It said the issuance of "
+            "non-bailable warrants involves interference with personal liberty, so courts have to be extremely "
+            "careful before issuing them, and that warrants, bailable or non-bailable, should never be issued "
+            "without proper scrutiny of the facts and complete application of mind (the court must also examine "
+            "whether the complaint or FIR was filed with an oblique motive). A non-bailable warrant should be "
+            "issued to bring a person to court when a summons or bailable warrant would be unlikely to have the "
+            "desired result -- for example where it is reasonable to believe the person will not voluntarily "
+            "appear, the police cannot find the person to serve a summons, or the person could harm someone if "
+            "not placed into custody immediately. As far as possible, if a summons will suffice, the summons or "
+            "a bailable warrant should be preferred. For COMPLAINT CASES specifically, the Court described three "
+            "instances: first the court should direct serving of a summons along with a copy of the complaint; "
+            "second, if the accused seems to be avoiding the summons, it should issue a bailable warrant; and "
+            "only in the third instance, when the court is fully satisfied that the accused is avoiding the "
+            "court's proceedings intentionally, should it resort to a non-bailable warrant. The Court said there "
+            "is no straight-jacket formula and that the power is discretionary and must be exercised "
+            "judiciously, with extreme care and caution, balancing personal liberty against the interest of "
+            "society -- but that, as a general rule, unless an accused is charged with a heinous crime and it is "
+            "feared that he is likely to tamper with or destroy the evidence or is likely to evade the process "
+            "of law, issuance of non-bailable warrants should be avoided. This is the Supreme Court's guidance "
+            "to trial courts on how to use a discretionary power. It does not by itself make any particular "
+            "warrant invalid, and it does not say what a person should do once a warrant has been issued."
+        ),
+        "verified_note": (
+            "PROMOTED 2026-09-28 from the pilot tier, on the user's explicit approval of this specific anchor "
+            "(per-case approval, not batch approval). The whole judgment (all 13 pages, "
+            "pilot_corpus/inder_mohan_goswami_and_anr_v_state_of_uttaranchal_and_ors.json) was read in full. "
+            "The judgment has NO numbered paragraphs, so its chunks are fixed-size pieces and the slugs "
+            "'fallback_26' and 'fallback_27' are this tool's own piece labels, not the Court's paragraph "
+            "numbers (same situation as Jagrup Singh above): piece 26 holds the 'When non-bailable warrants "
+            "should be issued' passage, the summons-preferred and never-without-scrutiny sentences and the "
+            "start of the three-instance sequence for complaint cases; piece 27 holds the rest of that "
+            "sequence and the heinous-crime rule. Six of the Court's own sentences were confirmed word for "
+            "word against the official text by add_pilot_case.check_quote (all six exact/cosmetic). The "
+            "whole-case summary passed the automatic second reader at pilot stage (11 of 11 claims, with a "
+            "correction: the three-step sequence is for 'complaint cases'); the wording of THIS note was NOT "
+            "run through the second reader (user's decision -- Gemini was overloaded and the note is traceable "
+            "sentence by sentence to the six confirmed sentences). Citation (2007) 12 SCC 1, source "
+            "https://api.sci.gov.in/jonew/judis/29628.pdf. Deliberately NOT anchored: the Court's holdings on "
+            "civil disputes and cheating (already covered by Vijay Kumar Ghai, Satishchandra Ratanlal Shah, "
+            "Usha Chakraborty and Md. Ibrahim above). The pilot copy in pilot_chunks/ is deliberately KEPT "
+            "(with its embeddings) so this case still surfaces, hedged, on cheating/civil-dispute questions; "
+            "chat_assistant's exclude_case_names keeps it out of the pilot list on questions where this "
+            "verified entry fires."
+        ),
+    },
 }
 
 
@@ -1442,6 +1504,10 @@ def get_judgment_doctrine_override(question: str) -> list:
                 "paragraph_number": p.get("paragraph_number"),
                 "opinion_author": p.get("opinion_author"),
                 "text": p.get("text"),
+                # The file's own link, ONLY when the case is shown under its own name. An entry with a
+                # display_case_name presents a case that is QUOTED inside this file's judgment (Bhajan Lal, as set out
+                # in Usha Chakraborty), so the file's link would be the wrong case's link. Found 2026-09-28.
+                "source_url": None if entry.get("display_case_name") else p.get("source_url"),
                 "context_note": entry["context_note"],
                 "type": "judgment",
                 "source": "curated_judgment_override",

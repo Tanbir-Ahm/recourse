@@ -2867,8 +2867,8 @@ def _answer_single_match(question, matches):
     }
 
 
-def answer_question(question, inline_domains=frozenset()):
-    """Main entry point for the chat interface. Returns a dict describing
+def _answer_question_core(question, inline_domains=frozenset()):
+    """Main body of the chat entry point (call answer_question(), which wraps this). Returns a dict describing
     the outcome, always including a 'state' field so the UI layer can
     render each case distinctly and honestly, per this project's
     established "surface uncertainty, don't silently guess" principle
@@ -3110,6 +3110,109 @@ def answer_question(question, inline_domains=frozenset()):
     # semantic results.
     all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
     return _answer_single_match(question, all_matches)
+
+
+# ---------------------------------------------------------------------------
+# "Read the judgment" links (ADDED 2026-09-28).
+#
+# WHY: the only place an answer ever showed a link was the "Other real court cases" list, which comes from the hedged
+# pilot pool and deliberately leaves out any case already used in the answer. So a case that became a verified core
+# anchor (Inder Mohan Goswami, on non-bailable-warrant questions) would be NAMED in the answer while its real
+# api.sci.gov.in link vanished, and core cases like Md. Ibrahim / Bhajan Lal had never shown a link at all. The user
+# decided (2026-09-28): show the stored link for every judgment the answer actually relies on, for ALL core cases.
+#
+# Deterministic and fail-open: a case gets a link only if the answer TEXT names it; the link is the one stored on the
+# case's own chunk file; a case already in the pilot list is not linked twice; any failure leaves the answer untouched.
+# ---------------------------------------------------------------------------
+_PARTY_SPLIT_PAT = re.compile(r"\s+vs?\.?\s+", re.IGNORECASE)
+_ET_AL_TAIL_PAT = re.compile(r"(?:\s*,?\s*(?:and|&)\s+(?:anr|ors|others|another)\.?)+\s*$", re.IGNORECASE)
+_GENERIC_PARTY_PAT = re.compile(r"^(?:the\s+)?(?:state|union of india|government|central bureau|cbi)\b", re.IGNORECASE)
+_LINK_STATES = ("single_match", "conflicting_matches")
+
+
+def _case_distinctive_name(case_name: str) -> str:
+    """The party name an answer would use to refer to a case. The first party, minus a trailing 'and Anr.' /
+    '& Ors', EXCEPT when the first party is just the State / Union of India / a Government: then the second party
+    is used, so 'State of Haryana v Bhajan Lal' is 'Bhajan Lal' and can never be confused with 'Jagrup Singh v State
+    of Haryana'."""
+    parts = _PARTY_SPLIT_PAT.split(case_name or "", maxsplit=1)
+
+    def clean(p):
+        return _ET_AL_TAIL_PAT.sub("", p).strip(" ,.;")
+
+    first = clean(parts[0])
+    second = clean(parts[1]) if len(parts) > 1 else ""
+    if _GENERIC_PARTY_PAT.match(first) and second and not _GENERIC_PARTY_PAT.match(second):
+        return second
+    return first
+
+
+def _source_label(url: str) -> str:
+    if "sci.gov.in" in url:
+        return "Supreme Court of India (official)"
+    if "indiankanoon.org" in url:
+        return "Indian Kanoon"
+    return "source link"
+
+
+def _name_in_text(name: str, text: str) -> bool:
+    return bool(name) and re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", text, re.IGNORECASE) is not None
+
+
+def _attach_cited_judgment_links(result):
+    """Adds result['cited_judgment_links'] -- [{case_name, url, source_label}] -- for every core judgment in
+    result['matches'] that the answer text names. Only for answer states; other states are returned untouched. Never
+    raises (a failure returns the result as it came in)."""
+    try:
+        if not isinstance(result, dict) or result.get("state") not in _LINK_STATES:
+            return result
+        from retrieval import get_judgment_source_url
+
+        text = result.get("response_text") or ""
+        already_listed = {j.get("case_name") for j in (result.get("unverified_related_judgments") or []) if isinstance(j, dict)}
+        cases = []
+        for m in result.get("matches") or []:
+            if isinstance(m, dict) and m.get("type") == "judgment" and m.get("case_name") and m["case_name"] not in cases:
+                cases.append(m["case_name"])
+        names = {c: _case_distinctive_name(c) for c in cases}
+        links = []
+        for case in cases:
+            if case in already_listed:
+                continue
+            name = names[case]
+            named = _name_in_text(name, text)
+            if not named:
+                # a lone surname is enough (the model often writes "the Goswami case") -- but only a distinctive one
+                # (6+ letters, more than one word in the name, and no other retrieved case ends in the same word)
+                words = name.split()
+                last = words[-1].strip(".,") if words else ""
+                if len(words) >= 2 and len(last) >= 6 and sum(1 for n in names.values() if n.split() and n.split()[-1].strip(".,").lower() == last.lower()) == 1:
+                    named = _name_in_text(last, text)
+            if not named:
+                continue
+            url = get_judgment_source_url(case)
+            if not url:
+                url = next((m.get("source_url") for m in result["matches"]
+                            if isinstance(m, dict) and m.get("case_name") == case and isinstance(m.get("source_url"), str)
+                            and m["source_url"].startswith("http")), None)
+            if url:
+                links.append({"case_name": case, "url": url, "source_label": _source_label(url)})
+        result["cited_judgment_links"] = links
+    except Exception as exc:  # fail-open: the real answer always goes out
+        logger.warning("_attach_cited_judgment_links failed: %s", exc)
+    return result
+
+
+def answer_question(question, inline_domains=frozenset()):
+    """Public entry point for the chat interface. Runs _answer_question_core (all the retrieval, generation and
+    state logic; see its docstring for the possible states) and then attaches 'cited_judgment_links' -- a real,
+    stored link for every judgment the answer relies on. If attaching the links ever fails, the answer is returned
+    exactly as the core produced it."""
+    result = _answer_question_core(question, inline_domains=inline_domains)
+    try:
+        return _attach_cited_judgment_links(result)
+    except Exception:  # pragma: no cover -- _attach already fails open; belt and braces
+        return result
 
 
 # ---------------------------------------------------------------------------

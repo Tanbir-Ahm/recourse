@@ -204,8 +204,28 @@ def get_judgment_paragraphs(case_key, paragraph_numbers, opinion_author=None):
             "paragraph_number": c["paragraph_number"],
             "opinion_author": c.get("opinion_author"),
             "text": c["text"],
+            # ADDED 2026-09-28: the real source link stored on every core chunk, so an answer can show the
+            # person where to read the judgment (see chat_assistant._attach_cited_judgment_links).
+            "source_url": c.get("source_url"),
         })
     return results
+
+
+def get_judgment_source_url(case_name):
+    """The stored source link (e.g. the real api.sci.gov.in judgment PDF) of a core judgment, looked up by its
+    exact case name. None for an unknown case, an empty name, or a case whose chunk file carries no link --
+    never a guess, never raises."""
+    if not case_name:
+        return None
+    try:
+        for key in list(_JUDGMENT_CHUNK_FILES):
+            chunks = _load_judgment_chunks(key)
+            if chunks and isinstance(chunks[0], dict) and chunks[0].get("case_name") == case_name:
+                url = chunks[0].get("source_url")
+                return url if isinstance(url, str) and url.startswith("http") else None
+    except Exception:
+        return None
+    return None
 
 
 # ---------------------------------------------------------------------------
