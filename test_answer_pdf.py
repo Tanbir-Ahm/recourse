@@ -216,7 +216,7 @@ check("Section 92 of the BNSS" in re.sub(r"\s+", " ", text) or "BNSS" in text, "
 check(norm("may issue a warrant directing that such person be arrested and produced before him") in norm(text), "the official statute text is included")
 check(norm("issuance of non-bailable warrants should be avoided") in norm(text), "the judgment excerpt (the heinous-crime rule) is included")
 check("Facts to find out" in text and "Whether summons were tried first" in text, "the lawyer checklist is included")
-check("How this was checked" in text, "the honest 'how this was checked' section is included")
+check("How this was checked" not in text, "the 'how this was checked' section was removed for good (user's explicit instruction, 2026-09-29) and never reappears")
 check("Notes for my lawyer" in text, "there is a notes area")
 check("Other cases that might be relevant" not in text, "no hedged-cases section when there are none")
 check("More than one legal provision" not in text, "no conflict opener on a single-match answer")
@@ -325,15 +325,17 @@ finally:
 check(res == (None, {"ok": False, "fallback": True, "error": "RuntimeError: boom"}), f"if building crashes entirely, (None, error) is returned and nothing raises -- {res}")
 check(ap.build_verified_pdf([]) == (None, {"ok": False, "fallback": False, "error": "no answers to include"}), "no records -> nothing to build")
 
-# ================================================================== 7. the "how this was checked" page is truthful
+# ================================================================== 7. the removed "how this was checked" page never reappears
+# NOTE: "Laws (text copied from Recourse's stored copy of the Act)" is a DIFFERENT, legitimate line -- the Sources
+# section's own sub-heading distinguishing statute text from judgment excerpts -- so this checks the removed page's
+# own heading and its distinctive sentences, not that shared phrase.
 flat1 = re.sub(r"\s+", " ", pdf_text(pdf)[0])
-check("copied from Recourse's stored copy" in flat1, "says statute text is copied from the stored copy")
-check("written by an AI" in flat1, "says the wording of the answer was written by an AI")
-check("curated library" in flat1, "says which judgments come from the curated library")
+for gone in ("How this was checked", "written by an AI (Claude)", "checks the section numbers and court names",
+            "curated library of judgments"):
+    check(gone not in flat1, f"removed for good, does not reappear on a sourced answer -- {gone!r}")
 none_src = ap.record_from_result("q", {"state": "single_match", "response_text": "A general answer with no named source.", "matches": []})
 flat_none = re.sub(r"\s+", " ", pdf_text(ap.build_answer_pdf([none_src]))[0])
-check("copied from Recourse's stored copy" not in flat_none and "curated library" not in flat_none,
-      "an answer with no statute or judgment sources does NOT claim to have any (the page only states what is true)")
+check("How this was checked" not in flat_none, "and not on a source-less answer either")
 check("Facts to find out" not in flat_none, "and no checklist when the answer had no 'unclear' line")
 
 print()

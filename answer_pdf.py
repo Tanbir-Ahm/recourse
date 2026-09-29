@@ -490,24 +490,6 @@ def build_answer_pdf(records: list, plain: bool = False) -> bytes:
             if o.get("url"):
                 story.append(Paragraph(f'<link href="{escape(o["url"])}">{escape(o["url"])}</link>', st["url"]))
 
-    # ---- how this was checked (states only what is true for THIS document)
-    has_stat, has_cls = bool(stat_map), any(s[0].get("classification") for s in stat_map.values())
-    story.append(P("How this was checked", "h2"))
-    lines = ["The wording of each answer was written by an AI (Claude) from the sources listed here. Recourse checks the "
-             "section numbers and court names in that wording against the sources automatically; it cannot check that an "
-             "answer fits your particular facts."]
-    if has_stat:
-        lines.append("Statute text in the Sources section is copied from Recourse's stored copy of the law, not written by the AI.")
-    if has_cls:
-        lines.append("Cognizable / bailable / punishment facts come from a fixed table of the law, not from the AI, and each answer is checked against that table.")
-    if judg_map:
-        lines.append("Judgments listed under 'Judgments' come from Recourse's curated library of judgments; the link goes to the source so you can read them yourself.")
-    if other_map:
-        lines.append("Cases under 'Other cases' were NOT independently verified.")
-    lines.append(f"Laws and judgments change. This document was generated on {when}.")
-    for ln in lines:
-        story.append(P("• " + ln, "check"))
-
     story.append(P("Notes for my lawyer", "h2"))
     for _ in range(4):
         story.append(HRFlowable(width="100%", thickness=0.4, color=colors.HexColor("#C9D0DA"), spaceBefore=14, spaceAfter=0))
