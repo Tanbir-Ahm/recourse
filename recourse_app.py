@@ -880,6 +880,15 @@ def render_answer(result: dict):
                             f'<span class="r-src">{esc(cl.get("source_label", "source link"))}</span>',
                             unsafe_allow_html=True)
 
+        # Overruled Register (register_hooks.py), added by code from the register and the checker's cards, not written by the model.
+        reg_notes = result.get("register_notes")
+        if reg_notes or result.get("register_not_checked"):
+            st.markdown('<div class="r-label">Currency notes (checked by code, not by the model)</div>', unsafe_allow_html=True)
+            for n in reg_notes or []:
+                st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
+            if result.get("register_not_checked"):
+                st.markdown(f'<p class="r-foot">{esc(result["register_not_checked"])}</p>', unsafe_allow_html=True)
+
         unverified = result.get("unverified_related_judgments")
         if unverified:
             with st.expander("Other real court cases that might be relevant (not independently verified)"):

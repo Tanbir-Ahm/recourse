@@ -462,6 +462,7 @@ RESPONSE_GENERATION_PROMPT = """You are a warm, careful guide helping a layperso
 - Cite AT MOST 4 distinct section numbers. If a retrieved section only tangentially relates, OMIT IT ENTIRELY -- do not describe it and do not explain why it doesn't apply.
 - Address the section(s) defining the OFFENCE the person asks about before general arrest-procedure sections -- the offence is usually the most direct answer.
 - If a provision or case below carries a note about its legal currency, fold it in as ONE short plain clause ("...though the exact scope of this is under review by a larger bench"). Never write a separate paragraph about verification status or "treat this with caution".
+- A line that starts REGISTER FACT is not optional: whenever you mention that case, say how it was treated in the same sentence. A line that starts REGISTER NOTE (not yet confirmed) means say it is reported to have been so treated; never present its holding as settled.
 
 ## Shape and length
 - If the question describes something that HAS ALREADY HAPPENED to the person or someone close to them (an arrest, a search, an FIR, a frozen account), open with a short **"Right now"** part: 2-3 concrete things they can do or ask for immediately. Then the relevant law. Then what key facts are still unclear. Then the closing line.
@@ -2262,6 +2263,14 @@ def format_retrieved_text_for_prompt(matches):
     e.g. garbled beyond any recognizable condition) is now reserved for
     cases where NEITHER pattern extracts anything usable -- not the
     default whenever the specific rupee-regex happens not to match."""
+    # Overruled Register lock (a): a judgment whose own case is a firm register row goes to the end and carries
+    # m["register_badge"]; fail-open (register_hooks.py), switched off with REGISTER_HOOKS=off.
+    try:
+        from register_hooks import demote_matches
+        matches = demote_matches(matches)
+    except Exception:
+        pass
+
     # The embedding pipeline's internal act code (embed_corpus.py's
     # load_statute_chunks()) is echoed straight into the answer text via
     # `source` below. For BNS/BNSS/ITACT that's harmless -- those short
@@ -2312,6 +2321,15 @@ def format_retrieved_text_for_prompt(matches):
                     "in as ONE short plain clause; if the case is only a minor mention, you "
                     "may leave it out]\n" + "\n".join(dict.fromkeys(notes))
                 )
+            # Overruled Register lock (b): a fixed fact, not optional (unlike the currency clause above).
+            try:
+                from register_hooks import prompt_lines_for_match
+                reg_lines = prompt_lines_for_match(m)
+            except Exception:
+                reg_lines = []
+            if reg_lines:
+                block += ("\n\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n"
+                          + "\n".join(reg_lines))
 
         variants = m.get("all_variants") or {}
         if variants:
@@ -3203,6 +3221,25 @@ def _attach_cited_judgment_links(result):
     return result
 
 
+def _attach_register_notes(result):
+    """Adds result['register_notes'] (sentences for every Overruled Register or warning-card case the answer names without saying it was overruled)
+    and result['register_not_checked'] (one fixed sentence naming cases on neither list). Answer states only; never raises; REGISTER_HOOKS=off skips it."""
+    try:
+        if not isinstance(result, dict) or result.get("state") not in _LINK_STATES:
+            return result
+        from register_hooks import answer_notes
+        res = answer_notes(result.get("response_text") or "")
+        if res["notes"]:
+            result["register_notes"] = res["notes"]
+        if res["not_checked"]:
+            result["register_not_checked"] = res["not_checked"]
+        if res["review"]:
+            logger.info("register: weak match(es) for review: %s", res["review"])
+    except Exception as exc:  # fail-open
+        logger.warning("_attach_register_notes failed: %s", exc)
+    return result
+
+
 def answer_question(question, inline_domains=frozenset()):
     """Public entry point for the chat interface. Runs _answer_question_core (all the retrieval, generation and
     state logic; see its docstring for the possible states) and then attaches 'cited_judgment_links' -- a real,
@@ -3210,7 +3247,7 @@ def answer_question(question, inline_domains=frozenset()):
     exactly as the core produced it."""
     result = _answer_question_core(question, inline_domains=inline_domains)
     try:
-        return _attach_cited_judgment_links(result)
+        return _attach_register_notes(_attach_cited_judgment_links(result))
     except Exception:  # pragma: no cover -- _attach already fails open; belt and braces
         return result
 
