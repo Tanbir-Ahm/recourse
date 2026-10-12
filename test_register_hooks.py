@@ -74,5 +74,10 @@ finally:
     builtins.__import__ = real_import
 check(ok, "with the bundle missing every hook returns empty and does not raise")
 
+# WhatsApp: the same notes go out as one message, before the judgment links
+import whatsapp_formatter as WF
+msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Some answer.", "register_notes": ["Mohan Lal v. State of Punjab (2018): reported to have been overruled."], "register_not_checked": "Cases named in this answer that we have not checked: X v. Y."})
+check(any(m.startswith("*Currency notes*") and "Mohan Lal" in m and "not checked" in m for m in msgs), "WhatsApp carries the register notes and the 'not checked' sentence as one message")
+check(WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Some answer."}) == ["Some answer."], "and an answer without notes is unchanged")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

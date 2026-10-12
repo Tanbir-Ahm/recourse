@@ -127,6 +127,11 @@ def format_answer_for_whatsapp(result: dict) -> list:
             messages.append(
                 "Want a draft court petition based on this? Reply *DRAFT* and I'll prepare one you can download."
             )
+        # Overruled Register (register_hooks.py via chat_assistant._attach_register_notes): added by code, not written by the model.
+        notes = result.get("register_notes")
+        not_checked = result.get("register_not_checked")
+        if notes or not_checked:
+            messages.append("\n".join(["*Currency notes* (checked by code, not by the model):"] + [f"- {n}" for n in (notes or [])] + ([not_checked] if not_checked else [])))
         cited = result.get("cited_judgment_links")
         if cited:
             messages.append(_format_cited_judgments(cited))
