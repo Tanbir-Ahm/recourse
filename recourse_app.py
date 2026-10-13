@@ -914,7 +914,8 @@ def render_answer(result: dict):
         # The wider Supreme Court pool (sci_search_tier.py, off unless SCI_SEARCH_MODE=show): its own box, never mixed with the verified sources above.
         sci_rel = result.get("sci_related_judgments")
         if sci_rel:
-            with st.expander("More Supreme Court judgments that may be relevant (a wider search; not independently verified)"):
+            with st.expander("Supreme Court passages from a wider search that this answer also read (not independently verified)" if result.get("sci_fed")
+                             else "More Supreme Court judgments that may be relevant (a wider search; not independently verified)", expanded=bool(result.get("sci_fed"))):
                 asof = f" The collection ends {esc(str(result.get('sci_as_of')))}." if result.get("sci_as_of") else ""
                 st.markdown('<p class="r-foot">These passages came from a search of a much wider judgment database. Nobody at Recourse has read '
                             'and confirmed them, and this search does not say whether a decision is still good law. Read the real judgment yourself, or with a lawyer, '

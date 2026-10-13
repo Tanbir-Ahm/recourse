@@ -126,5 +126,36 @@ check(out.get("sci_related_judgments") and out["response_text"] == "Core answer.
 os.environ["SCI_SEARCH_MODE"] = "off"
 check("sci_related_judgments" not in CA.answer_question("a question"), "and nothing with the mode off")
 
+# feed mode (experiment): the passages go into the prompt, the register fact rides with an overruled case, the page lists what was read
+import types
+os.environ["SCI_SEARCH_MODE"] = "feed"
+os.environ["SCI_SEARCH_URL"] = f"http://127.0.0.1:{srv.server_address[1]}"
+MODE["kind"] = "ok"
+T.reset()
+fb = T.feed_block("a trial question")
+check("REGISTER FACT" in fb and "Raj Deo Sharma" in fb and "NOT INDEPENDENTLY VERIFIED" in fb and "Arnesh Kumar" in fb, "feed: the block holds the passages, labelled, with a REGISTER FACT line for the overruled case")
+check("unnamed" not in fb and fb.index("Arnesh Kumar") < fb.index("Raj Deo Sharma"), "feed: an unnamed judgment is left out and the flagged case comes after the others")
+calls = SEEN["calls"]
+T.feed_block("a trial question")
+check(SEEN["calls"] == calls, "feed: the search runs once per question (the retry loop reuses it)")
+os.environ["SCI_SEARCH_MODE"] = "show"
+T.reset()
+check(T.feed_block("another") == "", "feed_block is empty in every other mode")
+os.environ["SCI_SEARCH_MODE"] = "feed"
+sent = {}
+class _Msgs:
+    def create(self, **kw):
+        sent["prompt"] = kw["messages"][0]["content"]
+        return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text="Short answer. In Raj Deo Sharma v. The State of Bihar (1999) the Supreme Court said a time limit applied, but that case was overruled by P. Ramachandra Rao v. State of Karnataka (2002).")])
+CA.client = types.SimpleNamespace(messages=_Msgs())
+T.reset()
+txt = CA.generate_grounded_response("My trial has been going on for 9 years", "[BNSS Section 346]\nTrial text.", matches=[])
+check(txt and "WIDER SEARCH" in sent["prompt"] and "REGISTER FACT" in sent["prompt"] and "[BNSS Section 346]" in sent["prompt"], "feed: generate_grounded_response puts the wider passages into the prompt after the library text")
+res_f = T.attach("My trial has been going on for 9 years", {"state": "single_match", "response_text": txt})
+check(res_f.get("sci_fed") and [j["case_name"] for j in res_f["sci_related_judgments"]][:1] == ["Arnesh Kumar v. State of Bihar"] and any(j["register_note"] for j in res_f["sci_related_judgments"]), "feed: the result lists the passages the answer read, with the register note beside the overruled case")
+check(any("Raj Deo Sharma" in n for n in CA._attach_register_notes(dict({"state": "single_match", "response_text": "The Supreme Court in Raj Deo Sharma v. The State of Bihar (1999) fixed time limits."})).get("register_notes", [])), "feed: if the answer still cites the overruled case flatly, the post-answer lock adds the note")
+os.environ["SCI_SEARCH_MODE"] = "off"
+T.reset()
+check(T.feed_block("x") == "" and "sci_related_judgments" not in T.attach("x", {"state": "single_match"}), "with the mode off feed does nothing")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

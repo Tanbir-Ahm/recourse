@@ -1499,6 +1499,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
     if client is None:
         return None
     try:
+        try:                                       # SCI_SEARCH_MODE=feed (experiment, staging only): the wider-search passages join the prompt; "" in every other mode
+            import sci_search_tier
+            retrieved_text = retrieved_text + sci_search_tier.feed_block(question)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         pilot_context = _format_pilot_context_for_prompt(pilot_matches)
         prompt = RESPONSE_GENERATION_PROMPT.format(
@@ -3246,6 +3251,11 @@ def answer_question(question, inline_domains=frozenset()):
     state logic; see its docstring for the possible states) and then attaches 'cited_judgment_links' -- a real,
     stored link for every judgment the answer relies on. If attaching the links ever fails, the answer is returned
     exactly as the core produced it."""
+    try:
+        import sci_search_tier
+        sci_search_tier.reset()
+    except Exception:  # pragma: no cover
+        pass
     result = _answer_question_core(question, inline_domains=inline_domains)
     try:
         result = _attach_register_notes(_attach_cited_judgment_links(result))

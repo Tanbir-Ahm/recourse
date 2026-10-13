@@ -1,7 +1,7 @@
 """The wider-pool search tier on the website side: asks the private sci-search service (recourse-sci-pool, sci_search_service.py) for Supreme Court passages and either logs them (shadow) or hands them
 to the page (show). Fail-open: any problem, a slow service, a missing setting -- the answer goes out exactly as it does without this module.
 
-    SCI_SEARCH_MODE   off (default) | shadow | show
+    SCI_SEARCH_MODE   off (default) | shadow | show | feed
     SCI_SEARCH_URL    base address of the service, for example http://sci-search.railway.internal:8080
     SCI_SEARCH_TOKEN  the shared secret (header X-Search-Token)
     SCI_SEARCH_TIMEOUT  seconds to wait in show mode (default 6)
@@ -10,6 +10,9 @@ to the page (show). Fail-open: any problem, a slow service, a missing setting --
 
 shadow: the search runs in a background thread AFTER the answer is built; the user sees nothing and waits for nothing. show: the search runs before the answer is returned (up to the timeout) and
 result['sci_related_judgments'] holds the passages, each with the register/card note beside it; the website shows them in their own box, labelled not independently verified.
+feed (EXPERIMENT, staging only): the passages are also given to the language model, inside the prompt, so that its answer may rely on and name these cases (generate_grounded_response calls feed_block).
+Cases on the Overruled Register carry a REGISTER FACT line the model must repeat; the page lists the passages the answer drew on, labelled not independently verified; the three register locks still run on the finished
+answer. This goes further than the site's own pilot tier, which only lets a wider-pool case be mentioned descriptively. Use it to see what such answers look like, not as a way to publish them.
 Nothing here says a case is good law.
 """
 import hashlib
@@ -22,7 +25,7 @@ import urllib.error
 import urllib.request
 
 logger = logging.getLogger(__name__)
-MODES = ("off", "shadow", "show")
+MODES = ("off", "shadow", "show", "feed")
 MAX_SHOWN = 5
 EXCERPT = 600
 
@@ -92,6 +95,67 @@ def _write_shadow(question, answer_result):
         logger.warning("sci shadow logging failed: %s", type(exc).__name__)
 
 
+_LOCAL = threading.local()
+FEED_MAX_PASSAGES = 6
+FEED_PASSAGE_CHARS = 900
+FEED_INSTRUCTION = (
+    "\n\n## Supreme Court passages from a wider, automatic search -- NOT independently verified\n"
+    "The passages below came from an automatic search of a much larger collection of Supreme Court judgments. Nobody at Recourse has read and confirmed them. You may name one of these cases when "
+    "it clearly bears on the person's situation, and describe ONLY what its own passage literally says, attributed to the court (\"the Supreme Court in X said ...\"); never state more than the passage "
+    "shows, and do not call a passage the whole holding of the case. If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, "
+    "and never present its holding as the current law. If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
+)
+
+
+def reset():
+    """Forget what was fed to the model for the previous question (called at the start of answer_question)."""
+    _LOCAL.question, _LOCAL.block, _LOCAL.cases = None, "", []
+
+
+def feed_block(question):
+    """The prompt section for feed mode ('' in every other mode, and on any failure). The search runs once per question and is reused by the retry loop of generate_grounded_response. Never raises."""
+    try:
+        if mode() != "feed" or not question:
+            return ""
+        if getattr(_LOCAL, "question", None) == question:
+            return _LOCAL.block
+        found = search(question)
+        _LOCAL.question, _LOCAL.block, _LOCAL.cases = question, "", []
+        if not found:
+            return ""
+        res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
+        flags = _flags(res)
+        paired = list(zip(res, flags))
+        paired = [p for p in paired if p[1]["source"] not in ("register",)] + [p for p in paired if p[1]["source"] == "register"]     # a case the register flags goes last
+        chosen = paired[:FEED_MAX_PASSAGES]
+        blocks, cases = [], []
+        for r, f in chosen:
+            year = r["date"][:4] if r.get("date") else None
+            head = f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]"
+            body = (r.get("text") or "")[:FEED_PASSAGE_CHARS]
+            facts = ""
+            try:
+                from register_hooks import prompt_lines_for_match
+                cits = r.get("citations") or {}
+                one = lambda v: v[0] if isinstance(v, (list, tuple)) and v else (v if isinstance(v, str) else None)
+                lines = prompt_lines_for_match({"case_name": r["case_name"], "year": year, "citation": one(cits.get("scr")) or one(cits.get("insc")) or one(cits.get("air"))})
+                if lines:
+                    facts = "\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n" + "\n".join(lines)
+            except Exception:  # noqa: BLE001
+                facts = ""
+            blocks.append(head + "\n" + body + facts)
+            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
+                          "excerpt": (r.get("text") or "")[:EXCERPT], "register_note": f["note"] if f["source"] in ("register", "card") else None})
+        if not blocks:
+            return ""
+        _LOCAL.block = FEED_INSTRUCTION + "\n\n".join(blocks) + "\n"
+        _LOCAL.cases = cases
+        return _LOCAL.block
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sci feed block failed: %s", type(exc).__name__)
+        return ""
+
+
 def attach(question, result, background=True):
     """Called at the end of chat_assistant.answer_question. Returns `result` (changed only in show mode, and only by adding 'sci_related_judgments'). Never raises."""
     try:
@@ -103,6 +167,12 @@ def attach(question, result, background=True):
             t.start()
             if not background:
                 t.join()
+            return result
+        if m == "feed":
+            cases = getattr(_LOCAL, "cases", None) or []
+            if cases:
+                result["sci_related_judgments"] = cases
+                result["sci_fed"] = True
             return result
         found = search(question)
         if not found:
