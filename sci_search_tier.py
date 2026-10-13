@@ -30,9 +30,16 @@ MAX_SHOWN = 5
 EXCERPT = 600
 
 
+_ANNOUNCED = []
+
+
 def mode():
     m = (os.environ.get("SCI_SEARCH_MODE") or "off").strip().lower()
-    return m if m in MODES else "off"
+    m = m if m in MODES else "off"
+    if not _ANNOUNCED:
+        _ANNOUNCED.append(m)
+        print("SCI_TIER mode=%s url_set=%s token_set=%s" % (m, bool(os.environ.get("SCI_SEARCH_URL")), bool(os.environ.get("SCI_SEARCH_TOKEN"))), flush=True)       # once per process: shows in the log what the setting really is
+    return m
 
 
 def search(question, timeout=None, k=10):
@@ -119,9 +126,10 @@ def feed_block(question):
             return ""
         if getattr(_LOCAL, "question", None) == question:
             return _LOCAL.block
-        found = search(question)
+        found = search(question, timeout=max(float(os.environ.get("SCI_SEARCH_TIMEOUT") or 6), 15.0))
         _LOCAL.question, _LOCAL.block, _LOCAL.cases = question, "", []
         if not found:
+            print("SCI_FEED no passages: the search service gave no answer (down, slow, wrong address or token)", flush=True)
             return ""
         res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
         flags = _flags(res)
@@ -147,7 +155,9 @@ def feed_block(question):
             cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
                           "excerpt": (r.get("text") or "")[:EXCERPT], "register_note": f["note"] if f["source"] in ("register", "card") else None})
         if not blocks:
+            print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
+        print("SCI_FEED fed %d passage(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
         _LOCAL.block = FEED_INSTRUCTION + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
