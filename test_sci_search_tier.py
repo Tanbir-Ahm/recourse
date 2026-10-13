@@ -114,6 +114,13 @@ os.environ.pop("SCI_SEARCH_URL")
 check(T.attach("q", dict(ANS)) == ANS, "no address set: nothing happens")
 check(T.attach("q", "not a dict") == "not a dict", "bad input does not raise")
 
+# values typed with quotation marks or spaces in a dashboard still work
+os.environ["SCI_SEARCH_MODE"] = ' "FEED" '
+check(T.mode() == "feed", "the mode ' \"FEED\" ' (quotes, spaces, capitals) is read as feed")
+os.environ["SCI_SEARCH_MODE"] = "'shadow'"
+check(T.mode() == "shadow", "the mode 'shadow' in single quotes is read as shadow")
+os.environ["SCI_SEARCH_MODE"] = "off"
+
 # the call in answer_question
 import chat_assistant as CA
 os.environ["SCI_SEARCH_MODE"] = "show"

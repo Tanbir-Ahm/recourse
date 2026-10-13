@@ -33,25 +33,34 @@ EXCERPT = 600
 _ANNOUNCED = []
 
 
+def _env(name, default=""):
+    """An environment value without the quotation marks or spaces that are sometimes typed around it in a hosting dashboard ("feed", 'feed', " feed ")."""
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    v = v.strip().strip("\"'").strip()
+    return v if v else default
+
+
 def mode():
-    m = (os.environ.get("SCI_SEARCH_MODE") or "off").strip().lower()
+    m = _env("SCI_SEARCH_MODE", "off").lower()
     m = m if m in MODES else "off"
     if not _ANNOUNCED:
         _ANNOUNCED.append(m)
-        print("SCI_TIER mode=%s url_set=%s token_set=%s" % (m, bool(os.environ.get("SCI_SEARCH_URL")), bool(os.environ.get("SCI_SEARCH_TOKEN"))), flush=True)       # once per process: shows in the log what the setting really is
+        print("SCI_TIER mode=%s url_set=%s token_set=%s" % (m, bool(_env("SCI_SEARCH_URL")), bool(_env("SCI_SEARCH_TOKEN"))), flush=True)       # once per process: shows in the log what the setting really is
     return m
 
 
 def search(question, timeout=None, k=10):
     """The service's answer dict, or None on any failure (never raises)."""
-    base = (os.environ.get("SCI_SEARCH_URL") or "").rstrip("/")
+    base = _env("SCI_SEARCH_URL").rstrip("/")
     if not base or not question:
         return None
     try:
-        timeout = float(timeout if timeout is not None else os.environ.get("SCI_SEARCH_TIMEOUT") or 6)
+        timeout = float(timeout if timeout is not None else _env("SCI_SEARCH_TIMEOUT", "6"))
         headers = {"Content-Type": "application/json"}
-        if os.environ.get("SCI_SEARCH_TOKEN"):
-            headers["X-Search-Token"] = os.environ["SCI_SEARCH_TOKEN"]
+        if _env("SCI_SEARCH_TOKEN"):
+            headers["X-Search-Token"] = _env("SCI_SEARCH_TOKEN")
         req = urllib.request.Request(base + "/search", data=json.dumps({"question": question, "k": k}).encode("utf-8"), headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             body = json.loads(r.read().decode("utf-8"))
@@ -81,7 +90,7 @@ def shadow_record(question, found, answer_result=None):
            "results": [{"rank": r.get("rank"), "doc": r.get("doc"), "case": r.get("case_name"), "date": r.get("date"), "para": r.get("paragraph"), "name_to_review": r.get("name_to_review"),
                         "flag": f["source"], "note": f["note"]} for r, f in zip(results, flags)]}
     rec["flagged"] = sum(1 for f in flags if f["source"] in ("register", "card"))
-    if os.environ.get("SCI_SHADOW_LOG_QUESTIONS") == "1":
+    if _env("SCI_SHADOW_LOG_QUESTIONS") == "1":
         rec["question"] = question
     return rec
 
@@ -126,7 +135,7 @@ def feed_block(question):
             return ""
         if getattr(_LOCAL, "question", None) == question:
             return _LOCAL.block
-        found = search(question, timeout=max(float(os.environ.get("SCI_SEARCH_TIMEOUT") or 6), 15.0))
+        found = search(question, timeout=max(float(_env("SCI_SEARCH_TIMEOUT", "6")), 15.0))
         _LOCAL.question, _LOCAL.block, _LOCAL.cases = question, "", []
         if not found:
             print("SCI_FEED no passages: the search service gave no answer (down, slow, wrong address or token)", flush=True)
