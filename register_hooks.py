@@ -96,7 +96,8 @@ def result_flags(results):
             hits = [h for h in reg.lookup_case(name, year, cit) if h["strength"] == "strong" and reg.clause(h["row"])]
             if hits:
                 row = hits[0]["row"]
-                out[i] = {"source": "register", "note": reg.clause_group([row] + reg.same_decision_rows(row))}
+                out[i] = {"source": "register", "note": reg.clause_group([row] + reg.same_decision_rows(row)),
+                          "overruling": row["overruling"]["name"], "overruling_year": (row["overruling"].get("date") or "")[:4] or row["overruling"].get("year")}
                 continue
             e = ov.lookup(name, year, cit) if ov else None
             if e and e["kind"] in ("warning", "caution"):

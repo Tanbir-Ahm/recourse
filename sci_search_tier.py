@@ -19,6 +19,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -112,15 +113,20 @@ def _write_shadow(question, answer_result):
 
 
 _LOCAL = threading.local()
-FEED_MAX_PASSAGES = 6
+FEED_MAX_CASES = 8
 FEED_PASSAGE_CHARS = 900
+LABEL = "(from a wider search, not independently verified)"
 FEED_INSTRUCTION = (
     "\n\n## Supreme Court passages from a wider, automatic search -- NOT independently verified\n"
     "The passages below came from an automatic search of a much larger collection of Supreme Court judgments. Nobody at Recourse has read and confirmed them. You may name one of these cases when "
-    "it clearly bears on the person's situation, and describe ONLY what its own passage literally says, attributed to the court (\"the Supreme Court in X said ...\"); never state more than the passage "
-    "shows, and do not call a passage the whole holding of the case. If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, "
-    "and never present its holding as the current law. If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
+    "it clearly bears on the person's situation, and describe ONLY what its own passage literally says, attributed to the court (\"the Supreme Court in X said ...\"). Never state more than the passage "
+    "shows, do not call a passage the whole holding of the case, and if a passage is only quoting or repeating an earlier decision, credit the earlier decision when it is named in the passage. "
+    "EVERY TIME you name one of these cases, put the words " + LABEL + " right after its name. "
+    "If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, and never present its holding as the current law; "
+    "the case that corrected it is among the passages when it could be found, so name that case too. "
+    "If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
 )
+_TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.?|[,.\s]+(?:anr|ors|another|others|etc)\b\.?)+\s*$", re.I)
 
 
 def reset():
@@ -128,8 +134,104 @@ def reset():
     _LOCAL.question, _LOCAL.block, _LOCAL.cases = None, "", []
 
 
+def _cut(text, n):
+    """text shortened to about n characters at the end of a sentence (or clause, or word), with an ellipsis; whole when it is short."""
+    text = re.sub(r"[ \t]+", " ", text or "").strip()
+    if len(text) <= n:
+        return text
+    head = text[:n]
+    for pat in (r".*[.?!][\"')\]]?\s", r".*[;:]\s", r".*\s"):
+        m = re.match(pat, head, re.S)
+        if m and len(m.group(0)) > n * 0.5:
+            return m.group(0).rstrip() + " ..."
+    return head.rstrip() + " ..."
+
+
+def _party_core(p):
+    return _TRAIL_PARTY.sub("", (p or "").strip()).strip(" .,;")
+
+
+def _parties(name):
+    parts = re.split(r"\s+(?:v\.?|vs\.?|versus)\s+", name or "", maxsplit=1, flags=re.I)
+    return (_party_core(parts[0]), _party_core(parts[1])) if len(parts) == 2 else (_party_core(name), "")
+
+
+def _same_case(a, b):
+    try:
+        from overruled_register import register as R
+        return R.party_sigs(a) == R.party_sigs(b) and bool(R.party_sigs(a)[0])
+    except Exception:  # noqa: BLE001
+        return (a or "").lower().strip(" .") == (b or "").lower().strip(" .")
+
+
+_GENERIC_FIRST = re.compile(r"^(?:the\s+)?(?:state|union|commissioner|collector|central|govt|government)\b", re.I)
+
+
+def _fuzzy_end(text, phrase, threshold=0.86):
+    """End position of the stretch of `text` that looks like `phrase` (same number of words, allowing a typo), or None."""
+    import difflib
+    words = list(re.finditer(r"\S+", text))
+    n = len(phrase.split())
+    if n == 0 or len(words) < n:
+        return None
+    for i in range(len(words) - n + 1):
+        cand = text[words[i].start():words[i + n - 1].end()].strip(" ,.;:()")
+        if difflib.SequenceMatcher(None, cand.lower(), phrase.lower()).ratio() >= threshold:
+            return words[i + n - 1].end()
+    return None
+
+
+def label_fed_cases(text, cases):
+    """Puts LABEL right after the first mention of each wider-search case in a finished answer, unless the answer already says so there. The case is found by its full name, else by a distinctive
+    party name, allowing a typo. Returns the text unchanged on any problem."""
+    try:
+        out = text or ""
+        for c in cases or []:
+            p1, p2 = _parties(c["case_name"])
+            end = None
+            if p1 and p2:
+                m = re.search(re.escape(p1) + r"\s+(?:v\.?|vs\.?|versus)\s+" + re.escape(p2), out, re.I)
+                end = m.end() if m else None
+            if end is None and p1 and len(p1) >= 8 and not _GENERIC_FIRST.match(p1):
+                m = re.search(r"\b" + re.escape(p1) + r"\b", out, re.I)
+                end = m.end() if m else _fuzzy_end(out, p1)
+            if end is None and p2 and len(p2) >= 8:
+                end = _fuzzy_end(out, p2)
+            if end is None and p1 and p2:
+                end = _fuzzy_end(out, p1 + " v. " + p2, 0.9)
+            if end is None:
+                continue
+            if p2:                                                           # a match on the first party alone: take the " v. second party" that follows it too
+                m3 = re.match(r"\s+(?:v\.?|vs\.?|versus)\s+" + r"\S+\s*" * len(p2.split()), out[end:], re.I)
+                if m3:
+                    end += len(m3.group(0).rstrip())
+            if "not independently verified" in out[end:end + 130].lower():
+                continue
+            m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:])        # a short year or citation in brackets right after the name
+            if m2:
+                end += m2.end()
+                if "not independently verified" in out[end:end + 130].lower():
+                    continue
+            out = out[:end] + " " + LABEL + out[end:]
+        return out
+    except Exception:  # noqa: BLE001
+        return text
+
+
+def _fetch_case(name, question):
+    """A passage of one named case (the case that corrected a flagged one), by a second search: its name plus the question. (result, flag) or None."""
+    found = search((name + " " + question)[:400], timeout=15.0)
+    if not found:
+        return None
+    for r in found["results"]:
+        if r.get("case_name") and not r.get("name_to_review") and _same_case(r["case_name"], name):
+            return r, _flags([r])[0]
+    return None
+
+
 def feed_block(question):
-    """The prompt section for feed mode ('' in every other mode, and on any failure). The search runs once per question and is reused by the retry loop of generate_grounded_response. Never raises."""
+    """The prompt section for feed mode ('' in every other mode, and on any failure). One passage per case, up to FEED_MAX_CASES cases; a case the register flags goes last and the case that overruled it
+    is added (taken from the results, or fetched by a second search), so the model can name the controlling case. The search runs once per question and is reused by the retry loop. Never raises."""
     try:
         if mode() != "feed" or not question:
             return ""
@@ -142,14 +244,28 @@ def feed_block(question):
             return ""
         res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
         flags = _flags(res)
-        paired = list(zip(res, flags))
-        paired = [p for p in paired if p[1]["source"] not in ("register",)] + [p for p in paired if p[1]["source"] == "register"]     # a case the register flags goes last
-        chosen = paired[:FEED_MAX_PASSAGES]
+        by_doc = {}
+        for r, f in zip(res, flags):
+            by_doc.setdefault(r["doc"], (r, f))                       # the best-ranked passage of each judgment
+        pairs = list(by_doc.values())
+        flagged = [p for p in pairs if p[1]["source"] == "register"]
+        correcting = []
+        for r, f in flagged:
+            name = f.get("overruling")
+            if not name:
+                continue
+            hit = next((p for p in pairs if _same_case(p[0]["case_name"], name)), None) or _fetch_case(name, question)
+            if hit and all(hit[0]["doc"] != c[0]["doc"] for c in correcting):
+                correcting.append(hit)
+        special = {p[0]["doc"] for p in flagged} | {p[0]["doc"] for p in correcting}
+        plain = [p for p in pairs if p[0]["doc"] not in special]
+        room = max(FEED_MAX_CASES - len(flagged) - len(correcting), 2)
+        chosen = plain[:room] + correcting + flagged
         blocks, cases = [], []
         for r, f in chosen:
             year = r["date"][:4] if r.get("date") else None
             head = f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]"
-            body = (r.get("text") or "")[:FEED_PASSAGE_CHARS]
+            body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
             facts = ""
             try:
                 from register_hooks import prompt_lines_for_match
@@ -162,11 +278,11 @@ def feed_block(question):
                 facts = ""
             blocks.append(head + "\n" + body + facts)
             cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
-                          "excerpt": (r.get("text") or "")[:EXCERPT], "register_note": f["note"] if f["source"] in ("register", "card") else None})
+                          "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
-        print("SCI_FEED fed %d passage(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
+        print("SCI_FEED fed %d case(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
         _LOCAL.block = FEED_INSTRUCTION + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
@@ -192,6 +308,7 @@ def attach(question, result, background=True):
             if cases:
                 result["sci_related_judgments"] = cases
                 result["sci_fed"] = True
+                result["response_text"] = label_fed_cases(result.get("response_text") or "", cases)      # every wider-search case named in the answer is tagged as unverified, whatever the model wrote
             return result
         found = search(question)
         if not found:
@@ -203,7 +320,7 @@ def attach(question, result, background=True):
             if r.get("name_to_review") or not r.get("case_name") or r["doc"] in seen:
                 continue                                        # a judgment with no readable name is not shown to a person
             seen.add(r["doc"])
-            txt = (r.get("text") or "")[:EXCERPT]
+            txt = _cut(r.get("text") or "", EXCERPT)
             shown.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
                           "excerpt": txt, "register_note": f["note"] if f["source"] in ("register", "card") else None})
             if len(shown) >= MAX_SHOWN:

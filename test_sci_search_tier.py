@@ -28,6 +28,9 @@ RES = [
     {"rank": 3, "doc": 3, "case_name": None, "date": None, "paragraph": "1", "link": "https://api.sci.gov.in/jonew/judis/3.pdf", "link_kind": "court_archive_pdf", "text": "unnamed", "name_to_review": True, "citations": {}},
     {"rank": 4, "doc": 1, "case_name": "Raj Deo Sharma v. The State of Bihar", "date": "1999-05-03", "paragraph": "7", "link": "https://api.sci.gov.in/jonew/judis/1.pdf", "link_kind": "court_archive_pdf", "text": "again", "name_to_review": False, "citations": {}},
 ]
+RC = [{"rank": 1, "doc": 9, "case_name": "P. Ramachandra Rao v. State of Karnataka", "date": "2002-04-16", "paragraph": "29", "link": "https://x/9.pdf", "link_kind": "open_bucket_pdf",
+       "text": "We hold that the criminal courts are not empowered to prescribe periods of limitation. The bar of limitation is not to be read into the Code. " * 12, "name_to_review": False, "citations": {}}]
+WITH_RC = {"on": False}
 
 
 class H(BaseHTTPRequestHandler):
@@ -40,7 +43,7 @@ class H(BaseHTTPRequestHandler):
         SEEN["body"] = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))
         if MODE["kind"] == "slow":
             time.sleep(3)
-        code, body = (503, {"ok": False}) if MODE["kind"] == "down" else (200, {"ok": True, "tier": "x", "index_commit": "abc", "as_of": "2026-07-13", "seconds": 1.0, "results": RES})
+        code, body = (503, {"ok": False}) if MODE["kind"] == "down" else (200, {"ok": True, "tier": "x", "index_commit": "abc", "as_of": "2026-07-13", "seconds": 1.0, "results": RC if SEEN["body"]["question"].startswith("P. Ramachandra") else (RES + RC[:1] if WITH_RC["on"] else RES)})
         data = json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Length", str(len(data)))
@@ -161,6 +164,41 @@ check(txt and "WIDER SEARCH" in sent["prompt"] and "REGISTER FACT" in sent["prom
 res_f = T.attach("My trial has been going on for 9 years", {"state": "single_match", "response_text": txt})
 check(res_f.get("sci_fed") and [j["case_name"] for j in res_f["sci_related_judgments"]][:1] == ["Arnesh Kumar v. State of Bihar"] and any(j["register_note"] for j in res_f["sci_related_judgments"]), "feed: the result lists the passages the answer read, with the register note beside the overruled case")
 check(any("Raj Deo Sharma" in n for n in CA._attach_register_notes(dict({"state": "single_match", "response_text": "The Supreme Court in Raj Deo Sharma v. The State of Bihar (1999) fixed time limits."})).get("register_notes", [])), "feed: if the answer still cites the overruled case flatly, the post-answer lock adds the note")
+
+# changes 1-3: the correcting case, one passage per case, sentence-boundary cuts, inline labels
+os.environ["SCI_SEARCH_MODE"] = "feed"
+MODE["kind"] = "ok"
+T.reset()
+calls = SEEN["calls"]
+fb = T.feed_block("a trial question")
+check(SEEN["calls"] == calls + 2 and "P. Ramachandra Rao v. State of Karnataka" in fb, "feed: the case that overruled a flagged case is fetched by a second search when it is not in the results")
+check(fb.count("[WIDER SEARCH") == 3 and fb.index("Arnesh Kumar") < fb.index("Ramachandra") < fb.index("Raj Deo Sharma v."), "feed: one passage per case (Raj Deo Sharma's second passage is dropped); flagged case last")
+check(fb.count("again") == 0 and "Time limit held X." in fb, "feed: the best-ranked passage of the flagged case is the one kept")
+rc_part = fb[fb.index("[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: P. Ramachandra"):fb.index("[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: Raj Deo")]
+check(rc_part.rstrip().endswith("...") and "limitation. ..." in rc_part.replace("\n", " ") or rc_part.rstrip().endswith("."), "feed: a long passage is cut at the end of a sentence")
+check("name the case that corrected it" not in fb and "name that case too" in fb and T.LABEL in fb, "feed: the instruction asks for the correcting case and for the label after every case name")
+check(len(T._LOCAL.cases) == 3 and [c["case_name"] for c in T._LOCAL.cases][-1].startswith("Raj Deo Sharma"), "feed: the page list holds the same three cases")
+WITH_RC["on"] = True
+T.reset()
+calls = SEEN["calls"]
+T.feed_block("a trial question")
+check(SEEN["calls"] == calls + 1 and sum(1 for c in T._LOCAL.cases if c["case_name"].startswith("P. Ramachandra")) == 1, "feed: when the correcting case is already among the results no second search is made")
+WITH_RC["on"] = False
+check(T._cut("One sentence here. Another sentence follows, and it is long.", 30) == "One sentence here. ..." and T._cut("short", 30) == "short", "_cut ends at a sentence boundary and leaves a short text alone")
+cases3 = [{"case_name": "P. Ramachandra Rao v. State of Karnataka"}, {"case_name": "Raj Deo Sharma v. The State of Bihar"}, {"case_name": "Hemendra Rai v. State of Bihar"}]
+txt3 = "In P. Ramachandra Rao v. State of Karnataka (2002) the Court said X. Raj Deo Sharma v. The State of Bihar (1999) was overruled. Hemendhra Rai v. State of Bihar was also said to apply. Raj Deo Sharma v. The State of Bihar again."
+lab = T.label_fed_cases(txt3, cases3)
+check(lab.count(T.LABEL) == 3, f"every fed case named in the answer gets the label once ({lab.count(T.LABEL)})")
+check("(2002) " + T.LABEL in lab and "Karnataka (2002) (from" in lab, "the label goes after the year in brackets")
+check("Hemendhra Rai v. State of Bihar " + T.LABEL in lab, "a typo in a party name (Hemendhra) is still found")
+check(T.label_fed_cases(lab, cases3) == lab, "labelling twice adds nothing")
+check(T.label_fed_cases("The Court did not name anyone.", cases3) == "The Court did not name anyone." and T.label_fed_cases(None, cases3) == "", "an answer that names none of them is left alone; None does not fail")
+check(T.label_fed_cases("Under Raj Deo Sharma, time ran.", [{"case_name": "Raj Deo Sharma v. The State of Bihar"}]).count(T.LABEL) == 1, "a distinctive first party alone is enough")
+check(T.label_fed_cases("The State v. Kumar held X.", [{"case_name": "State of Bihar v. Kumar"}]) == "The State v. Kumar held X.", "a generic first party alone is not enough (no wrong labels)")
+T.reset()
+T.feed_block("a trial question")
+res_l = T.attach("a trial question", {"state": "single_match", "response_text": "The Supreme Court in Raj Deo Sharma v. The State of Bihar (1999) fixed time limits; P. Ramachandra Rao v. State of Karnataka corrected it."})
+check(res_l["response_text"].count(T.LABEL) == 2, "attach (feed) tags the wider-search cases in the finished answer text")
 os.environ["SCI_SEARCH_MODE"] = "off"
 T.reset()
 check(T.feed_block("x") == "" and "sci_related_judgments" not in T.attach("x", {"state": "single_match"}), "with the mode off feed does nothing")
