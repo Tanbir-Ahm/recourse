@@ -57,7 +57,7 @@ def demote_matches(matches):
         return matches
 
 
-def answer_notes(text):
+def answer_notes(text, exclude_names=()):
     """Lock (c): {'notes': [sentences to show], 'not_checked': one fixed sentence or None, 'review': [weak matches for a person]} for a finished answer.
     notes = the register's sentences, then the checker's warning cards (worded as the card words them); a quiet card adds nothing."""
     empty = {"notes": [], "not_checked": None, "review": []}
@@ -66,7 +66,7 @@ def answer_notes(text):
     try:
         from overruled_register import overlay as OV
         reg, ov = _load()
-        res = OV.audit_answer(reg, ov, text or "")
+        res = OV.audit_answer(reg, ov, text or "", exclude_names=exclude_names)
         notes = list(res["register_notes"])
         for c in res["card_notes"]:
             notes.append(f'{c["case"]}: {c["note"]}')

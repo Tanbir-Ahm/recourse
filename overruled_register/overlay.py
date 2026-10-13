@@ -112,7 +112,8 @@ class Overlay:
 # ----- finding every case an answer names ------------------------------------------------------------------------------------------------------------------------------
 
 _WORD = r"(?:[A-Z][\w.'’&-]*\.?|of|the|and|&|\([A-Za-z.]{1,8}\)|@)"
-_NAME = re.compile(r"(?P<p1>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6}?)\s+(?:v\.?|vs\.?|versus)\s+(?P<p2>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6})"
+_PAREN = r"\s+\([A-Z][A-Za-z.]*(?:\s+[A-Za-z.]+){0,6}\)"            # a closing parenthetical of the second party: 'State (Narcotic Branch of Delhi)'
+_NAME = re.compile(r"(?P<p1>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6}?)\s+(?:v\.?|vs\.?|versus)\s+(?P<p2>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6}(?:" + _PAREN + r")?)"
                    r"(?P<tail>\s*,?\s*\(?(?P<year>(?:19|20)\d\d)\)?)?")
 _LEAD_STOP = {"the", "in", "see", "also", "as", "of", "and", "that", "this", "but", "under", "per", "held", "case", "cases", "court", "supreme", "high"}
 
@@ -133,15 +134,23 @@ def case_mentions(text):
     return out
 
 
-def audit_answer(reg, overlay, text):
+def audit_answer(reg, overlay, text, exclude_names=()):
     """What the site adds to a finished answer. register_notes: the register guard's sentences (firm or 'reported ... not yet confirmed'); card_notes: one per case the answer names that has a warning or
-    caution card and is not already a register case; not_checked: the cases the answer names that are on neither list (the fixed sentence is built from these names). Never raises."""
+    caution card and is not already a register case; not_checked: the cases the answer names that are on neither list (the fixed sentence is built from these names). A case is left out of not_checked
+    when it is the overruling case of a register note on this answer, or one of `exclude_names` (the judgments the site itself lists as the answer's sources): a note or a verified source already speaks for it. Never raises."""
     from . import register_guard as G
     res = {"register_notes": [], "card_notes": [], "quiet": [], "not_checked": [], "review": []}
+    skip = {R.party_sigs(n) for n in (exclude_names or ()) if n}
     try:
         g = G.guard_answer(reg, text or "")
         res["register_notes"], res["review"] = g["notes"], g["review"]
         covered = [(f["mention"] or "").lower() for f in g["findings"]]
+        for f in g["findings"]:
+            row = reg.by_id.get(f.get("row_id")) if reg is not None else None
+            if row:
+                skip.add(R.party_sigs(row["overruling"]["name"]))
+                for x in reg.same_decision_rows(row):
+                    skip.add(R.party_sigs(x["overruling"]["name"]))
     except Exception:
         covered = []
     seen = set()
@@ -157,12 +166,14 @@ def audit_answer(reg, overlay, text):
             continue
         entry = overlay.lookup(m["name"], m["year"], None if cit is None else _key_text(cit)) if overlay else None
         if entry is None:
+            if R.party_sigs(m["name"]) in skip:
+                continue
             res["not_checked"].append(m["name"][:90])
         elif entry["kind"] in ("warning", "caution"):
             res["card_notes"].append({"case": entry["name"], "kind": entry["kind"], "note": entry["note"], "evidence": entry.get("evidence")})
         elif entry["kind"] == "quiet":
             res["quiet"].append({"case": entry["name"], "note": entry["note"]})
-        else:
+        elif R.party_sigs(m["name"]) not in skip:
             res["not_checked"].append(m["name"][:90])
     res["not_checked_sentence"] = NOT_CHECKED_LIST.format(names="; ".join(res["not_checked"])) if res["not_checked"] else None
     return res

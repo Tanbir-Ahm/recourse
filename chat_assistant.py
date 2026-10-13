@@ -3228,7 +3228,8 @@ def _attach_register_notes(result):
         if not isinstance(result, dict) or result.get("state") not in _LINK_STATES:
             return result
         from register_hooks import answer_notes
-        res = answer_notes(result.get("response_text") or "")
+        srcs = [l.get("case_name") for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)]      # the site's own listed sources need no "not checked" line
+        res = answer_notes(result.get("response_text") or "", exclude_names=srcs)
         if res["notes"]:
             result["register_notes"] = res["notes"]
         if res["not_checked"]:

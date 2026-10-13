@@ -74,6 +74,12 @@ finally:
     builtins.__import__ = real_import
 check(ok, "with the bundle missing every hook returns empty and does not raise")
 
+# the case the answer itself relies on (listed by the site as a source) is not called "not checked"
+scen = {"state": "single_match", "response_text": "The Constitution Bench in Mukesh Singh v. State (Narcotic Branch of Delhi) held that the dual role is not by itself fatal. It overruled the earlier line, including Mohan Lal v. State of Punjab (2018) 17 SCC 627.",
+        "cited_judgment_links": [{"case_name": "Mukesh Singh v State (Narcotic Branch of Delhi)", "url": "https://x"}]}
+r_s = CA._attach_register_notes(dict(scen))
+check(any("Mohan Lal" in n for n in r_s.get("register_notes", [])) and "register_not_checked" not in r_s, f"the overruling case and the listed source are not called 'not checked': {r_s.get('register_not_checked')}")
+
 # WhatsApp: the same notes go out as one message, before the judgment links
 import whatsapp_formatter as WF
 msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Some answer.", "register_notes": ["Mohan Lal v. State of Punjab (2018): reported to have been overruled."], "register_not_checked": "Cases named in this answer that we have not checked: X v. Y."})

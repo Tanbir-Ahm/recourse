@@ -582,8 +582,30 @@ with st.form("situation_form", border=False, clear_on_submit=False):
 # --------------------------------------------------------------------------
 # footer: how it works + about + disclaimer  (shown on every view)
 # --------------------------------------------------------------------------
+def _case_check_box():
+    """For lawyers: one case against the Overruled Register and the cards (case_check.py). No model, no cost."""
+    with st.expander("For lawyers: check whether one case has been overruled"):
+        st.markdown("Type a case with both party names and the year, or its reported citation. This reads only our Overruled Register and an automatic check of 76 library cases. "
+                    "It does not use the language model.")
+        q = st.text_input("Case", key="case_check_q", placeholder="e.g. Mohan Lal v. State of Punjab (2018)   or   (2018) 17 SCC 627")
+        if q.strip():
+            try:
+                import case_check
+                r = case_check.check_case(q)
+            except Exception:
+                r = None
+            if r:
+                for n in r["notes"]:
+                    st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
+                ev = r.get("evidence")
+                if ev and ev.get("quote"):
+                    st.markdown(f'<div class="r-mono">{esc(ev["quote"])}</div><p class="r-foot">{esc(str(ev.get("title") or ""))} {esc(str(ev.get("date") or ev.get("year") or ""))}</p>', unsafe_allow_html=True)
+                st.markdown(f'<p class="r-foot">{esc(r["limit"])}</p>', unsafe_allow_html=True)
+
+
 def _footer():
     st.html('<hr class="r-rule">')
+    _case_check_box()
 
     with st.expander("How Recourse works — and why it won't invent a case"):
         st.markdown(
