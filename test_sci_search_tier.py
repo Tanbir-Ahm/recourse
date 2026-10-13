@@ -23,7 +23,7 @@ def check(cond, msg):
 SEEN = {"calls": 0, "token": None, "body": None}
 MODE = {"kind": "ok"}
 RES = [
-    {"rank": 1, "doc": 1, "case_name": "Raj Deo Sharma v. The State of Bihar", "date": "1999-05-03", "paragraph": "5", "link": "https://api.sci.gov.in/jonew/judis/1.pdf", "link_kind": "court_archive_pdf", "text": "Time limit held X.", "name_to_review": False, "citations": {}},
+    {"rank": 1, "doc": 1, "case_name": "Raj Deo Sharma v. The State of Bihar", "date": "1999-05-03", "paragraph": "5", "link": "https://api.sci.gov.in/jonew/judis/1.pdf", "link_kind": "court_archive_pdf", "text": "Time limit held X.", "name_to_review": False, "citations": {"air": ["1999 AIR 2000"], "scr": ["1999 SCR (3) 1"]}},
     {"rank": 2, "doc": 2, "case_name": "Arnesh Kumar v. State of Bihar", "date": "2014-07-02", "paragraph": "9", "link": "https://x/2.pdf", "link_kind": "open_bucket_pdf", "text": "Arrest guidelines.", "name_to_review": False, "citations": {}},
     {"rank": 3, "doc": 3, "case_name": None, "date": None, "paragraph": "1", "link": "https://api.sci.gov.in/jonew/judis/3.pdf", "link_kind": "court_archive_pdf", "text": "unnamed", "name_to_review": True, "citations": {}},
     {"rank": 4, "doc": 1, "case_name": "Raj Deo Sharma v. The State of Bihar", "date": "1999-05-03", "paragraph": "7", "link": "https://api.sci.gov.in/jonew/judis/1.pdf", "link_kind": "court_archive_pdf", "text": "again", "name_to_review": False, "citations": {}},
@@ -78,6 +78,13 @@ rec = json.loads(open(logfile, encoding="utf-8").readline())
 check("question" not in rec and len(rec["q_hash"]) == 16, "the shadow log has a hash of the question, not the text, by default")
 check(len(rec["results"]) == 4 and rec["results"][0]["flag"] == "register" and "overruled" in (rec["results"][0]["note"] or "").lower(), f"and a register flag on Raj Deo Sharma (overruled): {rec['results'][0]['flag']}")
 check(rec["flagged"] >= 1 and rec["results"][2]["flag"] == "none", "unnamed judgments are not looked up")
+# the shadow line goes to stdout (what Railway's log shows), and a list-valued citation (crawl judgments) does not break the flags
+import io, contextlib
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    T.attach("third question", dict(ANS), background=False)
+out_lines = [l for l in buf.getvalue().splitlines() if l.startswith("SCI_SHADOW ")]
+check(len(out_lines) == 1 and json.loads(out_lines[0][len("SCI_SHADOW "):])["results"][0]["flag"] == "register", "the shadow record is printed to stdout as one 'SCI_SHADOW {...}' line, with the register flag even when the citation is a list")
 os.environ["SCI_SHADOW_LOG_QUESTIONS"] = "1"
 MODE["kind"] = "ok"
 T.attach("second?", dict(ANS), background=False)

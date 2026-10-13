@@ -90,7 +90,9 @@ def result_flags(results):
                 continue
             year = int(r["date"][:4]) if r.get("date") else None
             cits = r.get("citations") or {}
-            cit = cits.get("scr") or cits.get("insc") or None
+            def _one(v):                       # the names table holds a string for open-bucket judgments and a list for crawl judgments
+                return v[0] if isinstance(v, (list, tuple)) and v else (v if isinstance(v, str) else None)
+            cit = _one(cits.get("scr")) or _one(cits.get("insc")) or _one(cits.get("air")) or None
             hits = [h for h in reg.lookup_case(name, year, cit) if h["strength"] == "strong" and reg.clause(h["row"])]
             if hits:
                 row = hits[0]["row"]

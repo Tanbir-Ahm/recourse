@@ -83,7 +83,7 @@ def _write_shadow(question, answer_result):
             return
         rec = shadow_record(question, found, answer_result)
         line = json.dumps(rec, ensure_ascii=False)
-        logger.info("SCI_SHADOW %s", line)
+        print("SCI_SHADOW " + line, flush=True)             # stdout: the application's logger is at WARNING level on Railway, so logger.info would never show
         path = os.environ.get("SCI_SHADOW_LOG_FILE")
         if path:
             with open(path, "a", encoding="utf-8") as fh:
