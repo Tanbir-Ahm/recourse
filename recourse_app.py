@@ -889,6 +889,25 @@ def render_answer(result: dict):
             if result.get("register_not_checked"):
                 st.markdown(f'<p class="r-foot">{esc(result["register_not_checked"])}</p>', unsafe_allow_html=True)
 
+        # The wider Supreme Court pool (sci_search_tier.py, off unless SCI_SEARCH_MODE=show): its own box, never mixed with the verified sources above.
+        sci_rel = result.get("sci_related_judgments")
+        if sci_rel:
+            with st.expander("More Supreme Court judgments that may be relevant (a wider search; not independently verified)"):
+                asof = f" The collection ends {esc(str(result.get('sci_as_of')))}." if result.get("sci_as_of") else ""
+                st.markdown('<p class="r-foot">These passages came from a search of a much wider judgment database. Nobody at Recourse has read '
+                            'and confirmed them, and this search does not say whether a decision is still good law. Read the real judgment yourself, or with a lawyer, '
+                            f'before relying on it.{asof}</p>', unsafe_allow_html=True)
+                for j in sci_rel:
+                    para = f" &mdash; paragraph {esc(str(j['paragraph']))}" if j.get("paragraph") else ""
+                    when = f" ({esc(str(j['date']))})" if j.get("date") else ""
+                    link = (f'[{esc(j["case_name"])}]({esc(j["link"])})' if j.get("link") else esc(j["case_name"]))
+                    src = " &middot; copy from the open Supreme Court judgments bucket (CC-BY-4.0, Dattam Labs)" if j.get("link_kind") == "open_bucket_pdf" else ""
+                    st.markdown(f'- {link}{when}{para}<span class="r-src">{src}</span>', unsafe_allow_html=True)
+                    if j.get("register_note"):
+                        st.markdown(f'<div class="r-concord">{esc(j["register_note"])}</div>', unsafe_allow_html=True)
+                    if j.get("excerpt"):
+                        st.markdown(f'<div class="r-mono">{esc(j["excerpt"])}</div>', unsafe_allow_html=True)
+
         unverified = result.get("unverified_related_judgments")
         if unverified:
             with st.expander("Other real court cases that might be relevant (not independently verified)"):

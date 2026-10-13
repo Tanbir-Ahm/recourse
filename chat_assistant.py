@@ -3247,7 +3247,13 @@ def answer_question(question, inline_domains=frozenset()):
     exactly as the core produced it."""
     result = _answer_question_core(question, inline_domains=inline_domains)
     try:
-        return _attach_register_notes(_attach_cited_judgment_links(result))
+        result = _attach_register_notes(_attach_cited_judgment_links(result))
+        try:
+            import sci_search_tier
+            result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open
+        except Exception:  # pragma: no cover
+            pass
+        return result
     except Exception:  # pragma: no cover -- _attach already fails open; belt and braces
         return result
 

@@ -74,3 +74,33 @@ def answer_notes(text):
     except Exception as exc:
         logger.warning("register guard failed: %s", exc)
         return empty
+
+
+def result_flags(results):
+    """For the wider-pool search tier (sci_search_tier.py): one dict per result, in order -- {'source': 'register'|'card'|'card_quiet'|'none', 'note': sentence or None}.
+    The register first (firm or 'reported ... not yet confirmed'), then the cards overlay's warning or caution, else nothing; a quiet card is recorded but gives no sentence. Never raises."""
+    out = [{"source": "none", "note": None} for _ in results]
+    if _off():
+        return out
+    try:
+        reg, ov = _load()
+        for i, r in enumerate(results):
+            name = r.get("case_name")
+            if not name or r.get("name_to_review"):
+                continue
+            year = int(r["date"][:4]) if r.get("date") else None
+            cits = r.get("citations") or {}
+            cit = cits.get("scr") or cits.get("insc") or None
+            hits = [h for h in reg.lookup_case(name, year, cit) if h["strength"] == "strong" and reg.clause(h["row"])]
+            if hits:
+                row = hits[0]["row"]
+                out[i] = {"source": "register", "note": reg.clause_group([row] + reg.same_decision_rows(row))}
+                continue
+            e = ov.lookup(name, year, cit) if ov else None
+            if e and e["kind"] in ("warning", "caution"):
+                out[i] = {"source": "card", "note": e["note"]}
+            elif e and e["kind"] == "quiet":
+                out[i] = {"source": "card_quiet", "note": None}
+    except Exception as exc:
+        logger.warning("register result flags failed: %s", exc)
+    return out
