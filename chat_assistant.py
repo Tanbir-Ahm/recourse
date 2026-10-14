@@ -481,6 +481,50 @@ The legal information relevant to it (statute text and court judgments) -- prese
 Write the answer now, following the shape and length rules above."""
 
 
+# ---------------------------------------------------------------------------
+# RESPONSE_STYLE=v2 (ADDED 2026-10-14, owner's request: "the current response is too bland"). Staging answer to
+# "my trial has gone on 9 years ... can the case be closed?" was correct but read like a statute summary: no direct
+# answer in the first line, the person's own facts (nine years) never used, generic headings ("What the law
+# provides"), a stock closing line. v2 changes ONLY the voice and shape section; every hard rule, the "what to
+# include / leave out" section and the REGISTER lines are carried over word for word (the template is built from
+# v1 by replacing one block, and a test asserts the rest is identical). Default is v1: production is unchanged
+# until the owner sets RESPONSE_STYLE=v2 (try it on staging first). The 2026-09-01 finding still stands: longer
+# is not better (500-800 word answers buried the action), so the length stays near 250-400 words.
+# ---------------------------------------------------------------------------
+_V1_SHAPE_START = "## Shape and length"
+_V2_SHAPE = """## Voice and shape
+- Your FIRST sentence answers the question itself, in plain words, using the person's own facts (the number of years, the stage they are at, who is involved) so they can see you read their question. For example "Not automatically, but nine years of delay is something courts take seriously." Do not open with a heading, a definition or "The law provides".
+- If the person is in a hard moment, acknowledge it in ONE short, specific sentence that uses their facts (never a stock phrase such as "I understand this is difficult", and never invented sympathy). Then move on.
+- If the question describes something that HAS ALREADY HAPPENED or is still going on (an arrest, a search, an FIR, a frozen account, a long trial), next give a short **"Right now"** part: 2-3 concrete things they can do or ask for. Then the law behind it. Then what you cannot tell without more facts.
+- Write headings as what the person wants to know ("Can the case be closed?", "What you can do", "What I can't tell from here"), never as labels such as "What the law provides". Use two or three short parts, short paragraphs, at most one list.
+- Explain WHY the law works the way it does in one sentence, and say what a court actually did or said (attributed to the court, from the excerpt below) instead of only that a rule exists. Where the answer depends on facts, say exactly what it depends on ("If the delay is because the prosecution keeps asking for time, ...; if it is because of your own adjournments, ...").
+- Match the person. If they write in simple words or sound frightened, keep it short and plain. If they use legal terms (a section number, "SLP", "quash", "default bail"), answer at that level: lead with the provisions and cases and skip the explaining of basics. Never talk down to them.
+- Aim for roughly 250-400 words. Say what matters and stop; do not pad, and do not repeat the question back.
+- When you name a judgment, name it in the sentence where you use it, with the court and the year only if the material below gives the year: "In Arnesh Kumar v. State of Bihar (2014), the Supreme Court directed ...". Say what the court said in one sentence and why it matters to this person in the next. Never write a report citation (SCC, AIR), a paragraph number or the size of a bench unless the material below shows it. Do not list the cases again at the end: the page shows the sources.
+- End with exactly ONE next step that is specific to THIS situation (for example which paper to bring to a lawyer, or what to ask the court for), not a stock line. Mention uploading a document only if the person has one. Never repeat it.
+"""
+
+
+def _build_v2_template(v1):
+    i = v1.index(_V1_SHAPE_START)
+    j = v1.index("{conflict_instruction}")
+    return v1[:i] + _V2_SHAPE + v1[j:]
+
+
+RESPONSE_GENERATION_PROMPT_V2 = _build_v2_template(RESPONSE_GENERATION_PROMPT)
+
+
+def response_style():
+    """'v1' (default) or 'v2'. Quotation marks and spaces typed around the value in a dashboard are ignored."""
+    import os
+    v = (os.environ.get("RESPONSE_STYLE") or "v1").strip().strip("\"'").strip().lower()
+    return "v2" if v == "v2" else "v1"
+
+
+def _response_prompt_template():
+    return RESPONSE_GENERATION_PROMPT_V2 if response_style() == "v2" else RESPONSE_GENERATION_PROMPT
+
+
 _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE with each other on a key point (e.g. some are arrestable without a warrant, others are not). Do NOT blend them into one narrative paragraph. Structure your answer as clearly separated scenarios, each labeled with its exact section number, e.g.:
   "**If [scenario 1, naming the exact section]:** [what applies]"
   "**If [scenario 2, naming the exact section]:** [what applies]"
@@ -1506,7 +1550,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         pilot_context = _format_pilot_context_for_prompt(pilot_matches)
-        prompt = RESPONSE_GENERATION_PROMPT.format(
+        prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
             conflict_instruction=conflict_instruction, pilot_context=pilot_context,
         )
