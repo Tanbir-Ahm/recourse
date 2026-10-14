@@ -1812,8 +1812,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 _why = [n for n, v in (("ungrounded_sections", ungrounded), ("section_mismatch", mismatches), ("missing_act", missing_act), ("missing_companion", missing_companion),
                                        ("unsupported_case_generalisation", unsupported_cases), ("court_misattribution", court_misattributions), ("cognizable_bailable_omission", omissions),
                                        ("unverified_phone", unverified_contacts), ("pilot_overreach", pilot_overreach), ("grounding_enforce", g_enforce)) if v]
+                _detail = {n: (v if isinstance(v, (list, tuple)) else str(v))for n, v in (("ungrounded_sections", ungrounded), ("section_mismatch", mismatches), ("missing_act", missing_act),
+                           ("missing_companion", missing_companion), ("unsupported_case_generalisation", unsupported_cases), ("court_misattribution", court_misattributions),
+                           ("pilot_overreach", pilot_overreach), ("unverified_phone", unverified_contacts)) if v}
                 logger.warning("RECHECK reasons=%s", ",".join(_why))
-                print("RECHECK reasons=" + ",".join(_why), flush=True)
+                print("RECHECK reasons=" + ",".join(_why) + " detail=" + __import__("json").dumps(_detail, default=str)[:600], flush=True)
             except Exception:  # noqa: BLE001
                 pass
             if ungrounded:
@@ -1864,12 +1867,18 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             # unverifiable claim -- a wrong court, or a phone number
             # nobody gave us, are exactly that: checkable facts, not a
             # nuance.
-            if (_find_ungrounded_sections(retry_text, retrieved_text)
-                    or _find_cognizable_bailable_mismatches(retry_text, variants)
-                    or _find_sections_missing_act(retry_text, section_act_map)
-                    or _find_court_misattributions(retry_text, matches)
-                    or _find_unverified_contact_numbers(retry_text, question, retrieved_text)
-                    or _find_pilot_tier_overreach(retry_text, pilot_matches)):
+            _still = {"ungrounded_sections": _find_ungrounded_sections(retry_text, retrieved_text),
+                      "section_mismatch": _find_cognizable_bailable_mismatches(retry_text, variants),
+                      "missing_act": _find_sections_missing_act(retry_text, section_act_map),
+                      "court_misattribution": _find_court_misattributions(retry_text, matches),
+                      "unverified_phone": _find_unverified_contact_numbers(retry_text, question, retrieved_text),
+                      "pilot_overreach": _find_pilot_tier_overreach(retry_text, pilot_matches)}
+            _still = {k: v for k, v in _still.items() if v}
+            if _still:
+                try:                                   # the answer is withheld: say which check, and on what, so that the cause can be read in the log (staging 2026-10-14: two of seven answers were withheld without a trace)
+                    print("ANSWER_WITHHELD after the second try: reasons=" + ",".join(_still) + " detail=" + __import__("json").dumps(_still, default=str)[:600], flush=True)
+                except Exception:  # noqa: BLE001
+                    pass
                 return None
             if g_mode == "off":
                 return retry_text

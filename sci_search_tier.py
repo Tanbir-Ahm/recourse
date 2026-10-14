@@ -300,6 +300,45 @@ def _locate(text, case_name):
     return span
 
 
+def _name_end(out, end, note_re):
+    """Where a label belongs for a name that ends at `end`: after the italics mark, then after a short year or citation in brackets, or a report citation ', (2002) 4 SCC 578', that follows the name."""
+    m0 = re.match(r"[*_]{1,2}", out[end:])                        # the name is in italics (answer style v3): put the label after the closing mark, not inside it
+    if m0:
+        end += m0.end()
+    for _ in range(3):
+        if _labelled_here(out, end, note_re):
+            break
+        m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:]) or _REPORT_CITE.match(out[end:])
+        if not m2 or note_re.match(out[end:].lstrip()):
+            break
+        end += m2.end()
+    return end
+
+
+def only_at_first_mentions(text, cases, label, note_re):
+    """The text with `label` kept only where it follows the first mention of one of `cases` (the model sometimes also writes it after 'a seven-judge Bench' or a later mention): any other copy is removed."""
+    try:
+        out = text or ""
+        keep = set()
+        for c in cases or []:
+            span = _locate(out, c["case_name"])
+            if span is None:
+                continue
+            end = _name_end(out, span[1], note_re)
+            m = re.compile(r"\s*" + re.escape(label)).match(out[end:])
+            if m:
+                keep.add(end + m.end() - len(label))
+        for m in sorted(re.finditer(re.escape(label), out), key=lambda m: -m.start()):
+            if m.start() not in keep:
+                a = m.start()
+                while a > 0 and out[a - 1] == " ":
+                    a -= 1
+                out = out[:a] + out[m.end():]
+        return out
+    except Exception:  # noqa: BLE001
+        return text
+
+
 _REPORT_CITE = re.compile(r"\s*,?\s*(?:\(?(?:19|20)\d\d\)?\s+(?:\d{1,2}\s+)?(?:SCC|S\.C\.C\.|SCR|S\.C\.R\.|INSC)\b(?:\s*\([A-Za-z0-9.\-]+\))?\s*\d+"
                           r"|(?:\d{1,2}\s+)?(?:SCC|S\.C\.C\.|SCR|S\.C\.R\.)\b(?:\s*\([A-Za-z0-9.\-]+\))?\s*\d+"
                           r"|AIR\s+(?:19|20)\d\d\s+(?:SC|[A-Za-z]{2,5})\s+\d+)")
@@ -320,17 +359,7 @@ def label_cases(text, cases, label, note_re, span_re, tidy=None):
             span = _locate(out, c["case_name"])
             if span is None:
                 continue
-            end = span[1]
-            m0 = re.match(r"[*_]{1,2}", out[end:])                        # the name is in italics (answer style v3): put the label after the closing mark, not inside it
-            if m0:
-                end += m0.end()
-            for _ in range(3):                                           # a short year or citation in brackets, or a report citation ', (2002) 4 SCC 578', right after the name
-                if _labelled_here(out, end, note_re):
-                    break
-                m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:]) or _REPORT_CITE.match(out[end:])
-                if not m2 or note_re.match(out[end:].lstrip()):
-                    break
-                end += m2.end()
+            end = _name_end(out, span[1], note_re)
             if _labelled_here(out, end, note_re) or _inside_label(out, end, span_re):
                 continue
             out = out[:end] + " " + label + out[end:]

@@ -135,6 +135,13 @@ check(_lab("A seven-judge bench in P. Ramachandra Rao v. State of Karnataka (200
 check(_lab("In P. Ramachandra Rao v. State of Karnataka, AIR 2002 SC 1856 the Court said so.") == "In P. Ramachandra Rao v. State of Karnataka, AIR 2002 SC 1856 " + L + " the Court said so.", "an AIR citation after a comma: label after it")
 check(_lab("In P. Ramachandra Rao (2002) the Court said so, and in State of Karnataka v. Someone (2004) it did not.").count(L) == 1, "another case is not labelled")
 
+# --- the label only once per case, right after the case (staging 2026-10-14: it also appeared after "a seven-judge Bench")
+stray = ("The Supreme Court, in Hussainara Khatoon (I) v. Home Secretary, State of Bihar (1979) " + L + ", held X. But in P. Ramachandra Rao v. State of Karnataka (2002) " + L + ", a seven-judge Bench " + L + " held Y, as the Bench said later.")
+fixed = _lab(stray)
+check(fixed.count(L) == 2 and "a seven-judge Bench held Y" in fixed and "(1979) " + L in fixed and "(2002) " + L in fixed, f"a copy of the label that follows neither case's first mention is removed ({fixed.count(L)} left)")
+check(_lab(fixed) == fixed, "and doing it again changes nothing")
+check("The four factors" in E.block(Q_DELAY) and "Kartar Singh's words" in E.block(Q_DELAY), "the block says whose the four factors are")
+
 # --- the 'not checked' sentence leaves them out
 E.block(Q_DELAY)
 text = ("In P. Ramachandra Rao v. State of Karnataka (2002) the Court held X. In Hussainara Khatoon (I) v. Home Secretary, State of Bihar (1979) it held Y. "

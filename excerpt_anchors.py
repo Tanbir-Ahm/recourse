@@ -168,7 +168,7 @@ def block(question):
                  + ("Their legal reading has NOT yet been confirmed by our reviewer. " if unconfirmed else "Our reviewer has confirmed them. ")
                  + "You may name these cases and describe ONLY what an excerpt literally says, attributed to the court (\"the Supreme Court in X said ...\"); you may quote an excerpt word for word. "
                  "Where two parts of an excerpt are joined by \"...\", words of the judgment are left out between them. Never state more than the excerpts show, and never say that a case is good law. "
-                 "The guidelines of A.R. Antulay and the passage of Kartar Singh are known to us only as the seven-judge Bench quotes them: if you mention either, say so. "
+                 "The guidelines of A.R. Antulay and the passage of Kartar Singh are known to us only as the seven-judge Bench quotes them: if you mention either, say so. The four factors (length of delay, the justification for it, the accused's assertion of the right, and prejudice) are Kartar Singh's words as the Bench quotes them, not Antulay's; the duty of the prosecution to justify the delay is Antulay's guideline (10), not a provision of any statute. "
                  + (f"The first time you name one of these cases, put the words {LABEL_UNCONFIRMED} right after its name. " if unconfirmed else "")
                  + "If the person's facts do not fit these excerpts, say what is missing instead of stretching them.\n"]
         for a in anchors:
@@ -226,6 +226,7 @@ def attach(question, result):
         pending = [{"case_name": a["case_name"]} for a in fed() if label_for(a)]
         if pending and result.get("response_text"):
             result["response_text"] = T.label_cases(result["response_text"], pending, LABEL_UNCONFIRMED, _LABEL_NOTE, _LABEL_SPAN)
+            result["response_text"] = T.only_at_first_mentions(result["response_text"], pending, LABEL_UNCONFIRMED, _LABEL_NOTE)       # one label per case, right after its first mention
         result["anchor_excerpts"] = cases()
     except Exception as exc:  # noqa: BLE001
         logger.warning("excerpt anchors attach failed: %s", type(exc).__name__)
