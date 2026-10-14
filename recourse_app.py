@@ -846,6 +846,8 @@ def render_answer(result: dict):
                 for heading, md_table in authorities_table.render_markdown(result["authorities"]):
                     st.markdown(f'<div class="r-label">{esc(heading)}</div>', unsafe_allow_html=True)
                     st.markdown(md_table)
+                if result["authorities"].get("library") or result["authorities"].get("wider"):
+                    st.markdown(f'<p class="r-foot">{esc(authorities_table.TABLE_NOTE)}</p>', unsafe_allow_html=True)
             except Exception:
                 logging.getLogger("recourse_app").exception("authorities table render failed")
 

@@ -555,7 +555,7 @@ _V3_LAWYER_INCLUDE = """## What to include, what to leave out
 
 _V3_LAWYER_SHAPE = """## Voice and shape (the Research Note)
 Write a research note for an advocate or a law student: formal, precise, firm about the framework and conditional about the outcome. Refer to "the client" or "on these facts"; never "you should". No emotional language. Write these parts in this order.
-1. **Bottom line**: 2-3 lines giving the answer, the strongest authority the material provides, and the main risk. This is the ONLY summary in the note; do not summarise again at the end.
+1. **Bottom line**: the FIRST heading is exactly **Bottom line**, with no title or headline before it. Under it, 2-3 lines giving the answer, the strongest authority the material provides, and the main risk. This is the ONLY summary in the note; do not summarise again at the end.
 2. **Facts assumed**: 1-2 lines. Say what the question does not state.
 3. Numbered issues, one per heading. Write each heading as a proposition or a question, for example **1. Delay alone does not end a trial**. Under each heading give: the rule (the provision, with its Act and exact subsection); the authority (the case with court and year, and what the court held or said, attributed to the court, from the excerpt below); the reasoning in a sentence or two; and the qualification. State each point once.
 4. **Application to the facts**: a two-column table headed For the client | Against the client. Each row ties a point to a provision or a case and is conditional where the facts decide.
@@ -568,7 +568,7 @@ Language: sentences of 35 words or fewer with at most one parenthetical each. Us
 
 Evidence: give a full report citation and a pinpoint paragraph only when the material below shows them; otherwise name the case with its year and say nothing more. A case that comes from the wider search may appear in an issue but never in the Bottom line, and is followed each time by the words in the wider-search instruction. Never say that a case "is good law".
 
-Length: about 500-900 words, each issue 80-150 words.
+Length: about 500-900 words, each issue 80-150 words. Write every part, ending with **Gaps and checks**, and never stop before it: keep the whole note within about 900 words so that it is finished.
 """
 
 
@@ -1483,6 +1483,37 @@ def _find_unverified_contact_numbers(response_text: str, question: str, retrieve
     return problems
 
 
+_TRUNCATED_NOTE = "*This answer was cut short. Please ask again, or ask about one issue at a time.*"
+
+
+def _answer_max_tokens():
+    """Output budget for the answer call. It also pays for the model's own thinking, which is why 4000 (enough for a 300-word layman answer) was not enough for the longer lawyers' research note
+    (staging 2026-10-14: the note stopped in mid-sentence). The research note gets 12000; every other style keeps 4000."""
+    return 12000 if answer_style.template_key() == "v3-lawyer" else 4000
+
+
+def _close_truncated(text):
+    """A reply that was still cut off after a second try: back up to the end of the last complete sentence and say plainly that it was cut short, instead of showing half a sentence."""
+    text = (text or "").rstrip()
+    ends = list(re.finditer(r"[.?!][\"')\]*_]*(?=\s|$)", text))
+    cut = ends[-1].end() if ends and ends[-1].end() > len(text) * 0.4 else (text.rfind(" ") if " " in text else len(text))
+    return text[:cut].rstrip() + "\n\n" + _TRUNCATED_NOTE
+
+
+def _create_answer(model, prompt):
+    """One answer call. If the reply stopped because it ran out of tokens (stop_reason 'max_tokens'), ask once more with a bigger budget; if that is cut off too, close it honestly (see _close_truncated)."""
+    budget = _answer_max_tokens()
+    response = client.messages.create(model=model, max_tokens=budget, messages=[{"role": "user", "content": prompt}])
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        logger.warning("answer was cut off at %s tokens; asking again with %s", budget, min(budget * 2, 16000))
+        response = client.messages.create(model=model, max_tokens=min(budget * 2, 16000), messages=[{"role": "user", "content": prompt}])
+    text = _extract_text_from_response(response).strip()
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        logger.warning("answer was cut off again; closing it at the last complete sentence")
+        text = _close_truncated(text)
+    return text
+
+
 def generate_grounded_response(question, retrieved_text, is_conflict=False, model=SONNET_MODEL, matches=None,
                                 pilot_matches=None):
     """Generates a plain-language answer using ONLY the given retrieved
@@ -1629,20 +1660,16 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             question=question, retrieved_text=retrieved_text,
             conflict_instruction=conflict_instruction, pilot_context=pilot_context,
         )
-        response = client.messages.create(
-            model=model,
-            # The prompt targets 300-400 words, but claude-sonnet-5 spends
-            # ~600-1200 tokens on an internal thinking block BEFORE any
-            # answer text. At 2000 a large retrieved-text prompt (many
-            # anchored judgments) sometimes exhausted the budget inside the
-            # thinking block and returned NO text block at all -- which
-            # _extract_text_from_response raised on and the caller turned
-            # into a silent None (blank answer). 4000 leaves room for the
-            # thinking pass plus the full answer. (CONFIRMED 2026-09-08.)
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        response_text = _extract_text_from_response(response).strip()
+        # The prompt targets 300-400 words, but claude-sonnet-5 spends
+        # ~600-1200 tokens on an internal thinking block BEFORE any
+        # answer text. At 2000 a large retrieved-text prompt (many
+        # anchored judgments) sometimes exhausted the budget inside the
+        # thinking block and returned NO text block at all -- which
+        # _extract_text_from_response raised on and the caller turned
+        # into a silent None (blank answer). 4000 leaves room for the
+        # thinking pass plus the full answer. (CONFIRMED 2026-09-08.)
+        # _create_answer keeps that budget (12000 for the lawyers' research note) and handles a reply that still runs out (2026-10-14).
+        response_text = _create_answer(model, prompt)
 
         variants = _gather_offence_variants(matches, extra_text=question)
         section_act_map = _section_act_map(matches)
@@ -1693,12 +1720,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 )
             if pilot_overreach:
                 retry_prompt += _PILOT_OVERREACH_RETRY_INSTRUCTION.format(cases=", ".join(pilot_overreach))
-            retry_response = client.messages.create(
-                model=model,
-                max_tokens=4000,  # same thinking-block headroom as the first call
-                messages=[{"role": "user", "content": retry_prompt}],
-            )
-            retry_text = _extract_text_from_response(retry_response).strip()
+            retry_text = _create_answer(model, retry_prompt)      # same thinking-block headroom as the first call
             # A still-missing companion section, still-unsupported case
             # generalization, or still-incomplete cognizable/bailable pair
             # is a completeness/nuance gap, not a correctness error like

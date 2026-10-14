@@ -33,7 +33,7 @@ def stub(question, inline_domains=frozenset(), audience=None, channel=None):
         res["audience"] = "lawyer" if lawyer else "layman"
         if lawyer:
             res["authorities"] = {"library": [{"case": "Arnesh Kumar v. State of Bihar", "year": 2014, "citation": "(2014) 8 SCC 273", "paragraphs": ["11"], "tier": "Reviewed library",
-                                               "status": "quiet note", "status_source": "card_quiet", "link": "https://l/a"}], "wider": [], "has_bench": False}
+                                               "status": "No adverse later judgment found by our automatic check (silence, not a finding).", "status_source": "card_quiet", "link": "https://l/a"}], "wider": [], "has_bench": False}
     return res
 
 
@@ -73,6 +73,7 @@ check(not at.exception and SEEN.get("audience") == "lawyer", f"v3 lawyer: audien
 vals = md_values(at)
 check(any("Authorities (reviewed library)" in v for v in vals), "v3 lawyer: the 'Authorities (reviewed library)' heading is shown")
 check(any("| Case | Citation | Paragraph | Where it stands on our lists | Link |" in v and "(2014) 8 SCC 273" in v for v in vals), "v3 lawyer: the table of authorities is shown with the held citation")
+check(any("Not checked by us" in v and "means neither our Overruled Register" in v for v in vals), "v3 lawyer: the one explanatory note is shown under the tables")
 check(any("**1. A fixed period of delay does not by itself terminate a criminal trial under the BNSS**\n\n" in v for v in vals), "v3 lawyer: a long proposition heading (up to 90 characters) stays a heading, with a blank line after it")
 check(not any("Judgments this answer relies on" in v for v in vals), "v3 lawyer: the plain link list is replaced by the table")
 

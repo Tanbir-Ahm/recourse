@@ -8,6 +8,10 @@ Nothing here says a case is good law. Pure functions; the caller supplies the st
 """
 import re
 
+# In the table a quiet card or a missing check gets a short line (the full sentences would repeat in every row); the register and warning-card sentences are kept whole.
+SHORT_STATUS = {"not_checked": "Not checked by us.", "card_quiet": "No adverse later judgment found by our automatic check (silence, not a finding)."}
+TABLE_NOTE = ("Where it stands on our lists: \"Not checked by us\" means neither our Overruled Register nor our automatic check covers the case. Neither list ever says that a decision is still good law. "
+              "Please ask a lawyer before relying on any case here.")
 TIER_LIBRARY = "Reviewed library"
 TIER_WIDER = "Wider search (not independently verified)"
 
@@ -57,7 +61,7 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench"):
         st = status_fn(name, _year_of(ms[0]), cit if isinstance(cit, str) else None) or {}
         library.append({"case": name, "year": _year_of(ms[0]), "citation": cit if isinstance(cit, str) and cit.strip() else None, "paragraphs": _paras(ms),
                         "bench": next((m.get(bench_key) for m in ms if m.get(bench_key)), None), "tier": TIER_LIBRARY,
-                        "status": st.get("note"), "status_source": st.get("source"),
+                        "status": SHORT_STATUS.get(st.get("source")) or st.get("note"), "status_source": st.get("source"),
                         "link": link_by_name.get(name) or next((m.get("source_url") for m in ms if isinstance(m.get("source_url"), str) and m["source_url"].startswith("http")), None)})
     wider, seen = [], set()
     for j in sci_cases or []:
@@ -65,7 +69,7 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench"):
             continue
         seen.add(j["case_name"])
         st = status_fn(j["case_name"], _year_of(j), _one(j.get("citation"))) or {}
-        note = j.get("register_note") or st.get("note")
+        note = j.get("register_note") or SHORT_STATUS.get(st.get("source")) or st.get("note")
         wider.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": _paras([j]), "bench": j.get(bench_key), "tier": TIER_WIDER,
                       "status": note, "status_source": "register" if j.get("register_note") else st.get("source"), "link": j.get("link"),
                       "link_kind": j.get("link_kind")})

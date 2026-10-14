@@ -66,7 +66,7 @@ for must in ("The first sentence answers the question itself", "ONE short senten
     check(must in V3, f"layman v3 carries: {must}")
 # lawyer spec B1-B5
 for must in ("**Bottom line**", "ONLY summary", "**Facts assumed**", "proposition or a question", "**Application to the facts**", "For the client | Against the client", "**Grounds that can be urged**",
-             "**Gaps and checks**", "Do NOT write a table of authorities", "at most 90 characters", "35 words or fewer", "\"held\", \"observed\", \"directed\", \"reiterated\"", "\"decisive\"", "capitalised NOT",
+             "**Gaps and checks**", "exactly **Bottom line**, with no title or headline", "never stop before it", "Do NOT write a table of authorities", "at most 90 characters", "35 words or fewer", "\"held\", \"observed\", \"directed\", \"reiterated\"", "\"decisive\"", "capitalised NOT",
              "40 words", "never in the Bottom line", "about 500-900 words", "never \"you should\"", "up to 8 distinct section numbers", "Never say that a case \"is good law\""):
     check(must in V3L, f"lawyer note carries: {must}")
 for name, t in (("v3", V3), ("v3-lawyer", V3L)):
@@ -159,6 +159,8 @@ tab = AT.build(MATCHES, ["Arnesh Kumar v. State of Bihar"], [{"case_name": "Arne
 check([r["case"] for r in tab["library"]] == ["Arnesh Kumar v. State of Bihar"] and tab["library"][0]["link"] == "https://l/a", "library rows: only named cases, link from the cited links")
 check([r["case"] for r in tab["wider"]] == ["Hemendra Reddy v. State", "Overruled v. State"] and tab["wider"][0]["tier"] == AT.TIER_WIDER, "wider rows: one row per case, tier is the unverified one")
 check(tab["wider"][1]["status"].endswith("(2002).") and tab["wider"][1]["status_source"] == "register", "a wider-search case keeps its register note")
+check(tab["library"][0]["status"] == AT.SHORT_STATUS["card_quiet"] and tab["wider"][0]["status"] == AT.SHORT_STATUS["not_checked"], "a quiet card and a missing check get the short table lines, not the long sentences")
+check("still good law" in AT.TABLE_NOTE and "ever says" in AT.TABLE_NOTE, "one note under the tables explains 'Not checked by us' and says neither list ever calls a case good law")
 check(not tab["has_bench"], "no bench column when the data holds no bench")
 md = AT.render_markdown(tab)
 check([h for h, _ in md] == ["Authorities (reviewed library)", "Further reading from a wider search (not independently verified)"], "two tiers, two headings")
