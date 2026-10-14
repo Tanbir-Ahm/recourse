@@ -345,6 +345,7 @@ def classify_scope(question):
                 messages=[{"role": "user",
                            "content": SCOPE_CLASSIFIER_PROMPT.format(question=question) + old_code_note + retry_correction}],
             )
+            _note_cost("scope_check", HAIKU_MODEL, response)
             raw = _extract_text_from_response(response).strip()
             # Defensive: strip markdown code fences if the model adds them
             # despite the "ONLY a JSON object" instruction.
@@ -1500,13 +1501,24 @@ def _close_truncated(text):
     return text[:cut].rstrip() + "\n\n" + _TRUNCATED_NOTE
 
 
-def _create_answer(model, prompt):
+def _note_cost(label, model, response):
+    """Hand a model response's token counts to cost_log (fail-open: never affects an answer)."""
+    try:
+        import cost_log
+        cost_log.note_anthropic(label, model, getattr(response, "usage", None))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _create_answer(model, prompt, label="answer"):
     """One answer call. If the reply stopped because it ran out of tokens (stop_reason 'max_tokens'), ask once more with a bigger budget; if that is cut off too, close it honestly (see _close_truncated)."""
     budget = _answer_max_tokens()
     response = client.messages.create(model=model, max_tokens=budget, messages=[{"role": "user", "content": prompt}])
+    _note_cost(label, model, response)
     if getattr(response, "stop_reason", None) == "max_tokens":
         logger.warning("answer was cut off at %s tokens; asking again with %s", budget, min(budget * 2, 16000))
         response = client.messages.create(model=model, max_tokens=min(budget * 2, 16000), messages=[{"role": "user", "content": prompt}])
+        _note_cost(label + "_after_cutoff", model, response)
     text = _extract_text_from_response(response).strip()
     if getattr(response, "stop_reason", None) == "max_tokens":
         logger.warning("answer was cut off again; closing it at the last complete sentence")
@@ -1720,7 +1732,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 )
             if pilot_overreach:
                 retry_prompt += _PILOT_OVERREACH_RETRY_INSTRUCTION.format(cases=", ".join(pilot_overreach))
-            retry_text = _create_answer(model, retry_prompt)      # same thinking-block headroom as the first call
+            retry_text = _create_answer(model, retry_prompt, label="answer_recheck")      # same thinking-block headroom as the first call
             # A still-missing companion section, still-unsupported case
             # generalization, or still-incomplete cognizable/bailable pair
             # is a completeness/nuance gap, not a correctness error like
@@ -3395,6 +3407,11 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     answer_style.set_audience(audience)
     answer_style.set_channel(channel)
     try:
+        import cost_log
+        cost_log.begin(question)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         result = _answer_question_inner(question, inline_domains=inline_domains)
         try:
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and answer_style.is_v3():
@@ -3405,6 +3422,11 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
             logger.warning("authorities table failed: %s", exc)
         return result
     finally:
+        try:
+            import cost_log
+            cost_log.finish(style=answer_style.style(), audience=answer_style.effective_audience())
+        except Exception:  # noqa: BLE001
+            pass
         answer_style.set_audience(None)
         answer_style.set_channel(None)
 
@@ -3495,6 +3517,7 @@ def extract_arrest_situation(conversation_text):
             messages=[{"role": "user", "content":
                        ARREST_SITUATION_EXTRACTION_PROMPT.format(conversation=conversation_text[:4000])}],
         )
+        _note_cost("arrest_extraction", HAIKU_MODEL, response)
         raw = _extract_text_from_response(response).strip()
     except Exception:
         return None, []

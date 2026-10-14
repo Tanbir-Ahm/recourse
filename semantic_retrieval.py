@@ -168,7 +168,13 @@ def semantic_search(query, top_k=TOP_MATCHES_TO_CONSIDER, _raise_errors=False):
 
     client = voyageai.Client(api_key=_resolve_voyage_api_key())
     try:
-        query_embedding = client.embed([query], model=MODEL, input_type="query").embeddings[0]
+        _resp = client.embed([query], model=MODEL, input_type="query")
+        query_embedding = _resp.embeddings[0]
+        try:
+            import cost_log
+            cost_log.note_voyage("site_query_embed", MODEL, getattr(_resp, "total_tokens", 0))
+        except Exception:  # noqa: BLE001 -- cost logging never affects retrieval
+            pass
     except Exception:
         if _raise_errors:
             raise

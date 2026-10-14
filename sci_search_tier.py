@@ -52,8 +52,8 @@ def mode():
     return m
 
 
-def search(question, timeout=None, k=10):
-    """The service's answer dict, or None on any failure (never raises)."""
+def search(question, timeout=None, k=10, label="sci_search"):
+    """The service's answer dict, or None on any failure (never raises). The service's per-search token usage goes to the cost log under `label`."""
     base = _env("SCI_SEARCH_URL").rstrip("/")
     if not base or not question:
         return None
@@ -65,7 +65,14 @@ def search(question, timeout=None, k=10):
         req = urllib.request.Request(base + "/search", data=json.dumps({"question": question, "k": k}).encode("utf-8"), headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             body = json.loads(r.read().decode("utf-8"))
-        return body if isinstance(body, dict) and body.get("ok") and isinstance(body.get("results"), list) else None
+        if isinstance(body, dict) and body.get("ok") and isinstance(body.get("results"), list):
+            try:
+                import cost_log
+                cost_log.note_search_usage(label, body.get("usage"))
+            except Exception:  # noqa: BLE001
+                pass
+            return body
+        return None
     except urllib.error.HTTPError as exc:
         logger.warning("sci-search answered %s", exc.code)
     except Exception as exc:  # noqa: BLE001 -- fail-open
@@ -98,7 +105,7 @@ def shadow_record(question, found, answer_result=None):
 
 def _write_shadow(question, answer_result):
     try:
-        found = search(question, timeout=30)
+        found = search(question, timeout=30, label="sci_search_shadow")
         if not found:
             return
         rec = shadow_record(question, found, answer_result)
@@ -228,7 +235,7 @@ def label_fed_cases(text, cases):
 
 def _fetch_case(name, question):
     """A passage of one named case (the case that corrected a flagged one), by a second search: its name plus the question. (result, flag) or None."""
-    found = search((name + " " + question)[:400], timeout=15.0)
+    found = search((name + " " + question)[:400], timeout=15.0, label="sci_search_second")
     if not found:
         return None
     for r in found["results"]:
