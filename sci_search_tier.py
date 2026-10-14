@@ -131,6 +131,8 @@ FEED_INSTRUCTION = (
     "EVERY TIME you name one of these cases, put the words " + LABEL + " right after its name. "
     "If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, and never present its holding as the current law; "
     "the case that corrected it is among the passages when it could be found, so name that case too. "
+    "Credit a principle to the case whose own words state it: if a passage quotes or restates an earlier decision, say it was an earlier decision's holding, never the named case's. "
+    "Use a passage only for the question it actually decides: a passage about delay in starting a prosecution does not answer a question about delay in a trial that is already running, and a passage about one kind of bail condition says nothing about another. "
     "If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
 )
 _TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.?|[,.\s]+(?:anr|ors|another|others|etc)\b\.?)+\s*$", re.I)
@@ -188,47 +190,100 @@ def _fuzzy_end(text, phrase, threshold=0.86):
     return None
 
 
+_V = r"\s+(?:v\.?|vs\.?|versus)\s+"
+_EXTRA = r"(?:\s*(?:,|&|and)\s*(?:anr|ors|another|others|etc)\b\.?)?"
+_LABEL_NOTE = re.compile(r"\(\s*(?:[\w ]{0,12}from a |[\w ]{0,12})?wider search,?\s*not independently verified|\([^()]{0,90}not independently verified", re.I)
+_LABEL_SPAN = re.compile(r"\([^()]{0,160}not independently verified[^()]{0,200}(?:\([^()]{0,80}\)[^()]{0,40})?\)", re.I)
+
+
 def _labelled_here(text, pos):
-    """True when a bracketed 'not independently verified' note comes right at `pos` (the model's own wording is tolerated). Only the very next bracket counts: a label after a LATER case must not hide this one."""
-    return bool(re.match(r"\s*\([^)]{0,90}not independently verified[^)]{0,20}\)", text[pos:], re.I))
+    """True when a bracketed 'not independently verified' note comes right at `pos` (the model's own wording is tolerated, and a longer note such as '..., not independently verified; overruled by X' counts). Only the very next bracket counts: a label after a LATER case must not hide this one."""
+    return bool(_LABEL_NOTE.match(text[pos:].lstrip(" \t")))
+
+
+def _inside_label(text, pos):
+    """True when `pos` falls inside a label that is already in the text (inserting there would nest one label in another)."""
+    return any(m.start() < pos < m.end() for m in _LABEL_SPAN.finditer(text))
+
+
+def _words_re(p):
+    return r"\s+".join(re.escape(t) for t in p.split())
+
+
+_NAME_TOKEN = re.compile(r"\s+(?:[A-Z][\w'\u2019-]*(?:\.(?=[A-Z]))*|of|and|the|for|&)(?=[\s,;:)*_.]|$)")
+
+
+def _extend_second_party(text, end):
+    """When only the first party was found: take the ' v. <second party>' that follows it, as a run of capitalised name words (stops at a bracket, a digit, a full stop or a lower-case word)."""
+    m = re.match(_V + r"(?:the\s+)?", text[end:], re.I)
+    if not m:
+        return end
+    pos, n = end + m.end(), 0
+    first = re.match(r"[A-Z][\w'\u2019-]*(?:\.(?=[A-Z]))*", text[pos:])
+    if not first:
+        return end
+    pos += first.end()
+    while n < 7:
+        t = _NAME_TOKEN.match(text, pos)
+        if not t:
+            break
+        pos, n = t.end(), n + 1
+    return end + len(re.sub(r"(?:\s+(?:of|and|the|for|&))+$", "", text[end:pos], flags=re.I))   # never end on a connecting word
+
+
+def _tidy_labels(text):
+    """Collapses labels the model and the code both put in: one inside another, or two in a row."""
+    lab = re.escape(LABEL)
+    for _ in range(3):
+        text = re.sub(r"\(from\s+" + lab + r"\s+a wider search, not independently verified\)", LABEL, text)
+        text = re.sub(r"(" + lab + r")(?:[ \t]*([.,;]?)[ \t]*" + lab + r")+", r"\1\2", text)
+    return text
 
 
 def label_fed_cases(text, cases):
     """Puts LABEL right after the first mention of each wider-search case in a finished answer, unless the answer already says so there. The case is found by its full name, else by a distinctive
-    party name, allowing a typo. Returns the text unchanged on any problem."""
+    party name, allowing a typo. The label goes after the whole name (including '& Another', italics marks and a year in brackets), never inside a name or inside another label. Returns the text unchanged on any problem."""
     try:
         out = text or ""
+        seen = set()
         for c in cases or []:
+            key = re.sub(r"\W+", " ", (c.get("case_name") or "").lower()).strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
             p1, p2 = _parties(c["case_name"])
             end = None
             if p1 and p2:
-                m = re.search(re.escape(p1) + r"\s+(?:v\.?|vs\.?|versus)\s+" + re.escape(p2), out, re.I)
+                m = re.search(r"\b(?:the\s+)?" + _words_re(p1) + _V + r"(?:the\s+)?" + _words_re(p2) + _EXTRA, out, re.I)
                 end = m.end() if m else None
+            p1 = re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I) if end is None else p1   # the answer may drop 'Dr.' from the name
             if end is None and p1 and len(p1) >= 8 and not _GENERIC_FIRST.match(p1):
-                m = re.search(r"\b" + re.escape(p1) + r"\b", out, re.I)
+                m = re.search(r"\b" + _words_re(p1) + r"\b", out, re.I)
                 end = m.end() if m else _fuzzy_end(out, p1)
+                if end is not None and p2:
+                    end = _extend_second_party(out, end)
+                    m = re.match(_EXTRA, out[end:], re.I)
+                    end += m.end() if m else 0
             if end is None and p2 and len(p2) >= 8:
                 end = _fuzzy_end(out, p2)
             if end is None and p1 and p2:
                 end = _fuzzy_end(out, p1 + " v. " + p2, 0.9)
             if end is None:
                 continue
-            if p2:                                                           # a match on the first party alone: take the " v. second party" that follows it too
-                m3 = re.match(r"\s+(?:v\.?|vs\.?|versus)\s+" + r"\S+\s*" * len(p2.split()), out[end:], re.I)
-                if m3:
-                    end += len(m3.group(0).rstrip())
             m0 = re.match(r"[*_]{1,2}", out[end:])                        # the name is in italics (answer style v3): put the label after the closing mark, not inside it
             if m0:
                 end += m0.end()
-            if _labelled_here(out, end):
-                continue
-            m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:])        # a short year or citation in brackets right after the name
-            if m2:
-                end += m2.end()
+            for _ in range(2):                                           # a short year or citation in brackets right after the name
                 if _labelled_here(out, end):
-                    continue
+                    break
+                m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:])
+                if not m2 or _LABEL_NOTE.match(out[end:].lstrip()):
+                    break
+                end += m2.end()
+            if _labelled_here(out, end) or _inside_label(out, end):
+                continue
             out = out[:end] + " " + LABEL + out[end:]
-        return out
+        return _tidy_labels(out)
     except Exception:  # noqa: BLE001
         return text
 

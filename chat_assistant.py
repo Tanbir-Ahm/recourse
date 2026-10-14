@@ -492,7 +492,7 @@ Write the answer now, following the shape and length rules above."""
 # ---------------------------------------------------------------------------
 _V1_SHAPE_START = "## Shape and length"
 _V2_SHAPE = """## Voice and shape
-- Your FIRST sentence answers the question itself, in plain words, using the person's own facts (the number of years, the stage they are at, who is involved) so they can see you read their question. For example "Not automatically, but nine years of delay is something courts take seriously." Do not open with a heading, a definition or "The law provides".
+- Your FIRST sentence answers the question itself, in plain words, using the person's own facts (the number of years, the stage they are at, who is involved) so they can see you read their question. The words must be yours and fit THIS question; never reuse a stock opener. Do not open with a heading, a definition or "The law provides".
 - If the person is in a hard moment, acknowledge it in ONE short, specific sentence that uses their facts (never a stock phrase such as "I understand this is difficult", and never invented sympathy). Then move on.
 - If the question describes something that HAS ALREADY HAPPENED or is still going on (an arrest, a search, an FIR, a frozen account, a long trial), next give a short **"Right now"** part: 2-3 concrete things they can do or ask for. Then the law behind it. Then what you cannot tell without more facts.
 - Write headings as what the person wants to know ("Can the case be closed?", "What you can do", "What I can't tell from here"), never as labels such as "What the law provides". Use two or three short parts, short paragraphs, at most one list.
@@ -523,7 +523,7 @@ RESPONSE_GENERATION_PROMPT_V2 = _build_v2_template(RESPONSE_GENERATION_PROMPT)
 # ---------------------------------------------------------------------------
 _V3_SHAPE = """## Voice and shape (the Adviser)
 You write like a calm, informed adviser talking to "you": plain English, a technical term only when it is needed and explained in the same sentence. Write the answer in this order.
-1. OPENING, with no heading. The first sentence answers the question itself and states the main condition, using the person's own facts (the number of years, the stage they are at, who is involved). The shape, not the words: "Not automatically, but nine years of delay is something courts take seriously." Never open with a heading, a definition or "The law provides". If the person is in a hard moment, add ONE short sentence using their facts to acknowledge it (never a stock phrase such as "I understand this is difficult", never invented sympathy).
+1. OPENING, with no heading. The first sentence answers the question itself and states the main condition, using the person's own facts (the number of years, the stage they are at, who is involved). The shape: a direct answer (yes, no, probably, not yet, or only if ...) plus the one condition that decides it, in words that fit THIS question; never reuse a stock opener, and do not begin with "Not automatically". Never open with a heading, a definition or "The law provides". If the person is in a hard moment, add ONE short sentence using their facts to acknowledge it (never a stock phrase such as "I understand this is difficult", never invented sympathy).
 2. A heading, then what the law says. State the rule, give one sentence on WHY it works that way, and say what a court actually did or said (attributed to the court, from the excerpt below). One or two short paragraphs.
 3. The heading **How this cuts for and against you**, then two groups, each introduced by an italic line: *For you:* and *Against you:*, with 2-3 short bullet points each. These are factors a court weighs. They are never a verdict on this person's case and never a prediction of the outcome. Where the answer turns on facts, write it as "if ...; if ...". Then ONE line that starts "What I can't tell from here:" and names the facts that would change the answer.
 4. A heading, then 2-4 numbered steps. Use exactly **What you can do right now** when the question describes something that HAS ALREADY HAPPENED or is still happening to the person or someone close to them (an arrest, a search, an FIR, a frozen account, a trial that is running). Use exactly **What you can do now** for a general question. Each step starts with a verb (Ask, Raise, Bring, Keep, Write down, Check), says what the person can ask for, raise or bring (never "you must", never an order to do a legal act), and gives half a sentence of purpose. The first step is the most immediate one. Mention uploading a document only if the person has one. Put nothing after the steps: no closing line.
@@ -1485,8 +1485,10 @@ _TRUNCATED_NOTE = "*This answer was cut short. Please ask again, or ask about on
 
 def _answer_max_tokens():
     """Output budget for the answer call. It also pays for the model's own thinking, which is why 4000 (enough for a 300-word layman answer) was not enough for the longer lawyers' research note
-    (staging 2026-10-14: the note stopped in mid-sentence). The research note gets 12000; every other style keeps 4000."""
-    return 12000 if answer_style.template_key() == "v3-lawyer" else 4000
+    (staging 2026-10-14: the note stopped in mid-sentence). The research note gets 12000. The v3 layman answers get 8000: a cap costs nothing unless it is used, and a reply cut off at 4000
+    was paid for twice (staging 2026-10-14, question 5: Rs 12.46 against about Rs 3.5)."""
+    key = answer_style.template_key()
+    return 12000 if key == "v3-lawyer" else (8000 if answer_style.is_v3() else 4000)      # v1 and v2 (today's production) keep 4000
 
 
 def _close_truncated(text):
@@ -1801,6 +1803,14 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
                 or court_misattributions or omissions or unverified_contacts or pilot_overreach or g_enforce):
             retry_prompt = prompt
+            try:
+                _why = [n for n, v in (("ungrounded_sections", ungrounded), ("section_mismatch", mismatches), ("missing_act", missing_act), ("missing_companion", missing_companion),
+                                       ("unsupported_case_generalisation", unsupported_cases), ("court_misattribution", court_misattributions), ("cognizable_bailable_omission", omissions),
+                                       ("unverified_phone", unverified_contacts), ("pilot_overreach", pilot_overreach), ("grounding_enforce", g_enforce)) if v]
+                logger.warning("RECHECK reasons=%s", ",".join(_why))
+                print("RECHECK reasons=" + ",".join(_why), flush=True)
+            except Exception:  # noqa: BLE001
+                pass
             if ungrounded:
                 retry_prompt += _UNGROUNDED_RETRY_INSTRUCTION.format(sections=", ".join(ungrounded))
             if mismatches:
@@ -3541,6 +3551,7 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and answer_style.is_v3():
                 result["audience"] = answer_style.effective_audience()
                 if result["audience"] == "lawyer":
+                    result["response_text"] = _ensure_bottom_line(result.get("response_text"))
                     result["authorities"] = _build_authorities(result)
         except Exception as exc:  # fail-open: the answer always goes out
             logger.warning("authorities table failed: %s", exc)
@@ -3555,6 +3566,20 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
             pass
         answer_style.set_audience(None)
         answer_style.set_channel(None)
+
+
+def _ensure_bottom_line(text):
+    """The lawyers' note must open with a heading 'Bottom line'. When the model's first paragraph has no heading (staging 2026-10-14, question 6), the heading is put above it; the text is not changed otherwise."""
+    try:
+        t = (text or "").lstrip()
+        if not t or re.match(r"[*#_ ]*bottom line\b", t, re.I):
+            return text
+        first = t.split("\n", 1)[0].strip()
+        if re.match(r"\*\*[^*\n]{1,90}\*\*\s*$", first) or first.startswith("#"):         # the note opens with some other heading: leave it, do not guess
+            return text
+        return "**Bottom line**\n\n" + t
+    except Exception:  # noqa: BLE001
+        return text
 
 
 def _build_authorities(result):

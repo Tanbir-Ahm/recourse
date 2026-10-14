@@ -215,5 +215,12 @@ for st_, want in (("v1", {}), ("v3", {"audience": "layman", "channel": "whatsapp
     check(got == want, f"the bot's call to the engine under {st_}: {got}")
 os.environ["RESPONSE_STYLE"] = "v1"
 
+
+# --- staging 2026-10-14: lawyers' note must open with the Bottom line heading
+check(CA._ensure_bottom_line("No provision allows closure.\n\nFacts assumed\n\nX").startswith("**Bottom line**\n\nNo provision"), "a note that opens with plain text gets the Bottom line heading")
+check(CA._ensure_bottom_line("**Bottom line**\n\nNo.") == "**Bottom line**\n\nNo." and CA._ensure_bottom_line("Bottom line\n\nNo.") == "Bottom line\n\nNo.", "a note that already has it is left alone")
+check(CA._ensure_bottom_line("**Delay and trials**\n\nNo.") == "**Delay and trials**\n\nNo." and CA._ensure_bottom_line("") == "" and CA._ensure_bottom_line(None) is None, "another heading is not guessed at; empty and None are safe")
+check("Not automatically, but nine years" not in CA.RESPONSE_GENERATION_PROMPT_V3 and "never reuse a stock opener" in CA.RESPONSE_GENERATION_PROMPT_V3, "the v3 prompt no longer carries a sentence the model copies as its opener")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

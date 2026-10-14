@@ -134,5 +134,12 @@ with contextlib.redirect_stdout(io.StringIO()):
 check("grounding_notes" not in r, "in log mode the result carries no notices")
 os.environ.pop("GROUNDING_CHECKS", None)
 
+
+# --- staging 2026-10-14: a short quoted word must not pair with a quotation mark far away (false alarm in question 7)
+_ans = 'The bench called it "freakish" and went on. It held "evidently onerous and unreasonable" here.\n| Sumit Mehta | condition "disproportionate to a legitimate bail purpose. If the amount is modest" |\n| B. Ramu | said "freakish" |'
+_mat = "evidently onerous and unreasonable. freakish. disproportionate to a legitimate bail purpose. If the amount is modest"
+check(G.check_quotes(_ans, _mat) == [], f"short quoted words and table cells do not produce a false alarm ({G.check_quotes(_ans, _mat)})")
+check(G.check_quotes('He said "this phrase was never in any passage at all" ok', _mat) == ["this phrase was never in any passage at all"], "a real invented quotation is still found")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

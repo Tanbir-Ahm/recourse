@@ -40,7 +40,7 @@ def run(style, plan):
 
 check(run("v1", [("Fine.", "end_turn")]) == "Fine." and CALLS == [4000], "v1: a normal reply costs one call with the old 4000 budget")
 check(run("v2", [("Fine.", "end_turn")]) == "Fine." and CALLS == [4000], "v2 keeps 4000")
-check(run("v3", [("Fine.", "end_turn")]) == "Fine." and CALLS == [4000], "v3 (layman) keeps 4000")
+check(run("v3", [("Fine.", "end_turn")]) == "Fine." and CALLS == [8000], "v3 (layman) gets 8000 (a 4000 cut-off was paid for twice on staging)")
 os.environ["RESPONSE_STYLE"] = "v3"
 import answer_style as AS
 AS.set_audience("lawyer")

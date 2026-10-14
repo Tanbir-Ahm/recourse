@@ -213,7 +213,8 @@ def check_cases(answer, material, exists_fn=sc_list_has):
 
 
 # ---- quotations ----
-_QUOTE = re.compile(r"“([^”\n]{20,600}?)”|\"([^\"\n]{20,600}?)\"")
+_QUOTE = re.compile(r"“([^”]{1,600}?)”|\"([^\"]{1,600}?)\"")
+_MIN_QUOTE_CHARS = 20
 _SPLIT = re.compile(r"\.\s?\.\s?\.|…|\[[^\]]*\]")
 
 
@@ -240,8 +241,11 @@ def check_quotes(answer, material):
     bad = []
     try:
         mat = norm(material)
-        for m in _QUOTE.finditer(answer or ""):
+        cells = [c for line in (answer or "").split("\n") for c in line.split("|")]          # quote marks are paired inside one line / table cell, in order, so a short quoted word never pairs with a mark far away
+        for m in (m for c in cells for m in _QUOTE.finditer(c)):
             q = m.group(1) or m.group(2)
+            if len(q) < _MIN_QUOTE_CHARS:
+                continue
             for frag in _fragments(q):
                 fn = norm(frag)
                 if fn and fn not in mat and not _fuzzy_in(fn, mat):

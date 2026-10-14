@@ -204,5 +204,27 @@ check(res_l["response_text"].count(T.LABEL) == 2, "attach (feed) tags the wider-
 os.environ["SCI_SEARCH_MODE"] = "off"
 T.reset()
 check(T.feed_block("x") == "" and "sci_related_judgments" not in T.attach("x", {"state": "single_match"}), "with the mode off feed does nothing")
+
+# --- staging 2026-10-14: label bugs found in the seven saved answers
+LB = T.LABEL
+def _one(txt, *names):
+    return T.label_fed_cases(txt, [{"case_name": n} for n in names])
+o = _one("In State Through Central Bureau of Investigation v. Hemendhra Reddy & Another (2023), the Court said X.", "State Through Central Bureau Of Investigation v. Hemendhra Reddy And Another")
+check(o.count(LB) == 1 and "Another (2023) " + LB in o, f"the label goes after '& Another (2023)', not inside the name ({o!r})")
+o = _one("per Dr. Subhash Kashinath Mahajan v. State of Maharashtra (2018) " + LB + ".", "Dr. Subhash Kashinath Mahajan v. The State Of Maharashtra And Anr.")
+check(o.count(LB) == 1 and o.endswith(LB + "."), f"a label the model already wrote is not doubled, even when the name has 'The' ({o!r})")
+o = _one("in Shaurya Sunil Kumar Singh v. CBI " + LB + " both say.", "Shaurya Sunil Kumar Singh v. Central Bureau Of Investigation")
+check(o.count(LB) == 1 and "(from (from" not in o, f"no label inside another label ({o!r})")
+o = _one("in Shaurya Sunil Kumar Singh v. CBI both say.", "Shaurya Sunil Kumar Singh v. Central Bureau Of Investigation")
+check(o == "in Shaurya Sunil Kumar Singh v. CBI " + LB + " both say.", f"first party found, the second party (an abbreviation) taken with it ({o!r})")
+o = _one("overruling Raj Deo Sharma v. State of Bihar (1999) (from a wider search, not independently verified; overruled by P. Ramachandra Rao v. State of Karnataka (2002)). Next.", "Raj Deo Sharma v. State Of Bihar", "Raj Deo Sharma v. State Of Bihar")
+check(o.count("not independently verified") == 1, f"the model's own longer label ('...; overruled by ...') counts as the label ({o!r})")
+o = _one("Sumit Mehta v State (NCT of Delhi) said x.", "Sumit Mehta v. State (Nct Of Delhi)")
+check(o == "Sumit Mehta v State (NCT of Delhi) " + LB + " said x.", f"a bracket inside the name is part of the name ({o!r})")
+o = _one("Rini Johar held it. Rini Johar again.", "Dr. Rini Johar And Another v. State Of M.P. And Ors.")
+check(o.count(LB) == 1, "the answer may drop 'Dr.' from the name; only the first mention is labelled")
+check(T._tidy_labels("A (from (from a wider search, not independently verified) a wider search, not independently verified) B " + LB + ". " + LB) == "A " + LB + " B " + LB + ".", "nested and doubled labels collapse")
+check("Credit a principle to the case whose own words state it" in T.FEED_INSTRUCTION and "already running" in T.FEED_INSTRUCTION, "the feed instruction says: credit the case whose words state it; use a passage only for the question it decides")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
