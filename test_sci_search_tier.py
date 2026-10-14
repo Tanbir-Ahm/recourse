@@ -228,6 +228,9 @@ check(T._tidy_labels("A (from (from a wider search, not independently verified) 
 check("Credit a principle to the case whose own words state it" in T.FEED_INSTRUCTION and "already running" in T.FEED_INSTRUCTION, "the feed instruction says: credit the case whose words state it; use a passage only for the question it decides")
 
 
+# --- staging 2026-10-14 (run 3): the label landed between 'M.P' and its full stop
+o = _one("In Dr. Rini Johar v. State of M.P. (2016), the Supreme Court noted X. Also Dr. Rini Johar v. State of M.P. again.", "Dr. Rini Johar And Another v. State Of M.P. And Ors.")
+check(o.startswith("In Dr. Rini Johar v. State of M.P. " + LB + " (2016)") or o.startswith("In Dr. Rini Johar v. State of M.P. (2016) " + LB), f"the label goes after 'M.P.' with its full stop, not inside the initials ({o[:120]!r})")
 # --- 2026-10-14 (owner's go): a passage that only NAMES a register case brings the controlling case; wider-search cases stay out of the "not checked" sentence
 WITH_RC["on"] = False
 os.environ["SCI_SEARCH_MODE"] = "feed"

@@ -1032,6 +1032,20 @@ _PILOT_OVERREACH_PAT = re.compile(
 )
 
 
+def _pilot_snippets(response_text: str, names) -> list:
+    """For the log only: the first sentence of the answer that names each flagged pilot case (so that the log shows what was written, not just which case)."""
+    out = []
+    try:
+        sents = re.split(r"(?<=[.!?])\s+", response_text or "")
+        for name in names or []:
+            parties = [p.strip() for p in re.split(r"\s+vs?\.?\s+", name, flags=re.IGNORECASE) if len(p.strip()) >= 4]
+            hit = next((x for x in sents if any(p.lower() in x.lower() for p in parties)), "")
+            out.append(hit[:220])
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 def _find_pilot_tier_overreach(response_text: str, pilot_matches) -> list:
     """ADDED 2026-09-24, at the user's explicit request to let generate_grounded_response describe
     a pilot-tier (wider, NOT independently reviewed) judgment in its prose instead of only listing
@@ -1843,6 +1857,8 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 _detail = {n: (v if isinstance(v, (list, tuple)) else str(v))for n, v in (("ungrounded_sections", ungrounded), ("section_mismatch", mismatches), ("missing_act", missing_act),
                            ("missing_companion", missing_companion), ("unsupported_case_generalisation", unsupported_cases), ("court_misattribution", court_misattributions),
                            ("pilot_overreach", pilot_overreach), ("unverified_phone", unverified_contacts)) if v}
+                if pilot_overreach:
+                    _detail["pilot_sentences"] = _pilot_snippets(response_text, pilot_overreach)
                 logger.warning("RECHECK reasons=%s", ",".join(_why))
                 print("RECHECK reasons=" + ",".join(_why) + " detail=" + __import__("json").dumps(_detail, default=str)[:600], flush=True)
             except Exception:  # noqa: BLE001
@@ -1902,7 +1918,9 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                       "unverified_phone": _find_unverified_contact_numbers(retry_text, question, retrieved_text),
                       "pilot_overreach": _find_pilot_tier_overreach(retry_text, pilot_matches)}
             _still = {k: v for k, v in _still.items() if v}
-            if list(_still) == ["missing_act"]:        # the only thing left is an Act name: add it by code from the retrieved sections rather than withhold the answer
+            if _still.get("pilot_overreach"):
+                _still["pilot_sentences"] = _pilot_snippets(retry_text, _still["pilot_overreach"])
+            if list(k for k in _still if k != "pilot_sentences") == ["missing_act"]:        # the only thing left is an Act name: add it by code from the retrieved sections rather than withhold the answer
                 _fixed = _add_missing_acts(retry_text, _still["missing_act"], section_act_map)
                 if not _find_sections_missing_act(_fixed, section_act_map):
                     print("ACT_NAME_ADDED_BY_CODE sections=" + ",".join(_still["missing_act"]), flush=True)

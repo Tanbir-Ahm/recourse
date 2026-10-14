@@ -297,6 +297,8 @@ def _locate(text, case_name):
         span = _fuzzy_span(text, p2)
     if span is None and p1 and p2:
         span = _fuzzy_span(text, p1 + " v. " + p2, 0.9)
+    if span is not None and text[span[1]:span[1] + 1] == "." and re.search(r"(?:\b[A-Za-z]\.){1,}[A-Za-z]$", text[:span[1]]):
+        span = (span[0], span[1] + 1)                                    # 'State of M.P.': the closing full stop of the initials belongs to the name (the party names are stored without it)
     return span
 
 
