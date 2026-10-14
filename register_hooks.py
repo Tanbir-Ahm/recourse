@@ -107,3 +107,30 @@ def result_flags(results):
     except Exception as exc:
         logger.warning("register result flags failed: %s", exc)
     return out
+
+
+def case_status(name, year=None, citation=None):
+    """For the lawyers' authorities table: one line saying where a case stands on our lists. {'source': 'register'|'card'|'card_quiet'|'not_checked'|'off', 'note': sentence}.
+    The register first (firm or 'reported ... not yet confirmed'), then the cards overlay (warning, caution or quiet), else the fixed 'Not checked by us' sentence. Never says a case is good law. Never raises."""
+    if _off():
+        return {"source": "off", "note": "Register checks are switched off on this site."}
+    try:
+        reg, ov = _load()
+        if not name:
+            return {"source": "not_checked", "note": None}
+        cit = citation if isinstance(citation, str) else None
+        yr = int(year) if year not in (None, "") else None
+        hits = [h for h in reg.lookup_case(name, yr, cit) if h["strength"] == "strong" and reg.clause(h["row"])]
+        if hits:
+            row = hits[0]["row"]
+            return {"source": "register", "note": reg.clause_group([row] + reg.same_decision_rows(row))}
+        e = ov.lookup(name, yr, cit) if ov else None
+        if e and e["kind"] in ("warning", "caution"):
+            return {"source": "card", "note": e["note"]}
+        if e and e["kind"] == "quiet":
+            return {"source": "card_quiet", "note": e["note"]}
+        from overruled_register import overlay as OV
+        return {"source": "not_checked", "note": OV.NOT_CHECKED}
+    except Exception as exc:  # fail-open
+        logger.warning("register case status failed: %s", exc)
+        return {"source": "not_checked", "note": None}

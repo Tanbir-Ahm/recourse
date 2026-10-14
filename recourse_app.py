@@ -26,6 +26,8 @@ import logging
 
 import streamlit as st
 
+import answer_style
+
 # chat_assistant pulls in the Anthropic SDK + the 38 MB embeddings + main
 # (~8-15s on a cold container). recourse_upload -> main is similarly heavy.
 # Import both LAZILY -- inside the run block / upload block -- so the
@@ -452,7 +454,9 @@ _WHOLE_LINE_BOLD = _re_lbl.compile(
     r"(?m)^(\s{0,4}(?:\d{1,2}[.)]\s+|[-*]\s+)?)\*\*([^*\n]+?)\*\*")
 
 
-def _tame_sentence_bold(md: str) -> str:
+def _tame_sentence_bold(md: str, v3_label_max: int = 0) -> str:
+    """v3_label_max > 0 (answer style v3 only): a bold run that is the WHOLE line, up to that many characters and not ending in a full stop or '!', is a heading and stays bold -- a question
+    mark is allowed, because v3 headings are written as what the person wants to know. Everything else behaves exactly as before."""
     def repl(m):
         prefix, inner = m.group(1), m.group(2)
         if "**" in inner:
@@ -460,6 +464,8 @@ def _tame_sentence_bold(md: str) -> str:
         head, sep, tail = inner.partition(":")
         if sep and len(head) <= 48 and tail.strip():
             return f"{prefix}**{head.strip()}:** {tail.strip()}"
+        if v3_label_max and m.string[m.end():m.end() + 1] in ("", "\n") and len(inner) <= v3_label_max and not inner.rstrip().endswith((".", "!")):
+            return m.group(0)                     # a v3 heading
         # A genuine label ("Right now", "What the law says") is a short
         # PHRASE with no terminal punctuation. Anything ending in . / ! / ?
         # is a full sentence even when short -- "But safeguards still apply
@@ -475,10 +481,17 @@ def _tame_sentence_bold(md: str) -> str:
     return _WHOLE_LINE_BOLD.sub(repl, md)
 
 
-def _promote_answer_labels(md: str) -> str:
+_V3_HEADING_THEN_TEXT = _re_lbl.compile(r"(?m)^(\*\*[^*\n]{2,90}\*\*)[ \t]*\n(?!\n)")
+
+
+def _promote_answer_labels(md: str, audience: str = "") -> str:
+    """audience is '' for v1/v2 answers (unchanged behaviour); 'layman' or 'lawyer' for a v3 answer, whose headings may be longer (45 / 90 characters) and may be questions."""
     if not md:
         return md
-    md = _tame_sentence_bold(md)
+    v3_max = {"layman": 48, "lawyer": 90}.get(audience, 0)
+    md = _tame_sentence_bold(md, v3_label_max=v3_max)
+    if v3_max:
+        md = _V3_HEADING_THEN_TEXT.sub(lambda m: m.group(1) + "\n\n", md)       # a heading must stand alone, or the page's CSS would turn the whole paragraph into a sub-head
     return _LEAD_LABEL.sub(lambda m: f"{m.group(1)}{m.group(2)}{m.group(3)}\n\n", md)
 
 
@@ -571,6 +584,9 @@ st.html('<div class="r-label">&hellip; or describe your own</div>')
 # TOGETHER in one rerun -- without it, the first click after typing only
 # commits the text and the previous answer keeps showing.
 with st.form("situation_form", border=False, clear_on_submit=False):
+    if answer_style.style() == "v3":                 # the Layman / Lawyer switch exists only while RESPONSE_STYLE=v3 is being tried
+        st.radio("Who is asking?", ["Layman", "Lawyer"], key="audience_choice", horizontal=True, disabled=_busy,
+                 help="Layman: a plain-words answer with steps. Lawyer: a research note with issues, arguments and a table of authorities.")
     msg = st.text_area("Describe your situation", key="text", height=120,
                        label_visibility="collapsed", disabled=_busy,
                        placeholder="e.g. My brother was arrested four days ago and still hasn't been produced in court…") or ""
@@ -818,11 +834,20 @@ def render_answer(result: dict):
         with st.container(border=True):
             st.markdown('<span class="r-ansmark"></span>', unsafe_allow_html=True)
             if reply:
-                st.markdown(_promote_answer_labels(reply))
+                st.markdown(_promote_answer_labels(reply, result.get("audience") or ""))
             else:
                 m0 = (result.get("matches") or [{}])[0]
                 st.markdown("Here is what the law says on this:\n\n> "
                             + esc((m0.get("text") or "").strip()[:800]))
+
+        if result.get("audience") == "lawyer" and result.get("authorities"):
+            try:
+                import authorities_table
+                for heading, md_table in authorities_table.render_markdown(result["authorities"]):
+                    st.markdown(f'<div class="r-label">{esc(heading)}</div>', unsafe_allow_html=True)
+                    st.markdown(md_table)
+            except Exception:
+                logging.getLogger("recourse_app").exception("authorities table render failed")
 
         reply_lc = (reply or "").lower()
         all_matches = result.get("matches") or []
@@ -895,6 +920,8 @@ def render_answer(result: dict):
         # (chat_assistant._attach_cited_judgment_links) -- these are the tool's own verified sources, unlike
         # the unverified expander below, so they are shown plainly, not hidden behind a caution.
         cited_links = result.get("cited_judgment_links")
+        if result.get("audience") == "lawyer":
+            cited_links = None                      # the lawyers' table of authorities below carries these links
         if cited_links:
             st.markdown('<div class="r-label">Judgments this answer relies on</div>', unsafe_allow_html=True)
             for cl in cited_links:
@@ -1261,7 +1288,8 @@ if _busy:
         # inline from the shared corpus rather than dead-ended with a
         # "covered elsewhere" redirect that points nowhere here.
         st.session_state.answer = _answer_question(
-            _q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"})
+            _q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
+            audience=("lawyer" if st.session_state.get("audience_choice") == "Lawyer" else "layman") if answer_style.style() == "v3" else None)
     except Exception:
         logging.getLogger("recourse_app").exception("answer_question failed")
         st.session_state.answer = {"state": "retrieval_unavailable"}

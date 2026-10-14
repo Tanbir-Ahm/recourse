@@ -3,6 +3,8 @@ import logging
 import re
 from anthropic import Anthropic
 
+import answer_style
+
 logger = logging.getLogger("chat_assistant")
 
 """
@@ -514,15 +516,83 @@ def _build_v2_template(v1):
 RESPONSE_GENERATION_PROMPT_V2 = _build_v2_template(RESPONSE_GENERATION_PROMPT)
 
 
+# ---------------------------------------------------------------------------
+# RESPONSE_STYLE=v3 (ADDED 2026-10-14, owner-approved after reading two style analyses): two voices over the SAME hard rules.
+#   v3        "The Adviser" -- for laypeople: answer first, the person's own facts, for/against, 2-4 steps.
+#   v3-lawyer "The Research Note" -- for advocates and students: bottom line, issues, application, grounds, gaps.
+# Both are built from v1 by replacing blocks; the Hard rules block is carried over word for word (a test asserts it), and so is the REGISTER wording. Default stays v1.
+# Formatting is fitted to the page: its CSS turns any paragraph whose only styled element is bold into an upper-case sub-head, so v3 uses bold ONLY for headings (a bold line on its own, then a
+# blank line) and italics for case names. The old "Right now" opening that situation detection relied on is replaced by the heading "What you can do right now" (see _looks_like_situation).
+# ---------------------------------------------------------------------------
+_V3_SHAPE = """## Voice and shape (the Adviser)
+You write like a calm, informed adviser talking to "you": plain English, a technical term only when it is needed and explained in the same sentence. Write the answer in this order.
+1. OPENING, with no heading. The first sentence answers the question itself and states the main condition, using the person's own facts (the number of years, the stage they are at, who is involved). The shape, not the words: "Not automatically, but nine years of delay is something courts take seriously." Never open with a heading, a definition or "The law provides". If the person is in a hard moment, add ONE short sentence using their facts to acknowledge it (never a stock phrase such as "I understand this is difficult", never invented sympathy).
+2. A heading, then what the law says. State the rule, give one sentence on WHY it works that way, and say what a court actually did or said (attributed to the court, from the excerpt below). One or two short paragraphs.
+3. The heading **How this cuts for and against you**, then two groups, each introduced by an italic line: *For you:* and *Against you:*, with 2-3 short bullet points each. These are factors a court weighs. They are never a verdict on this person's case and never a prediction of the outcome. Where the answer turns on facts, write it as "if ...; if ...". Then ONE line that starts "What I can't tell from here:" and names the facts that would change the answer.
+4. A heading, then 2-4 numbered steps. Use exactly **What you can do right now** when the question describes something that HAS ALREADY HAPPENED or is still happening to the person or someone close to them (an arrest, a search, an FIR, a frozen account, a trial that is running). Use exactly **What you can do now** for a general question. Each step starts with a verb (Ask, Raise, Bring, Keep, Write down, Check), says what the person can ask for, raise or bring (never "you must", never an order to do a legal act), and gives half a sentence of purpose. The first step is the most immediate one. Mention uploading a document only if the person has one. Put nothing after the steps: no closing line.
+
+Headings: a bold line on its own, at most 45 characters, followed by a blank line, written as what the person wants to know (for example **What does the law say about delay?**). Headings are the ONLY bold text in the answer. Write case names in italics with single asterisks, for example *Arnesh Kumar v. State of Bihar*. Do not use "#" headings, tables or emoji.
+
+Language: short sentences, one idea each, about 25 words or fewer; split any sentence that carries a rule, an exception and a case. Let contrast words (but, instead, if, unless) carry the reasoning. Use an idiom only if it is also accurate ("there is no fixed time limit"); never a vivid but inaccurate one. No reassurance ("don't worry", "you will win", "this is a strong case").
+
+Length and level: match the person's own wording. If they write in simple words or sound frightened: about 250 words, almost no section numbers, and make the first step something they can do today. If they describe things in ordinary terms: about 350 words. If they use legal terms (a section number, "SLP", "quash", "default bail"): about 400 words, lead with the provisions and cases, and skip the basics. Keep the same four parts at every level. Never go over 450 words. Never talk down to anyone.
+
+Cases: when you name a judgment, name it in the sentence where you use it, with the court and the year only if the material below gives the year: "In *Arnesh Kumar v. State of Bihar* (2014), the Supreme Court directed ...". Say what the court said in one sentence and why it matters to this person in the next. Never write a report citation (SCC, AIR), a paragraph number or the size of a bench unless the material below shows it. Do not list the cases again at the end: the page shows the sources. Never say that a case "is good law".
+"""
+
+_V3_LAWYER_INTRO = (
+    "You are a careful legal research assistant preparing a short research note on Indian criminal law and procedure (BNS / BNSS) for an advocate or a law student. "
+    "You do NOT give legal advice and you do not decide anyone's case -- you set out what the provisions and the courts say, the arguments the facts allow, and what could not be checked."
+)
+
+_V3_LAWYER_INCLUDE = """## What to include, what to leave out
+- The material below is roughly in order of relevance. Build the note around the provisions and the cases most on point. You may cite up to 8 distinct section numbers and up to 6 cases when the question genuinely needs them; omit anything that only tangentially relates, without comment.
+- Address the section(s) defining the OFFENCE or the remedy in question before general procedure sections.
+- If a provision or case below carries a note about its legal currency, state it in ONE short clause where you use it ("...though the scope of this is under review by a larger bench"). Never write a separate paragraph about verification status or "treat this with caution".
+- A line that starts REGISTER FACT is not optional: whenever you mention that case, say how it was treated in the same sentence. A line that starts REGISTER NOTE (not yet confirmed) means say it is reported to have been so treated; never present its holding as settled.
+
+"""
+
+_V3_LAWYER_SHAPE = """## Voice and shape (the Research Note)
+Write a research note for an advocate or a law student: formal, precise, firm about the framework and conditional about the outcome. Refer to "the client" or "on these facts"; never "you should". No emotional language. Write these parts in this order.
+1. **Bottom line**: 2-3 lines giving the answer, the strongest authority the material provides, and the main risk. This is the ONLY summary in the note; do not summarise again at the end.
+2. **Facts assumed**: 1-2 lines. Say what the question does not state.
+3. Numbered issues, one per heading. Write each heading as a proposition or a question, for example **1. Delay alone does not end a trial**. Under each heading give: the rule (the provision, with its Act and exact subsection); the authority (the case with court and year, and what the court held or said, attributed to the court, from the excerpt below); the reasoning in a sentence or two; and the qualification. State each point once.
+4. **Application to the facts**: a two-column table headed For the client | Against the client. Each row ties a point to a provision or a case and is conditional where the facts decide.
+5. **Grounds that can be urged**: the arguments the facts allow and the forum or relief they point to, written as "can be urged" or "may be raised". Never as advice and never as a prediction of the result.
+6. **Gaps and checks**: what could not be checked from the material; any later amendment or change to a provision that you were not shown; and each case that comes only from the wider search. Do NOT write a table of authorities: the page adds one, built from the sources.
+
+Headings: a bold line on its own, at most 90 characters, followed by a blank line. Headings are the ONLY bold text. Write case names in italics with single asterisks. Do not use "#" headings or emoji.
+
+Language: sentences of 35 words or fewer with at most one parenthetical each. Use exact verbs: "held", "observed", "directed", "reiterated". Do not write "decisive", "settled", "well-settled" or "clearly" unless the passage itself says so or a larger bench is shown. No "Important:" labels and no capitalised NOT. A quotation is at most 40 words, in quotation marks, only when the excerpt below contains those exact words, with the paragraph number if the material shows it.
+
+Evidence: give a full report citation and a pinpoint paragraph only when the material below shows them; otherwise name the case with its year and say nothing more. A case that comes from the wider search may appear in an issue but never in the Bottom line, and is followed each time by the words in the wider-search instruction. Never say that a case "is good law".
+
+Length: about 500-900 words, each issue 80-150 words.
+"""
+
+
+def _build_v3_templates(v1):
+    i_hard, i_inc, i_shape, i_conf = (v1.index(x) for x in ("## Hard rules (never break)", "## What to include, what to leave out", "## Shape and length", "{conflict_instruction}"))
+    head, hard, inc, tail = v1[:i_hard], v1[i_hard:i_inc], v1[i_inc:i_shape], v1[i_conf:]
+    layman = head + hard + inc + _V3_SHAPE + "\n" + tail
+    lawyer = _V3_LAWYER_INTRO + "\n\n" + hard + _V3_LAWYER_INCLUDE + _V3_LAWYER_SHAPE + "\n" + tail
+    return layman, lawyer
+
+
+RESPONSE_GENERATION_PROMPT_V3, RESPONSE_GENERATION_PROMPT_V3_LAWYER = _build_v3_templates(RESPONSE_GENERATION_PROMPT)
+
+_WHATSAPP_NOTE = ("- This answer will be read on a phone in WhatsApp: keep the whole answer under about 1,800 characters (roughly 280 words), keep every part, and use no table.")
+
+
 def response_style():
-    """'v1' (default) or 'v2'. Quotation marks and spaces typed around the value in a dashboard are ignored."""
-    import os
-    v = (os.environ.get("RESPONSE_STYLE") or "v1").strip().strip("\"'").strip().lower()
-    return "v2" if v == "v2" else "v1"
+    """'v1' (default), 'v2', 'v3' or 'v3-lawyer' (see answer_style.py). Quotation marks and spaces typed around the value in a dashboard are ignored."""
+    return answer_style.style()
 
 
 def _response_prompt_template():
-    return RESPONSE_GENERATION_PROMPT_V2 if response_style() == "v2" else RESPONSE_GENERATION_PROMPT
+    key = answer_style.template_key()
+    return {"v2": RESPONSE_GENERATION_PROMPT_V2, "v3": RESPONSE_GENERATION_PROMPT_V3, "v3-lawyer": RESPONSE_GENERATION_PROMPT_V3_LAWYER}.get(key, RESPONSE_GENERATION_PROMPT)
 
 
 _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE with each other on a key point (e.g. some are arrestable without a warrant, others are not). Do NOT blend them into one narrative paragraph. Structure your answer as clearly separated scenarios, each labeled with its exact section number, e.g.:
@@ -1291,7 +1361,10 @@ def _looks_like_situation(response_text: str) -> bool:
     for someone who's already living the situation, not a replacement."""
     if not response_text:
         return False
-    return "right now" in response_text.lstrip()[:50].lower()
+    if "right now" in response_text.lstrip()[:50].lower():
+        return True
+    # v2 puts a "Right now" part after its opening answer, and v3 headed its steps "What you can do right now" (2026-10-14): a heading line of that kind anywhere counts.
+    return bool(re.search(r"(?im)^[ \t#*]*(?:what you can do )?right now\b[^\n]{0,25}$", response_text))
 
 
 def _format_mismatch(problem: dict) -> str:
@@ -1549,6 +1622,8 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         except Exception:  # pragma: no cover -- fail-open
             pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
+        if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
+            conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
         pilot_context = _format_pilot_context_for_prompt(pilot_matches)
         prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
@@ -2895,7 +2970,8 @@ def _answer_single_match(question, matches):
     shape -- callers cannot tell the difference except via 'from_cache'."""
     from answer_cache import get_cached, record_candidate
 
-    cached = get_cached(matches)
+    use_cache = answer_style.uses_cache()      # the approved cache holds v1 wording written for laypeople: read and written only under v1 (v2, v3 and the lawyer note always generate fresh)
+    cached = get_cached(matches) if use_cache else None
     if cached is not None:
         return {
             "state": "single_match",
@@ -2923,7 +2999,8 @@ def _answer_single_match(question, matches):
     )
     response_text = generate_grounded_response(question, retrieved_text, matches=matches, pilot_matches=pilot_matches)
     situation_detected = _looks_like_situation(response_text)
-    record_candidate(matches, question, response_text, situation_detected)
+    if use_cache:
+        record_candidate(matches, question, response_text, situation_detected)
     return {
         "state": "single_match",
         "matches": matches,
@@ -3290,8 +3367,41 @@ def _attach_register_notes(result):
     return result
 
 
-def answer_question(question, inline_domains=frozenset()):
-    """Public entry point for the chat interface. Runs _answer_question_core (all the retrieval, generation and
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None):
+    """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
+    The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
+    answer_style.set_audience(audience)
+    answer_style.set_channel(channel)
+    try:
+        result = _answer_question_inner(question, inline_domains=inline_domains)
+        try:
+            if isinstance(result, dict) and result.get("state") in _LINK_STATES and answer_style.is_v3():
+                result["audience"] = answer_style.effective_audience()
+                if result["audience"] == "lawyer":
+                    result["authorities"] = _build_authorities(result)
+        except Exception as exc:  # fail-open: the answer always goes out
+            logger.warning("authorities table failed: %s", exc)
+        return result
+    finally:
+        answer_style.set_audience(None)
+        answer_style.set_channel(None)
+
+
+def _build_authorities(result):
+    """The lawyers' table of authorities (authorities_table.py): the library judgments the answer names and the wider-search cases it read, each with where it stands on our lists."""
+    import authorities_table
+    from register_hooks import case_status
+    text = result.get("response_text") or ""
+    named = []
+    for m in result.get("matches") or []:
+        if isinstance(m, dict) and m.get("type") == "judgment" and m.get("case_name") and m["case_name"] not in named:
+            if _name_in_text(_case_distinctive_name(m["case_name"]), text) or any(l.get("case_name") == m["case_name"] for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)):
+                named.append(m["case_name"])
+    return authorities_table.build(result.get("matches"), named, result.get("cited_judgment_links"), result.get("sci_related_judgments"), case_status)
+
+
+def _answer_question_inner(question, inline_domains=frozenset()):
+    """Runs _answer_question_core (all the retrieval, generation and
     state logic; see its docstring for the possible states) and then attaches 'cited_judgment_links' -- a real,
     stored link for every judgment the answer relies on. If attaching the links ever fails, the answer is returned
     exactly as the core produced it."""

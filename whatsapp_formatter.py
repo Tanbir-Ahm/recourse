@@ -17,12 +17,43 @@ recourse_app.py, which never lets a state fall through silently.
 """
 import re as _re
 
+import answer_style
+
 _BOLD_MD = _re.compile(r"\*\*(.+?)\*\*")
 
 
 def _md_to_whatsapp(text: str) -> str:
     """Markdown **bold** -> WhatsApp's own *bold* syntax."""
     return _BOLD_MD.sub(r"*\1*", text)
+
+
+_ITALIC_MD = _re.compile(r"(?<![\w*])\*(?![\s*])([^*\n]+?)(?<![\s*])\*(?![\w*])")
+_HASH_HEADING = _re.compile(r"(?m)^#{1,6}[ \t]*(.+?)[ \t]*$")
+_WA_HEADING = _re.compile(r"\*[^*\n]{2,90}\*")
+
+
+def _md_to_whatsapp_v3(text: str) -> str:
+    """Answer style v3: '#' headings and **bold** become WhatsApp *bold*, and the single-asterisk italics the v3 prompt uses for case names become WhatsApp _italic_ (a bare *x* would show as bold there)."""
+    text = _HASH_HEADING.sub(lambda m: "**" + m.group(1).strip("* ") + "**", text)
+    stash = []
+    text = _BOLD_MD.sub(lambda m: (stash.append(m.group(1)) or "\x00%d\x00" % (len(stash) - 1)), text)
+    text = _ITALIC_MD.sub(r"_\1_", text)
+    return _re.sub("\x00(\\d+)\x00", lambda m: "*" + stash[int(m.group(1))] + "*", text)
+
+
+def _split_v3(response_text: str) -> list:
+    """Answer style v3 is a few headed parts, so it is sent as a few messages -- the opening, then one message per headed part (heading and its paragraphs together) -- instead of one message per
+    paragraph, which would leave every heading alone in its own message."""
+    blocks = [b.strip() for b in _re.split(r"\n\s*\n", _md_to_whatsapp_v3((response_text or "").strip())) if b.strip()]
+    groups, cur = [], []
+    for b in blocks:
+        if _WA_HEADING.fullmatch(b) and cur:
+            groups.append("\n\n".join(cur))
+            cur = []
+        cur.append(b)
+    if cur:
+        groups.append("\n\n".join(cur))
+    return groups
 
 
 def _split_into_messages(response_text: str) -> list:
@@ -33,6 +64,8 @@ def _split_into_messages(response_text: str) -> list:
     "Arrest procedure") as separate paragraphs, so this needs no
     special-casing -- it just follows the paragraph breaks that are
     already there."""
+    if answer_style.is_v3():
+        return _split_v3(response_text)
     text = _md_to_whatsapp((response_text or "").strip())
     paragraphs = [p.strip() for p in _re.split(r"\n\s*\n", text) if p.strip()]
     return paragraphs or ([text] if text else [])
@@ -67,7 +100,7 @@ def _format_cited_judgments(links: list) -> str:
     """The judgments this answer actually relies on, each with the real link stored for it (ADDED 2026-09-28 -- see
     chat_assistant._attach_cited_judgment_links). Unlike the hedged 'other cases' list below it, these are the
     tool's own verified sources, so no 'not checked' caution -- but the person is still told to read them."""
-    lines = ["*Judgments this answer relies on* -- you can read each one yourself:"]
+    lines = ["*Sources* -- you can read each one yourself:" if answer_style.is_v3() else "*Judgments this answer relies on* -- you can read each one yourself:"]
     for l in links:
         lines.append(f"- {l['case_name']} ({l.get('source_label', 'source link')})\n  {l['url']}")
     return "\n".join(lines)

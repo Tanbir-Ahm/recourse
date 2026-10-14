@@ -181,6 +181,11 @@ def _fuzzy_end(text, phrase, threshold=0.86):
     return None
 
 
+def _labelled_here(text, pos):
+    """True when a bracketed 'not independently verified' note comes right at `pos` (the model's own wording is tolerated). Only the very next bracket counts: a label after a LATER case must not hide this one."""
+    return bool(re.match(r"\s*\([^)]{0,90}not independently verified[^)]{0,20}\)", text[pos:], re.I))
+
+
 def label_fed_cases(text, cases):
     """Puts LABEL right after the first mention of each wider-search case in a finished answer, unless the answer already says so there. The case is found by its full name, else by a distinctive
     party name, allowing a typo. Returns the text unchanged on any problem."""
@@ -205,12 +210,15 @@ def label_fed_cases(text, cases):
                 m3 = re.match(r"\s+(?:v\.?|vs\.?|versus)\s+" + r"\S+\s*" * len(p2.split()), out[end:], re.I)
                 if m3:
                     end += len(m3.group(0).rstrip())
-            if "not independently verified" in out[end:end + 130].lower():
+            m0 = re.match(r"[*_]{1,2}", out[end:])                        # the name is in italics (answer style v3): put the label after the closing mark, not inside it
+            if m0:
+                end += m0.end()
+            if _labelled_here(out, end):
                 continue
             m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:])        # a short year or citation in brackets right after the name
             if m2:
                 end += m2.end()
-                if "not independently verified" in out[end:end + 130].lower():
+                if _labelled_here(out, end):
                     continue
             out = out[:end] + " " + LABEL + out[end:]
         return out

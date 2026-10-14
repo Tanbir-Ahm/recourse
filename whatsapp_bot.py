@@ -610,8 +610,11 @@ def handle_incoming_message(phone_number: str, message_text: str) -> list:
     # with a 'covered elsewhere' redirect that points nowhere here")
     # by always passing inline_domains -- WhatsApp needs the same fix,
     # for the same reason: no separate UI to redirect to here either.
+    # Under answer style v3 (RESPONSE_STYLE=v3) the engine is told this is a layman reading on WhatsApp; under v1 and v2 the call is exactly what it always was.
+    import answer_style
+    _style_kw = {"audience": "layman", "channel": "whatsapp"} if answer_style.is_v3() else {}
     result = chat_assistant.answer_question(
-        question, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"})
+        question, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"}, **_style_kw)
 
     # ADDED 2026-09-28: keep a record of this answer (the person's own words, the answer, its sources and links) so the
     # PDF command can build a document from it later -- see answer_pdf.py. Fail-open: if this ever breaks the real
