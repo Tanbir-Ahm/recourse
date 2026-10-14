@@ -112,6 +112,9 @@ def format_answer_for_whatsapp(result: dict) -> list:
     message, same discipline as the website's render_answer()."""
     state = result.get("state")
 
+    if state == "budget_paused":
+        return ["Recourse has reached its usage limit for today, so I can't answer new questions until tomorrow.", _CONSULT_LINE]
+
     if state == "classifier_unavailable":
         return ["Sorry, I'm having a technical issue right now. Please try again in a moment."]
 
@@ -165,6 +168,9 @@ def format_answer_for_whatsapp(result: dict) -> list:
         not_checked = result.get("register_not_checked")
         if notes or not_checked:
             messages.append("\n".join(["*Currency notes* (checked by code, not by the model):"] + [f"- {n}" for n in (notes or [])] + ([not_checked] if not_checked else [])))
+        g_notes = result.get("grounding_notes")
+        if g_notes:
+            messages.append("\n".join(["*Checked by code against the sources we read:*"] + [f"- {n}" for n in g_notes]))
         cited = result.get("cited_judgment_links")
         if cited:
             messages.append(_format_cited_judgments(cited))

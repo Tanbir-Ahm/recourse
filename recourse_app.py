@@ -824,6 +824,12 @@ def render_answer(result: dict):
     note, or a technical-trouble note -- never a silent guess."""
     state = result.get("state")
 
+    if state == "budget_paused":
+        st.markdown('<div class="r-label">Daily limit reached</div>', unsafe_allow_html=True)
+        st.markdown("Recourse has reached its usage limit for today, so it cannot answer new questions until tomorrow. "
+                    "If your situation is urgent, please contact a lawyer or your nearest District Legal Services Authority (free).")
+        return False
+
     if state in ("single_match", "conflicting_matches"):
         st.markdown('<div class="r-label">Your situation</div>', unsafe_allow_html=True)
         if state == "conflicting_matches":
@@ -939,6 +945,13 @@ def render_answer(result: dict):
                 st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
             if result.get("register_not_checked"):
                 st.markdown(f'<p class="r-foot">{esc(result["register_not_checked"])}</p>', unsafe_allow_html=True)
+
+        # Notices from the grounding checks (grounding_checks.py; GROUNDING_CHECKS=warn or enforce): a case or a quotation in the answer that is not in the sources we read. Written by code.
+        g_notes = result.get("grounding_notes")
+        if g_notes:
+            st.markdown('<div class="r-label">Checked by code against the sources we read</div>', unsafe_allow_html=True)
+            for n in g_notes:
+                st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
 
         # The wider Supreme Court pool (sci_search_tier.py, off unless SCI_SEARCH_MODE=show): its own box, never mixed with the verified sources above.
         sci_rel = result.get("sci_related_judgments")

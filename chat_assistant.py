@@ -4,6 +4,7 @@ import re
 from anthropic import Anthropic
 
 import answer_style
+import grounding_checks
 
 logger = logging.getLogger("chat_assistant")
 
@@ -339,13 +340,8 @@ def classify_scope(question):
             # still falls back to the honest (None, None, None) "could not
             # determine". The answer itself and its deterministic grounding
             # checks stay on Sonnet (generate_grounded_response).
-            response = client.messages.create(
-                model=HAIKU_MODEL,
-                max_tokens=1500,
-                messages=[{"role": "user",
-                           "content": SCOPE_CLASSIFIER_PROMPT.format(question=question) + old_code_note + retry_correction}],
-            )
-            _note_cost("scope_check", HAIKU_MODEL, response)
+            response, _scope_used = _scope_call(SCOPE_CLASSIFIER_PROMPT.format(question=question) + old_code_note + retry_correction)
+            _note_cost("scope_check", _scope_used, response)
             raw = _extract_text_from_response(response).strip()
             # Defensive: strip markdown code fences if the model adds them
             # despite the "ONLY a JSON object" instruction.
@@ -1510,20 +1506,102 @@ def _note_cost(label, model, response):
         pass
 
 
-def _create_answer(model, prompt, label="answer"):
-    """One answer call. If the reply stopped because it ran out of tokens (stop_reason 'max_tokens'), ask once more with a bigger budget; if that is cut off too, close it honestly (see _close_truncated)."""
+_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+_SWITCH_BROKEN = {"effort": False}
+
+
+def _env_value(name):
+    import os
+    return (os.environ.get(name) or "").strip().strip("\"'").strip()
+
+
+def _answer_effort():
+    """Thinking effort for the answer call: ANSWER_EFFORT (low | medium | high | xhigh | max; unset = the model's own default, i.e. today's behaviour). From the soft line of DAILY_BUDGET_INR the answer runs at 'low'.
+    If the API ever rejects the setting it is dropped for the rest of the process."""
+    if _SWITCH_BROKEN["effort"]:
+        return None
+    try:
+        import cost_log
+        if cost_log.budget_state() in ("soft", "hard"):
+            return "low"
+    except Exception:  # noqa: BLE001
+        pass
+    v = _env_value("ANSWER_EFFORT").lower()
+    return v if v in _EFFORTS else None
+
+
+def _prompt_cache_mode():
+    """PROMPT_CACHE: 'on' (5-minute cache) or '1h' (one-hour cache) for the fixed part of the answer prompt; unset or off = no cache (today's behaviour). Pays only when the same prompt is used again within the window."""
+    v = _env_value("PROMPT_CACHE").lower()
+    if v == "1h":
+        return "1h"
+    return "5m" if v in ("on", "1", "true", "yes", "5m") else None
+
+
+def _scope_model():
+    """SCOPE_MODEL: the model for the scope check (unset = Haiku 4.5, today's behaviour). Any failure falls back to Haiku 4.5."""
+    return _env_value("SCOPE_MODEL") or HAIKU_MODEL
+
+
+def _messages_for(prompt, cache_prefix):
+    mode = _prompt_cache_mode()
+    if mode and cache_prefix and prompt.startswith(cache_prefix) and len(prompt) > len(cache_prefix):
+        cc = {"type": "ephemeral", "ttl": "1h"} if mode == "1h" else {"type": "ephemeral"}
+        return [{"role": "user", "content": [{"type": "text", "text": cache_prefix, "cache_control": cc}, {"type": "text", "text": prompt[len(cache_prefix):]}]}]
+    return [{"role": "user", "content": prompt}]
+
+
+def _answer_call(model, max_tokens, prompt, cache_prefix):
+    kw = {"model": model, "max_tokens": max_tokens, "messages": _messages_for(prompt, cache_prefix)}
+    eff = _answer_effort()
+    if eff:
+        kw["output_config"] = {"effort": eff}
+    try:
+        return client.messages.create(**kw)
+    except Exception as exc:  # noqa: BLE001
+        if eff and getattr(exc, "status_code", None) == 400:
+            logger.warning("the API rejected effort=%s (%s); answering without it from now on", eff, type(exc).__name__)
+            _SWITCH_BROKEN["effort"] = True
+            kw.pop("output_config", None)
+            return client.messages.create(**kw)
+        raise
+
+
+def _create_answer(model, prompt, label="answer", cache_prefix=None):
+    """One answer call. If the reply stopped because it ran out of tokens (stop_reason 'max_tokens'), ask once more with a bigger budget; if that is cut off too, close it honestly (see _close_truncated).
+    cache_prefix is the fixed start of the prompt, cached when PROMPT_CACHE is on."""
     budget = _answer_max_tokens()
-    response = client.messages.create(model=model, max_tokens=budget, messages=[{"role": "user", "content": prompt}])
+    response = _answer_call(model, budget, prompt, cache_prefix)
     _note_cost(label, model, response)
     if getattr(response, "stop_reason", None) == "max_tokens":
         logger.warning("answer was cut off at %s tokens; asking again with %s", budget, min(budget * 2, 16000))
-        response = client.messages.create(model=model, max_tokens=min(budget * 2, 16000), messages=[{"role": "user", "content": prompt}])
+        response = _answer_call(model, min(budget * 2, 16000), prompt, cache_prefix)
         _note_cost(label + "_after_cutoff", model, response)
     text = _extract_text_from_response(response).strip()
     if getattr(response, "stop_reason", None) == "max_tokens":
         logger.warning("answer was cut off again; closing it at the last complete sentence")
         text = _close_truncated(text)
     return text
+
+
+def _scope_call(content):
+    """The scope-check call. Returns (response, model used). With SCOPE_MODEL set to another model that is tried first (a Haiku 5 model is told not to think, since this is a short routing decision);
+    on any error, or a reply with no text, the default Haiku 4.5 call is made instead."""
+    sm = _scope_model()
+    if sm != HAIKU_MODEL:
+        try:
+            kw = {"model": sm, "max_tokens": 1500, "messages": [{"role": "user", "content": content}]}
+            if sm.startswith("claude-haiku-5"):
+                kw["thinking"] = {"type": "disabled"}
+                kw["output_config"] = {"effort": "low"}
+            response = client.messages.create(**kw)
+            if any(hasattr(b, "text") for b in response.content):
+                return response, sm
+            logger.warning("SCOPE_MODEL %s returned no text; using %s", sm, HAIKU_MODEL)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("SCOPE_MODEL %s failed (%s); using %s", sm, type(exc).__name__, HAIKU_MODEL)
+    response = client.messages.create(model=HAIKU_MODEL, max_tokens=1500, messages=[{"role": "user", "content": content}])
+    return response, HAIKU_MODEL
 
 
 def generate_grounded_response(question, retrieved_text, is_conflict=False, model=SONNET_MODEL, matches=None,
@@ -1681,7 +1759,9 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         # into a silent None (blank answer). 4000 leaves room for the
         # thinking pass plus the full answer. (CONFIRMED 2026-09-08.)
         # _create_answer keeps that budget (12000 for the lawyers' research note) and handles a reply that still runs out (2026-10-14).
-        response_text = _create_answer(model, prompt)
+        _tpl = _response_prompt_template()
+        _cache_prefix = _tpl.split("{conflict_instruction}", 1)[0]       # the fixed part: rules, no question and no material (cached when PROMPT_CACHE is on)
+        response_text = _create_answer(model, prompt, cache_prefix=_cache_prefix)
 
         variants = _gather_offence_variants(matches, extra_text=question)
         section_act_map = _section_act_map(matches)
@@ -1695,8 +1775,31 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         unverified_contacts = _find_unverified_contact_numbers(response_text, question, retrieved_text)
         pilot_overreach = _find_pilot_tier_overreach(response_text, pilot_matches)
 
+        # Grounding checks (grounding_checks.py): every case named, and every phrase in quotation marks, must be in the material the model was given. GROUNDING_CHECKS = off | log (default) | warn | enforce.
+        g_mode = grounding_checks.mode()
+        g_material = "\n".join([question or "", retrieved_text or "", pilot_context or "", " ".join(str(m.get("case_name") or "") for m in (matches or []) if isinstance(m, dict))])
+        g_cases, g_quotes = [], []
+        if g_mode != "off":
+            g_cases, g_quotes = grounding_checks.check_cases(response_text, g_material), grounding_checks.check_quotes(response_text, g_material)
+        g_enforce = g_mode == "enforce" and bool(g_cases or g_quotes)
+
+        def _g_finish(text, cases, quotes, retried):
+            if g_mode == "off":
+                return text
+            try:
+                if cases or quotes:
+                    import hashlib
+                    grounding_checks.log_line(hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], cases, quotes, "after a second try" if retried else "")
+                if g_mode == "enforce" and any(c["status"] == "not_found" for c in cases):
+                    return None                                  # a case that exists nowhere we can look, still in the answer after a second try: withheld
+                if g_mode in ("warn", "enforce") and (cases or quotes):
+                    grounding_checks.add_notes(grounding_checks.notices(cases, quotes))
+            except Exception:  # noqa: BLE001
+                pass
+            return text
+
         if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
-                or court_misattributions or omissions or unverified_contacts or pilot_overreach):
+                or court_misattributions or omissions or unverified_contacts or pilot_overreach or g_enforce):
             retry_prompt = prompt
             if ungrounded:
                 retry_prompt += _UNGROUNDED_RETRY_INSTRUCTION.format(sections=", ".join(ungrounded))
@@ -1732,7 +1835,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 )
             if pilot_overreach:
                 retry_prompt += _PILOT_OVERREACH_RETRY_INSTRUCTION.format(cases=", ".join(pilot_overreach))
-            retry_text = _create_answer(model, retry_prompt, label="answer_recheck")      # same thinking-block headroom as the first call
+            if g_enforce and g_cases:
+                retry_prompt += grounding_checks.RETRY_CASES.format(names="; ".join(c["name"] for c in g_cases))
+            if g_enforce and g_quotes:
+                retry_prompt += grounding_checks.RETRY_QUOTES.format(quotes="; ".join('"' + (q if len(q) <= 160 else q[:157] + "...") + '"' for q in g_quotes))
+            retry_text = _create_answer(model, retry_prompt, label="answer_recheck", cache_prefix=_cache_prefix)      # same thinking-block headroom as the first call
             # A still-missing companion section, still-unsupported case
             # generalization, or still-incomplete cognizable/bailable pair
             # is a completeness/nuance gap, not a correctness error like
@@ -1749,9 +1856,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                     or _find_unverified_contact_numbers(retry_text, question, retrieved_text)
                     or _find_pilot_tier_overreach(retry_text, pilot_matches)):
                 return None
-            return retry_text
+            if g_mode == "off":
+                return retry_text
+            return _g_finish(retry_text, grounding_checks.check_cases(retry_text, g_material), grounding_checks.check_quotes(retry_text, g_material), True)
 
-        return response_text
+        return _g_finish(response_text, g_cases, g_quotes, False)
     except Exception:
         return None
 
@@ -3411,8 +3520,23 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         cost_log.begin(question)
     except Exception:  # noqa: BLE001
         pass
+    grounding_checks.reset_notes()
     try:
+        try:
+            import cost_log
+            if cost_log.budget_state() == "hard":
+                print("BUDGET_PAUSED " + __import__("json").dumps({"spent_today_inr": round(cost_log.spent_today_inr(), 2), "cap_inr": cost_log.budget_cap_inr()}), flush=True)
+                return {"state": "budget_paused"}
+        except Exception:  # noqa: BLE001
+            pass
         result = _answer_question_inner(question, inline_domains=inline_domains)
+        try:
+            if isinstance(result, dict) and result.get("state") in _LINK_STATES and grounding_checks.mode() in ("warn", "enforce"):
+                notes = grounding_checks.pop_notes()
+                if notes:
+                    result["grounding_notes"] = notes
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("grounding notes failed: %s", exc)
         try:
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and answer_style.is_v3():
                 result["audience"] = answer_style.effective_audience()
@@ -3424,7 +3548,9 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     finally:
         try:
             import cost_log
-            cost_log.finish(style=answer_style.style(), audience=answer_style.effective_audience())
+            cost_log.finish(style=answer_style.style(), audience=answer_style.effective_audience(),
+                            switches={"effort": _answer_effort(), "scope_model": _scope_model(), "prompt_cache": _prompt_cache_mode(), "grounding": grounding_checks.mode(),
+                                      "budget": cost_log.budget_state()})
         except Exception:  # noqa: BLE001
             pass
         answer_style.set_audience(None)

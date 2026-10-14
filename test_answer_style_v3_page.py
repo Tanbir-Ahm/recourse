@@ -27,6 +27,8 @@ LAWYER_TEXT = ("**Bottom line**\n\nDelay alone does not end a trial.\n\n**1. A f
 
 def stub(question, inline_domains=frozenset(), audience=None, channel=None):
     SEEN["audience"], SEEN["channel"] = audience, channel
+    if os.environ.get("TEST_MODE") == "paused":
+        return {"state": "budget_paused"}
     lawyer = audience == "lawyer"
     res = {"state": "single_match", "response_text": LAWYER_TEXT if lawyer else TEXT, "matches": [], "situation_detected": False}
     if os.environ.get("RESPONSE_STYLE") == "v3":
@@ -34,6 +36,8 @@ def stub(question, inline_domains=frozenset(), audience=None, channel=None):
         if lawyer:
             res["authorities"] = {"library": [{"case": "Arnesh Kumar v. State of Bihar", "year": 2014, "citation": "(2014) 8 SCC 273", "paragraphs": ["11"], "tier": "Reviewed library",
                                                "status": "No adverse later judgment found by our automatic check (silence, not a finding).", "status_source": "card_quiet", "link": "https://l/a"}], "wider": [], "has_bench": False}
+    if os.environ.get("TEST_MODE") == "notes":
+        res["grounding_notes"] = ["The case \u201cRamesh Chandra v. State of Madhya Pradesh\u201d is named in this answer, but it is not among the sources we read for it. Please do not rely on it."]
     return res
 
 
@@ -76,6 +80,26 @@ check(any("| Case | Citation | Paragraph | Where it stands on our lists | Link |
 check(any("Not checked by us" in v and "means neither our Overruled Register" in v for v in vals), "v3 lawyer: the one explanatory note is shown under the tables")
 check(any("**1. A fixed period of delay does not by itself terminate a criminal trial under the BNSS**\n\n" in v for v in vals), "v3 lawyer: a long proposition heading (up to 90 characters) stays a heading, with a blank line after it")
 check(not any("Judgments this answer relies on" in v for v in vals), "v3 lawyer: the plain link list is replaced by the table")
+
+# ---- the grounding notices and the daily limit ----
+os.environ["TEST_MODE"] = "notes"
+at = AppTest.from_file(APP, default_timeout=90).run()
+at.text_area(key="text").set_value("My trial has gone on 9 years").run()
+[b for b in at.button if "Check my situation" in b.label][0].click().run()
+vals = md_values(at)
+check(not at.exception and any("Checked by code against the sources we read" in v for v in vals) and any("Ramesh Chandra v. State of Madhya Pradesh" in v for v in vals), "the page shows the grounding notices under the answer, written by code")
+os.environ["TEST_MODE"] = "paused"
+at = AppTest.from_file(APP, default_timeout=90).run()
+at.text_area(key="text").set_value("My trial has gone on 9 years").run()
+[b for b in at.button if "Check my situation" in b.label][0].click().run()
+vals = md_values(at)
+check(not at.exception and any("Daily limit reached" in v for v in vals) and any("usage limit for today" in v for v in vals), "at the daily limit the page says so plainly and points to legal aid")
+os.environ.pop("TEST_MODE")
+import whatsapp_formatter as W
+wa = W.format_answer_for_whatsapp({"state": "budget_paused"})
+check(len(wa) == 2 and "usage limit for today" in wa[0] and "District Legal Services" in wa[1], "WhatsApp: the daily-limit message and the legal-aid line")
+wa = W.format_answer_for_whatsapp({"state": "single_match", "response_text": "An answer.", "grounding_notes": ["A note."]})
+check(any(m.startswith("*Checked by code against the sources we read:*") and "- A note." in m for m in wa), "WhatsApp: the grounding notices are sent as one message")
 
 os.environ.pop("RESPONSE_STYLE", None)
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
