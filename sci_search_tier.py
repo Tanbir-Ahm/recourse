@@ -383,14 +383,14 @@ def fed_case_names():
         return []
 
 
-def fed_names_in(text):
-    """The wider-search cases of THIS question that a finished answer mentions: the name as the search service has it, the stretch of the answer that located it, and every 'X v. Y' the answer's
-    case-name finder (the one behind the 'not checked' sentence) reads at that place. Used so that the sentence does not list them: they carry the wider-search label instead.
-    [] outside feed mode and on any problem."""
+def fed_names_in(text, extra=None):
+    """The wider-search cases of THIS question that a finished answer mentions (plus `extra`: more case dicts, the site's pilot cases in feed mode): the name as the search service has it, the stretch of
+    the answer that located it, and every 'X v. Y' the answer's case-name finder (the one behind the 'not checked' sentence) reads at that place. Used so that the sentence does not list them: they
+    carry the wider-search label instead. [] outside feed mode and on any problem."""
     try:
         text = text or ""
         out, mentions = [], None
-        for c in getattr(_LOCAL, "cases", None) or []:
+        for c in list(getattr(_LOCAL, "cases", None) or []) + [e for e in (extra or []) if isinstance(e, dict)]:
             if not c.get("case_name"):
                 continue
             out.append(c["case_name"])
@@ -553,10 +553,12 @@ def attach(question, result, background=True):
             return result
         if m == "feed":
             cases = getattr(_LOCAL, "cases", None) or []
+            pilot = [{"case_name": j["case_name"]} for j in (result.get("unverified_related_judgments") or []) if isinstance(j, dict) and j.get("case_name")]       # the site's pilot cases are cited like the rest
             if cases:
                 result["sci_related_judgments"] = cases
                 result["sci_fed"] = True
-                result["response_text"] = label_fed_cases(result.get("response_text") or "", cases)      # every wider-search case named in the answer is tagged as unverified, whatever the model wrote
+            if cases or pilot:
+                result["response_text"] = label_fed_cases(result.get("response_text") or "", list(cases) + pilot)      # every wider-search or pilot case named in the answer is tagged as unverified, whatever the model wrote
             return result
         found = search(question)
         if not found:

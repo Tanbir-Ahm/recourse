@@ -607,6 +607,31 @@ _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE wi
 _PILOT_CONTEXT_MAX_CHARS_PER_CHUNK = 1200
 
 
+def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
+    """Feed mode (staging; owner's decision 2026-10-14): the site's pilot cases are judgments of the wider index too (all 25 were found there), so they are handed to the model like every other
+    wider-search passage: it may name one and describe ONLY what the passage says, attributed to the court, and code puts "(from a wider search, not independently verified)" after the name. A case on
+    the Overruled Register carries its REGISTER FACT line."""
+    blocks = []
+    for m in pilot_matches:
+        text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        citation = f" ({m['citation']})" if m.get("citation") else ""
+        facts = ""
+        try:
+            from register_hooks import prompt_lines_for_match
+            yr = re.search(r"\b(19\d\d|20[0-3]\d)\b", m.get("citation") or "")
+            lines = prompt_lines_for_match({"case_name": m.get("case_name"), "year": yr.group(1) if yr else None, "citation": m.get("citation")})
+            if lines:
+                facts = "\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n" + "\n".join(lines)
+        except Exception:  # noqa: BLE001
+            facts = ""
+        blocks.append(f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {m['case_name']}{citation}]\n{text}{facts}")
+    return ("\n\n## More Supreme Court passages from the site's wider pool -- NOT independently verified\n"
+            "Nobody at Recourse has read and confirmed the passages below. You may name one of these cases when it clearly bears on the person's situation, and describe ONLY what its own passage "
+            "literally says, attributed to the court (\"the Supreme Court in X said ...\"). Never state more than the passage shows, do not call a passage the whole holding of the case, and do not "
+            "say that a case is good law. EVERY TIME you name one of these cases, put the words " + T.LABEL + " right after its name. If no passage clearly bears on the person's situation, "
+            "ignore them.\n\n" + "\n\n".join(blocks) + "\n")
+
+
 def _format_pilot_context_for_prompt(pilot_matches) -> str:
     """ADDED 2026-09-24, at the user's explicit request after reviewing the alternative (a pilot-
     tier case shown only as a separate, un-integrated 'you might also want to check' link): lets
@@ -630,6 +655,12 @@ def _format_pilot_context_for_prompt(pilot_matches) -> str:
     so every existing call site that doesn't pass pilot_matches is completely unaffected."""
     if not pilot_matches:
         return ""
+    try:
+        import sci_search_tier as _T
+        if _T.mode() == "feed":
+            return _format_pilot_context_as_wider_search(pilot_matches, _T)
+    except Exception:  # noqa: BLE001
+        pass
     blocks = []
     for m in pilot_matches:
         text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
@@ -1076,6 +1107,12 @@ def _find_pilot_tier_overreach(response_text: str, pilot_matches) -> list:
     for a wrong cognizable/bailable claim or a wrong court, never a partially-trusted answer."""
     if not response_text or not pilot_matches:
         return []
+    try:                                           # OWNER'S DECISION 2026-10-14 (staging, SCI_SEARCH_MODE=feed): every pilot case is also a judgment in the wider index, and in feed mode the model may cite wider-search cases
+        import sci_search_tier as _T0              # (attributed to the court, only what the passage says, labelled "(from a wider search, not independently verified)" by code). This check is therefore switched
+        if _T0.mode() == "feed":                   # off for pilot cases in feed mode; with feed off (production today) it works exactly as before.
+            return []
+    except Exception:  # noqa: BLE001
+        pass
     by_case = {}
     for m in pilot_matches:
         name = m.get("case_name")
@@ -3580,7 +3617,7 @@ def _attach_register_notes(result):
         srcs = [l.get("case_name") for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)]      # the site's own listed sources need no "not checked" line
         try:                                                  # nor do the wider-search cases (SCI_SEARCH_MODE=feed): they already carry the label "(from a wider search, not independently verified)"
             import sci_search_tier
-            srcs = srcs + sci_search_tier.fed_names_in(result.get("response_text") or "")
+            srcs = srcs + sci_search_tier.fed_names_in(result.get("response_text") or "", extra=(result.get("unverified_related_judgments") if sci_search_tier.mode() == "feed" else None))      # in feed mode the site's pilot cases are cited like wider-search cases and carry the same label
         except Exception:  # noqa: BLE001
             pass
         try:                                                  # nor do the cases of the verbatim excerpts (ANCHORS=on): they carry "(verbatim excerpt, not yet confirmed by our reviewer)"

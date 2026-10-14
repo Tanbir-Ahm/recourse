@@ -60,5 +60,25 @@ T._LOCAL.cases = [{"case_name": "Gurbaksh Singh Sibbia etc v. State of Punjab"}]
 check(CA._find_pilot_tier_overreach(ans, pilot) == [], "and not when the wider search supplied it (another spelling of the name)")
 check(CA._find_pilot_tier_overreach("In Union of India v Mohanlal the Court held X.", pilot) == ["Union of India v Mohanlal"], "other pilot cases are still checked")
 T.reset()
+
+# 4. OWNER'S DECISION 2026-10-14: in feed mode the pilot cases (all 25 are judgments of the wider index) are cited like wider-search cases: no overreach check, same instruction, same label
+import os
+os.environ["SCI_SEARCH_MODE"] = "feed"
+check(CA._find_pilot_tier_overreach(ans, pilot) == [] and CA._find_pilot_tier_overreach("In Union of India v Mohanlal the Court held X.", pilot) == [], "feed mode: the pilot-overreach check does not withhold an answer for naming a pilot case with 'held'")
+pm = [{"case_name": "Mohan Lal v State of Punjab", "citation": "(2018) 17 SCC 627", "text": "The complainant may not investigate his own complaint."}, {"case_name": "Gurbaksh Singh Sibbia v State of Punjab", "citation": "(1980) 2 SCC 565", "text": "Conditions must be reasonable."}]
+blk = CA._format_pilot_context_for_prompt(pm)
+check("WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: Gurbaksh Singh Sibbia" in blk and "describe ONLY what its own passage literally says" in blk and T.LABEL in blk and 'NEVER say it' not in blk, "feed mode: the pilot passages are handed over like wider-search passages (no 'never say held')")
+check("REGISTER" in blk and "Mohan Lal" in blk, "and a pilot case on the Overruled Register carries its register line")
+os.environ["SCI_SEARCH_MODE"] = "off"
+blk0 = CA._format_pilot_context_for_prompt(pm)
+check('NEVER say it' in blk0 and CA._find_pilot_tier_overreach(ans, pilot) == ["Gurbaksh Singh Sibbia v State of Punjab"], "feed off (production today): the old instruction and the old check, exactly as before")
+os.environ["SCI_SEARCH_MODE"] = "feed"
+T.reset()
+res = T.attach("q", {"state": "single_match", "response_text": "In Gurbaksh Singh Sibbia v. State of Punjab (1980) the Court said conditions must be reasonable.", "unverified_related_judgments": pilot})
+check(res["response_text"].count(T.LABEL) == 1 and "(1980) " + T.LABEL in res["response_text"], f"feed mode: a pilot case named in the answer gets the wider-search label ({res['response_text']!r})")
+nc = CA._attach_register_notes({"state": "single_match", "response_text": "In Gurbaksh Singh Sibbia v. State of Punjab (1980) the Court said X. In Ram Prasad v. State of Bihar (2001) it said Y.", "unverified_related_judgments": pilot}).get("register_not_checked") or ""
+check("Ram Prasad" in nc and "Sibbia" not in nc, f"and it is not listed as 'not checked' ({nc!r})")
+os.environ["SCI_SEARCH_MODE"] = "off"
+T.reset()
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
