@@ -1744,6 +1744,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + sci_search_tier.feed_block(question)
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # ANCHORS=on (staging first): verbatim Supreme Court excerpts for this kind of question (excerpt_anchors.py); "" otherwise
+            import excerpt_anchors
+            retrieved_text = retrieved_text + excerpt_anchors.block(question)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
@@ -3124,6 +3129,11 @@ def _answer_single_match(question, matches):
     from answer_cache import get_cached, record_candidate
 
     use_cache = answer_style.uses_cache()      # the approved cache holds v1 wording written for laypeople: read and written only under v1 (v2, v3 and the lawyer note always generate fresh)
+    try:                                       # a question that gets verbatim excerpts (ANCHORS=on) is generated fresh too: a cached answer was written without them
+        import excerpt_anchors
+        use_cache = use_cache and not excerpt_anchors.applies(question)
+    except Exception:  # pragma: no cover
+        pass
     cached = get_cached(matches) if use_cache else None
     if cached is not None:
         return {
@@ -3508,6 +3518,16 @@ def _attach_register_notes(result):
             return result
         from register_hooks import answer_notes
         srcs = [l.get("case_name") for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)]      # the site's own listed sources need no "not checked" line
+        try:                                                  # nor do the wider-search cases (SCI_SEARCH_MODE=feed): they already carry the label "(from a wider search, not independently verified)"
+            import sci_search_tier
+            srcs = srcs + sci_search_tier.fed_names_in(result.get("response_text") or "")
+        except Exception:  # noqa: BLE001
+            pass
+        try:                                                  # nor do the cases of the verbatim excerpts (ANCHORS=on): they carry "(verbatim excerpt, not yet confirmed by our reviewer)"
+            import excerpt_anchors
+            srcs = srcs + excerpt_anchors.names_in(result.get("response_text") or "")
+        except Exception:  # noqa: BLE001
+            pass
         res = answer_notes(result.get("response_text") or "", exclude_names=srcs)
         if res["notes"]:
             result["register_notes"] = res["notes"]
@@ -3592,7 +3612,7 @@ def _build_authorities(result):
         if isinstance(m, dict) and m.get("type") == "judgment" and m.get("case_name") and m["case_name"] not in named:
             if _name_in_text(_case_distinctive_name(m["case_name"]), text) or any(l.get("case_name") == m["case_name"] for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)):
                 named.append(m["case_name"])
-    return authorities_table.build(result.get("matches"), named, result.get("cited_judgment_links"), result.get("sci_related_judgments"), case_status)
+    return authorities_table.build(result.get("matches"), named, result.get("cited_judgment_links"), result.get("sci_related_judgments"), case_status, anchors=result.get("anchor_excerpts"))
 
 
 def _answer_question_inner(question, inline_domains=frozenset()):
@@ -3605,12 +3625,22 @@ def _answer_question_inner(question, inline_domains=frozenset()):
         sci_search_tier.reset()
     except Exception:  # pragma: no cover
         pass
+    try:
+        import excerpt_anchors
+        excerpt_anchors.reset()
+    except Exception:  # pragma: no cover
+        pass
     result = _answer_question_core(question, inline_domains=inline_domains)
     try:
         result = _attach_register_notes(_attach_cited_judgment_links(result))
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            import excerpt_anchors
+            result = excerpt_anchors.attach(question, result)     # off by default (ANCHORS); labels the anchor cases in the answer and lists the excerpts; fail-open
         except Exception:  # pragma: no cover
             pass
         return result

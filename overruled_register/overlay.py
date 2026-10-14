@@ -116,6 +116,12 @@ _PAREN = r"\s+\([A-Z][A-Za-z.]*(?:\s+[A-Za-z.]+){0,6}\)"            # a closing 
 _NAME = re.compile(r"(?P<p1>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6}?)\s+(?:v\.?|vs\.?|versus)\s+(?P<p2>[A-Z][\w.'’&-]*\.?(?:\s+" + _WORD + r"){0,6}(?:" + _PAREN + r")?)"
                    r"(?P<tail>\s*,?\s*\(?(?P<year>(?:19|20)\d\d)\)?)?")
 _LEAD_STOP = {"the", "in", "see", "also", "as", "of", "and", "that", "this", "but", "under", "per", "held", "case", "cases", "court", "supreme", "high"}
+# a capitalised word that ends the PREVIOUS sentence ("... into the Code. In Ram Prasad v. State of Bihar ...") must not become the start of the case name: cut after a full stop when what follows is a
+# word that opens a sentence, or when the word before the full stop is one of the legal nouns that end sentences (Code, Act, Constitution ...); names with abbreviations (Dr. K. Mohan Rao, Mohd. Khan) are kept whole
+_SENTENCE_OPENERS = {"in", "the", "see", "also", "as", "this", "that", "these", "those", "thus", "similarly", "likewise", "hence", "however", "but", "further", "moreover", "again", "here", "there", "it",
+                     "so", "now", "then", "for", "on", "when", "where", "while", "although", "since", "because", "after", "before", "earlier", "later", "recently", "finally"}
+_SENTENCE_ENDERS = {"code", "act", "acts", "constitution", "rules", "rule", "section", "sections", "article", "articles", "order", "judgment", "court", "law", "bail", "trial", "appeal", "petition",
+                    "evidence", "investigation", "proceedings", "provision", "provisions", "clause", "schedule", "bench", "decision", "sanhita", "chargesheet"}
 
 
 def case_mentions(text):
@@ -124,7 +130,11 @@ def case_mentions(text):
     for m in _NAME.finditer(text or ""):
         p1 = m.group("p1").strip()
         words = p1.split()
-        while words and words[0].lower().strip(",.") in _LEAD_STOP and len(words) > 1:
+        for i in range(len(words) - 2, -1, -1):                                # the last sentence break inside the first party's words
+            if words[i].endswith(".") and len(words[i]) > 2 and (words[i + 1].lower() in _SENTENCE_OPENERS or words[i].rstrip(".").lower() in _SENTENCE_ENDERS):
+                words = words[i + 1:]
+                break
+        while words and (words[0].lower().strip(",.") in _LEAD_STOP or words[0].lower() in _SENTENCE_OPENERS) and len(words) > 1:
             words = words[1:]
         p1 = " ".join(words)
         if not p1 or not p1[0].isupper() and p1[0] != "(":

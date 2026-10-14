@@ -14,6 +14,7 @@ TABLE_NOTE = ("Where it stands on our lists: \"Not checked by us\" means neither
               "Please ask a lawyer before relying on any case here.")
 TIER_LIBRARY = "Reviewed library"
 TIER_WIDER = "Wider search (not independently verified)"
+TIER_ANCHOR = "Verbatim excerpts"
 
 
 def _paras(ms):
@@ -40,7 +41,7 @@ def _one(v):
     return v[0] if isinstance(v, (list, tuple)) and v else (v if isinstance(v, str) else None)
 
 
-def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench"):
+def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", anchors=None):
     """matches: the answer's retrieved matches; named_cases: case names the answer actually names (the caller decides how names are matched); links: cited_judgment_links;
     sci_cases: result['sci_related_judgments']; status_fn(name, year, citation) -> {'source','note'}. Returns {'library': [rows], 'wider': [rows], 'has_bench': bool}."""
     link_by_name = {l.get("case_name"): l.get("url") for l in (links or []) if isinstance(l, dict)}
@@ -73,7 +74,16 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench"):
         wider.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": _paras([j]), "bench": j.get(bench_key), "tier": TIER_WIDER,
                       "status": note, "status_source": "register" if j.get("register_note") else st.get("source"), "link": j.get("link"),
                       "link_kind": j.get("link_kind")})
-    return {"library": library, "wider": wider, "has_bench": any(r.get("bench") for r in library + wider)}
+    ex_rows = []                                              # the verbatim excerpts (excerpt_anchors.py) the answer was given
+    for j in anchors or []:
+        if not isinstance(j, dict) or not j.get("case_name"):
+            continue
+        st = status_fn(j["case_name"], _year_of(j), _one(j.get("citation"))) or {}
+        unconfirmed = j.get("status") != "reviewer_confirmed"
+        ex_rows.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": [str(j["paragraph"])] if j.get("paragraph") else [], "bench": None,
+                        "tier": TIER_ANCHOR, "status": ("Excerpt not yet confirmed by our reviewer. " if unconfirmed else "Excerpt confirmed by our reviewer. ") + (SHORT_STATUS.get(st.get("source")) or st.get("note") or ""),
+                        "status_source": st.get("source"), "link": j.get("link")})
+    return {"library": library, "wider": wider, "anchors": ex_rows, "has_bench": any(r.get("bench") for r in library + wider)}
 
 
 def _cell(text):
@@ -101,6 +111,8 @@ def render_markdown(table):
     out = []
     if table.get("library"):
         out.append(("Authorities (reviewed library)", _table(table["library"], table.get("has_bench"))))
+    if table.get("anchors"):
+        out.append(("Verbatim excerpts the answer read (copied word for word from the judgment; checked by code against the Supreme Court's own PDF)", _table(table["anchors"], table.get("has_bench"))))
     if table.get("wider"):
         out.append(("Further reading from a wider search (not independently verified)", _table(table["wider"], table.get("has_bench"))))
     return out

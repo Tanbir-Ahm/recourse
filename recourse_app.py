@@ -852,7 +852,7 @@ def render_answer(result: dict):
                 for heading, md_table in authorities_table.render_markdown(result["authorities"]):
                     st.markdown(f'<div class="r-label">{esc(heading)}</div>', unsafe_allow_html=True)
                     st.markdown(md_table)
-                if result["authorities"].get("library") or result["authorities"].get("wider"):
+                if result["authorities"].get("library") or result["authorities"].get("wider") or result["authorities"].get("anchors"):
                     st.markdown(f'<p class="r-foot">{esc(authorities_table.TABLE_NOTE)}</p>', unsafe_allow_html=True)
             except Exception:
                 logging.getLogger("recourse_app").exception("authorities table render failed")
@@ -970,8 +970,28 @@ def render_answer(result: dict):
                     st.markdown(f'- {link}{when}{para}<span class="r-src">{src}</span>', unsafe_allow_html=True)
                     if j.get("register_note"):
                         st.markdown(f'<div class="r-concord">{esc(j["register_note"])}</div>', unsafe_allow_html=True)
+                    if j.get("names_register_note"):
+                        st.markdown(f'<div class="r-concord">This passage names a case on our register: {esc(j["names_register_note"])}</div>', unsafe_allow_html=True)
                     if j.get("excerpt"):
                         st.markdown(f'<div class="r-mono">{esc(j["excerpt"])}</div>', unsafe_allow_html=True)
+
+        # Verbatim Supreme Court excerpts the answer was given (excerpt_anchors.py, off unless ANCHORS=on): the judgment's own words, checked by code against the court's PDF.
+        anchor_ex = result.get("anchor_excerpts")
+        if anchor_ex:
+            unconfirmed = any(a.get("status") != "reviewer_confirmed" for a in anchor_ex)
+            with st.expander("Verbatim Supreme Court excerpts this answer read" + (" (not yet confirmed by our reviewer)" if unconfirmed else ""), expanded=False):
+                st.markdown('<p class="r-foot">These are the judgments\' own words, checked by a program against the Supreme Court\'s own PDF. '
+                            + ("A person at Recourse has not yet confirmed that they are the right authority or that the law has not moved on. " if unconfirmed else "")
+                            + 'Read the real judgment yourself, or with a lawyer, before relying on it.</p>', unsafe_allow_html=True)
+                for a in anchor_ex:
+                    cit = f", {esc(a['citation'])}" if a.get("citation") else ""
+                    name = f'[{esc(a["case_name"])}]({esc(a["link"])})' if a.get("link") else esc(a["case_name"])
+                    st.markdown(f'- {name} ({esc(str(a.get("year") or ""))}){cit}', unsafe_allow_html=True)
+                    for ex in a.get("excerpts") or []:
+                        st.markdown(f'<div class="r-label">{esc(ex["label"])}' + (f" &mdash; paragraph {esc(str(ex['paragraph']))}" if ex.get("paragraph") else "") + '</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="r-mono">{esc(ex["text"])}</div>', unsafe_allow_html=True)
+                        if ex.get("note"):
+                            st.markdown(f'<p class="r-foot">{esc(ex["note"])}</p>', unsafe_allow_html=True)
 
         unverified = result.get("unverified_related_judgments")
         if unverified:

@@ -31,6 +31,7 @@ RES = [
 RC = [{"rank": 1, "doc": 9, "case_name": "P. Ramachandra Rao v. State of Karnataka", "date": "2002-04-16", "paragraph": "29", "link": "https://x/9.pdf", "link_kind": "open_bucket_pdf",
        "text": "We hold that the criminal courts are not empowered to prescribe periods of limitation. The bar of limitation is not to be read into the Code. " * 12, "name_to_review": False, "citations": {}}]
 WITH_RC = {"on": False}
+SCEN = {"res": None}          # when set, the service answers a question (other than the second search for a named case) with exactly these results
 
 
 class H(BaseHTTPRequestHandler):
@@ -43,7 +44,7 @@ class H(BaseHTTPRequestHandler):
         SEEN["body"] = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))
         if MODE["kind"] == "slow":
             time.sleep(3)
-        code, body = (503, {"ok": False}) if MODE["kind"] == "down" else (200, {"ok": True, "tier": "x", "index_commit": "abc", "as_of": "2026-07-13", "seconds": 1.0, "results": RC if SEEN["body"]["question"].startswith("P. Ramachandra") else (RES + RC[:1] if WITH_RC["on"] else RES)})
+        code, body = (503, {"ok": False}) if MODE["kind"] == "down" else (200, {"ok": True, "tier": "x", "index_commit": "abc", "as_of": "2026-07-13", "seconds": 1.0, "results": RC if SEEN["body"]["question"].startswith("P. Ramachandra") else (SCEN["res"] if SCEN["res"] is not None else (RES + RC[:1] if WITH_RC["on"] else RES))})
         data = json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Length", str(len(data)))
@@ -225,6 +226,64 @@ o = _one("Rini Johar held it. Rini Johar again.", "Dr. Rini Johar And Another v.
 check(o.count(LB) == 1, "the answer may drop 'Dr.' from the name; only the first mention is labelled")
 check(T._tidy_labels("A (from (from a wider search, not independently verified) a wider search, not independently verified) B " + LB + ". " + LB) == "A " + LB + " B " + LB + ".", "nested and doubled labels collapse")
 check("Credit a principle to the case whose own words state it" in T.FEED_INSTRUCTION and "already running" in T.FEED_INSTRUCTION, "the feed instruction says: credit the case whose words state it; use a passage only for the question it decides")
+
+
+# --- 2026-10-14 (owner's go): a passage that only NAMES a register case brings the controlling case; wider-search cases stay out of the "not checked" sentence
+WITH_RC["on"] = False
+os.environ["SCI_SEARCH_MODE"] = "feed"
+MODE["kind"] = "ok"
+BALBIR = {"rank": 1, "doc": 21, "case_name": "Balbir Singh v. State of Delhi", "date": "2007-02-05", "paragraph": "12", "link": "https://x/21.pdf", "link_kind": "open_bucket_pdf", "name_to_review": False, "citations": {},
+          "text": "Reference was made to Raj Deo Sharma (II) v. State of Bihar, (1999) 7 SCC 604, where this Court laid down outer time limits for completing criminal trials. We hold that no such limit can be read into the Code."}
+HEMENDHRA = {"rank": 2, "doc": 22, "case_name": "State Through Central Bureau Of Investigation v. Hemendhra Reddy And Another", "date": "2023-05-02", "paragraph": "30", "link": "https://x/22.pdf", "link_kind": "open_bucket_pdf",
+             "name_to_review": False, "citations": {}, "text": "Mere delay in approaching a Court of law would not by itself afford a ground for dismissing the case."}
+LOOSE = {"rank": 3, "doc": 23, "case_name": "Tarun Jit Tejpal v. State of Goa", "date": "2019-10-15", "paragraph": "40", "link": "https://x/23.pdf", "link_kind": "open_bucket_pdf", "name_to_review": False, "citations": {},
+         "text": "In the Raj Deo Sharma case (I) the Court had directed that trials stand closed after two years; that direction does not bind us."}
+SCEN["res"] = [BALBIR, HEMENDHRA, LOOSE]
+T.reset()
+calls = SEEN["calls"]
+fb = T.feed_block("My trial has been going on for nine years")
+check("P. Ramachandra Rao v. State of Karnataka" in fb and SEEN["calls"] == calls + 2, f"controlling case: a passage that names Raj Deo Sharma brings P. Ramachandra Rao in by ONE second search ({SEEN['calls'] - calls - 1} extra)")
+check(fb.count("this passage names a case on our register") == 2 and fb.count("REGISTER FACT: Raj Deo Sharma v. The State of Bihar (1999) was overruled by P. Ramachandra Rao") == 2, "the REGISTER FACT line rides with each passage that names it (by citation, and by 'the Raj Deo Sharma case (I)')")
+b_part = fb[fb.index("Balbir Singh v. State of Delhi"):fb.index("Hemendhra")]
+h_part = fb[fb.index("Hemendhra"):fb.index("Tarun Jit")]
+check("REGISTER FACT:" in b_part and "REGISTER FACT:" not in h_part, "a passage that names no register case gets no line")
+names = [c["case_name"] for c in T._LOCAL.cases]
+check(len(names) == 4 and any(n.startswith("P. Ramachandra") for n in names) and not any(c["register_note"] for c in T._LOCAL.cases), f"the page list holds the controlling case; no case is flagged as the passage's own ({names})")
+nb = next(c for c in T._LOCAL.cases if c["case_name"].startswith("Balbir"))
+check(nb["names_register_note"] and "overruled by P. Ramachandra Rao" in nb["names_register_note"] and next(c for c in T._LOCAL.cases if c["case_name"].startswith("State Through"))["names_register_note"] is None, "the page list says which passage names a register case")
+check("A REGISTER FACT line placed under a passage that only NAMES another case" in T.FEED_INSTRUCTION, "the feed instruction explains a line under a passage that only names a case")
+# the controlling case is already among the results: no second search
+SCEN["res"] = [BALBIR, HEMENDHRA, dict(RC[0])]
+T.reset()
+calls = SEEN["calls"]
+fb2 = T.feed_block("My trial has been going on for nine years")
+check(SEEN["calls"] == calls + 1 and fb2.count("P. Ramachandra Rao v. State of Karnataka") >= 1 and fb2.count("[WIDER SEARCH") == 3, "when the controlling case is already among the results no second search is made and it is not duplicated")
+# no register case named: nothing is added, nothing extra is fetched
+SCEN["res"] = [HEMENDHRA, dict(LOOSE, doc=24, text="The trial court shall proceed day to day.")]
+T.reset()
+calls = SEEN["calls"]
+fb3 = T.feed_block("My trial has been going on for nine years")
+check(SEEN["calls"] == calls + 1 and "REGISTER FACT:" not in fb3 and "Ramachandra" not in fb3, "no register case named in the passages: no line, no second search")
+# the cap on second searches
+SCEN["res"] = [BALBIR, dict(BALBIR, doc=25, case_name="Mohan Lal and Others v. State of Punjab Other", text="See Mohan Lal v. State of Punjab (2018) 17 SCC 627 and Siddharam Satlingappa Mhetre v. State of Maharashtra (2011) 1 SCC 694 and Raj Deo Sharma (II) v. State of Bihar (1999) 7 SCC 604.")]
+T.reset()
+calls = SEEN["calls"]
+T.feed_block("My trial has been going on for nine years")
+check(SEEN["calls"] - calls - 1 <= T.MAX_NAMED_FETCHES, f"at most {T.MAX_NAMED_FETCHES} second searches for controlling cases named in passages ({SEEN['calls'] - calls - 1} made)")
+
+# the 'not checked' sentence leaves the wider-search cases out
+SCEN["res"] = [BALBIR, HEMENDHRA]
+T.reset()
+T.feed_block("My trial has been going on for nine years")
+ans = ("The Supreme Court in State Through CBI v. Hemendhra Reddy & Another (2023) said that delay alone is no ground to dismiss a case. In Balbir Singh v. State of Delhi (2007) the Court refused to read a time limit into the Code. "
+       "In Ram Prasad v. State of Bihar (2001) the Court said something else.")
+nc = CA._attach_register_notes({"state": "single_match", "response_text": ans}).get("register_not_checked") or ""
+check("Ram Prasad" in nc and "Hemendhra" not in nc and "Balbir" not in nc, f"the 'not checked' sentence names only the case that is neither a source nor a wider-search case ({nc!r})")
+T.reset()
+nc2 = CA._attach_register_notes({"state": "single_match", "response_text": ans}).get("register_not_checked") or ""
+check("Hemendhra" in nc2 and "Balbir" in nc2 and "Ram Prasad" in nc2, "with no wider-search cases fed (any other mode) the sentence is exactly as before")
+check(T.fed_names_in(ans) == [], "fed_names_in is empty when nothing was fed")
+SCEN["res"] = None
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

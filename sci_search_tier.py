@@ -131,6 +131,7 @@ FEED_INSTRUCTION = (
     "EVERY TIME you name one of these cases, put the words " + LABEL + " right after its name. "
     "If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, and never present its holding as the current law; "
     "the case that corrected it is among the passages when it could be found, so name that case too. "
+    "A REGISTER FACT line placed under a passage that only NAMES another case is about that other case: if you rely on that passage, do not present the named case's rule as current law, and say how it was treated. "
     "Credit a principle to the case whose own words state it: if a passage quotes or restates an earlier decision, say it was an earlier decision's holding, never the named case's. "
     "Use a passage only for the question it actually decides: a passage about delay in starting a prosecution does not answer a question about delay in a trial that is already running, and a passage about one kind of bail condition says nothing about another. "
     "If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
@@ -156,8 +157,11 @@ def _cut(text, n):
     return head.rstrip() + " ..."
 
 
+_NUMBER_MARK = re.compile(r"\s*\((?:I{1,3}|IV|V|[1-9])\)\s*$")
+
+
 def _party_core(p):
-    return _TRAIL_PARTY.sub("", (p or "").strip()).strip(" .,;")
+    return _NUMBER_MARK.sub("", _TRAIL_PARTY.sub("", (p or "").strip())).strip(" .,;")      # 'Hussainara Khatoon (I)' is written 'Hussainara Khatoon' as often as not
 
 
 def _parties(name):
@@ -173,11 +177,30 @@ def _same_case(a, b):
         return (a or "").lower().strip(" .") == (b or "").lower().strip(" .")
 
 
+def _same_case_loose(a, b):
+    """The same case allowing a shortened or lengthened party name ('P. Ramachandra Rao, etc. Etc.Appellants v. State of Karnataka Respondent'): the first three words of the first party and the first
+    two of the second agree (the register's own rule for two spellings of one name)."""
+    try:
+        from overruled_register import register as R
+        return bool(R.Register._names_agree(a, b))                          # noqa: SLF001
+    except Exception:  # noqa: BLE001
+        return _same_case(a, b)
+
+
+def _anchor_case_names(question):
+    """Cases whose verbatim excerpts (excerpt_anchors.py, ANCHORS=on) go into the prompt for this question: the wider search does not hand the same case over a second time."""
+    try:
+        import excerpt_anchors
+        return [a["case_name"] for a in excerpt_anchors.selected(question)]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 _GENERIC_FIRST = re.compile(r"^(?:the\s+)?(?:state|union|commissioner|collector|central|govt|government)\b", re.I)
 
 
-def _fuzzy_end(text, phrase, threshold=0.86):
-    """End position of the stretch of `text` that looks like `phrase` (same number of words, allowing a typo), or None."""
+def _fuzzy_span(text, phrase, threshold=0.86):
+    """(start, end) of the stretch of `text` that looks like `phrase` (same number of words, allowing a typo), or None."""
     import difflib
     words = list(re.finditer(r"\S+", text))
     n = len(phrase.split())
@@ -186,24 +209,31 @@ def _fuzzy_end(text, phrase, threshold=0.86):
     for i in range(len(words) - n + 1):
         cand = text[words[i].start():words[i + n - 1].end()].strip(" ,.;:()")
         if difflib.SequenceMatcher(None, cand.lower(), phrase.lower()).ratio() >= threshold:
-            return words[i + n - 1].end()
+            return words[i].start(), words[i + n - 1].end()
     return None
 
 
+def _fuzzy_end(text, phrase, threshold=0.86):
+    """End position of the stretch of `text` that looks like `phrase`, or None."""
+    sp = _fuzzy_span(text, phrase, threshold)
+    return sp[1] if sp else None
+
+
 _V = r"\s+(?:v\.?|vs\.?|versus)\s+"
+_MARK = r"(?:\s*\((?:I{1,3}|IV|V|[1-9])\))?"                          # '(I)' after a first party: Hussainara Khatoon (I) v. Home Secretary
 _EXTRA = r"(?:\s*(?:,|&|and)\s*(?:anr|ors|another|others|etc)\b\.?)?"
 _LABEL_NOTE = re.compile(r"\(\s*(?:[\w ]{0,12}from a |[\w ]{0,12})?wider search,?\s*not independently verified|\([^()]{0,90}not independently verified", re.I)
 _LABEL_SPAN = re.compile(r"\([^()]{0,160}not independently verified[^()]{0,200}(?:\([^()]{0,80}\)[^()]{0,40})?\)", re.I)
 
 
-def _labelled_here(text, pos):
+def _labelled_here(text, pos, note_re=None):
     """True when a bracketed 'not independently verified' note comes right at `pos` (the model's own wording is tolerated, and a longer note such as '..., not independently verified; overruled by X' counts). Only the very next bracket counts: a label after a LATER case must not hide this one."""
-    return bool(_LABEL_NOTE.match(text[pos:].lstrip(" \t")))
+    return bool((note_re or _LABEL_NOTE).match(text[pos:].lstrip(" \t")))
 
 
-def _inside_label(text, pos):
+def _inside_label(text, pos, span_re=None):
     """True when `pos` falls inside a label that is already in the text (inserting there would nest one label in another)."""
-    return any(m.start() < pos < m.end() for m in _LABEL_SPAN.finditer(text))
+    return any(m.start() < pos < m.end() for m in (span_re or _LABEL_SPAN).finditer(text))
 
 
 def _words_re(p):
@@ -215,7 +245,7 @@ _NAME_TOKEN = re.compile(r"\s+(?:[A-Z][\w'\u2019-]*(?:\.(?=[A-Z]))*|of|and|the|f
 
 def _extend_second_party(text, end):
     """When only the first party was found: take the ' v. <second party>' that follows it, as a run of capitalised name words (stops at a bracket, a digit, a full stop or a lower-case word)."""
-    m = re.match(_V + r"(?:the\s+)?", text[end:], re.I)
+    m = re.match(_MARK + _V + r"(?:the\s+)?", text[end:], re.I)
     if not m:
         return end
     pos, n = end + m.end(), 0
@@ -240,9 +270,45 @@ def _tidy_labels(text):
     return text
 
 
-def label_fed_cases(text, cases):
-    """Puts LABEL right after the first mention of each wider-search case in a finished answer, unless the answer already says so there. The case is found by its full name, else by a distinctive
-    party name, allowing a typo. The label goes after the whole name (including '& Another', italics marks and a year in brackets), never inside a name or inside another label. Returns the text unchanged on any problem."""
+def _locate(text, case_name):
+    """(start, end) of the first mention in `text` of a wider-search case: found by its full name, else by a distinctive party name (allowing a typo, and a dropped 'Dr.'), taking the ' v. second party'
+    and a trailing '& Another' with it. The end is the end of the name, before italics marks and brackets. None when the case is not mentioned."""
+    p1, p2 = _parties(case_name)
+    span = None
+    if p1 and p2:
+        m = re.search(r"\b(?:the\s+)?" + _words_re(p1) + _MARK + _V + r"(?:the\s+)?" + _words_re(p2) + _EXTRA, text, re.I)
+        span = (m.start(), m.end()) if m else None
+    if span is None:
+        p1 = re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I)             # the answer may drop 'Dr.' from the name
+    if span is None and p1 and len(p1) >= 8 and not _GENERIC_FIRST.match(p1):
+        m = re.search(r"\b" + _words_re(p1) + r"\b", text, re.I)
+        sp = (m.start(), m.end()) if m else _fuzzy_span(text, p1)
+        if sp is not None:
+            end = sp[1]
+            tail_v = re.search(r"\s+(?:v\.?|vs\.?|versus)$", text[sp[0]:sp[1]], re.I)           # the fuzzy window may have taken the 'v.' too: back off before it
+            if tail_v:
+                end = sp[0] + tail_v.start()
+            if p2:
+                end = _extend_second_party(text, end)
+                m = re.match(_EXTRA, text[end:], re.I)
+                end += m.end() if m else 0
+            span = (sp[0], end)
+    if span is None and p2 and len(p2) >= 8:
+        span = _fuzzy_span(text, p2)
+    if span is None and p1 and p2:
+        span = _fuzzy_span(text, p1 + " v. " + p2, 0.9)
+    return span
+
+
+_REPORT_CITE = re.compile(r"\s*,?\s*(?:\(?(?:19|20)\d\d\)?\s+(?:\d{1,2}\s+)?(?:SCC|S\.C\.C\.|SCR|S\.C\.R\.|INSC)\b(?:\s*\([A-Za-z0-9.\-]+\))?\s*\d+"
+                          r"|(?:\d{1,2}\s+)?(?:SCC|S\.C\.C\.|SCR|S\.C\.R\.)\b(?:\s*\([A-Za-z0-9.\-]+\))?\s*\d+"
+                          r"|AIR\s+(?:19|20)\d\d\s+(?:SC|[A-Za-z]{2,5})\s+\d+)")
+
+
+def label_cases(text, cases, label, note_re, span_re, tidy=None):
+    """Puts `label` right after the first mention of each case in a finished answer, unless the answer already says so there (`note_re` recognises the model's own wording of the label, `span_re` a label
+    that is already in the text). The case is found by its full name, else by a distinctive party name, allowing a typo. The label goes after the whole name (including '& Another', italics marks and a
+    year in brackets), never inside a name or inside another label. Returns the text unchanged on any problem."""
     try:
         out = text or ""
         seen = set()
@@ -251,41 +317,58 @@ def label_fed_cases(text, cases):
             if not key or key in seen:
                 continue
             seen.add(key)
-            p1, p2 = _parties(c["case_name"])
-            end = None
-            if p1 and p2:
-                m = re.search(r"\b(?:the\s+)?" + _words_re(p1) + _V + r"(?:the\s+)?" + _words_re(p2) + _EXTRA, out, re.I)
-                end = m.end() if m else None
-            p1 = re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I) if end is None else p1   # the answer may drop 'Dr.' from the name
-            if end is None and p1 and len(p1) >= 8 and not _GENERIC_FIRST.match(p1):
-                m = re.search(r"\b" + _words_re(p1) + r"\b", out, re.I)
-                end = m.end() if m else _fuzzy_end(out, p1)
-                if end is not None and p2:
-                    end = _extend_second_party(out, end)
-                    m = re.match(_EXTRA, out[end:], re.I)
-                    end += m.end() if m else 0
-            if end is None and p2 and len(p2) >= 8:
-                end = _fuzzy_end(out, p2)
-            if end is None and p1 and p2:
-                end = _fuzzy_end(out, p1 + " v. " + p2, 0.9)
-            if end is None:
+            span = _locate(out, c["case_name"])
+            if span is None:
                 continue
+            end = span[1]
             m0 = re.match(r"[*_]{1,2}", out[end:])                        # the name is in italics (answer style v3): put the label after the closing mark, not inside it
             if m0:
                 end += m0.end()
-            for _ in range(2):                                           # a short year or citation in brackets right after the name
-                if _labelled_here(out, end):
+            for _ in range(3):                                           # a short year or citation in brackets, or a report citation ', (2002) 4 SCC 578', right after the name
+                if _labelled_here(out, end, note_re):
                     break
-                m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:])
-                if not m2 or _LABEL_NOTE.match(out[end:].lstrip()):
+                m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:]) or _REPORT_CITE.match(out[end:])
+                if not m2 or note_re.match(out[end:].lstrip()):
                     break
                 end += m2.end()
-            if _labelled_here(out, end) or _inside_label(out, end):
+            if _labelled_here(out, end, note_re) or _inside_label(out, end, span_re):
                 continue
-            out = out[:end] + " " + LABEL + out[end:]
-        return _tidy_labels(out)
+            out = out[:end] + " " + label + out[end:]
+        return tidy(out) if tidy else out
     except Exception:  # noqa: BLE001
         return text
+
+
+def label_fed_cases(text, cases):
+    """The wider-search label (LABEL) after the first mention of each wider-search case in a finished answer."""
+    return label_cases(text, cases, LABEL, _LABEL_NOTE, _LABEL_SPAN, _tidy_labels)
+
+
+def fed_names_in(text):
+    """The wider-search cases of THIS question that a finished answer mentions: the name as the search service has it, the stretch of the answer that located it, and every 'X v. Y' the answer's
+    case-name finder (the one behind the 'not checked' sentence) reads at that place. Used so that the sentence does not list them: they carry the wider-search label instead.
+    [] outside feed mode and on any problem."""
+    try:
+        text = text or ""
+        out, mentions = [], None
+        for c in getattr(_LOCAL, "cases", None) or []:
+            if not c.get("case_name"):
+                continue
+            out.append(c["case_name"])
+            span = _locate(text, c["case_name"])
+            if not span:
+                continue
+            out.append(text[span[0]:span[1]])
+            if mentions is None:
+                try:
+                    from overruled_register.overlay import case_mentions
+                    mentions = case_mentions(text)
+                except Exception:  # noqa: BLE001
+                    mentions = []
+            out.extend(m["name"] for m in mentions if m["start"] < span[1] and m["end"] > span[0])
+        return out
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _fetch_case(name, question):
@@ -299,9 +382,24 @@ def _fetch_case(name, question):
     return None
 
 
+MAX_NAMED_FETCHES = 2        # second searches per question for a controlling case that a passage points to (a flagged case's own corrector is fetched without this cap)
+NAMED_NOTE = "\n[Overruled Register -- not optional: this passage names a case on our register; if you mention that case at all, state this fact in the same sentence]\n"
+
+
+def _named_register(text):
+    """The register cases a fed passage names (register_hooks.text_mentions): {'lines', 'clauses', 'overruling'}; empty when none or on any problem."""
+    try:
+        from register_hooks import text_mentions
+        return text_mentions(text)
+    except Exception:  # noqa: BLE001
+        return {"lines": [], "clauses": [], "overruling": []}
+
+
 def feed_block(question):
     """The prompt section for feed mode ('' in every other mode, and on any failure). One passage per case, up to FEED_MAX_CASES cases; a case the register flags goes last and the case that overruled it
-    is added (taken from the results, or fetched by a second search), so the model can name the controlling case. The search runs once per question and is reused by the retry loop. Never raises."""
+    is added (taken from the results, or fetched by a second search), so the model can name the controlling case. The same is done for a case the register lists that a passage merely NAMES (a later
+    judgment that quotes or discusses it): the passage carries the REGISTER FACT line and the case that corrected it is added. The search runs once per question and is reused by the retry loop.
+    Never raises."""
     try:
         if mode() != "feed" or not question:
             return ""
@@ -314,22 +412,57 @@ def feed_block(question):
             return ""
         res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
         flags = _flags(res)
+        anchor_names = _anchor_case_names(question)
         by_doc = {}
         for r, f in zip(res, flags):
+            if any(_same_case_loose(r["case_name"], n) for n in anchor_names):
+                continue                                              # its verbatim excerpt is already in the prompt
             by_doc.setdefault(r["doc"], (r, f))                       # the best-ranked passage of each judgment
         pairs = list(by_doc.values())
         flagged = [p for p in pairs if p[1]["source"] == "register"]
         correcting = []
-        for r, f in flagged:
-            name = f.get("overruling")
-            if not name:
-                continue
+
+        def _known(name):
+            return (any(_same_case(c[0]["case_name"], name) for c in correcting) or any(_same_case(p[0]["case_name"], name) for p in pairs)
+                    or any(_same_case_loose(n, name) for n in anchor_names))
+
+        def _controlling(name):
+            """The passage of the case that corrected another one: already chosen, else among the results, else by a second search. Added to `correcting` once. A case whose verbatim excerpt is
+            in the prompt (an anchor) needs none."""
+            if any(_same_case_loose(n, name) for n in anchor_names):
+                return None
+            hit = next((c for c in correcting if _same_case(c[0]["case_name"], name)), None)
+            if hit:
+                return hit
             hit = next((p for p in pairs if _same_case(p[0]["case_name"], name)), None) or _fetch_case(name, question)
-            if hit and all(hit[0]["doc"] != c[0]["doc"] for c in correcting):
+            if hit and all(hit[0]["doc"] != c[0]["doc"] for c in correcting) and all(hit[0]["doc"] != p[0]["doc"] for p in flagged):
                 correcting.append(hit)
-        special = {p[0]["doc"] for p in flagged} | {p[0]["doc"] for p in correcting}
-        plain = [p for p in pairs if p[0]["doc"] not in special]
-        room = max(FEED_MAX_CASES - len(flagged) - len(correcting), 2)
+            return hit
+
+        for r, f in flagged:
+            if f.get("overruling"):
+                _controlling(f["overruling"])
+
+        def _split():
+            special = {p[0]["doc"] for p in flagged} | {p[0]["doc"] for p in correcting}
+            return [p for p in pairs if p[0]["doc"] not in special], max(FEED_MAX_CASES - len(flagged) - len(correcting), 2)
+
+        plain, room = _split()
+        named, n_fetch, tried = {}, 0, set()                          # doc -> the register cases its passage names; names already looked up by a second search
+        for r, f in plain[:room]:
+            men = _named_register(_cut(r.get("text") or "", FEED_PASSAGE_CHARS))
+            if not men["lines"]:
+                continue
+            named[r["doc"]] = men
+            for name, _yr in men["overruling"]:
+                if not _known(name):                                  # a second search is needed: at most MAX_NAMED_FETCHES of them per question, and never twice for the same name
+                    key = re.sub(r"\W+", " ", name.lower()).strip()
+                    if n_fetch >= MAX_NAMED_FETCHES or key in tried:
+                        continue
+                    tried.add(key)
+                    n_fetch += 1
+                _controlling(name)
+        plain, room = _split()
         chosen = plain[:room] + correcting + flagged
         blocks, cases = [], []
         for r, f in chosen:
@@ -346,13 +479,19 @@ def feed_block(question):
                     facts = "\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n" + "\n".join(lines)
             except Exception:  # noqa: BLE001
                 facts = ""
+            men = named.get(r["doc"]) if f["source"] != "register" else None
+            if men:                                                    # the passage names a case on the register: the fact rides with the passage
+                facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
             cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
-                          "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None})
+                          "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
+                          "names_register_note": (" ".join(men["clauses"]) if men else None)})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
         print("SCI_FEED fed %d case(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
+        if named:
+            print("SCI_FEED passages naming register cases: %s" % "; ".join(c["case_name"] for c, (r, _f) in zip(cases, chosen) if r["doc"] in named), flush=True)
         _LOCAL.block = FEED_INSTRUCTION + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block

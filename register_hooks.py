@@ -3,6 +3,7 @@ Order of lookup for a case: the register (person-confirmed rows firmly, candidat
 then the fixed "not checked by us" sentence. Nothing here ever says a case is good law. Every function returns its input unchanged (or empty notes) on any error, and REGISTER_HOOKS=off turns all of it off."""
 import logging
 import os
+import re
 
 logger = logging.getLogger(__name__)
 _STATE = {}
@@ -107,6 +108,81 @@ def result_flags(results):
     except Exception as exc:
         logger.warning("register result flags failed: %s", exc)
     return out
+
+
+_BACK_REF_SUFFIX = re.compile(r"\s*(?:\((?:I{1,3}|IV|[1-4])\)|[\u2019']s\s+cases?\b|\s+cases?\b|-(?:I{1,3}|IV)\b)", re.I)
+_FOOTNOTE = re.compile(r"(?<=[A-Za-z])(\d{1,3})(?=[\s).,;:])")
+
+
+def _loose_rows(reg, text):
+    """Register rows whose overruled case a passage refers back to by its first party's words alone: three or more distinctive words in a row, none of them a common word such as a state or an office,
+    followed by a back-reference mark: 'Raj Deo Sharma (II)', 'the Raj Deo Sharma case', 'Abdul Rehman Antulay's case'. A name without such a mark is not matched (the same first party often sits in a
+    different case), and a two-word name ('Mohan Lal') is never matched this way. Used only to decide what to hand the model, never to word an answer."""
+    from overruled_register import register as RR
+    toks = RR.tokenize(text)
+    found = {}                                                                 # first-party triple -> the rows it matched at this reading
+    for i, (t, _s, _e) in enumerate(toks):
+        for r in reg._by_first.get(t, ()):                                     # noqa: SLF001
+            for s1, _s2 in reg._variants[r["id"]]:                             # noqa: SLF001
+                if len(s1) < 3 or s1[0] != t or any(x in RR._GENERIC for x in s1[:3]):
+                    continue
+                j = reg._seq(toks, i, s1, 3)                                   # noqa: SLF001
+                if j is not None and _BACK_REF_SUFFIX.match(text[toks[j - 1][2]:toks[j - 1][2] + 30]):
+                    found.setdefault(tuple(s1[:3]), {})[r["id"]] = r
+                    break
+    out = {}
+    for rows in found.values():
+        decisions = {frozenset([rid] + [x["id"] for x in reg.same_decision_rows(r)]) for rid, r in rows.items()}
+        merged = []
+        for d in decisions:                                                    # rows of one decision count once; two different decisions with the same first party are ambiguous: skip
+            if not any(d & m for m in merged):
+                merged.append(set(d))
+            else:
+                for m in merged:
+                    if d & m:
+                        m |= d
+        if len(merged) == 1:
+            out.update(rows)
+    return list(out.values())
+
+
+def text_mentions(text):
+    """For the wider-pool feed (sci_search_tier.py): the register cases that a passage NAMES (other than the passage's own case).
+    {'lines': [REGISTER FACT / REGISTER NOTE lines for the prompt], 'clauses': [the register's own sentence for each, for the page], 'overruling': [(name, year), ...] of the case(s) that corrected them}.
+    A case is found by a reported citation, by both party names with a year, or by its first party's distinctive words alone (see _loose_rows); a row with no wording (unchecked) gives nothing. Never raises."""
+    empty = {"lines": [], "clauses": [], "overruling": []}
+    if _off() or not text:
+        return empty
+    try:
+        from overruled_register import register as RR
+        from overruled_register import register_guard as G
+        reg, _ = _load()
+        text = _FOOTNOTE.sub(r" \1", text)                               # extracted judgments glue footnote numbers to words ('State of Bihar30)')
+        rows = [h["row"] for h in reg.scan(text) if h["strength"] == "strong"] + _loose_rows(reg, text)
+        lines, clauses, overruling, seen = [], [], [], set()
+        for row in rows:
+            if row["id"] in seen:
+                continue
+            group = [row] + reg.same_decision_rows(row)
+            seen.update(x["id"] for x in group)
+            clause = reg.clause_group(group)
+            if not clause:
+                continue
+            o = row["overruled"]
+            line = (G.prompt_facts(reg, [o["name"] + (f" ({o['year']})" if o.get("year") else "")], limit=1) or [None])[0]
+            if not line:
+                continue
+            lines.append(line)
+            clauses.append(clause)
+            lead = sorted((x for x in group if reg.clause(x)), key=lambda x: (RR.TRUSTS.index(x["trust"]), x["id"]))[0]        # the firmest row: the case the REGISTER FACT line names as the corrector
+            b = lead.get("overruling") or {}
+            yr = (b.get("date") or "")[:4] or b.get("year")
+            if b.get("name") and (b["name"], yr) not in overruling:
+                overruling.append((b["name"], yr))
+        return {"lines": lines, "clauses": clauses, "overruling": overruling}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("register text mentions failed: %s", exc)
+        return empty
 
 
 def case_status(name, year=None, citation=None):

@@ -85,5 +85,20 @@ import whatsapp_formatter as WF
 msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Some answer.", "register_notes": ["Mohan Lal v. State of Punjab (2018): reported to have been overruled."], "register_not_checked": "Cases named in this answer that we have not checked: X v. Y."})
 check(any(m.startswith("*Currency notes*") and "Mohan Lal" in m and "not checked" in m for m in msgs), "WhatsApp carries the register notes and the 'not checked' sentence as one message")
 check(WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Some answer."}) == ["Some answer."], "and an answer without notes is unchanged")
+
+# --- 2026-10-14 (owner's go): the register cases a passage NAMES (text_mentions), for the wider-search feed
+tm = RH.text_mentions("Reference was made to Raj Deo Sharma (II) v. State of Bihar, (1999) 7 SCC 604, where this Court laid down outer time limits.")
+check(len(tm["lines"]) == 1 and tm["lines"][0].startswith("REGISTER FACT: Raj Deo Sharma") and tm["overruling"][0][0].startswith("P. Ramachandra Rao") and "overruled by" in tm["clauses"][0], "a passage that names Raj Deo Sharma (citation) gives the REGISTER FACT line and the controlling case")
+tm2 = RH.text_mentions("In the Raj Deo Sharma case (I) the Court had directed that trials stand closed after two years.")
+check(len(tm2["lines"]) == 1 and tm2["overruling"], "'the Raj Deo Sharma case (I)' (no 'v.', no year) is found by its distinctive first party and the back-reference mark")
+tm3 = RH.text_mentions("The decision in Raj Deo Sharma v. State of Bihar30), (1999) was relied on.")
+check(len(tm3["lines"]) == 1, "a footnote number glued to a word ('Bihar30)') does not hide the name")
+check(RH.text_mentions("Mohan Lal and others were present at the hearing. The Mohan Lal case was cited.")["lines"] == [], "a two-word name ('Mohan Lal') is never matched by its first party alone")
+check(RH.text_mentions("Raj Deo Sharma was a petitioner who was charged under the Prevention of Corruption Act.")["lines"] == [], "the distinctive name without a back-reference mark or a citation is not matched")
+check(RH.text_mentions("")["lines"] == [] and RH.text_mentions(None)["overruling"] == [], "empty text gives nothing and does not fail")
+check(len(RH.text_mentions("Mohan Lal v. State of Punjab (2018) 17 SCC 627 held X")["lines"]) == 1 and RH.text_mentions("Mohan Lal v. State of Punjab (2018) 17 SCC 627 held X")["lines"][0].startswith("REGISTER NOTE (not yet confirmed)"), "a candidate row is worded as 'not yet confirmed'")
+os.environ["REGISTER_HOOKS"] = "off"
+check(RH.text_mentions("Raj Deo Sharma (II) v. State of Bihar, (1999) 7 SCC 604")["lines"] == [], "REGISTER_HOOKS=off turns it off")
+os.environ.pop("REGISTER_HOOKS", None)
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
