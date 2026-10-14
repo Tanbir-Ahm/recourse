@@ -373,6 +373,14 @@ def label_fed_cases(text, cases):
     return label_cases(text, cases, LABEL, _LABEL_NOTE, _LABEL_SPAN, _tidy_labels)
 
 
+def fed_case_names():
+    """The names of the wider-search cases handed to the model for THIS question (feed mode); [] otherwise."""
+    try:
+        return [c["case_name"] for c in getattr(_LOCAL, "cases", None) or [] if c.get("case_name")]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def fed_names_in(text):
     """The wider-search cases of THIS question that a finished answer mentions: the name as the search service has it, the stretch of the answer that located it, and every 'X v. Y' the answer's
     case-name finder (the one behind the 'not checked' sentence) reads at that place. Used so that the sentence does not list them: they carry the wider-search label instead.

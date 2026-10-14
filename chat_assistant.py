@@ -800,6 +800,27 @@ def _section_act_map(matches) -> dict:
     return out
 
 
+_ACT_NAME_AFTER = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:BNSS|BNS|IPC|CrPC|Cr\.?\s?P\.?\s?C\.?|Code|Act|Sanhita|Constitution|Evidence|Adhiniyam|Rules?)\b", re.IGNORECASE)
+_ACT_DISPLAY_FOR_REPAIR = {"NIACT": "NI Act", "ITACT": "IT Act"}
+
+
+def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) -> str:
+    """Adds ' of the BNS' / ' of the BNSS' (the Act the retrieved section belongs to) after the FIRST mention of each section number whose Act the answer never names -- by code, from the retrieved
+    sections, instead of withholding an otherwise good answer (staging 2026-10-14, Q2). A mention that already names some other Act or Code right after the number ('Section 41A of the CrPC') is left
+    alone and that number stays missing, so the answer is then still withheld rather than made wrong. Returns the repaired text (the same text if nothing could be added)."""
+    text = response_text or ""
+    for num in missing or []:
+        act = section_act_map.get(num)
+        if not act:
+            continue
+        for m in re.finditer(r"\bSection\s+" + re.escape(num) + r"(?![0-9A-Za-z])(?:\s*\(\w+\))*", text, re.IGNORECASE):
+            if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]):
+                continue                                    # this mention names an Act already; look for another mention
+            text = text[:m.end()] + " of the " + _ACT_DISPLAY_FOR_REPAIR.get(act, act) + text[m.end():]
+            break
+    return text
+
+
 def _find_sections_missing_act(response_text: str, section_act_map: dict) -> list:
     """CONFIRMED REAL BUG (2026-09-04), found via live user testing: a
     real 'Right now' answer named "Section 36", "Section 58", "Section
@@ -1047,9 +1068,16 @@ def _find_pilot_tier_overreach(response_text: str, pilot_matches) -> list:
         if name:
             by_case.setdefault(name, True)
 
+    try:                                           # a pilot case that this question's wider search ALSO supplied (SCI_SEARCH_MODE=feed) is labelled "(from a wider search, not independently verified)" by code
+        import sci_search_tier as _T               # and was handed to the model on that footing: it is not an unlabelled pilot claim (staging 2026-10-14: Gurbaksh Singh Sibbia withheld a good answer twice)
+        _fed = _T.fed_case_names()
+    except Exception:  # noqa: BLE001
+        _T, _fed = None, []
     flagged = []
     response_lower = response_text.lower()
     for name in by_case:
+        if _fed and any(_T._same_case_loose(name, f) for f in _fed):
+            continue
         # Checks BOTH parties, not just the first (unlike the core-corpus check above): several
         # pilot cases are STATE-initiated appeals ("State of Uttar Pradesh v Ram Kishan"), where the
         # first party is the generic, rarely-said-aloud one and the SECOND party is the name a real
@@ -1874,6 +1902,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                       "unverified_phone": _find_unverified_contact_numbers(retry_text, question, retrieved_text),
                       "pilot_overreach": _find_pilot_tier_overreach(retry_text, pilot_matches)}
             _still = {k: v for k, v in _still.items() if v}
+            if list(_still) == ["missing_act"]:        # the only thing left is an Act name: add it by code from the retrieved sections rather than withhold the answer
+                _fixed = _add_missing_acts(retry_text, _still["missing_act"], section_act_map)
+                if not _find_sections_missing_act(_fixed, section_act_map):
+                    print("ACT_NAME_ADDED_BY_CODE sections=" + ",".join(_still["missing_act"]), flush=True)
+                    retry_text, _still = _fixed, {}
             if _still:
                 try:                                   # the answer is withheld: say which check, and on what, so that the cause can be read in the log (staging 2026-10-14: two of seven answers were withheld without a trace)
                     print("ANSWER_WITHHELD after the second try: reasons=" + ",".join(_still) + " detail=" + __import__("json").dumps(_still, default=str)[:600], flush=True)
