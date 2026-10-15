@@ -314,6 +314,9 @@ def _name_end(out, end, note_re):
         if not m2 or note_re.match(out[end:].lstrip()):
             break
         end += m2.end()
+        m3 = re.match(r"[*_]{1,2}", out[end:])                    # '*Sumit Mehta v State (NCT of Delhi)*': the bracket is part of the italic name, so the closing mark follows it
+        if m3:
+            end += m3.end()
     return end
 
 

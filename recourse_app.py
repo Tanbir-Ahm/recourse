@@ -461,11 +461,11 @@ def _tame_sentence_bold(md: str, v3_label_max: int = 0) -> str:
         prefix, inner = m.group(1), m.group(2)
         if "**" in inner:
             return m.group(0)
+        if v3_label_max and m.string[m.end():m.end() + 1] in ("", "\n") and len(inner) <= v3_label_max and not inner.rstrip().endswith((".", "!")):
+            return m.group(0)                     # a v3 heading (checked BEFORE the colon split: "**1. Section 482(2) of the BNSS: scope of conditions**" is one heading, not a label plus a sentence)
         head, sep, tail = inner.partition(":")
         if sep and len(head) <= 48 and tail.strip():
             return f"{prefix}**{head.strip()}:** {tail.strip()}"
-        if v3_label_max and m.string[m.end():m.end() + 1] in ("", "\n") and len(inner) <= v3_label_max and not inner.rstrip().endswith((".", "!")):
-            return m.group(0)                     # a v3 heading
         # A genuine label ("Right now", "What the law says") is a short
         # PHRASE with no terminal punctuation. Anything ending in . / ! / ?
         # is a full sentence even when short -- "But safeguards still apply

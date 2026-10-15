@@ -276,5 +276,29 @@ RETRY_QUOTES = ("\n\nCORRECTION NEEDED: these words are in quotation marks in yo
                 "marks and say it in your own words. Everything else stays as it was.\n")
 
 
-def log_line(question_hash, found_cases, found_quotes, note=""):
-    print("GROUNDING_CHECK " + json.dumps({"q": question_hash, "mode": mode(), "cases": found_cases, "quotes": [q[:120] for q in found_quotes], "note": note}), flush=True)
+def nearest_wording(quote, material, width=14):
+    """For the log only: the stretch of the material closest to a flagged quotation (up to `width` + 4 words), so a false alarm (a hyphenated word, a changed word) can be told from a real misquote. '' on any problem."""
+    try:
+        frag = max(_fragments(quote) or [quote], key=len)
+        fn, mw = norm(frag).split(), norm(material).split()
+        n = len(fn)
+        if not n or len(mw) < n:
+            return ""
+        best, at = 0.0, 0
+        target = " ".join(fn)
+        for i in range(len(mw) - n + 1):
+            if mw[i] != fn[0] and difflib.SequenceMatcher(None, mw[i], fn[0]).ratio() < 0.6 and (i + n // 2 >= len(mw) or mw[i + n // 2] != fn[n // 2]):
+                continue
+            r = difflib.SequenceMatcher(None, " ".join(mw[i:i + n]), target).ratio()
+            if r > best:
+                best, at = r, i
+        return "%.2f: %s" % (best, " ".join(mw[max(0, at - 2):at + min(n, width) + 2]))
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def log_line(question_hash, found_cases, found_quotes, note="", material=None):
+    rec = {"q": question_hash, "mode": mode(), "cases": found_cases, "quotes": [q[:120] for q in found_quotes], "note": note}
+    if material and found_quotes:
+        rec["nearest"] = [nearest_wording(q, material) for q in found_quotes]
+    print("GROUNDING_CHECK " + json.dumps(rec), flush=True)

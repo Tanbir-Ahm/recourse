@@ -1875,7 +1875,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             try:
                 if cases or quotes:
                     import hashlib
-                    grounding_checks.log_line(hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], cases, quotes, "after a second try" if retried else "")
+                    grounding_checks.log_line(hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], cases, quotes, "after a second try" if retried else "", material=g_material)
                 if g_mode == "enforce" and any(c["status"] == "not_found" for c in cases):
                     return None                                  # a case that exists nowhere we can look, still in the answer after a second try: withheld
                 if g_mode in ("warn", "enforce") and (cases or quotes):
