@@ -49,7 +49,6 @@ from chat_assistant import (
     _format_mismatch,
     _find_cognizable_bailable_omissions,
     _format_omission,
-    _find_unverified_contact_numbers,
     _section_act_map,
     _find_sections_missing_act,
     _find_missing_companion_sections,
@@ -792,47 +791,7 @@ check(
 )
 
 
-# ---------------------------------------------------------------------------
-# CONFIRMED REAL FAILURE this guards against -- not in this project's own
-# output, but in a direct side-by-side comparison (2026-09-22): ChatGPT
-# stated a specific, invented phone number ("ASLSA helpline: 6901281650")
-# for a state the user never named, for a question that gave no location at
-# all. This project's own generator is checked against exactly that failure
-# class before anything reaches a real user.
-# ---------------------------------------------------------------------------
-_q = "My father was arrested last night, what should we do?"
-_retrieved = "[BNSS Section 41A] Notice of appearance before arrest..."
-check(_find_unverified_contact_numbers(
-    "You should call the ASLSA helpline at 6901281650 for free legal help.", _q, _retrieved
-) == ["6901281650"],
-      "REPRODUCES THE CONFIRMED FAILURE CLASS: a helpline number never given by the user or the "
-      "retrieved material is flagged")
-check(_find_unverified_contact_numbers(
-    "You can dial the national emergency number, 100, right away.", _q, _retrieved
-) == [],
-      "a short (<4-digit) number like the emergency line '100' is below the flag floor -- common "
-      "knowledge, not the kind of specific fabricated contact detail this guards against")
-check(_find_unverified_contact_numbers(
-    "You should consult a lawyer or your nearest District Legal Services Authority.", _q, _retrieved
-) == [],
-      "ordinary advice with no phone number at all is never flagged")
-check(_find_unverified_contact_numbers(
-    "Section 302 is punishable with life imprisonment or up to 10 years.", _q, _retrieved
-) == [],
-      "ordinary legal numbers (punishment years, section numbers) with no contact-type keyword nearby "
-      "never trip this -- it is keyword-gated, not a generic 'flag every number' check")
-check(_find_unverified_contact_numbers(
-    "You can contact the helpline at 6901281650.",
-    "My father was arrested, please call 6901281650 for help", _retrieved,
-) == [],
-      "a number the USER themselves already provided in the question is never flagged -- it wasn't invented")
-check(_find_unverified_contact_numbers(
-    "You can call the helpline mentioned: 1930.",
-    _q, "[Cybercrime helpline] Report financial fraud by calling 1930 immediately.",
-) == [],
-      "a number that genuinely appears in the retrieved material is never flagged")
-check(_find_unverified_contact_numbers("", _q, _retrieved) == [],
-      "empty response text is a no-op, never crashes")
+# (the phone-number check and its tests were removed on 2026-10-15 at the owner's instruction)
 
 
 with patch("chat_assistant.client") as mock_client:

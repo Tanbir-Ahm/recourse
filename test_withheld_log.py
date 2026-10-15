@@ -19,8 +19,12 @@ def check(cond, msg):
 TEXT = {"t": "Cheating is punished under Section 318(4) and arrest powers sit in Section 35."}
 
 
+CALLS = {"n": 0}
+
+
 class _Msgs:
     def create(self, **kw):
+        CALLS["n"] += 1
         return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text=TEXT["t"])], stop_reason="end_turn", usage=None)
 
 
@@ -30,25 +34,35 @@ matches = [{"type": "statute", "act": "BNS", "section_number": "318", "text": "3
 
 
 def run():
+    CALLS["n"] = 0
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         out = CA.generate_grounded_response("Can police arrest me for cheating?", "[BNS 318]\ncheating text\n[BNSS 35]\narrest text", matches=matches)
     return out, buf.getvalue()
 
 
-# 1. the Act name is never written: after the second try the code adds it from the retrieved sections instead of withholding the answer
+# 1. the Act name is never written: since 2026-10-15 the code adds it from the retrieved sections on the FIRST pass, so there is no second paid call
 out, log = run()
 check(out is not None and "Section 318(4) of the BNS" in out and "Section 35 of the BNSS" in out, f"missing Act names are added by code ({out!r})")
-check("RECHECK reasons=missing_act detail=" in log and '"missing_act": ["35", "318"]' in log and "ACT_NAME_ADDED_BY_CODE sections=35,318" in log, "and the log says which sections, before and after")
+check(CALLS["n"] == 1 and "RECHECK" not in log, f"one model call only, no recheck (calls={CALLS['n']})")
+check("ACT_NAME_ADDED_BY_CODE first_pass sections=35,318" in log, "and the log says which sections were repaired on the first pass")
 check(not CA._find_sections_missing_act(out, CA._section_act_map(matches)), "the repaired answer passes the same check")
 
-# 2. a mention that already names another Code is not 'repaired' into something wrong: the answer is still withheld, with the reason in the log
+# 2. a mention that already names another Code is not 'repaired' into something wrong: the other section is still missing, the paid second try runs, and if it is still missing the answer is withheld with the reason in the log
 TEXT["t"] = "Cheating is punished under Section 318(4) and arrest powers sit in Section 35 of the CrPC."
 out, log = run()
-check(out is None and "ANSWER_WITHHELD after the second try: reasons=missing_act detail=" in log, "a section number that names another Code right after it is not touched: withheld, and the log says why")
+check(out is None and CALLS["n"] == 2 and "RECHECK reasons=missing_act detail=" in log and "ANSWER_WITHHELD after the second try: reasons=missing_act detail=" in log,
+      f"a section number that names another Code right after it is not touched: second try, then withheld, and the log says why (calls={CALLS['n']})")
 TEXT["t"] = "Cheating is punished under Section 318(4) of the BNS and arrest powers sit in Section 35 of the BNSS."
 out, log = run()
-check(out is not None and "RECHECK" not in log, "an answer that names its Acts is untouched and not rechecked")
+check(out is not None and "RECHECK" not in log and "ACT_NAME_ADDED_BY_CODE" not in log and CALLS["n"] == 1, "an answer that names its Acts is untouched and not rechecked")
+
+# 2b. the phone-number check was removed (owner, 2026-10-15): an answer that states a helpline is not rechecked
+TEXT["t"] = "Cheating is punished under Section 318(4) of the BNS and arrest powers sit in Section 35 of the BNSS. For help call the helpline 1800 123 4567."
+out, log = run()
+check(out is not None and "1800 123 4567" in out and "RECHECK" not in log and CALLS["n"] == 1, "no phone-number check any more: no recheck, one call")
+check(not hasattr(CA, "_find_unverified_contact_numbers") and not hasattr(CA, "_UNVERIFIED_CONTACT_RETRY_INSTRUCTION"), "and the function and its retry text are gone")
+TEXT["t"] = "Cheating is punished under Section 318(4) and arrest powers sit in Section 35."
 
 # 3. a pilot case that this question's wider search also supplied is not 'pilot overreach'
 import sci_search_tier as T
