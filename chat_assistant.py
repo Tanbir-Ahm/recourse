@@ -561,7 +561,7 @@ Write a research note for an advocate or a law student: formal, precise, firm ab
 
 Headings: a bold line on its own, at most 90 characters, followed by a blank line. Headings are the ONLY bold text. Write case names in italics with single asterisks. Do not use "#" headings or emoji.
 
-Language: sentences of 35 words or fewer with at most one parenthetical each. Use exact verbs: "held", "observed", "directed", "reiterated". Do not write "decisive", "settled", "well-settled" or "clearly" unless the passage itself says so or a larger bench is shown. No "Important:" labels and no capitalised NOT. A quotation is at most 40 words, in quotation marks, only when the excerpt below contains those exact words, with the paragraph number if the material shows it.
+Language: sentences of 35 words or fewer with at most one parenthetical each. Use exact verbs: "held", "observed", "directed", "reiterated". Do not write "decisive", "settled", "well-settled" or "clearly" unless the passage itself says so or a larger bench is shown. No "Important:" labels and no capitalised NOT. A quotation is at most 40 words, in quotation marks, only when the excerpt below contains those exact words, copied letter for letter, with the paragraph number if the material shows it. If you shorten, join, reorder or reword anything, write it in your own words without quotation marks.
 
 Evidence: give a full report citation and a pinpoint paragraph only when the material below shows them; otherwise name the case with its year and say nothing more. A case that comes from the wider search may appear in an issue but never in the Bottom line, and is followed each time by the words in the wider-search instruction. Never say that a case "is good law".
 

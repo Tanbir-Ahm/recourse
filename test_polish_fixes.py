@@ -61,5 +61,11 @@ with contextlib.redirect_stdout(buf):
     G.log_line("abc", ["x"], [])
 check("nearest" not in buf.getvalue(), "and nothing extra when no quote is flagged")
 
+
+# 4. exact-quote instruction (owner's "do only 3", 2026-10-15): quotation marks only for exact copies; a cut-off passage is not completed from memory
+import chat_assistant as CA
+check("exactly, letter for letter" in T.FEED_INSTRUCTION and "WITHOUT quotation marks" in T.FEED_INSTRUCTION and "ends in \"...\" is cut off" in T.FEED_INSTRUCTION, "the wider-search instruction says: quotation marks only for exact copies, and do not complete a cut-off passage")
+check("copied letter for letter" in CA._V3_LAWYER_SHAPE and "without quotation marks" in CA._V3_LAWYER_SHAPE, "the lawyers' template says the same")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

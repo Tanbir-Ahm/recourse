@@ -134,6 +134,8 @@ FEED_INSTRUCTION = (
     "A REGISTER FACT line placed under a passage that only NAMES another case is about that other case: if you rely on that passage, do not present the named case's rule as current law, and say how it was treated. "
     "Credit a principle to the case whose own words state it: if a passage quotes or restates an earlier decision, say it was an earlier decision's holding, never the named case's. "
     "Use a passage only for the question it actually decides: a passage about delay in starting a prosecution does not answer a question about delay in a trial that is already running, and a passage about one kind of bail condition says nothing about another. "
+    "Put words in quotation marks ONLY when you copy them exactly, letter for letter, from a passage. If you shorten, join, reorder or reword anything (for example turning \"neither X nor Y would be justified\" into \"would not be justified\"), write it in your own words WITHOUT quotation marks. "
+    "A passage that ends in \"...\" is cut off: do not complete it from memory. "
     "If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
 )
 _TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.?|[,.\s]+(?:anr|ors|another|others|etc)\b\.?)+\s*$", re.I)
