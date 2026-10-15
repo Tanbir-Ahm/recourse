@@ -827,14 +827,45 @@ def _section_act_map(matches) -> dict:
     return out
 
 
-_ACT_NAME_AFTER = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:BNSS|BNS|IPC|CrPC|Cr\.?\s?P\.?\s?C\.?|Code|Act|Sanhita|Constitution|Evidence|Adhiniyam|Rules?)\b", re.IGNORECASE)
+_OLD_LAW_WORDS = r"(?:former|old|earlier|erstwhile|repealed|previous|original)"
+_ACT_NAME_AFTER = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:" + _OLD_LAW_WORDS + r"\s+)?(?:BNSS|BNS|IPC|CrPC|Cr\.?\s?P\.?\s?C\.?|Code|Act|Sanhita|Constitution|Evidence|Adhiniyam|Rules?)\b", re.IGNORECASE)
 _ACT_DISPLAY_FOR_REPAIR = {"NIACT": "NI Act", "ITACT": "IT Act"}
+# A mention of the OLD law ("Section 482 of the former Code", "Section 309 of the CrPC", "Section 309 (now Section 346 of the BNSS)", "the former Section 309"): not a BNS/BNSS mention, so it is neither
+# checked for a missing Act, nor given one, nor corrected (added 2026-10-15: "of the former Code" was not recognised and could be repaired into "of the BNSS of the former Code").
+_OLD_LAW_AFTER = re.compile(
+    r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:"
+    + _OLD_LAW_WORDS + r"\s+(?:Code|Act|law|Sanhita|CrPC|IPC|Cr\.?\s?P\.?\s?C\.?)\b"
+    + r"|(?:CrPC|Cr\.?\s?P\.?\s?C\.?|IPC|I\.P\.C\.?|Indian\s+Penal\s+Code|Code\s+of\s+Criminal\s+Procedure)(?![A-Za-z])"
+    + r")|\s*\((?:now|formerly|earlier|previously|since|replaced)\b", re.IGNORECASE)
+_OLD_LAW_BEFORE = re.compile(r"(?:\b" + _OLD_LAW_WORDS + r"|\bformerly|\bpreviously)\s+(?:\w+\s+){0,2}$", re.IGNORECASE)
+
+
+def _is_old_law_mention(text: str, start: int, end: int) -> bool:
+    """True when the 'Section N' at text[start:end] is a mention of the old law (see _OLD_LAW_AFTER)."""
+    return bool(_OLD_LAW_AFTER.match(text[end:end + 60]) or _OLD_LAW_BEFORE.search(text[max(0, start - 35):start]))
+
+
+def _new_law_section_numbers(text: str) -> set:
+    """Like _extract_section_numbers, but without the numbers that are only mentioned as old-law sections."""
+    return {m.group(1) for m in _SECTION_REFERENCE_PATTERN.finditer(text or "") if not _is_old_law_mention(text, m.start(), m.end())}
+
+
+def _section_acts_all(matches) -> dict:
+    """base section number -> the SET of Acts it was retrieved under (a number can be in both the BNS and the BNSS; _section_act_map keeps only the first)."""
+    out = {}
+    for m in matches or []:
+        act = (m.get("act") or "").upper()
+        num = m.get("section_number")
+        if act and num:
+            out.setdefault(str(num).split("(")[0].strip(), set()).add(act)
+    return out
 
 
 def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) -> str:
     """Adds ' of the BNS' / ' of the BNSS' (the Act the retrieved section belongs to) after the FIRST mention of each section number whose Act the answer never names -- by code, from the retrieved
     sections, instead of withholding an otherwise good answer (staging 2026-10-14, Q2). A mention that already names some other Act or Code right after the number ('Section 41A of the CrPC') is left
-    alone and that number stays missing, so the answer is then still withheld rather than made wrong. Returns the repaired text (the same text if nothing could be added)."""
+    alone and that number stays missing, so the answer is then still withheld rather than made wrong; so is a mention of the old law ('of the former Code', '(now Section 346 ...)'). Returns the repaired
+    text (the same text if nothing could be added)."""
     text = response_text or ""
     for num in missing or []:
         act = section_act_map.get(num)
@@ -843,12 +874,46 @@ def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) 
         for m in re.finditer(r"\bSection\s+" + re.escape(num) + r"(?![0-9A-Za-z])(?:\s*\(\w+\))*", text, re.IGNORECASE):
             if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]):
                 continue                                    # this mention names an Act already; look for another mention
+            if _is_old_law_mention(text, m.start(), m.end()):
+                continue                                    # an old-law mention: not ours to complete
             text = text[:m.end()] + " of the " + _ACT_DISPLAY_FOR_REPAIR.get(act, act) + text[m.end():]
             break
     return text
 
 
-def _find_sections_missing_act(response_text: str, section_act_map: dict) -> list:
+_NEW_LAW_MENTION = re.compile(r"(?i:\bSection)\s+(\d+[A-Za-z]?)((?:\s*\(\w+\))*)(\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?)(BNSS|BNS)\b")
+
+
+def _correct_wrong_acts(response_text: str, acts_all: dict, retrieved_text: str):
+    """PER-MENTION check (2026-10-15): the Act written right after a section number must be the Act that number was retrieved under. When a number was retrieved under exactly ONE of BNS/BNSS, the answer
+    writes the OTHER one, and nothing in the material supports that pair anywhere ('BNSS Section 346' in a statute pointer, a '[BNSS Section 35 ...]' header, 'Section 35 of the BNSS' in a passage), the Act
+    name is corrected by code. Left alone: a number retrieved under both Acts, a number that was not retrieved, an old-law mention, a pair the material supports. Returns (text, ['35:BNS->BNSS', ...])."""
+    text = response_text or ""
+    fixes = []
+
+    def supported(act, num):
+        n = re.escape(num)
+        return bool(re.search(r"\b" + act + r"\s+Sections?\b[^.;\]\n]{0,80}?(?<![0-9A-Za-z])" + n + r"(?![0-9A-Za-z])", retrieved_text or "")
+                    or re.search(r"(?i:\bSection)\s+" + n + r"(?![0-9A-Za-z])(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?" + act + r"\b", retrieved_text or ""))
+
+    out, last = [], 0
+    for m in _NEW_LAW_MENTION.finditer(text):
+        num, claimed = m.group(1), m.group(4)
+        acts = acts_all.get(num) or set()
+        other = "BNS" if claimed == "BNSS" else "BNSS"
+        if len(acts) != 1 or claimed in acts or other not in acts or supported(claimed, num):
+            continue
+        if _is_old_law_mention(text, m.start(), m.start() + len("Section ") + len(num)):
+            continue
+        out.append(text[last:m.start(4)])
+        out.append(other)
+        last = m.end(4)
+        fixes.append(f"{num}:{claimed}->{other}")
+    out.append(text[last:])
+    return "".join(out), fixes
+
+
+def _find_sections_missing_act(response_text: str, section_act_map: dict, acts_all: dict = None) -> list:
     """CONFIRMED REAL BUG (2026-09-04), found via live user testing: a
     real 'Right now' answer named "Section 36", "Section 58", "Section
     166", "Section 164" -- every one of them a real, correctly-numbered
@@ -880,7 +945,7 @@ def _find_sections_missing_act(response_text: str, section_act_map: dict) -> lis
     a known Act had it named somewhere."""
     if not section_act_map:
         return []
-    referenced = _extract_section_numbers(response_text)
+    referenced = _new_law_section_numbers(response_text)            # a number mentioned only as an old-law section ('of the former Code', '(now Section 346 ...)') is not a BNS/BNSS mention
     missing = []
     # CONFIRMED REAL GAP (2026-09-05, Phase 3b): key=int alone crashes on
     # a lettered section number ("67A") -- int("67A") raises ValueError.
@@ -902,8 +967,8 @@ def _find_sections_missing_act(response_text: str, section_act_map: dict) -> lis
         # "Information Technology Act". Every act's real, expected name
         # variant(s) are checked here instead of assuming the code itself
         # is the name.
-        pattern = _ACT_NAME_CHECK_PATTERNS.get(act) or re.compile(rf"\b{re.escape(act)}\b", re.IGNORECASE)
-        if not pattern.search(response_text or ""):
+        acts = sorted((acts_all or {}).get(num) or {act})          # a number retrieved under both the BNS and the BNSS is satisfied by either name
+        if not any((_ACT_NAME_CHECK_PATTERNS.get(a) or re.compile(rf"\b{re.escape(a)}\b", re.IGNORECASE)).search(response_text or "") for a in acts):
             missing.append(num)
     return missing
 
@@ -1793,12 +1858,17 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
 
         variants = _gather_offence_variants(matches, extra_text=question)
         section_act_map = _section_act_map(matches)
+        acts_all = _section_acts_all(matches)
+        response_text, _wrong_acts = _correct_wrong_acts(response_text, acts_all, retrieved_text)      # PER-MENTION check (owner's go 2026-10-15): the wrong one of BNS/BNSS after a section number is corrected by code
+        if _wrong_acts:
+            print("ACT_NAME_CORRECTED_BY_CODE " + ",".join(_wrong_acts), flush=True)
+        _repair_map = {k: v for k, v in section_act_map.items() if len(acts_all.get(k, ())) <= 1}      # a number in both Acts is never repaired by guesswork
         ungrounded = _find_ungrounded_sections(response_text, retrieved_text)
         mismatches = _find_cognizable_bailable_mismatches(response_text, variants)
-        missing_act = _find_sections_missing_act(response_text, section_act_map)
+        missing_act = _find_sections_missing_act(response_text, section_act_map, acts_all)
         if missing_act:                            # FIRST PASS (owner's go 2026-10-15): a missing Act name is added by code from the retrieved sections, so it never costs a second paid call; a mention that names another Code is left alone
-            _fixed_first = _add_missing_acts(response_text, missing_act, section_act_map)
-            _left = _find_sections_missing_act(_fixed_first, section_act_map)
+            _fixed_first = _add_missing_acts(response_text, missing_act, _repair_map)
+            _left = _find_sections_missing_act(_fixed_first, section_act_map, acts_all)
             if len(_left) < len(missing_act):
                 print("ACT_NAME_ADDED_BY_CODE first_pass sections=" + ",".join(m for m in missing_act if m not in _left), flush=True)
                 response_text, missing_act = _fixed_first, _left
@@ -1892,15 +1962,15 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             # checkable fact, not a nuance.
             _still = {"ungrounded_sections": _find_ungrounded_sections(retry_text, retrieved_text),
                       "section_mismatch": _find_cognizable_bailable_mismatches(retry_text, variants),
-                      "missing_act": _find_sections_missing_act(retry_text, section_act_map),
+                      "missing_act": _find_sections_missing_act(retry_text, section_act_map, acts_all),
                       "court_misattribution": _find_court_misattributions(retry_text, matches),
                       "pilot_overreach": _find_pilot_tier_overreach(retry_text, pilot_matches)}
             _still = {k: v for k, v in _still.items() if v}
             if _still.get("pilot_overreach"):
                 _still["pilot_sentences"] = _pilot_snippets(retry_text, _still["pilot_overreach"])
             if list(k for k in _still if k != "pilot_sentences") == ["missing_act"]:        # the only thing left is an Act name: add it by code from the retrieved sections rather than withhold the answer
-                _fixed = _add_missing_acts(retry_text, _still["missing_act"], section_act_map)
-                if not _find_sections_missing_act(_fixed, section_act_map):
+                _fixed = _add_missing_acts(retry_text, _still["missing_act"], _repair_map)
+                if not _find_sections_missing_act(_fixed, section_act_map, acts_all):
                     print("ACT_NAME_ADDED_BY_CODE sections=" + ",".join(_still["missing_act"]), flush=True)
                     retry_text, _still = _fixed, {}
             if _still:
