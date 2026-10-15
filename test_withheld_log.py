@@ -48,11 +48,15 @@ check(CALLS["n"] == 1 and "RECHECK" not in log, f"one model call only, no rechec
 check("ACT_NAME_ADDED_BY_CODE first_pass sections=35,318" in log, "and the log says which sections were repaired on the first pass")
 check(not CA._find_sections_missing_act(out, CA._section_act_map(matches)), "the repaired answer passes the same check")
 
-# 2. a mention that already names another Code is not 'repaired' into something wrong: the other section is still missing, the paid second try runs, and if it is still missing the answer is withheld with the reason in the log
-TEXT["t"] = "Cheating is punished under Section 318(4) and arrest powers sit in Section 35 of the CrPC."
+# 2. a mention that already names some other Act is not 'repaired' into something wrong: the number stays missing, the paid second try runs, and if it is still missing the answer is withheld with the reason in the log
+TEXT["t"] = "Cheating is punished under Section 318(4) and arrest powers sit in Section 35 of the Act."
 out, log = run()
 check(out is None and CALLS["n"] == 2 and "RECHECK reasons=missing_act detail=" in log and "ANSWER_WITHHELD after the second try: reasons=missing_act detail=" in log,
-      f"a section number that names another Code right after it is not touched: second try, then withheld, and the log says why (calls={CALLS['n']})")
+      f"a section number that names another Act right after it is not touched: second try, then withheld, and the log says why (calls={CALLS['n']})")
+# 2a. an OLD-law mention ('of the CrPC') is not a BNSS mention at all (2026-10-15): nothing to repair for it, the other section is repaired on the first pass
+TEXT["t"] = "Cheating is punished under Section 318(4) and arrest powers sit in Section 35 of the CrPC."
+out, log = run()
+check(out is not None and "Section 35 of the CrPC" in out and "Section 318(4) of the BNS" in out and CALLS["n"] == 1 and "RECHECK" not in log, f"an old-law mention is left alone and costs no second call ({out!r}, calls={CALLS['n']})")
 TEXT["t"] = "Cheating is punished under Section 318(4) of the BNS and arrest powers sit in Section 35 of the BNSS."
 out, log = run()
 check(out is not None and "RECHECK" not in log and "ACT_NAME_ADDED_BY_CODE" not in log and CALLS["n"] == 1, "an answer that names its Acts is untouched and not rechecked")
