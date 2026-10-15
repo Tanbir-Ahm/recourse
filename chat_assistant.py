@@ -3659,6 +3659,12 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     except Exception:  # noqa: BLE001
         pass
     grounding_checks.reset_notes()
+    _sw_start = {}
+    try:                                      # the switches AS THEY WERE WHEN THE QUESTION STARTED (the question's own cost can move the budget state while it runs; the log used to show the end state)
+        import cost_log
+        _sw_start = {"effort": _answer_effort(), "budget": cost_log.budget_state()}
+    except Exception:  # noqa: BLE001
+        pass
     try:
         try:
             import cost_log
@@ -3688,8 +3694,8 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         try:
             import cost_log
             cost_log.finish(style=answer_style.style(), audience=answer_style.effective_audience(),
-                            switches={"effort": _answer_effort(), "scope_model": _scope_model(), "prompt_cache": _prompt_cache_mode(), "grounding": grounding_checks.mode(),
-                                      "budget": cost_log.budget_state()})
+                            switches={"effort": _sw_start.get("effort", _answer_effort()), "scope_model": _scope_model(), "prompt_cache": _prompt_cache_mode(), "grounding": grounding_checks.mode(),
+                                      "budget": _sw_start.get("budget", cost_log.budget_state()), "budget_after": cost_log.budget_state()})
         except Exception:  # noqa: BLE001
             pass
         answer_style.set_audience(None)

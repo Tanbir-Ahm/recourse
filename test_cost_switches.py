@@ -152,6 +152,25 @@ buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
     r = CA.answer_question("My trial has gone on nine years")
 check(r == {"state": "budget_paused"} and "BUDGET_PAUSED" in buf.getvalue(), "at the hard limit answer_question returns 'budget_paused' without calling any model")
+# the cost line shows the switches as they were when the question STARTED (2026-10-15): a question that itself pushes the day over the limit still reads 'ok', then 'budget_after: hard'
+C._reset_day_for_tests()
+os.environ["DAILY_BUDGET_INR"] = "8"
+os.environ["ANSWER_EFFORT"] = "medium"
+CA._SWITCH_BROKEN["effort"] = False
+_orig_inner = CA._answer_question_inner
+def _spends(question, inline_domains=frozenset()):
+    C.add_spend_inr(9.0)
+    return {"state": "out_of_scope"}
+CA._answer_question_inner = _spends
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    CA.answer_question("a question")
+CA._answer_question_inner = _orig_inner
+cq = [json.loads(l[len("COST_QUESTION "):]) for l in buf.getvalue().splitlines() if l.startswith("COST_QUESTION ")]
+check(cq and cq[-1]["switches"]["budget"] == "ok" and cq[-1]["switches"]["effort"] == "medium" and cq[-1]["switches"]["budget_after"] == "hard", f"switches are the state at the start; the end state is budget_after ({cq[-1]['switches'] if cq else None})")
+os.environ.pop("ANSWER_EFFORT")
+os.environ.pop("DAILY_BUDGET_INR")
+C._reset_day_for_tests()
 # the day rolls over
 C._DAY["date"] = "2000-01-01"
 check(C.budget_state() == "ok" and C.spent_today_inr() == 0.0, "a new (Indian) day starts again from zero")
