@@ -621,7 +621,12 @@ def _case_check_box():
 
 def _footer():
     st.html('<hr class="r-rule">')
-    _case_check_box()
+    try:                                      # the lawyers' case check reads the Overruled Register, so it follows the same switch: REGISTER_HOOKS=off hides it (day one of the production switch-over changes nothing visible)
+        import register_hooks
+        if not register_hooks._off():
+            _case_check_box()
+    except Exception:
+        pass
 
     with st.expander("How Recourse works — and why it won't invent a case"):
         st.markdown(

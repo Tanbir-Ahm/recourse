@@ -67,5 +67,12 @@ import chat_assistant as CA
 check("exactly, letter for letter" in T.FEED_INSTRUCTION and "WITHOUT quotation marks" in T.FEED_INSTRUCTION and "ends in \"...\" is cut off" in T.FEED_INSTRUCTION, "the wider-search instruction says: quotation marks only for exact copies, and do not complete a cut-off passage")
 check("copied letter for letter" in CA._V3_LAWYER_SHAPE and "without quotation marks" in CA._V3_LAWYER_SHAPE, "the lawyers' template says the same")
 
+
+# 5. the lawyers' case-check box follows REGISTER_HOOKS (hidden when off)
+src = open("recourse_app.py", encoding="utf-8").read()
+i = src.index("def _footer():")
+seg = src[i:i + 600]
+check("register_hooks._off()" in seg and seg.index("_case_check_box()") > seg.index("register_hooks._off()"), "the footer shows the lawyers' case-check box only when REGISTER_HOOKS is not off")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
