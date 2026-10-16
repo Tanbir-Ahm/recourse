@@ -119,13 +119,18 @@ def format_answer_for_whatsapp(result: dict) -> list:
     messages = _format_messages(result)
     try:
         if result.get("state") in _REFUSAL_NOTE_STATES:
+            extra = []
+            act_note = result.get("act_notice")                       # Act Directory (act_directory.py): the Act the question names, whose text is not in the library
+            if isinstance(act_note, dict) and act_note.get("text"):
+                extra.append(act_note["text"])
             notes = list(result.get("register_notes") or []) + list(result.get("register_possible") or [])
             if notes:
-                note_msg = "\n".join(["*Currency notes* (checked by code, not by the model):"] + [f"- {n}" for n in notes])
+                extra.append("\n".join(["*Currency notes* (checked by code, not by the model):"] + [f"- {n}" for n in notes]))
+            if extra:
                 if messages and messages[-1] == _CONSULT_LINE:
-                    messages = messages[:-1] + [note_msg, _CONSULT_LINE]
+                    messages = messages[:-1] + extra + [_CONSULT_LINE]
                 else:
-                    messages = messages + [note_msg]
+                    messages = messages + extra
     except Exception:  # noqa: BLE001 -- the refusal itself always goes out
         pass
     return messages
@@ -180,7 +185,10 @@ def _format_messages(result: dict) -> list:
                 "don't all say the same thing -- here's each one, "
                 "rather than picking one for you:",
             )
-        if result.get("outside_scope_note"):        # SCOPE_GATE=open (chat_assistant.OUTSIDE_SCOPE_NOTE): a fixed notice, first, written by code
+        _act_note = result.get("act_notice")
+        if isinstance(_act_note, dict) and _act_note.get("text"):   # Act Directory (act_directory.py): the Act the question names, whose text is not in the library; replaces the generic notice
+            messages.insert(0, _act_note["text"])
+        elif result.get("outside_scope_note"):      # SCOPE_GATE=open (chat_assistant.OUTSIDE_SCOPE_NOTE): a fixed notice, first, written by code
             messages.insert(0, result["outside_scope_note"])
         pdf_n = result.get("pdf_offer_count")
         if result.get("situation_detected") and not pdf_n:

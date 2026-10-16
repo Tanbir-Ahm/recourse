@@ -69,7 +69,7 @@ try:
     check("register_notes" not in out, "_answer_question_inner: 'unrelated' carries none")
     CA._answer_question_core = lambda question, inline_domains=frozenset(): {"state": "no_match"}
     out = CA._answer_question_inner(Q_PLAIN)
-    check(out == {"state": "no_match"}, "_answer_question_inner: a refusal about a question that names no register case is unchanged")
+    check({k: v for k, v in out.items() if k != "act_notice"} == {"state": "no_match"}, "_answer_question_inner: a refusal about a question that names no register case is unchanged (the Act Directory's notice, 2026-10-17, is separate: Q_PLAIN says 'corruption case')")
 finally:
     CA._answer_question_core = _core
 

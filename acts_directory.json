@@ -1,0 +1,898 @@
+{
+  "schema": 1,
+  "generated": "2026-10-17",
+  "about": "The Act Directory (STATUTE_COVERAGE_PLAN.md step 1): Acts whose text Recourse does not hold. Code spots an Act the person's question NAMES (aliases) or clearly describes (phrases) and says so, with a link to the official text. NOTHING in 'status' or 'appeal' is shown to a user until a person has confirmed it (reviewed); a link is shown only after url_checked is set, otherwise the notice points to the India Code home page. Drafted by Claude from general knowledge and India Code search results; NOT checked by a lawyer.",
+  "reviewer": "Mr. Advocate",
+  "fallback_url": "https://indiacode.gov.in/",
+  "acts": [
+    {
+      "id": "pc_act_1988",
+      "priority": 1,
+      "detect": true,
+      "name": "The Prevention of Corruption Act, 1988",
+      "short": "Prevention of Corruption Act, 1988",
+      "act_no": "49 of 1988",
+      "pack": "none",
+      "aliases": [
+        "prevention of corruption act",
+        "prevention of corruption amendment act",
+        "pc act",
+        "p.c. act"
+      ],
+      "phrases": [
+        "corruption case",
+        "corruption cases",
+        "corruption trial",
+        "corruption charge",
+        "corruption charges",
+        "corruption fir",
+        "corruption complaint",
+        "bribery case",
+        "bribery charge",
+        "bribery charges",
+        "disproportionate assets",
+        "anti corruption bureau",
+        "demanded a bribe",
+        "demanding a bribe",
+        "asked for a bribe",
+        "accepted a bribe",
+        "accepting a bribe",
+        "taking a bribe",
+        "took a bribe"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1558",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force. Amended by the Lokpal and Lokayuktas Act, 2013 and by the Prevention of Corruption (Amendment) Act, 2018 (in force from 26 July 2018).",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Special Judge's judgment lie to the High Court.",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "pocso_act_2012",
+      "priority": 1,
+      "detect": true,
+      "name": "The Protection of Children from Sexual Offences Act, 2012",
+      "short": "Protection of Children from Sexual Offences Act, 2012 (POCSO)",
+      "act_no": "32 of 2012",
+      "pack": "none",
+      "aliases": [
+        "pocso",
+        "pocso act",
+        "protection of children from sexual offences act",
+        "protection of children from sexual offences"
+      ],
+      "phrases": [
+        "child sexual abuse",
+        "sexual offences against children"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2079",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 14 November 2012; amended in 2019.",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Special Court's judgment lie to the High Court, as for any Sessions Court judgment.",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "uapa_1967",
+      "priority": 1,
+      "detect": true,
+      "name": "The Unlawful Activities (Prevention) Act, 1967",
+      "short": "Unlawful Activities (Prevention) Act, 1967 (UAPA)",
+      "act_no": "37 of 1967",
+      "pack": "none",
+      "aliases": [
+        "uapa",
+        "unlawful activities prevention act",
+        "unlawful activities prevention amendment act",
+        "u a p a"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1470",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force; amended several times (2004, 2008, 2012 and 2019 among others).",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Special Court's judgment lie to the High Court (section 21 of the National Investigation Agency Act, 2008, where that Act applies).",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "pmla_2002",
+      "priority": 1,
+      "detect": true,
+      "name": "The Prevention of Money-laundering Act, 2002",
+      "short": "Prevention of Money-laundering Act, 2002 (PMLA)",
+      "act_no": "15 of 2003",
+      "pack": "none",
+      "aliases": [
+        "pmla",
+        "pml act",
+        "prevention of money laundering act"
+      ],
+      "phrases": [
+        "money laundering",
+        "enforcement directorate"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2036",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 July 2005; amended several times.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Special Court's judgment lie to the High Court; orders of the Adjudicating Authority are appealed to the Appellate Tribunal.",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "sc_st_act_1989",
+      "priority": 1,
+      "detect": true,
+      "name": "The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989",
+      "short": "Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989 (SC/ST Act)",
+      "act_no": "33 of 1989",
+      "pack": "none",
+      "aliases": [
+        "sc st act",
+        "sc st prevention of atrocities act",
+        "atrocities act",
+        "prevention of atrocities act",
+        "scheduled castes and scheduled tribes prevention of atrocities act",
+        "scheduled castes and the scheduled tribes prevention of atrocities act"
+      ],
+      "phrases": [
+        "sc st case",
+        "sc st cases",
+        "sc st complaint",
+        "sc st fir",
+        "atrocity case",
+        "atrocities case",
+        "caste abuse",
+        "caste abused",
+        "abused by caste",
+        "abused him by caste",
+        "abused her by caste",
+        "abused me by caste",
+        "abused them by caste",
+        "caste slur",
+        "casteist"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1920",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 30 January 1990; amended in 2015 and 2018.",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Special Court's or an Exclusive Special Court's judgment lie to the High Court (section 14A).",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "tada_1987",
+      "priority": 2,
+      "detect": true,
+      "name": "The Terrorist and Disruptive Activities (Prevention) Act, 1987",
+      "short": "Terrorist and Disruptive Activities (Prevention) Act, 1987 (TADA)",
+      "act_no": "28 of 1987",
+      "pack": "none",
+      "aliases": [
+        "tada",
+        "terrorist and disruptive activities prevention act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/15340",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "No longer in force: it lapsed in May 1995 (its section 1(4) kept it in force for eight years from 24 May 1987). Cases begun before it lapsed continued under it.",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "Appeals against a Designated Court's judgment lie directly to the Supreme Court (section 19).",
+        "confidence": "likely",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "nia_act_2008",
+      "priority": 2,
+      "detect": true,
+      "name": "The National Investigation Agency Act, 2008",
+      "short": "National Investigation Agency Act, 2008",
+      "act_no": "34 of 2008",
+      "pack": "none",
+      "aliases": [
+        "nia act",
+        "national investigation agency act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2054",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "arms_act_1959",
+      "priority": 2,
+      "detect": true,
+      "name": "The Arms Act, 1959",
+      "short": "Arms Act, 1959",
+      "act_no": "54 of 1959",
+      "pack": "none",
+      "aliases": [
+        "arms act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1398",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 October 1962.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "dowry_prohibition_act_1961",
+      "priority": 2,
+      "detect": true,
+      "name": "The Dowry Prohibition Act, 1961",
+      "short": "Dowry Prohibition Act, 1961",
+      "act_no": "28 of 1961",
+      "pack": "none",
+      "aliases": [
+        "dowry prohibition act",
+        "dowry act"
+      ],
+      "phrases": [
+        "dowry demand",
+        "dowry demands",
+        "demanded dowry",
+        "demanding dowry"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1679",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 July 1961.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "jj_act_2015",
+      "priority": 2,
+      "detect": true,
+      "name": "The Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "short": "Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "act_no": "2 of 2016",
+      "pack": "none",
+      "aliases": [
+        "juvenile justice act",
+        "juvenile justice care and protection of children act",
+        "jj act",
+        "j j act"
+      ],
+      "phrases": [
+        "juvenile justice board",
+        "juvenile in conflict with law",
+        "child in conflict with law"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2148",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/8201",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 15 January 2016.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "note": "India Code lists this Act under two handles (2148 and 8201); the checker keeps whichever opens."
+    },
+    {
+      "id": "mv_act_1988",
+      "priority": 2,
+      "detect": true,
+      "name": "The Motor Vehicles Act, 1988",
+      "short": "Motor Vehicles Act, 1988",
+      "act_no": "59 of 1988",
+      "pack": "none",
+      "aliases": [
+        "motor vehicles act",
+        "motor vehicle act",
+        "mv act",
+        "m v act"
+      ],
+      "phrases": [
+        "drunk driving",
+        "drunken driving",
+        "drink and drive",
+        "motor accident claims tribunal"
+      ],
+      "url": "https://indiacode.gov.in/items/2bbbcc40-38f1-4b15-ae94-646b85db4ee7",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/1798",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 July 1989; amended in 2019.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "customs_act_1962",
+      "priority": 2,
+      "detect": true,
+      "name": "The Customs Act, 1962",
+      "short": "Customs Act, 1962",
+      "act_no": "52 of 1962",
+      "pack": "none",
+      "aliases": [
+        "customs act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2475",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 February 1963.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "cgst_act_2017",
+      "priority": 2,
+      "detect": true,
+      "name": "The Central Goods and Services Tax Act, 2017",
+      "short": "Central Goods and Services Tax Act, 2017 (CGST)",
+      "act_no": "12 of 2017",
+      "pack": "none",
+      "aliases": [
+        "cgst act",
+        "central goods and services tax act",
+        "cgst"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/act/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2250",
+      "url_checked": null,
+      "status": {
+        "text": "In force; its main provisions from 1 July 2017.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "essential_commodities_act_1955",
+      "priority": 2,
+      "detect": true,
+      "name": "The Essential Commodities Act, 1955",
+      "short": "Essential Commodities Act, 1955",
+      "act_no": "10 of 1955",
+      "pack": "none",
+      "aliases": [
+        "essential commodities act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1579",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "itpa_1956",
+      "priority": 2,
+      "detect": true,
+      "name": "The Immoral Traffic (Prevention) Act, 1956",
+      "short": "Immoral Traffic (Prevention) Act, 1956",
+      "act_no": "104 of 1956",
+      "pack": "none",
+      "aliases": [
+        "immoral traffic prevention act",
+        "prevention of immoral traffic act",
+        "itpa",
+        "suppression of immoral traffic in women and girls act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1661",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force (earlier titled the Suppression of Immoral Traffic in Women and Girls Act, 1956).",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "posh_act_2013",
+      "priority": 2,
+      "detect": true,
+      "name": "The Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013",
+      "short": "Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013 (POSH Act)",
+      "act_no": "14 of 2013",
+      "pack": "none",
+      "aliases": [
+        "posh act",
+        "sexual harassment of women at workplace act",
+        "sexual harassment of women at workplace prevention prohibition and redressal act"
+      ],
+      "phrases": [
+        "internal complaints committee",
+        "local complaints committee"
+      ],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2104",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 9 December 2013.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "senior_citizens_act_2007",
+      "priority": 2,
+      "detect": true,
+      "name": "The Maintenance and Welfare of Parents and Senior Citizens Act, 2007",
+      "short": "Maintenance and Welfare of Parents and Senior Citizens Act, 2007",
+      "act_no": "56 of 2007",
+      "pack": "none",
+      "aliases": [
+        "senior citizens act",
+        "maintenance and welfare of parents and senior citizens act",
+        "parents and senior citizens act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2033",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force; it takes effect in each State from the date that State notifies.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "ipc_1860",
+      "priority": 3,
+      "detect": false,
+      "name": "The Indian Penal Code, 1860",
+      "short": "Indian Penal Code, 1860",
+      "act_no": "45 of 1860",
+      "pack": "none",
+      "aliases": [
+        "indian penal code",
+        "ipc"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2263",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "Repealed by the Bharatiya Nyaya Sanhita, 2023 from 1 July 2024; offences committed before that date are still governed by it.",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "note": "Not detected: the concordance maps IPC sections to the BNS, so a notice would only be noise."
+    },
+    {
+      "id": "crpc_1973",
+      "priority": 3,
+      "detect": false,
+      "name": "The Code of Criminal Procedure, 1973",
+      "short": "Code of Criminal Procedure, 1973",
+      "act_no": "2 of 1974",
+      "pack": "none",
+      "aliases": [
+        "code of criminal procedure",
+        "crpc",
+        "cr p c"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1611",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "Repealed by the Bharatiya Nagarik Suraksha Sanhita, 2023 from 1 July 2024; earlier proceedings continue as that Sanhita's savings provide.",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "note": "Not detected: the concordance maps CrPC sections to the BNSS, so a notice would only be noise."
+    },
+    {
+      "id": "evidence_act_1872",
+      "priority": 2,
+      "detect": true,
+      "name": "The Indian Evidence Act, 1872",
+      "short": "Indian Evidence Act, 1872",
+      "act_no": "1 of 1872",
+      "pack": "none",
+      "aliases": [
+        "indian evidence act",
+        "evidence act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/12846",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/4218",
+      "url_checked": null,
+      "status": {
+        "text": "Repealed by the Bharatiya Sakshya Adhiniyam, 2023 from 1 July 2024.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "note": "Handle 12846 is the page India Code's own entry points to; 4218 and 6819 are PDF items."
+    },
+    {
+      "id": "bsa_2023",
+      "priority": 2,
+      "detect": true,
+      "name": "The Bharatiya Sakshya Adhiniyam, 2023",
+      "short": "Bharatiya Sakshya Adhiniyam, 2023",
+      "act_no": "47 of 2023",
+      "pack": "none",
+      "aliases": [
+        "bharatiya sakshya adhiniyam",
+        "bharatiya sakshya",
+        "bsa 2023",
+        "bsa"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/items/9e461245-2c13-4171-9d9d-267425c01e1d",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/20063",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 July 2024.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "cpc_1908",
+      "priority": 2,
+      "detect": true,
+      "name": "The Code of Civil Procedure, 1908",
+      "short": "Code of Civil Procedure, 1908",
+      "act_no": "5 of 1908",
+      "pack": "none",
+      "aliases": [
+        "code of civil procedure"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/handle/123456789/496430",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2191",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 January 1909; amended many times.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "contract_act_1872",
+      "priority": 2,
+      "detect": true,
+      "name": "The Indian Contract Act, 1872",
+      "short": "Indian Contract Act, 1872",
+      "act_no": "9 of 1872",
+      "pack": "none",
+      "aliases": [
+        "indian contract act",
+        "contract act"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/act/0e782442-f035-4d53-aace-81b1552a8cf2/sections",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2187",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 September 1872.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "tpa_1882",
+      "priority": 2,
+      "detect": true,
+      "name": "The Transfer of Property Act, 1882",
+      "short": "Transfer of Property Act, 1882",
+      "act_no": "4 of 1882",
+      "pack": "none",
+      "aliases": [
+        "transfer of property act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2338",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/12924",
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 July 1882.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "hma_1955",
+      "priority": 2,
+      "detect": true,
+      "name": "The Hindu Marriage Act, 1955",
+      "short": "Hindu Marriage Act, 1955",
+      "act_no": "25 of 1955",
+      "pack": "none",
+      "aliases": [
+        "hindu marriage act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1560",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "hsa_1956",
+      "priority": 2,
+      "detect": true,
+      "name": "The Hindu Succession Act, 1956",
+      "short": "Hindu Succession Act, 1956",
+      "act_no": "30 of 1956",
+      "pack": "none",
+      "aliases": [
+        "hindu succession act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1713",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force; section 6 was amended in 2005.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "income_tax_act_1961",
+      "priority": 2,
+      "detect": true,
+      "name": "The Income-tax Act, 1961",
+      "short": "Income-tax Act, 1961",
+      "act_no": "43 of 1961",
+      "pack": "none",
+      "aliases": [
+        "income tax act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/2435",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "Replaced by the Income-tax Act, 2025 from 1 April 2026; the 1961 Act still governs earlier years. (Claude's recollection: to be confirmed.)",
+        "confidence": "likely",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "companies_act_2013",
+      "priority": 2,
+      "detect": true,
+      "name": "The Companies Act, 2013",
+      "short": "Companies Act, 2013",
+      "act_no": "18 of 2013",
+      "pack": "none",
+      "aliases": [
+        "companies act"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/act/f5bbbf6b-4247-400f-80fa-38c605132a8f/sections",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2114",
+      "url_checked": null,
+      "status": {
+        "text": "In force from 1 April 2014 (its provisions were brought in by notification).",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "consumer_protection_act_2019",
+      "priority": 2,
+      "detect": true,
+      "name": "The Consumer Protection Act, 2019",
+      "short": "Consumer Protection Act, 2019",
+      "act_no": "35 of 2019",
+      "pack": "none",
+      "aliases": [
+        "consumer protection act"
+      ],
+      "phrases": [
+        "consumer court",
+        "consumer forum",
+        "consumer commission"
+      ],
+      "url": "https://indiacode.gov.in/act/1b6c1754-47b1-411e-9607-1712a9caf368",
+      "url_alt": "https://www.indiacode.nic.in/handle/123456789/15256",
+      "url_checked": null,
+      "status": {
+        "text": "In force; most provisions from 24 July 2020.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    },
+    {
+      "id": "limitation_act_1963",
+      "priority": 2,
+      "detect": true,
+      "name": "The Limitation Act, 1963",
+      "short": "Limitation Act, 1963",
+      "act_no": "36 of 1963",
+      "pack": "none",
+      "aliases": [
+        "limitation act"
+      ],
+      "phrases": [],
+      "url": "https://www.indiacode.nic.in/handle/123456789/1565",
+      "url_alt": null,
+      "url_checked": null,
+      "status": {
+        "text": "In force since 1 January 1964.",
+        "confidence": "certain",
+        "reviewed": null
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      }
+    }
+  ]
+}

@@ -1880,6 +1880,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + _open_topic_block(question)
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # Act Directory: a question that names an Act whose text is not in the library gets one short block saying so (act_directory.prompt_block); "" otherwise
+            import act_directory
+            retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question))
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
@@ -3738,6 +3743,39 @@ def _attach_question_register_notes(result, question=None):
     return result
 
 
+def _acts_named(question):
+    """The Acts of the Act Directory (act_directory.py) that the QUESTION names or clearly describes: [{'id','short','how'}], [] when none, when ACT_DIRECTORY=off, or on any failure."""
+    try:
+        import act_directory
+        return act_directory.detect(question)
+    except Exception:  # noqa: BLE001 -- fail-open
+        return []
+
+
+def _attach_act_notice(result, question=None):
+    """Act Directory (2026-10-17): when the person's question names (or clearly describes) an Act whose text Recourse does not hold, adds result['act_notice'] = {'kind','acts','text','html'}, one fixed notice written
+    by code. kind 'opened' = the topic bar was opened for this question (the notice replaces the generic outside-scope notice, so only one shows); 'answer' = an ordinary answer that also names such an Act;
+    'refusal' = a question turned away. Other states ('unrelated', 'budget_paused', errors) get nothing. Never raises; ACT_DIRECTORY=off adds nothing."""
+    try:
+        state = result.get("state") if isinstance(result, dict) else None
+        if not question or (state not in _LINK_STATES and state not in _REFUSAL_NOTE_STATES):
+            return result
+        acts = _acts_named(question)
+        if not acts:
+            return result
+        import act_directory
+        if state in _LINK_STATES:
+            kind = "opened" if _open_topic_info(question) else "answer"
+        else:
+            kind = "refusal"
+        note = act_directory.notice(acts, kind)
+        if note:
+            result["act_notice"] = note
+    except Exception as exc:  # fail-open
+        logger.warning("_attach_act_notice failed: %s", exc)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # SCOPE_GATE (ADDED 2026-10-16, owner's instruction: "the site should accept all topics now").  on (default: today's behaviour) | open.
 #
@@ -3858,7 +3896,7 @@ def _finish_open_topic(question, result):
         except Exception:  # noqa: BLE001
             pass
         print("SCOPE_OPEN " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "reasoning": info.get("reasoning", "")[:160], "state": result.get("state"),
-                                          "wider_only": bool(info.get("wider_only")), "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
+                                          "wider_only": bool(info.get("wider_only")), "act": [a["id"] for a in _acts_named(question)], "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("_finish_open_topic failed: %s", exc)
     return result
@@ -3965,6 +4003,7 @@ def _answer_question_inner(question, inline_domains=frozenset()):
     try:
         result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
         result = _attach_question_register_notes(result, question=question)       # a refusal still tells the person that a case they named is on the register
+        result = _attach_act_notice(result, question=question)                    # an Act the question names whose text is not in the library: one fixed notice (act_directory.py)
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open

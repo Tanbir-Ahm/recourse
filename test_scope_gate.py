@@ -26,6 +26,12 @@ FAILURES = []
 APP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recourse_app.py")
 
 
+def _sans_act(res):
+    """The Act Directory's notice (act_directory.py, 2026-10-17) is additive and independent of SCOPE_GATE: a question that names TADA carries it on every state. These checks are about the gate alone."""
+    return {k: v for k, v in res.items() if k != "act_notice"}
+
+
+
 def check(cond, msg):
     print(f"[{'PASS' if cond else 'FAIL'}] {msg}")
     if not cond:
@@ -93,7 +99,7 @@ for v, want in (("open", True), (' "OPEN" ', True), ("on", False), ("", False), 
 
 # ---- default (unset, or 'on'): exactly today's behaviour ----
 res, log = run()
-check(res == {"state": "adjacent_uncovered", "reasoning": "A TADA appeal is outside BNS/BNSS."} and log == [] and CALLS["single"] == 0, "default: an adjacent_uncovered question is turned away exactly as before, no log line")
+check(_sans_act(res) == {"state": "adjacent_uncovered", "reasoning": "A TADA appeal is outside BNS/BNSS."} and log == [] and CALLS["single"] == 0, "default: an adjacent_uncovered question is turned away exactly as before, no log line")
 res, log = run(gate="on")
 check(res["state"] == "adjacent_uncovered" and log == [], "SCOPE_GATE=on: the same")
 res, log = run(category=("unrelated", "not legal", None), gate="open")
@@ -108,6 +114,7 @@ res, log = run(retrieval={"state": "single_match", "matches": [{"section_number"
 check(res["state"] == "single_match" and res["response_text"] == "Library answer." and CALLS["single"] == 1, "open: the question goes through the in_scope pipeline (library answer)")
 check(res.get("outside_scope_note") == CA.OUTSIDE_SCOPE_NOTE and "has not checked in depth" in res["outside_scope_note"], "open: the answer carries the fixed notice")
 check(len(log) == 1 and log[0]["state"] == "single_match" and log[0]["wider_only"] is False and "TADA" in log[0]["reasoning"] and len(log[0]["q"]) == 12 and Q_TADA not in json.dumps(log), "open: one SCOPE_OPEN line, with a hash of the question and not the question itself")
+check(log[0]["act"] == ["tada_1987"] and res["act_notice"]["kind"] == "opened" and res["act_notice"]["acts"] == ["tada_1987"], "open: the SCOPE_OPEN line names the Act directory entry the question names (ids only), and the answer carries the Act notice of kind 'opened'")
 
 # the log line also says what the library and the wider search each supplied (names and scores only), so that an irrelevant library hit can be seen in the log
 NALSA_NAME = "National Legal Services Authority v Union of India"
@@ -125,12 +132,14 @@ check(log[0]["library"] == {"judgments": [], "sections": []} and log[0]["wider"]
 many = {"state": "single_match", "matches": [], "judgment_matches": [{"type": "judgment", "case_name": f"Case {i} v State", "score": 0.5 - i / 100} for i in range(12)]}
 res, log = run(retrieval=many, gate="open")
 check(len(log[0]["library"]["judgments"]) == 8 and log[0]["library"]["judgments"][0]["case"] == "Case 0 v State", "at most eight judgments are named")
+res, log = run(question=Q_PLAIN, category=("adjacent_uncovered", "A special law.", None), retrieval={"state": "single_match", "matches": [], "judgment_matches": []}, gate="open")
+check(log[0]["act"] == [] and "act_notice" not in res, "open: a question that names no Act of the directory logs act: [] and gets no Act notice")
 check(CA._library_summary(None) == {"judgments": [], "sections": []} and CA._library_summary("not a list") == {"judgments": [], "sections": []} and CA._library_summary([None, 3, {"type": "judgment"}]) == {"judgments": [], "sections": []},
       "_library_summary never raises on odd input")
 
 # ---- open: nothing in the library ----
 res, log = run(gate="open")
-check(res == {"state": "no_match"} and len(log) == 1 and log[0]["state"] == "no_match" and "outside_scope_note" not in res, "open, search off: nothing in the library ends as 'no_match' (the same as an in_scope question), and is logged")
+check(_sans_act(res) == {"state": "no_match"} and len(log) == 1 and log[0]["state"] == "no_match" and "outside_scope_note" not in res, "open, search off: nothing in the library ends as 'no_match' (the same as an in_scope question), and is logged")
 res, log = run(gate="open", feed=("shadow", ""))
 check(res["state"] == "no_match", "open, SCI_SEARCH_MODE=shadow: still 'no_match' (the passages are not given to the model)")
 res, log = run(gate="open", feed=("feed", ""))
@@ -141,7 +150,7 @@ check(res["state"] == "single_match" and res["response_text"] == "Wider answer."
 check(len(log) == 1 and log[0]["wider_only"] is True and log[0]["state"] == "single_match", "...and the log line says so")
 CA.generate_grounded_response = lambda q, rt, **kw: None
 res, log = run(gate="open", feed=("feed", "WIDER PASSAGES"))
-check(res == {"state": "no_match"}, "open, feed mode, but the answer is withheld by a check: 'no_match', as before")
+check(_sans_act(res) == {"state": "no_match"}, "open, feed mode, but the answer is withheld by a check: 'no_match', as before")
 CA.generate_grounded_response = fake_generate
 res, log = run(gate="on", feed=("feed", "WIDER PASSAGES"))
 check(res["state"] == "adjacent_uncovered" and CALLS["gen"] == [], "SCOPE_GATE=on with feed on: the bar stays")

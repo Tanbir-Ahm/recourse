@@ -845,7 +845,10 @@ def render_answer(result: dict):
             st.markdown('<p class="r-conf">More than one provision applies and they don\'t '
                         'all say the same thing &mdash; Recourse lays out each rather than '
                         'picking one for you.</p>', unsafe_allow_html=True)
-        if result.get("outside_scope_note"):            # SCOPE_GATE=open: a fixed notice, written by code, on an answer to a question outside the areas Recourse has checked in depth
+        _act_note = result.get("act_notice")
+        if isinstance(_act_note, dict) and _act_note.get("html"):   # Act Directory (act_directory.py): the Act the question names, whose text is not in the library. It replaces the generic notice below, so only one shows
+            st.markdown(f'<p class="r-conf">{_act_note["html"]}</p>', unsafe_allow_html=True)          # already escaped by act_directory.notice
+        elif result.get("outside_scope_note"):          # SCOPE_GATE=open: a fixed notice, written by code, on an answer to a question outside the areas Recourse has checked in depth
             st.markdown(f'<p class="r-conf">{esc(result["outside_scope_note"])}</p>', unsafe_allow_html=True)
         reply = result.get("response_text") or ""
         with st.container(border=True):
@@ -1064,6 +1067,10 @@ def render_answer(result: dict):
         st.markdown("## Something isn't working right now")
         st.markdown('<div class="r-oos">This is a technical problem on Recourse\'s side, not '
                     'your question. Try again in a moment.</div>', unsafe_allow_html=True)
+
+    _act_note = result.get("act_notice")
+    if isinstance(_act_note, dict) and _act_note.get("html"):      # Act Directory (act_directory.py): the Act the question names, whose text Recourse does not hold, and where to read it
+        st.markdown(f'<p class="r-foot">{_act_note["html"]}</p>', unsafe_allow_html=True)              # already escaped by act_directory.notice
 
     # Overruled Register for the person's own question (chat_assistant._attach_question_register_notes, 2026-10-16): even when the question cannot be answered here, a case they named
     # that is on the register is flagged, because they may be about to rely on it elsewhere. Written by code, not by the model.
