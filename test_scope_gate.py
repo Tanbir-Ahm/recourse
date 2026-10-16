@@ -27,7 +27,7 @@ APP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recourse_app.py"
 
 
 def _sans_act(res):
-    """The Act Directory's notice (act_directory.py, 2026-10-17) is additive and independent of SCOPE_GATE: a question that names TADA carries it on every state. These checks are about the gate alone."""
+    """The Act Directory's notice (act_directory.py, 2026-10-16) is additive and independent of SCOPE_GATE: a question that names TADA carries it on every state. These checks are about the gate alone."""
     return {k: v for k, v in res.items() if k != "act_notice"}
 
 

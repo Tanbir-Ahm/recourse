@@ -1,5 +1,5 @@
 """
-act_directory.py -- the Act Directory: signposts for the Acts whose text Recourse does not hold (added 2026-10-17 on the owner's "Start step 1"; plan: STATUTE_COVERAGE_PLAN.md step 1 in the
+act_directory.py -- the Act Directory: signposts for the Acts whose text Recourse does not hold (added 2026-10-16 on the owner's "Start step 1"; plan: STATUTE_COVERAGE_PLAN.md step 1 in the
 research repository, FOLLOW_UPS item 2af). Data: acts_directory.json next to this file.
 
 What it does, and nothing more
@@ -9,8 +9,9 @@ What it does, and nothing more
   * It returns one fixed notice: this question names / looks like it is about the X Act; Recourse does not hold its text; where to read it. When the topic bar was opened for the question the notice
     REPLACES the generic outside-scope notice (it carries the same caution), so a person never sees two.
   * Nothing legal is shown until a person has confirmed it. The 'status' and 'appeal' lines in the data are drafts and stay hidden until their 'reviewed' stamp is set
-    (python act_directory.py confirm ID status|appeal --by NAME). A link is used only when 'url_checked' is set (python act_directory.py check-links --write, run where India Code opens, or
-    python act_directory.py confirm ID link --by NAME); otherwise the notice points to the India Code home page and says to search for the Act's name.
+    (python act_directory.py confirm ID status|appeal --by NAME). A link is used only when 'url_checked' is set (python act_directory.py check-links --write, run where indiacode.gov.in opens:
+    it asks India Code's own data API for the record the link points to and requires its title, Act number and year to equal the entry's; or python act_directory.py confirm ID link --by NAME);
+    otherwise the notice points to the India Code home page and says to search for the Act's name.
   * ACT_DIRECTORY=off switches all of it off (no notice, no prompt line, no log field); ACT_DIRECTORY=names keeps only name matches. Unset means on. Quotation marks around the value are ignored.
   * Never raises into an answer: every public function returns an empty result on bad input or a missing data file.
 
@@ -22,6 +23,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -234,40 +236,112 @@ def confirm(act_id, field, by, on=None, path=None):
     return entry
 
 
-def _title_of(body):
-    m = re.search(r"<title[^>]*>(.*?)</title>", body or "", re.I | re.S)
-    return _norm(re.sub(r"<[^>]+>", " ", m.group(1))) if m else ""
+IC_API = "https://indiacode.gov.in/server/api"
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+# the archive entry of a repealed Act reads  'Name, N of YEAR (Rep., Act X of Y)'  (and sometimes has no comma before N)
+_STUB = re.compile(r"^(?P<name>.+?)[\s,]+(?P<num>\d+)\s+of\s+(?P<year>\d{4})\s*(?:,?\s*\(\s*Rep\.?[\s,]*(?P<by>[^)]*?)\s*\))?\s*$", re.I)
+_CHECK_NOTE = "machine: India Code's own record matches on title, number and year"
 
 
-def _same_page(a, b):
-    pa, pb = urllib.parse.urlsplit(a), urllib.parse.urlsplit(b)
-    host = lambda h: (h or "").lower().replace("www.", "", 1)  # noqa: E731
-    return host(pa.netloc) == host(pb.netloc) and pa.path.rstrip("/") == pb.path.rstrip("/")
+def _ic_ref(url):
+    """('uuid', u) or ('handle', '123456789/N') for an indiacode.gov.in item link; None for anything else (another host, a collection page, the home page)."""
+    p = urllib.parse.urlsplit(url or "")
+    if (p.netloc or "").lower() not in ("indiacode.gov.in", "www.indiacode.gov.in"):
+        return None
+    parts = [s for s in p.path.split("/") if s]
+    if len(parts) >= 2 and parts[0] in ("items", "act") and _UUID.fullmatch(parts[1].lower()):
+        return "uuid", parts[1].lower()
+    if len(parts) >= 3 and parts[0] == "handle" and parts[1].isdigit() and parts[2].isdigit():
+        return "handle", f"{parts[1]}/{parts[2]}"
+    return None
+
+
+def _name_parts(text):
+    """(words, year): lower-case words without a leading 'The' and without a trailing year, and that year or None. 'The Indian Penal Code, 1860' and India Code's 'The Indian Penal Code' are the same
+    name (one has no year); 'Prevention of Corruption Act, 1947' and '... Act, 1988' are not."""
+    k = _norm(re.sub(r"^\s*the\s+", "", text or "", flags=re.I))
+    m = re.search(r"\s+(\d{4})$", k)
+    return (k[:m.start()], m.group(1)) if m else (k, None)
+
+
+def _same_name(a, b):
+    (ka, ya), (kb, yb) = _name_parts(a), _name_parts(b)
+    return ka == kb and (ya is None or yb is None or ya == yb)
+
+
+def _ic_identity(entry, item):
+    """('ok', detail, info) when India Code's own record IS this Act: a central, archived, not withdrawn item whose title and Act number and year equal the entry's.
+    ('failed', reason, None) otherwise. A repealed Act's archive entry ('Name, N of YEAR (Rep., Act X of Y)') counts; a state's version of the same Act does not."""
+    try:
+        if not isinstance(item, dict) or item.get("type") != "item":
+            return "failed", "the link is not an India Code item", None
+        if item.get("withdrawn") or item.get("inArchive") is False:
+            return "failed", "the record is withdrawn or not in the archive", None
+        md = item.get("metadata") or {}
+        first = lambda k: str(((md.get(k) or [{}])[0].get("value")) or "").strip()  # noqa: E731
+        title = first("dc.title") or str(item.get("name") or "").strip()
+        want = re.match(r"\s*(\d+)\s+of\s+(\d{4})", entry.get("act_no") or "")
+        if not title or not want:
+            return "failed", "no title on the record or no Act number in the directory to compare", None
+        state = first("dc.identifier.state_name")
+        if state and state.upper() != "CENTRAL":
+            return "failed", f"the record belongs to {state}, not to the Centre", None
+        name, num, year, by = title, first("dc.identifier.act_number"), first("dc.date.act_year"), None
+        if first("dc.identifier.collection") == "ACT":
+            kind = "act"
+            rep = first("dc.identifier.repealed").lower()
+            repealed = True if rep == "true" else (False if rep == "false" else None)
+        else:
+            m = _STUB.match(title)
+            if not m:
+                return "failed", f"the record is not an Act (title {title!r} does not read 'Name, N of YEAR')", None
+            name, num, year, by = m.group("name"), m.group("num"), m.group("year"), (m.group("by") or "").strip() or None
+            kind, repealed = ("repealed-stub", True) if by else ("record", None)
+        if not _same_name(name, entry.get("name")):
+            return "failed", f"India Code's title is {title!r}", None
+        if (int(num), int(year)) != (int(want.group(1)), int(want.group(2))):
+            return "failed", f"India Code's Act number is {num} of {year}", None
+        info = {"kind": kind, "title": title, "act_number": str(int(num)), "act_year": str(int(year)), "uuid": item.get("uuid"), "handle": item.get("handle"), "repealed": repealed, "repealed_by": by,
+                "enacted": first("dc.date.enact_date") or None, "enforced": first("dc.date.enforcement_date") or None}       # India Code's own words: formats differ ('09-09-1988', '1-7-2024', free text for the GST and consumer Acts)
+        return "ok", f"India Code record {title!r} ({int(num)} of {int(year)})", info
+    except Exception as exc:  # noqa: BLE001
+        return "failed", f"could not compare: {type(exc).__name__}", None
 
 
 def _try_url(url, entry, opener, timeout):
-    """('ok'|'ok (name not confirmed)'|'failed', detail). A redirect to another page (for example a retired site sending everyone to its home page) is a failure."""
+    """('ok'|'failed'|'unreachable', detail, info). 'ok' only when India Code's data API returns the record this link points to AND that record is this Act (title, number, year, central).
+    'unreachable' (no connection, a refusal, a server error) says nothing about the link; a missing record or a different Act is 'failed'.
+    Why the API and not the page: the site is a client-side app that answers HTTP 200 for any address, so 'the page opens' proves nothing (the old-style handles 123456789/1558 and /2036 open to a
+    collection called 'Form' and to nothing)."""
+    ref = _ic_ref(url)
+    if ref is None:
+        return "failed", "not an indiacode.gov.in item link (items/<id>, act/<id> or handle/123456789/<n>)", None
+    api = f"{IC_API}/core/items/{ref[1]}" if ref[0] == "uuid" else f"{IC_API}/pid/find?id={urllib.parse.quote(ref[1], safe='/')}"
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; recourse-act-directory-check)"})
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0 (compatible; recourse-act-directory-check)", "Accept": "application/json"})
         with opener(req, timeout=timeout) as resp:
             code = getattr(resp, "status", None) or resp.getcode()
-            final = resp.geturl() if hasattr(resp, "geturl") else url
-            body = resp.read(200000).decode("utf-8", "ignore")
+            body = resp.read(2000000).decode("utf-8", "ignore")
+    except urllib.error.HTTPError as exc:
+        return ("failed", "no such record (HTTP 404)", None) if exc.code in (404, 410) else ("unreachable", f"HTTP {exc.code}", None)
     except Exception as exc:  # noqa: BLE001
-        return "failed", f"{type(exc).__name__}: {str(exc)[:80]}"
+        return "unreachable", f"{type(exc).__name__}: {str(exc)[:80]}", None
+    if code in (404, 410):
+        return "failed", f"no such record (HTTP {code})", None
     if code != 200:
-        return "failed", f"HTTP {code}"
-    if not _same_page(url, final):
-        return "failed", f"redirected to {final}"
-    core = _norm(re.sub(r"^the\s+", "", entry.get("name") or "", flags=re.I))
-    if core and core in _norm(re.sub(r"<[^>]+>", " ", body)):
-        return "ok", "page names the Act"
-    return "ok (name not confirmed)", "reachable; the page does not carry the Act's name in plain HTML (client-rendered?)"
+        return "unreachable", f"HTTP {code}", None
+    try:
+        item = json.loads(body)
+    except ValueError:
+        return "unreachable", "the data API did not return JSON", None
+    return _ic_identity(entry, item)
 
 
-def check_links(path=None, write=False, opener=None, timeout=15, today=None):
-    """Opens each entry's url, then its url_alt. Returns [(id, status, detail, url_used)]. With write=True an OK link sets url_checked (an alternative that opens replaces a url that does not).
-    Run it where India Code opens (the sandbox's network blocks it); a person's click on the link counts just as much (confirm ID link)."""
+def check_links(path=None, write=False, opener=None, timeout=20, today=None):
+    """Checks each entry's url, then its url_alt, against India Code's own record. Returns [(id, 'ok'|'failed'|'unreachable', detail, url_used)].
+    With write=True: an ok link stamps url_checked and fills 'indiacode' (title, Act number and year, uuid, handle, repealed or not); an alternative that checks out replaces a url that does not;
+    a link that is definitely wrong (no such record, or another Act) clears url_checked; a link that could not be reached (no connection) changes NOTHING.
+    Run it where indiacode.gov.in is reachable. A person's click counts just as much (confirm ID link)."""
     path = path or DATA_PATH
     opener = opener or urllib.request.urlopen
     today = today or datetime.date.today().isoformat()
@@ -275,22 +349,25 @@ def check_links(path=None, write=False, opener=None, timeout=15, today=None):
         data = json.load(fh)
     out = []
     for e in data["acts"]:
-        used, res = None, ("failed", "no url")
+        used, res = None, ("failed", "no url", None)
         for u in (e.get("url"), e.get("url_alt")):
             if not u:
                 continue
             res = _try_url(u, e, opener, timeout)
-            if res[0].startswith("ok"):
+            if res[0] == "ok":
                 used = u
                 break
         out.append((e["id"], res[0], res[1], used))
-        if write:
-            if used:
-                if used != e.get("url"):
-                    e["url_alt"], e["url"] = e.get("url"), used
-                e["url_checked"] = today + ("" if res[0] == "ok" else " (reachable only)")
-            else:
-                e["url_checked"] = None
+        if not write:
+            continue
+        if used:
+            if used != e.get("url"):
+                e["url_alt"], e["url"] = e.get("url"), used
+            e["url_checked"] = f"{today} ({_CHECK_NOTE})"
+            e["indiacode"] = dict(res[2], verified_on=today)
+        elif res[0] == "failed":
+            e["url_checked"] = None
+            e.pop("indiacode", None)
     if write:
         _save(data, path)
     return out
@@ -314,7 +391,7 @@ def _main(argv):
         for i, st, detail, used in rows:
             print(f"{st:24s} {i:34s} {detail}")
         bad = [r for r in rows if not r[1].startswith("ok")]
-        print(f"\n{len(rows) - len(bad)} of {len(rows)} links open" + (" (url_checked written)" if "--write" in args else " (nothing written; add --write)"))
+        print(f"\n{len(rows) - len(bad)} of {len(rows)} links check out against India Code's own record" + (" (url_checked written)" if "--write" in args else " (nothing written; add --write)"))
         return 1 if bad else 0
     ids = [a for a in args if not a.startswith("--") and a not in (opt("--by"), opt("--on"), opt("--file"))]
     if len(ids) != 2:

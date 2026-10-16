@@ -3753,7 +3753,7 @@ def _acts_named(question):
 
 
 def _attach_act_notice(result, question=None):
-    """Act Directory (2026-10-17): when the person's question names (or clearly describes) an Act whose text Recourse does not hold, adds result['act_notice'] = {'kind','acts','text','html'}, one fixed notice written
+    """Act Directory (2026-10-16): when the person's question names (or clearly describes) an Act whose text Recourse does not hold, adds result['act_notice'] = {'kind','acts','text','html'}, one fixed notice written
     by code. kind 'opened' = the topic bar was opened for this question (the notice replaces the generic outside-scope notice, so only one shows); 'answer' = an ordinary answer that also names such an Act;
     'refusal' = a question turned away. Other states ('unrelated', 'budget_paused', errors) get nothing. Never raises; ACT_DIRECTORY=off adds nothing."""
     try:

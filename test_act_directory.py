@@ -1,5 +1,5 @@
 """
-test_act_directory.py -- the Act Directory (act_directory.py, acts_directory.json; 2026-10-17, plan: STATUTE_COVERAGE_PLAN.md step 1): signposts for the Acts whose text Recourse does not hold.
+test_act_directory.py -- the Act Directory (act_directory.py, acts_directory.json; 2026-10-16, plan: STATUTE_COVERAGE_PLAN.md step 1): signposts for the Acts whose text Recourse does not hold.
 Data integrity; detection (named and phrase matches, 12+ natural questions for each of the five priority Acts, 3 for every other Act, and controls that must stay silent); the notice
 (three kinds, link and review gating, escaping); the reviewer's stamps and the link check; chat_assistant._attach_act_notice and the prompt block; the page and WhatsApp.
 No network, no model, no cost. Run: python -X utf8 test_act_directory.py
@@ -7,9 +7,11 @@ No network, no model, no cost. Run: python -X utf8 test_act_directory.py
 import copy
 import json
 import os
+import re
 import sys
 import tempfile
 import types
+import urllib.error
 
 os.environ.setdefault("ANTHROPIC_API_KEY", "dummy")
 os.environ.setdefault("VOYAGE_API_KEY", "dummy")
@@ -55,12 +57,49 @@ for a in ACTS:
 check(not {k: v for k, v in seen.items() if len(v) > 1}, "no alias or phrase belongs to two Acts")
 check(all(len(k) >= 3 for k in seen), "no alias or phrase is shorter than three characters")
 check(not ({"act", "the act", "code", "section", "court", "cpc", "hma", "nia", "it act", "ec act", "pc", "ed"} & set(seen)), "no ambiguous short form is an alias")
-check(all((a["url"] or "").startswith("https://") and ("indiacode.nic.in" in a["url"] or "indiacode.gov.in" in a["url"]) for a in ACTS), "every link is on India Code")
-check(all(a.get("url_checked") is None for a in ACTS), "no link is marked checked yet (nothing could be opened from the build sandbox)")
+UUID_RE = re.compile(r"^https://indiacode\.gov\.in/items/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$")
+check(all(UUID_RE.match(a["url"] or "") for a in ACTS), "every link is an indiacode.gov.in item link (the old-style www.indiacode.nic.in handles mean something else on the new system and are gone)")
+check(all(not a.get("url_alt") for a in ACTS), "no alternative link is kept")
+check(all(re.match(r"^\d{4}-\d{2}-\d{2} \(machine: India Code's own record matches on title, number and year\)$", a.get("url_checked") or "") for a in ACTS),
+      "every link was checked by the machine against India Code's own record (title, Act number and year)")
+check(all(isinstance(a.get("indiacode"), dict) and a["indiacode"].get("uuid") == UUID_RE.match(a["url"]).group(1) and a["indiacode"].get("title") and a["indiacode"].get("kind") in ("act", "repealed-stub")
+          and f'{a["indiacode"]["act_number"]} of {a["indiacode"]["act_year"]}' == a["act_no"] and isinstance(a["indiacode"].get("repealed"), bool) for a in ACTS), "every entry carries India Code's own facts for its record, equal to the entry")
+check(sorted(a["id"] for a in ACTS if a["indiacode"]["repealed"]) == ["crpc_1973", "evidence_act_1872", "income_tax_act_1961", "ipc_1860", "tada_1987"],
+      "India Code itself lists exactly these five as repealed: the TADA (Act 30 of 2001), the IPC (45 of 2023), the CrPC (46 of 2023), the Evidence Act (47 of 2023) and the 1961 Income-tax Act (30 of 2025)")
+check({a["id"]: a["indiacode"]["repealed_by"] for a in ACTS if a["indiacode"]["repealed"]} == {"tada_1987": "Act 30 of 2001", "ipc_1860": "Act 45 of 2023", "crpc_1973": "Act 46 of 2023", "evidence_act_1872": "Act 47 of 2023", "income_tax_act_1961": "Act 30 of 2025"},
+      "and by which Act, as India Code's own record says")
 check(all(a["status"]["text"] and a["status"]["reviewed"] is None for a in ACTS), "every status line is a draft with no reviewer stamp")
-check(all(a["appeal"]["reviewed"] is None for a in ACTS) and sum(1 for a in ACTS if a["appeal"]["text"]) == 6, "six appeal-route drafts, none confirmed")
+check(all(a["appeal"]["reviewed"] is None for a in ACTS) and sorted(a["id"] for a in ACTS if a["appeal"]["text"]) == ["nia_act_2008", "pc_act_1988", "pmla_2002", "pocso_act_2012", "sc_st_act_1989", "tada_1987", "uapa_1967"],
+      "seven appeal-route drafts (the five priority Acts, TADA and the NIA Act), none confirmed")
 check([a["id"] for a in ACTS if a["detect"] is False] == ["ipc_1860", "crpc_1973"], "the two repealed codes the concordance already handles are not detected (a notice would be noise)")
 check(all(a["status"]["confidence"] in ("certain", "likely", "guessing") for a in ACTS), "every status draft carries the drafter's confidence")
+check(all((a["status"].get("evidence") or "").strip() for a in ACTS) and all((a["appeal"].get("evidence") or "").strip() for a in ACTS if a["appeal"]["text"]) and all(a["appeal"]["confidence"] in ("certain", "likely") for a in ACTS if a["appeal"]["text"]),
+      "every drafted line says what it rests on (what was read on India Code, and what is only recollection)")
+check(all(("recollection" in a["status"]["evidence"] or "could not be read" in a["status"]["evidence"] or "not checked" in a["status"]["evidence"]) for a in ACTS if a["status"]["confidence"] == "likely")
+      and all(a["status"]["evidence"].startswith(("India Code", "Section")) or "India Code" in a["status"]["evidence"] for a in ACTS if a["status"]["confidence"] == "certain"),
+      "a 'likely' status line names what is recollection; a 'certain' one cites India Code")
+# the status line must agree with India Code's own record (the guard against a drafting slip like 'eight years' for a section that says 'two')
+MONTHS = {m: i for i, m in enumerate(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], 1)}
+
+
+def ic_date(s):
+    m = re.match(r"^(\d{1,2})-(\d{1,2})-(\d{4})$", (s or "").strip())
+    if m:
+        return (int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", (s or "").strip())
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
+bad_rep = [a["id"] for a in ACTS if (a["indiacode"]["repealed"] and not a["status"]["text"].startswith(("Repealed by", "No longer in force"))) or (not a["indiacode"]["repealed"] and not a["status"]["text"].startswith("In force"))]
+check(not bad_rep, f"every status line agrees with India Code on 'repealed' or 'in force' ({bad_rep})")
+bad_date, n_dates = [], 0
+for a in ACTS:
+    m = re.match(r"^In force since (\d{1,2}) (%s) (\d{4})" % "|".join(MONTHS), a["status"]["text"])
+    if m:
+        n_dates += 1
+        if ic_date(a["indiacode"].get("enforced")) != (int(m.group(3)), MONTHS[m.group(2)], int(m.group(1))):
+            bad_date.append((a["id"], m.group(0), a["indiacode"].get("enforced")))
+check(n_dates >= 15 and not bad_date, f"every 'In force since <date>' equals the enforcement date India Code gives ({n_dates} checked; mismatches {bad_date})")
 
 # ---------------------------------------------------------------- detection: named and phrase matches
 PC = [
@@ -246,7 +285,7 @@ n_open, n_ans, n_ref = AD.notice(named, "opened"), AD.notice(named, "answer"), A
 check(n_open["text"].startswith("This question names the Prevention of Corruption Act, 1988. Recourse has not checked this area in depth and does not hold the text of that Act, so what follows rests only on what we could find; "
                                 "please confirm it with a lawyer who handles this area before you rely on it."), "opened: names the Act and carries the same caution as the generic notice")
 check(n_ans["text"].startswith("This question also names the Prevention of Corruption Act, 1988. Recourse does not hold the text of that Act, so the answer below does not rest on it."), "answer: an ordinary answer that also names the Act")
-check(n_ref["text"].startswith("This question names the Prevention of Corruption Act, 1988. Recourse does not hold the text of that Act. Official text:"), "refusal: short")
+check(n_ref["text"].startswith("This question names the Prevention of Corruption Act, 1988. Recourse does not hold the text of that Act. Official text on India Code: "), "refusal: short")
 check(AD.notice(likely, "opened")["text"].startswith("This question looks like it is about the Prevention of Corruption Act, 1988."), "a phrase match says 'looks like it is about', never 'names'")
 check(AD.notice(likely, "answer")["text"].startswith("This question also looks like it is about the Prevention of Corruption Act, 1988."), "the same for an ordinary answer")
 two = AD.detect("corruption case and the POCSO Act")
@@ -256,15 +295,27 @@ check(AD.notice([], "answer") is None and AD.notice(named, "bogus") is None and 
 check(all("good law" not in n["text"].lower() for n in (n_open, n_ans, n_ref)), "the notice never says anything is good law")
 check(n_open["acts"] == ["pc_act_1988"] and n_open["kind"] == "opened", "the notice carries the ids and the kind")
 
-# the link: the Act's own only once checked; otherwise the India Code home page
-check("indiacode.gov.in/" in n_open["text"] and "search for the Act's name" in n_open["text"] and "indiacode.nic.in/handle" not in n_open["text"], "unchecked link: the home page, 'search for the Act's name', no Act link")
-check('<a href="https://indiacode.gov.in/">India Code</a>' in n_open["html"] and "handle/123456789/1558" not in n_open["html"], "unchecked link: one anchor on the home page in the HTML too")
+# the link: every link has been checked against India Code's own record, so the notice gives the Act's own link; an unchecked link falls back to the India Code home page
+PCE = next(a for a in ACTS if a["id"] == "pc_act_1988")
+POE = next(a for a in ACTS if a["id"] == "pocso_act_2012")
+check(f"Official text on India Code: Prevention of Corruption Act, 1988: {PCE['url']}." in n_open["text"] and "search for the Act's name" not in n_open["text"], "checked link: the Act's own link, as text")
+check(f'<a href="{PCE["url"]}">Prevention of Corruption Act, 1988</a>' in n_open["html"] and 'href="https://indiacode.gov.in/"' not in n_open["html"], "checked link: the Act's own link, as an anchor")
 # status and appeal drafts are never shown
-check("Amended by the Lokpal" not in n_open["text"] + n_open["html"] and "Special Judge" not in n_open["text"] + n_open["html"], "the draft status and appeal lines are not shown")
+check(PCE["status"]["text"] not in n_open["text"] + n_open["html"] and PCE["appeal"]["text"] not in n_open["text"] + n_open["html"], "the draft status and appeal lines are not shown")
 
 with tempfile.TemporaryDirectory() as tmp:
+    unchecked = copy.deepcopy(RAW)
+    for a in unchecked["acts"]:
+        a["url_checked"] = None
+    pu = os.path.join(tmp, "unchecked.json")
+    json.dump(unchecked, open(pu, "w", encoding="utf-8"))
+    AD.load(pu, refresh=True)
+    un = AD.notice(AD.detect("the PC Act", pu), "opened", pu)
+    check("indiacode.gov.in/" in un["text"] and "search for the Act's name" in un["text"] and PCE["url"] not in un["text"], "unchecked link: the home page, 'search for the Act's name', no Act link")
+    check('<a href="https://indiacode.gov.in/">India Code</a>' in un["html"] and PCE["url"] not in un["html"], "unchecked link: one anchor on the home page in the HTML too")
+
     p = os.path.join(tmp, "acts.json")
-    data = copy.deepcopy(RAW)
+    data = copy.deepcopy(unchecked)
     for a in data["acts"]:
         if a["id"] == "pc_act_1988":
             a["url_checked"] = "2026-10-20 (Mr. Advocate)"
@@ -275,16 +326,16 @@ with tempfile.TemporaryDirectory() as tmp:
     json.dump(data, open(p, "w", encoding="utf-8"))
     AD.load(p, refresh=True)
     one = AD.notice(AD.detect("the PC Act", p), "refusal", p)
-    check("Official text on India Code: Prevention of Corruption Act, 1988: https://www.indiacode.nic.in/handle/123456789/1558." in one["text"]
-          and '<a href="https://www.indiacode.nic.in/handle/123456789/1558">Prevention of Corruption Act, 1988</a>' in one["html"], "checked link: the Act's own link, as text and as an anchor")
-    check("Amended by the Lokpal and Lokayuktas Act, 2013" in one["text"] and "Special Judge" not in one["text"], "a confirmed status line is shown, an unconfirmed appeal line is not")
+    check(f"Official text on India Code: Prevention of Corruption Act, 1988: {PCE['url']}." in one["text"]
+          and f'<a href="{PCE["url"]}">Prevention of Corruption Act, 1988</a>' in one["html"], "checked link: the Act's own link, as text and as an anchor")
+    check(PCE["status"]["text"] in one["text"] and PCE["appeal"]["text"] not in one["text"], "a confirmed status line is shown, an unconfirmed appeal line is not")
     both = AD.notice(AD.detect("the PC Act and the POCSO Act", p), "refusal", p)
-    check("Prevention of Corruption Act, 1988: In force." in both["text"] and "Protection of Children from Sexual Offences Act, 2012 (POCSO): Appeals against a Special Court's judgment lie to the High Court" in both["text"],
+    check(f"Prevention of Corruption Act, 1988: {PCE['status']['text']}" in both["text"] and f"Protection of Children from Sexual Offences Act, 2012 (POCSO): {POE['appeal']['text']}" in both["text"],
           "with two Acts each confirmed line is prefixed with its Act")
-    check("Official text on India Code: Prevention of Corruption Act, 1988: https://www.indiacode.nic.in/handle/123456789/1558; Protection of Children from Sexual Offences Act, 2012 (POCSO): https://www.indiacode.nic.in/handle/123456789/2079." in both["text"],
+    check(f"Official text on India Code: Prevention of Corruption Act, 1988: {PCE['url']}; Protection of Children from Sexual Offences Act, 2012 (POCSO): {POE['url']}." in both["text"],
           "two checked links are both given")
     mixed = AD.notice(AD.detect("the PC Act and the UAPA", p), "refusal", p)
-    check("search for each Act's name" in mixed["text"] and "handle/123456789/1558" not in mixed["text"], "if any link is unchecked the notice falls back to the home page for all (never a half-verified list)")
+    check("search for each Act's name" in mixed["text"] and PCE["url"] not in mixed["text"], "if any link is unchecked the notice falls back to the home page for all (never a half-verified list)")
     # escaping
     data2 = copy.deepcopy(RAW)
     for a in data2["acts"]:
@@ -318,7 +369,7 @@ with tempfile.TemporaryDirectory() as tmp:
           "only that entry changed on disk")
     e = AD.confirm("pc_act_1988", "link", "Mr. Advocate", "2026-10-20", p)
     check(e["url_checked"] == "2026-10-20 (Mr. Advocate)", "confirm link sets url_checked")
-    for args, why in ((("nope", "status", "x"), "an unknown id"), (("pc_act_1988", "colour", "x"), "an unknown field"), (("pc_act_1988", "status", ""), "no reviewer name"), (("nia_act_2008", "appeal", "x"), "an empty draft")):
+    for args, why in ((("nope", "status", "x"), "an unknown id"), (("pc_act_1988", "colour", "x"), "an unknown field"), (("pc_act_1988", "status", ""), "no reviewer name"), (("arms_act_1959", "appeal", "x"), "an empty draft")):
         try:
             AD.confirm(*args, path=p)
             check(False, f"confirm refuses {why}")
@@ -334,7 +385,7 @@ class _Resp:
         return self._url
 
     def read(self, n=-1):
-        return self._body.encode("utf-8")
+        return self._body if isinstance(self._body, bytes) else self._body.encode("utf-8")
 
     def __enter__(self):
         return self
@@ -344,47 +395,140 @@ class _Resp:
 
 
 def make_opener(table):
+    seen = []
+
     def opener(req, timeout=15):
         url = req.full_url
+        seen.append(url)
         r = table.get(url)
         if r is None:
             raise OSError("unreachable")
         if isinstance(r, Exception):
             raise r
         return r(url) if callable(r) else r
+    opener.seen = seen
     return opener
 
 
+def rec(uuid, title, number=None, year=None, collection="ACT", state="CENTRAL", repealed="false", handle="123456789/1", kind="item", withdrawn=False, in_archive=True, enacted=None, enforced=None):
+    """An India Code item as the data API returns it (the fields the check reads)."""
+    md = {"dc.title": [{"value": title}]}
+    for k, v in (("dc.identifier.act_number", number), ("dc.date.act_year", year), ("dc.identifier.collection", collection), ("dc.identifier.state_name", state), ("dc.identifier.repealed", repealed),
+                 ("dc.date.enact_date", enacted), ("dc.date.enforcement_date", enforced)):
+        if v is not None:
+            md[k] = [{"value": str(v)}]
+    return {"uuid": uuid, "name": title, "handle": handle, "type": kind, "withdrawn": withdrawn, "inArchive": in_archive, "metadata": md}
+
+
+def api(uuid):
+    return f"{AD.IC_API}/core/items/{uuid}"
+
+
+def j(obj):
+    return json.dumps(obj)
+
+
+U = {k: f"{n:08x}-0000-4000-8000-{n:012x}" for k, n in (("pc", 1), ("cg", 2), ("ua", 3), ("pm", 4), ("td", 5), ("po", 6))}
+PCX = {"id": "pc_act_1988", "name": "The Prevention of Corruption Act, 1988", "act_no": "49 of 1988"}
+PC_REC = rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988, handle="123456789/496166", enacted="1988-09-09", enforced="09-09-1988")
+
+# --- the link forms that can be checked
+check(AD._ic_ref("https://indiacode.gov.in/items/" + U["pc"]) == ("uuid", U["pc"]) and AD._ic_ref("https://indiacode.gov.in/act/" + U["pc"] + "/sections") == ("uuid", U["pc"])
+      and AD._ic_ref("https://indiacode.gov.in/handle/123456789/496166") == ("handle", "123456789/496166") and AD._ic_ref("https://indiacode.gov.in/items/" + U["pc"].upper()) == ("uuid", U["pc"]),
+      "a link is checked by the record it names: items/<uuid>, act/<uuid> or handle/123456789/<n> on indiacode.gov.in")
+check(all(AD._ic_ref(u) is None for u in ("https://www.indiacode.nic.in/handle/123456789/1558", "https://indiacode.gov.in/", "https://indiacode.gov.in/collections/" + U["pc"], "https://example.org/items/" + U["pc"],
+                                          "https://indiacode.gov.in/items/not-a-uuid", "", None)),
+      "the old-style host, the home page, a collection, another site and a malformed id are not checkable links")
+
+# --- identity: the record must BE this Act
+def ident(entry, item):
+    return AD._ic_identity(entry, item)[0]
+
+
+check(ident(PCX, PC_REC) == "ok", "identity: the Act's own central record is ok")
+info = AD._ic_identity(PCX, PC_REC)[2]
+check(info == {"kind": "act", "title": "The Prevention of Corruption Act, 1988", "act_number": "49", "act_year": "1988", "uuid": U["pc"], "handle": "123456789/496166", "repealed": False, "repealed_by": None,
+               "enacted": "1988-09-09", "enforced": "09-09-1988"}, "identity: the facts kept are India Code's own, dates in its own words")
+check(AD._ic_identity(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988))[2]["enforced"] is None, "identity: a record with no enforcement date keeps None, not an invention")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988, state="Rajasthan")) == "failed", "identity: a state's version of the same Act is not this Act")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption (Amendment) Act, 2018", 49, 1988, collection="ACT_AMENDMENT", state=None)) == "failed", "identity: an amendment Act's record (it carries the parent's number and year) is not this Act")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988, kind="collection")) == "failed" and ident(PCX, [1, 2]) == "failed" and ident(PCX, None) == "failed", "identity: a collection, a list or nothing is not an Act")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988, withdrawn=True)) == "failed" and ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1988, in_archive=False)) == "failed", "identity: a withdrawn or unarchived record is not ok")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 50, 1988)) == "failed" and ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1988", 49, 1989)) == "failed", "identity: the Act number and the year must both equal the entry's")
+check(ident(PCX, rec(U["pc"], "The Prevention of Corruption Act, 1947", 49, 1988)) == "failed" and ident(dict(PCX, name="The Prevention of Corruption Act, 1947"), PC_REC) == "failed", "identity: the year inside the name must agree when both sides carry one")
+check(ident(PCX, rec(U["pc"], "The Protection of Children from Sexual Offences Act, 2012", 32, 2012)) == "failed", "identity: another Act is not this Act")
+check(ident(dict(PCX, act_no="not a number"), PC_REC) == "failed" and ident({"name": "x"}, PC_REC) == "failed", "identity: an entry with no usable Act number cannot be confirmed")
+PMX = {"name": "The Prevention of Money-laundering Act, 2002", "act_no": "15 of 2003"}
+check(ident(PMX, rec(U["pm"], "The Prevention of Money-Laundering Act, 2002", 15, 2003)) == "ok", "identity: capital letters and hyphens do not matter; an Act named for 2002 but numbered 15 of 2003 is ok")
+JJX = {"name": "The Juvenile Justice (Care and Protection of Children) Act, 2015", "act_no": "2 of 2016"}
+check(ident(JJX, rec(U["po"], "The Juvenile Justice (Care and Protection of Children) Act, 2015.", 2, 2016)) == "ok", "identity: India Code's trailing full stop does not matter")
+TDX = {"name": "The Terrorist and Disruptive Activities (Prevention) Act, 1987", "act_no": "28 of 1987"}
+stub_td = rec(U["td"], "The Terrorist and Disruptive Activities (Prevention) Act, 1987, 28 of 1987 (Rep., Act 30 of 2001)", collection=None, state=None, repealed=None)
+st_, _d, info_td = AD._ic_identity(TDX, stub_td)
+check(st_ == "ok" and info_td["kind"] == "repealed-stub" and info_td["repealed"] is True and info_td["repealed_by"] == "Act 30 of 2001" and info_td["act_number"] == "28" and info_td["act_year"] == "1987",
+      "identity: a repealed Act's archive entry ('Name, N of YEAR (Rep., Act X of Y)') is ok and says which Act repealed it")
+CRX = {"name": "The Code of Criminal Procedure, 1973", "act_no": "2 of 1974"}
+check(ident(CRX, rec(U["ua"], "The Code of Criminal Procedure 1973, 02 of 1974 (Rep., Act 46 of 2023)", collection=None, state=None, repealed=None)) == "ok", "identity: no comma before the number and a leading zero are read correctly")
+IPX = {"name": "The Indian Penal Code, 1860", "act_no": "45 of 1860"}
+check(ident(IPX, rec(U["ua"], "The Indian Penal Code, 45 of 1860 (Rep., Act 45 of 2023)", collection=None, state=None, repealed=None)) == "ok", "identity: a name without a year on India Code's side matches the entry's name with one")
+check(ident(IPX, rec(U["ua"], "The Indian Penal Code Amendment Act, 1872, 19 of 1872 (Rep., 1 of 1938)", collection=None, state=None, repealed=None)) == "failed", "identity: an amendment Act's archive entry is not the Act")
+check(ident(IPX, rec(U["ua"], "Some Notice", collection="NOTIFICATION", state="CENTRAL")) == "failed", "identity: a notification is not an Act")
+
+# --- one link: ok, failed (definitely not this Act) or unreachable (says nothing)
+PCE_ = dict(PCX, url="x")
+for desc, table_, want in (
+    ("the right record", {api(U["pc"]): _Resp(api(U["pc"]), j(PC_REC))}, "ok"),
+    ("a record that does not exist (404)", {api(U["pc"]): urllib.error.HTTPError(api(U["pc"]), 404, "Not Found", {}, None)}, "failed"),
+    ("a 404 answered without an exception", {api(U["pc"]): _Resp(api(U["pc"]), "{}", 404)}, "failed"),
+    ("a server error (503)", {api(U["pc"]): urllib.error.HTTPError(api(U["pc"]), 503, "Unavailable", {}, None)}, "unreachable"),
+    ("a refusal (403, for example the sandbox's network policy)", {api(U["pc"]): urllib.error.HTTPError(api(U["pc"]), 403, "Forbidden", {}, None)}, "unreachable"),
+    ("no connection", {}, "unreachable"),
+    ("an answer that is not JSON", {api(U["pc"]): _Resp(api(U["pc"]), "<html>maintenance</html>")}, "unreachable"),
+    ("another Act's record", {api(U["pc"]): _Resp(api(U["pc"]), j(rec(U["pc"], "The Arms Act, 1959", 54, 1959)))}, "failed"),
+):
+    st_, detail_, _ = AD._try_url("https://indiacode.gov.in/items/" + U["pc"], PCE_, make_opener(table_), 5)
+    check(st_ == want, f"one link, {desc}: {want} ({st_}: {detail_[:60]})")
+op_ = make_opener({f"{AD.IC_API}/pid/find?id=123456789/496166": _Resp(f"{AD.IC_API}/core/items/{U['pc']}", j(PC_REC))})
+check(AD._try_url("https://indiacode.gov.in/handle/123456789/496166", PCE_, op_, 5)[0] == "ok" and op_.seen == [f"{AD.IC_API}/pid/find?id=123456789/496166"], "one link, a handle: resolved through the data API's handle lookup")
+check(AD._try_url("https://www.indiacode.nic.in/handle/123456789/1558", PCE_, make_opener({}), 5)[0] == "failed", "one link, the old-style host: failed without any request")
+
+# --- the whole directory: what is written, and what is never written
 with tempfile.TemporaryDirectory() as tmp:
     p = os.path.join(tmp, "acts.json")
     small = copy.deepcopy(RAW)
-    small["acts"] = [a for a in small["acts"] if a["id"] in ("pc_act_1988", "cgst_act_2017", "uapa_1967", "pmla_2002")]
-    for a in small["acts"]:
-        if a["id"] == "cgst_act_2017":
-            a["url"], a["url_alt"] = "https://indiacode.gov.in/act/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1", "https://www.indiacode.nic.in/handle/123456789/2250"
+    small["acts"] = [a for a in small["acts"] if a["id"] in ("pc_act_1988", "cgst_act_2017", "uapa_1967", "pmla_2002", "tada_1987")]
+    by_ = {a["id"]: a for a in small["acts"]}
+    by_["pc_act_1988"].update(url="https://indiacode.gov.in/items/" + U["pc"], url_alt=None, url_checked=None)
+    by_["cgst_act_2017"].update(url="https://indiacode.gov.in/items/" + U["cg"], url_alt="https://indiacode.gov.in/handle/123456789/111", url_checked=None)
+    by_["uapa_1967"].update(url="https://indiacode.gov.in/items/" + U["ua"], url_alt=None, url_checked="2026-10-01 (Mr. Advocate)", indiacode={"title": "stale"})
+    by_["pmla_2002"].update(url="https://indiacode.gov.in/items/" + U["pm"], url_alt=None, url_checked="2026-10-01 (machine: earlier)", indiacode={"title": "earlier"})
+    by_["tada_1987"].update(url="https://indiacode.gov.in/items/" + U["td"], url_alt=None, url_checked=None)
     json.dump(small, open(p, "w", encoding="utf-8"), indent=2)
-    pc_url = next(a["url"] for a in small["acts"] if a["id"] == "pc_act_1988")
-    cg_url, cg_alt = "https://indiacode.gov.in/act/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1", "https://www.indiacode.nic.in/handle/123456789/2250"
-    uapa_url = next(a["url"] for a in small["acts"] if a["id"] == "uapa_1967")
-    pm_url = next(a["url"] for a in small["acts"] if a["id"] == "pmla_2002")
+    before = open(p, encoding="utf-8").read()
+    cg_rec = rec(U["cg"], "The Central Goods and Services Tax Act, 2017", 12, 2017, handle="123456789/496310")
     table = {
-        pc_url: _Resp(pc_url, "<html><title>India Code: Prevention of Corruption Act, 1988</title><body>Prevention of Corruption Act, 1988</body></html>"),
-        cg_url: _Resp(cg_url, "<html><title>India Code</title><body><app-root></app-root></body></html>", 404),
-        cg_alt: _Resp(cg_alt, "<html><title>India Code: Central Goods and Services Tax Act, 2017</title>The Central Goods and Services Tax Act, 2017</html>"),
-        uapa_url: _Resp("https://www.indiacode.nic.in/", "<html>home</html>"),
-        pm_url: _Resp(pm_url, "<html><title>India Code</title><app-root></app-root></html>"),
+        api(U["pc"]): _Resp(api(U["pc"]), j(PC_REC)),
+        api(U["cg"]): urllib.error.HTTPError(api(U["cg"]), 404, "Not Found", {}, None),
+        f"{AD.IC_API}/pid/find?id=123456789/111": _Resp(f"{AD.IC_API}/core/items/{U['cg']}", j(cg_rec)),
+        api(U["ua"]): _Resp(api(U["ua"]), j(rec(U["ua"], "The Arms Act, 1959", 54, 1959))),
+        # pmla: no entry in the table -> no connection
+        api(U["td"]): _Resp(api(U["td"]), j(stub_td)),
     }
     rows = AD.check_links(p, write=False, opener=make_opener(table), today="2026-10-20")
     res = {r[0]: r for r in rows}
-    check(res["pc_act_1988"][1] == "ok" and res["pc_act_1988"][3] == pc_url, "check-links: a page that names the Act is ok")
-    check(res["cgst_act_2017"][1] == "ok" and res["cgst_act_2017"][3] == cg_alt, "check-links: a 404 on the first url falls back to url_alt")
-    check(res["uapa_1967"][1] == "failed" and "redirected" in res["uapa_1967"][2], "check-links: a redirect to another page (a retired site's home page) is a failure")
-    check(res["pmla_2002"][1] == "ok (name not confirmed)", "check-links: a reachable client-rendered page is ok but says the name was not confirmed")
-    check(json.load(open(p, encoding="utf-8"))["acts"][0]["url_checked"] is None, "check-links without --write changes nothing")
+    check({k: v[1] for k, v in res.items()} == {"pc_act_1988": "ok", "cgst_act_2017": "ok", "uapa_1967": "failed", "pmla_2002": "unreachable", "tada_1987": "ok"}, f"check-links: {({k: v[1] for k, v in res.items()})}")
+    check(res["cgst_act_2017"][3] == "https://indiacode.gov.in/handle/123456789/111", "check-links: a record that is not there falls back to url_alt")
+    check(open(p, encoding="utf-8").read() == before, "check-links without --write changes nothing")
     AD.check_links(p, write=True, opener=make_opener(table), today="2026-10-20")
     after = {a["id"]: a for a in json.load(open(p, encoding="utf-8"))["acts"]}
-    check(after["pc_act_1988"]["url_checked"] == "2026-10-20" and after["cgst_act_2017"]["url"] == cg_alt and after["cgst_act_2017"]["url_alt"] == cg_url and after["cgst_act_2017"]["url_checked"] == "2026-10-20"
-          and after["pmla_2002"]["url_checked"] == "2026-10-20 (reachable only)" and after["uapa_1967"]["url_checked"] is None, "check-links --write: ok links stamped, the working alternative promoted, a failed link left unchecked")
+    note = "2026-10-20 (machine: India Code's own record matches on title, number and year)"
+    check(after["pc_act_1988"]["url_checked"] == note and after["pc_act_1988"]["indiacode"] == dict(info, verified_on="2026-10-20"), "check-links --write: an ok link is stamped, with India Code's own facts and the date")
+    check(after["cgst_act_2017"]["url"] == "https://indiacode.gov.in/handle/123456789/111" and after["cgst_act_2017"]["url_alt"] == "https://indiacode.gov.in/items/" + U["cg"] and after["cgst_act_2017"]["url_checked"] == note,
+          "check-links --write: the working alternative is promoted")
+    check(after["uapa_1967"]["url_checked"] is None and "indiacode" not in after["uapa_1967"], "check-links --write: a link that is definitely another Act loses its stamp (even a person's) and its stale facts")
+    check(after["pmla_2002"]["url_checked"] == "2026-10-01 (machine: earlier)" and after["pmla_2002"]["indiacode"] == {"title": "earlier"}, "check-links --write: a link that could not be reached changes NOTHING (a dead connection never un-checks a link)")
+    check(after["tada_1987"]["indiacode"]["kind"] == "repealed-stub" and after["tada_1987"]["indiacode"]["repealed_by"] == "Act 30 of 2001" and after["tada_1987"]["indiacode"]["repealed"] is True, "check-links --write: a repealed Act's facts are kept")
+    check(after["tada_1987"]["status"] == by_["tada_1987"]["status"] and after["pc_act_1988"]["aliases"] == by_["pc_act_1988"]["aliases"], "check-links --write touches nothing but links and facts")
 
 # ---------------------------------------------------------------- chat_assistant: the notice is attached, the log and the prompt carry the Act
 Q_PC = "My father is accused under the PC Act. His lawyer says the trial can be stayed. Is that right?"
@@ -501,7 +645,7 @@ def ask(mode):
 
 at = ask("opened_with_act")
 vals = md_values(at)
-check(not at.exception and any('<a href="https://indiacode.gov.in/">India Code</a>' in v and "names the Prevention of Corruption Act, 1988" in v for v in vals), f"page: the Act notice is shown with its link (exception={at.exception})")
+check(not at.exception and any(f'<a href="{PCE["url"]}">Prevention of Corruption Act, 1988</a>' in v and "names the Prevention of Corruption Act, 1988" in v for v in vals), f"page: the Act notice is shown with the Act's own link (exception={at.exception})")
 check(not any("has not checked in depth (Recourse is built around" in v for v in vals), "page: the generic notice is NOT shown next to it (one notice, not two)")
 at = ask("opened_plain")
 vals = md_values(at)
@@ -511,7 +655,7 @@ vals = md_values(at)
 check(not at.exception and any("This question also names the Prevention of Corruption Act, 1988." in v for v in vals), "page: an ordinary answer that names the Act shows the notice")
 at = ask("refusal_with_act")
 vals = md_values(at)
-check(not at.exception and any("Recourse can't help with this one" in v for v in vals) and any("names the Terrorist and Disruptive Activities (Prevention) Act, 1987 (TADA)" in v and '<a href="https://indiacode.gov.in/">' in v for v in vals),
+check(not at.exception and any("Recourse can't help with this one" in v for v in vals) and any("names the Terrorist and Disruptive Activities (Prevention) Act, 1987 (TADA)" in v and f'<a href="{next(a for a in ACTS if a["id"] == "tada_1987")["url"]}">' in v for v in vals),
       "page: the refusal is still shown, with the Act notice under it")
 at = ask("refusal_plain")
 vals = md_values(at)

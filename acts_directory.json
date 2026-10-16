@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated": "2026-10-17",
+  "generated": "2026-10-16",
   "about": "The Act Directory (STATUTE_COVERAGE_PLAN.md step 1): Acts whose text Recourse does not hold. Code spots an Act the person's question NAMES (aliases) or clearly describes (phrases) and says so, with a link to the official text. NOTHING in 'status' or 'appeal' is shown to a user until a person has confirmed it (reviewed); a link is shown only after url_checked is set, otherwise the notice points to the India Code home page. Drafted by Claude from general knowledge and India Code search results; NOT checked by a lawyer.",
   "reviewer": "Mr. Advocate",
   "fallback_url": "https://indiacode.gov.in/",
@@ -40,18 +40,33 @@
         "taking a bribe",
         "took a bribe"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1558",
+      "url": "https://indiacode.gov.in/items/5b300920-4878-4e39-8d87-fa87d4953f09",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force. Amended by the Lokpal and Lokayuktas Act, 2013 and by the Prevention of Corruption (Amendment) Act, 2018 (in force from 26 July 2018).",
+        "text": "In force. Amended by the Lokpal and Lokayuktas Act, 2013 (from 16 January 2014) and by the Prevention of Corruption (Amendment) Act, 2018 (from 26 July 2018).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: the Act's record is not marked repealed; footnotes to sections 13, 15 and 19 cite Act 1 of 2014 (the Lokpal and Lokayuktas Act, 2013) w.e.f. 16-1-2014; footnotes to sections 4, 7, 13 and others cite Act 16 of 2018 w.e.f. 26-7-2018; India Code's amendment list names the Prevention of Corruption (Amendment) Act, 2018."
       },
       "appeal": {
-        "text": "Appeals against a Special Judge's judgment lie to the High Court.",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "The High Court has the powers of appeal and revision that the Code of Criminal Procedure gives it, as if the Special Judge's court were a Court of Session (section 27).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "Section 27 read on India Code 2026-10-16: 'Subject to the provisions of this Act, the High Court may exercise, so far as they may be applicable, all the powers of appeal and revision conferred by the Code of Criminal Procedure, 1973 ... on a High Court as if the court of the special Judge were a court of Session ...'."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Prevention of Corruption Act, 1988",
+        "act_number": "49",
+        "act_year": "1988",
+        "uuid": "5b300920-4878-4e39-8d87-fa87d4953f09",
+        "handle": "123456789/496166",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1988-09-09",
+        "enforced": "09-09-1988",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -72,18 +87,33 @@
         "child sexual abuse",
         "sexual offences against children"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2079",
+      "url": "https://indiacode.gov.in/items/60dad1b9-bbf1-4310-8fa1-62643beab7a6",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 14 November 2012; amended in 2019.",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "In force since 14 November 2012. Amended by the Criminal Law (Amendment) Acts of 2013 and 2018 and by the Protection of Children from Sexual Offences (Amendment) Act, 2019.",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 14-11-2012; not marked repealed; its amendment list names the Criminal Law (Amendment) Acts of 2013 and 2018 and the POCSO (Amendment) Act, 2019; footnotes cite Acts 13 of 2013, 22 of 2018 and 25 of 2019."
       },
       "appeal": {
-        "text": "Appeals against a Special Court's judgment lie to the High Court, as for any Sessions Court judgment.",
+        "text": "The Act has no appeal section of its own. A Special Court is a Court of Session and the Code of Criminal Procedure applies to its proceedings (sections 28 and 31), so an appeal from its judgment goes to the High Court as for any Sessions Court judgment.",
         "confidence": "likely",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "Sections 28 and 31 read on India Code 2026-10-16; no section of the Act mentions an appeal. That a conviction by a Sessions Judge with a sentence above seven years is appealed to the High Court is BNSS section 415(2), read in the library text; for earlier offences the old Code's corresponding section applies (Claude's recollection)."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Protection of Children from Sexual Offences Act, 2012",
+        "act_number": "32",
+        "act_year": "2012",
+        "uuid": "60dad1b9-bbf1-4310-8fa1-62643beab7a6",
+        "handle": "123456789/496004",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2012-06-19",
+        "enforced": "14-11-2012",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -101,18 +131,33 @@
         "u a p a"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1470",
+      "url": "https://indiacode.gov.in/items/fa986084-35d9-4391-a7e1-9561c880d8bb",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force; amended several times (2004, 2008, 2012 and 2019 among others).",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "In force. Amended several times, including by Act 29 of 2004, Act 35 of 2008, Act 3 of 2013 (the 2012 Amendment Act) and Act 28 of 2019 (from 14 August 2019).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; footnotes cite Acts 29 of 2004, 35 of 2008 (w.e.f. 31-12-2008), 3 of 2013 and 28 of 2019 (w.e.f. 14-8-2019); its amendment list names the Amendment Acts of 2004 and 2012."
       },
       "appeal": {
-        "text": "Appeals against a Special Court's judgment lie to the High Court (section 21 of the National Investigation Agency Act, 2008, where that Act applies).",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "Where the trial is before a Special Court under the National Investigation Agency Act, 2008 (the UAPA's own definition of 'court' includes such a Special Court, section 2(1)(d)), an appeal lies from its judgment, sentence or order (other than an interlocutory order) to the High Court, on facts and on law, within 30 days (the High Court may allow up to 90), under section 21 of that Act. An order of forfeiture under section 26 of the UAPA is appealed to the High Court within one month (section 28).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "UAPA sections 2(1)(d), 26 and 28 and NIA Act section 21 read on India Code 2026-10-16."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Unlawful Activities (Prevention) Act, 1967",
+        "act_number": "37",
+        "act_year": "1967",
+        "uuid": "fa986084-35d9-4391-a7e1-9561c880d8bb",
+        "handle": "123456789/496521",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1967-12-30",
+        "enforced": "30-12-1967",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -132,18 +177,33 @@
         "money laundering",
         "enforcement directorate"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2036",
+      "url": "https://indiacode.gov.in/items/3babfe62-c9c8-49b3-8247-052834d2dfa4",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 1 July 2005; amended several times.",
+        "text": "In force since 1 July 2005. Amended several times: India Code's footnotes cite amending Acts of 2005, 2009, 2013, 2015, 2016, 2018 and 2019.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-07-2005; not marked repealed; footnotes cite Acts 20 of 2005, 21 of 2009, 2 of 2013, 20 of 2015, 28 of 2016, 13 of 2018 and 7, 14 and 23 of 2019; its amendment list also names the Jan Vishwas (Amendment of Provisions) Act, 2023."
       },
       "appeal": {
-        "text": "Appeals against a Special Court's judgment lie to the High Court; orders of the Adjudicating Authority are appealed to the Appellate Tribunal.",
+        "text": "An order of the Adjudicating Authority is appealed to the Appellate Tribunal within 45 days (section 26); an order of the Appellate Tribunal is appealed to the High Court within 60 days (section 42). A Special Court is deemed a Court of Session and the Code of Criminal Procedure applies to its proceedings (sections 44 and 46), so an appeal from a Special Court's judgment goes to the High Court as for any Sessions Court judgment.",
         "confidence": "likely",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "Sections 26, 42, 44 and 46 read on India Code 2026-10-16. The last step (an appeal from a Special Court's judgment goes to the High Court) follows from section 46 and BNSS section 415(2); it is not stated in the Act."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Prevention of Money-Laundering Act, 2002",
+        "act_number": "15",
+        "act_year": "2003",
+        "uuid": "3babfe62-c9c8-49b3-8247-052834d2dfa4",
+        "handle": "123456789/496293",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2003-01-17",
+        "enforced": "01-07-2005",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -179,18 +239,33 @@
         "caste slur",
         "casteist"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1920",
+      "url": "https://indiacode.gov.in/items/f9c8fb04-363a-4779-b628-0d9f9bb997e0",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 30 January 1990; amended in 2015 and 2018.",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "In force since 30 January 1990. Amended by Act 1 of 2016 (from 26 January 2016) and by Act 27 of 2018 (which inserted section 18A).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 30-01-1990; not marked repealed; footnotes cite Act 1 of 2016 (w.e.f. 26-1-2016) and Act 27 of 2018 (section 18A)."
       },
       "appeal": {
-        "text": "Appeals against a Special Court's or an Exclusive Special Court's judgment lie to the High Court (section 14A).",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "An appeal lies from any judgment, sentence or order (other than an interlocutory order) of a Special Court or an Exclusive Special Court to the High Court, on facts and on law, within 90 days (the High Court may allow up to 180). An order granting or refusing bail is also appealable to the High Court (section 14A).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "Section 14A read on India Code 2026-10-16 (inserted by Act 1 of 2016, w.e.f. 26-1-2016)."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989",
+        "act_number": "33",
+        "act_year": "1989",
+        "uuid": "f9c8fb04-363a-4779-b628-0d9f9bb997e0",
+        "handle": "123456789/496156",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1989-09-11",
+        "enforced": "30-01-1990",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -206,18 +281,33 @@
         "terrorist and disruptive activities prevention act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/15340",
+      "url": "https://indiacode.gov.in/items/834e1f7b-9f8d-4573-b79f-81b9035b832a",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "No longer in force: it lapsed in May 1995 (its section 1(4) kept it in force for eight years from 24 May 1987). Cases begun before it lapsed continued under it.",
+        "text": "No longer in force: India Code lists it as repealed by Act 30 of 2001, and it had ceased to operate earlier, in May 1995. As enacted it was to remain in force for two years from 24 May 1987 (section 1(4)); later amendments extended that. Section 1(4) saved things done, rights acquired and proceedings begun before it ended.",
         "confidence": "likely",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code's archive entry reads '(Rep., Act 30 of 2001)'. Section 1(4) read in India Code's PDF of the Act as enacted (two years from the 24th day of May, 1987; savings for rights, penalties and legal proceedings). India Code lists the Amendment Acts of 1985, 1989, 1991 and 1993. The May 1995 date and the length of the extensions are Claude's recollection, not read."
       },
       "appeal": {
-        "text": "Appeals against a Designated Court's judgment lie directly to the Supreme Court (section 19).",
+        "text": "As enacted, section 19 gave an appeal as of right from any judgment, sentence or order (other than an interlocutory order) of a Designated Court directly to the Supreme Court, on facts and on law, within 30 days; no other appeal or revision lay.",
         "confidence": "likely",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "Section 19 read in India Code's PDF of the Act as enacted (2026-10-16). Later amendments to section 19, if any, were not checked."
+      },
+      "indiacode": {
+        "kind": "repealed-stub",
+        "title": "The Terrorist and Disruptive Activities (Prevention) Act, 1987, 28 of 1987 (Rep., Act 30 of 2001)",
+        "act_number": "28",
+        "act_year": "1987",
+        "uuid": "834e1f7b-9f8d-4573-b79f-81b9035b832a",
+        "handle": "123456789/491636",
+        "repealed": true,
+        "repealed_by": "Act 30 of 2001",
+        "enacted": null,
+        "enforced": null,
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -233,18 +323,33 @@
         "national investigation agency act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2054",
+      "url": "https://indiacode.gov.in/items/4bdc7685-15f7-4a59-b450-2cd286416959",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force.",
+        "text": "In force. Amended in 2019 (India Code's footnote to section 22 cites Act 16 of 2019, from 2 August 2019).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; its amendment list names the National Investigation Agency (Amendment) Act, 2019; the footnote to section 22 cites Act 16 of 2019 w.e.f. 2-8-2019."
       },
       "appeal": {
-        "text": "",
-        "confidence": "",
-        "reviewed": null
+        "text": "An appeal lies from any judgment, sentence or order (other than an interlocutory order) of a Special Court to the High Court, on facts and on law, heard by a bench of two Judges, within 30 days (the High Court may allow up to 90). An order granting or refusing bail is also appealable to the High Court (section 21).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "Section 21 read on India Code 2026-10-16."
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The National Investigation Agency Act, 2008",
+        "act_number": "34",
+        "act_year": "2008",
+        "uuid": "4bdc7685-15f7-4a59-b450-2cd286416959",
+        "handle": "123456789/496566",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2008-12-31",
+        "enforced": "31-12-2008",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -259,18 +364,32 @@
         "arms act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1398",
+      "url": "https://indiacode.gov.in/items/78a46eb4-21bf-49ee-bd08-6b8e8655631c",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 October 1962.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-10-1962; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Arms Act, 1959",
+        "act_number": "54",
+        "act_year": "1959",
+        "uuid": "78a46eb4-21bf-49ee-bd08-6b8e8655631c",
+        "handle": "123456789/496529",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1959-12-23",
+        "enforced": "01-10-1962",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -291,18 +410,32 @@
         "demanded dowry",
         "demanding dowry"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1679",
+      "url": "https://indiacode.gov.in/items/8dc8e1b4-7147-45ea-9e82-5911aa3816d4",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 1 July 1961.",
+        "text": "In force since 1 July 1961. Amended in 1984 and 1986.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-07-1961; not marked repealed; its amendment list names the Dowry Prohibition (Amendment) Acts of 1984 and 1986."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Dowry Prohibition Act, 1961",
+        "act_number": "28",
+        "act_year": "1961",
+        "uuid": "8dc8e1b4-7147-45ea-9e82-5911aa3816d4",
+        "handle": "123456789/496002",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1961-05-20",
+        "enforced": "01-07-1961",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -324,20 +457,33 @@
         "juvenile in conflict with law",
         "child in conflict with law"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2148",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/8201",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/bfa75673-9ac9-4ce8-b5cf-836472c94203",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 15 January 2016.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: Act 2 of 2016 (enacted 31-12-2015); enforcement date 15-01-2016; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
       },
-      "note": "India Code lists this Act under two handles (2148 and 8201); the checker keeps whichever opens."
+      "indiacode": {
+        "kind": "act",
+        "title": "The Juvenile Justice (Care and Protection of Children) Act, 2015.",
+        "act_number": "2",
+        "act_year": "2016",
+        "uuid": "bfa75673-9ac9-4ce8-b5cf-836472c94203",
+        "handle": "123456789/496000",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2015-12-31",
+        "enforced": "15-01-2016",
+        "verified_on": "2026-10-16"
+      }
     },
     {
       "id": "mv_act_1988",
@@ -360,17 +506,31 @@
         "motor accident claims tribunal"
       ],
       "url": "https://indiacode.gov.in/items/2bbbcc40-38f1-4b15-ae94-646b85db4ee7",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/1798",
-      "url_checked": null,
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 1 July 1989; amended in 2019.",
+        "text": "In force since 1 July 1989. Amended several times, including by the Motor Vehicles (Amendment) Act, 2019.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-07-1989; not marked repealed; its amendment list names Acts of 1994, 2000, 2001 and 2019 and the Jan Vishwas (Amendment of Provisions) Act, 2023."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Motor Vehicles Act, 1988",
+        "act_number": "59",
+        "act_year": "1988",
+        "uuid": "2bbbcc40-38f1-4b15-ae94-646b85db4ee7",
+        "handle": "123456789/619305",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1988-10-14",
+        "enforced": "01-07-1989",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -385,18 +545,32 @@
         "customs act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2475",
+      "url": "https://indiacode.gov.in/items/5b38b7b8-6708-4630-85d2-8b14a28e53d3",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 February 1963.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-02-1963; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Customs Act, 1962",
+        "act_number": "52",
+        "act_year": "1962",
+        "uuid": "5b38b7b8-6708-4630-85d2-8b14a28e53d3",
+        "handle": "123456789/496309",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1962-12-13",
+        "enforced": "01-02-1963",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -413,18 +587,32 @@
         "cgst"
       ],
       "phrases": [],
-      "url": "https://indiacode.gov.in/act/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2250",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force; its main provisions from 1 July 2017.",
+        "text": "In force, brought into force in stages by notification: some sections from 22 June 2017, most from 1 July 2017.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; India Code's enforcement field reads '22nd June, 2017 for sections 1, 2, 3, 4, 5, 10, 22 to 30, 139, 146 and 164; 1st July, 2017 for sections 6 to 9, 11 to 21, 31 to 41, ... '."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Central Goods and Services Tax Act, 2017",
+        "act_number": "12",
+        "act_year": "2017",
+        "uuid": "1f98f6d0-ec9d-42f0-bd50-dc34d25998e1",
+        "handle": "123456789/496310",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2017-04-12",
+        "enforced": "22nd June, 2017 for sections 1, 2, 3, 4, 5, 10, 22, 23, 24, 25, 26, 27, 28, 29, 30, 139, 146 and 164 1st July, 2017 for sections 6 to 9, 11 to 21, 31 to 41, 42 (except proviso to sub-section (9) of S 42), 43 (except proviso to subsection (9) of S 43), 44 to 50, 53 to 138, 140 to 163, 165 to 174.",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -439,18 +627,32 @@
         "essential commodities act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1579",
+      "url": "https://indiacode.gov.in/items/c37854bc-64c2-4314-9370-1dd418016ce5",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force.",
+        "text": "In force since 1 April 1955.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-04-1955; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Essential Commodities Act, 1955",
+        "act_number": "10",
+        "act_year": "1955",
+        "uuid": "c37854bc-64c2-4314-9370-1dd418016ce5",
+        "handle": "123456789/496107",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1955-04-01",
+        "enforced": "01-04-1955",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -468,18 +670,32 @@
         "suppression of immoral traffic in women and girls act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1661",
+      "url": "https://indiacode.gov.in/items/7c9c8305-5b02-4711-8f96-ed0f636f0cb4",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force (earlier titled the Suppression of Immoral Traffic in Women and Girls Act, 1956).",
+        "text": "In force. It was called the Suppression of Immoral Traffic in Women and Girls Act, 1956 until Act 44 of 1986 renamed it (from 26 January 1987).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; the footnote to section 1 reads 'Subs. by Act 44 of 1986, for \"the Suppression of Immoral Traffic in Women and Girls\" (w.e.f. 26-1-1987)'."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Immoral Traffic (Prevention) Act, 1956",
+        "act_number": "104",
+        "act_year": "1956",
+        "uuid": "7c9c8305-5b02-4711-8f96-ed0f636f0cb4",
+        "handle": "123456789/495999",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1956-12-30",
+        "enforced": null,
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -499,18 +715,32 @@
         "internal complaints committee",
         "local complaints committee"
       ],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2104",
+      "url": "https://indiacode.gov.in/items/6497706b-d8a5-4486-a968-9975498de966",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 9 December 2013.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 09-12-2013; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013",
+        "act_number": "14",
+        "act_year": "2013",
+        "uuid": "6497706b-d8a5-4486-a968-9975498de966",
+        "handle": "123456789/496008",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2013-04-22",
+        "enforced": "09-12-2013",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -527,18 +757,32 @@
         "parents and senior citizens act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2033",
+      "url": "https://indiacode.gov.in/items/2cc52f43-b784-447c-b84e-38cebfda552e",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force; it takes effect in each State from the date that State notifies.",
+        "text": "In force; it takes effect in each State from the date that State notifies (section 1(3)).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; section 1(3) reads 'It shall come into force in a State on such date as the State Government may, by notification in the Official Gazette, appoint.'"
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Maintenance and Welfare of Parents and Senior Citizens Act, 2007",
+        "act_number": "56",
+        "act_year": "2007",
+        "uuid": "2cc52f43-b784-447c-b84e-38cebfda552e",
+        "handle": "123456789/496161",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2007-12-29",
+        "enforced": null,
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -554,20 +798,34 @@
         "ipc"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2263",
+      "url": "https://indiacode.gov.in/items/972afbe0-a2de-415d-9df5-8d70038056ad",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "Repealed by the Bharatiya Nyaya Sanhita, 2023 from 1 July 2024; offences committed before that date are still governed by it.",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "Repealed by the Bharatiya Nyaya Sanhita, 2023 (Act 45 of 2023), in force from 1 July 2024. Offences committed before that date, and proceedings and penalties for them, remain governed by the IPC (BNS section 358(2)).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code's archive entry reads '(Rep., Act 45 of 2023)'; India Code gives 1-7-2024 as the BNS enforcement date; BNS section 358 read in the library text (2026-10-16): repeal, with savings for penalties, proceedings and remedies 'as if that Code had not been repealed'."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
       },
-      "note": "Not detected: the concordance maps IPC sections to the BNS, so a notice would only be noise."
+      "note": "Not detected: the concordance maps IPC sections to the BNS, so a notice would only be noise.",
+      "indiacode": {
+        "kind": "repealed-stub",
+        "title": "The Indian Penal Code, 45 of 1860 (Rep., Act 45 of 2023)",
+        "act_number": "45",
+        "act_year": "1860",
+        "uuid": "972afbe0-a2de-415d-9df5-8d70038056ad",
+        "handle": "123456789/488475",
+        "repealed": true,
+        "repealed_by": "Act 45 of 2023",
+        "enacted": null,
+        "enforced": null,
+        "verified_on": "2026-10-16"
+      }
     },
     {
       "id": "crpc_1973",
@@ -583,20 +841,34 @@
         "cr p c"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1611",
+      "url": "https://indiacode.gov.in/items/973d60aa-105c-4a2f-94f1-7640f0b5d6a7",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "Repealed by the Bharatiya Nagarik Suraksha Sanhita, 2023 from 1 July 2024; earlier proceedings continue as that Sanhita's savings provide.",
-        "confidence": "likely",
-        "reviewed": null
+        "text": "Repealed by the Bharatiya Nagarik Suraksha Sanhita, 2023 (Act 46 of 2023), in force from 1 July 2024. An appeal, application, trial, inquiry or investigation pending on that date continues under the old Code (BNSS section 531(2)(a)).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code's archive entry reads '(Rep., Act 46 of 2023)'; India Code gives 01-07-2024 as the BNSS enforcement date; BNSS section 531 read in the library text (2026-10-16)."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
       },
-      "note": "Not detected: the concordance maps CrPC sections to the BNSS, so a notice would only be noise."
+      "note": "Not detected: the concordance maps CrPC sections to the BNSS, so a notice would only be noise.",
+      "indiacode": {
+        "kind": "repealed-stub",
+        "title": "The Code of Criminal Procedure 1973, 02 of 1974 (Rep., Act 46 of 2023)",
+        "act_number": "2",
+        "act_year": "1974",
+        "uuid": "973d60aa-105c-4a2f-94f1-7640f0b5d6a7",
+        "handle": "123456789/620185",
+        "repealed": true,
+        "repealed_by": "Act 46 of 2023",
+        "enacted": null,
+        "enforced": null,
+        "verified_on": "2026-10-16"
+      }
     },
     {
       "id": "evidence_act_1872",
@@ -611,20 +883,33 @@
         "evidence act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/12846",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/4218",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/b62073e0-4d33-4348-8eda-d92af40af24b",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "Repealed by the Bharatiya Sakshya Adhiniyam, 2023 from 1 July 2024.",
+        "text": "Repealed by the Bharatiya Sakshya Adhiniyam, 2023 (Act 47 of 2023), in force from 1 July 2024.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code's archive entry reads '(Rep., Act 47 of 2023)'; India Code gives 1-7-2024 as the BSA enforcement date."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
       },
-      "note": "Handle 12846 is the page India Code's own entry points to; 4218 and 6819 are PDF items."
+      "indiacode": {
+        "kind": "repealed-stub",
+        "title": "The Indian Evidence Act, 1872, 1 of 1872 (Rep., Act 47 of 2023)",
+        "act_number": "1",
+        "act_year": "1872",
+        "uuid": "b62073e0-4d33-4348-8eda-d92af40af24b",
+        "handle": "123456789/488783",
+        "repealed": true,
+        "repealed_by": "Act 47 of 2023",
+        "enacted": null,
+        "enforced": null,
+        "verified_on": "2026-10-16"
+      }
     },
     {
       "id": "bsa_2023",
@@ -642,17 +927,31 @@
       ],
       "phrases": [],
       "url": "https://indiacode.gov.in/items/9e461245-2c13-4171-9d9d-267425c01e1d",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/20063",
-      "url_checked": null,
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 2024.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: Act 47 of 2023; enforcement date 1-7-2024; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Bharatiya Sakshya Adhiniyam, 2023",
+        "act_number": "47",
+        "act_year": "2023",
+        "uuid": "9e461245-2c13-4171-9d9d-267425c01e1d",
+        "handle": "123456789/496549",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2023-12-25",
+        "enforced": "1-7-2024",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -667,18 +966,32 @@
         "code of civil procedure"
       ],
       "phrases": [],
-      "url": "https://indiacode.gov.in/handle/123456789/496430",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2191",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/3d38ec80-965e-4df0-a2d2-3d97cb1dc702",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force since 1 January 1909; amended many times.",
+        "text": "In force since 1 January 1909.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 1909-01-01; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Code of Civil Procedure, 1908",
+        "act_number": "5",
+        "act_year": "1908",
+        "uuid": "3d38ec80-965e-4df0-a2d2-3d97cb1dc702",
+        "handle": "123456789/496430",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1908-03-21",
+        "enforced": "1909-01-01",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -694,18 +1007,32 @@
         "contract act"
       ],
       "phrases": [],
-      "url": "https://indiacode.gov.in/act/0e782442-f035-4d53-aace-81b1552a8cf2/sections",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2187",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/0e782442-f035-4d53-aace-81b1552a8cf2",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 September 1872.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 1872-09-01; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Indian Contract Act, 1872",
+        "act_number": "9",
+        "act_year": "1872",
+        "uuid": "0e782442-f035-4d53-aace-81b1552a8cf2",
+        "handle": "123456789/496413",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1872-04-25",
+        "enforced": "1872-09-01",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -720,18 +1047,32 @@
         "transfer of property act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2338",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/12924",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/2b436b95-ae89-4c5f-ab70-3d5ef5ffd8e8",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 1882.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 1882-07-01; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Transfer of Property Act, 1882",
+        "act_number": "4",
+        "act_year": "1882",
+        "uuid": "2b436b95-ae89-4c5f-ab70-3d5ef5ffd8e8",
+        "handle": "123456789/496421",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1882-02-17",
+        "enforced": "1882-07-01",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -746,18 +1087,32 @@
         "hindu marriage act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1560",
+      "url": "https://indiacode.gov.in/items/33e4083a-e967-4091-b91f-915b4d3f95a8",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force.",
+        "text": "In force since 18 May 1955. Amended several times (India Code lists amending Acts of 1956, 1976, 1999, 2001 and 2003).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 18-05-1955; not marked repealed; its amendment list names those five Acts."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Hindu Marriage Act, 1955",
+        "act_number": "25",
+        "act_year": "1955",
+        "uuid": "33e4083a-e967-4091-b91f-915b4d3f95a8",
+        "handle": "123456789/496388",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1955-05-18",
+        "enforced": "18-05-1955",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -772,18 +1127,32 @@
         "hindu succession act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1713",
+      "url": "https://indiacode.gov.in/items/3371dabc-b1ab-4bb1-874d-0411dd1c44bd",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force; section 6 was amended in 2005.",
+        "text": "In force since 17 June 1956. Section 6 was substituted by the Hindu Succession (Amendment) Act, 2005 (Act 39 of 2005) from 9 September 2005.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 17-06-1956; not marked repealed; the footnote to section 6 reads 'Subs. by s. 3, ibid., for section 6 (w.e.f. 9-9-2005)' and the section cites Act 39 of 2005."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Hindu Succession Act, 1956",
+        "act_number": "30",
+        "act_year": "1956",
+        "uuid": "3371dabc-b1ab-4bb1-874d-0411dd1c44bd",
+        "handle": "123456789/496402",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1956-06-17",
+        "enforced": "17-06-1956",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -798,18 +1167,32 @@
         "income tax act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/2435",
+      "url": "https://indiacode.gov.in/items/0b2a1b74-1516-4012-b097-ca14d948c38e",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "Replaced by the Income-tax Act, 2025 from 1 April 2026; the 1961 Act still governs earlier years. (Claude's recollection: to be confirmed.)",
+        "text": "Repealed by the Income-tax Act, 2025 (Act 30 of 2025). Claude's recollection, not read: the new Act applies from 1 April 2026, and the 1961 Act still governs earlier tax years.",
         "confidence": "likely",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code's archive entry reads '(Rep., Act 30 of 2025)'. The Income-tax Act, 2025 is not yet in India Code's list of central Acts (2026-10-16), so its commencement date and savings could not be read."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "repealed-stub",
+        "title": "The Income-tax Act, 1961, 43 of 1961 (Rep., Act 30 of 2025)",
+        "act_number": "43",
+        "act_year": "1961",
+        "uuid": "0b2a1b74-1516-4012-b097-ca14d948c38e",
+        "handle": "123456789/620179",
+        "repealed": true,
+        "repealed_by": "Act 30 of 2025",
+        "enacted": null,
+        "enforced": null,
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -824,18 +1207,32 @@
         "companies act"
       ],
       "phrases": [],
-      "url": "https://indiacode.gov.in/act/f5bbbf6b-4247-400f-80fa-38c605132a8f/sections",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/2114",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/f5bbbf6b-4247-400f-80fa-38c605132a8f",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force from 1 April 2014 (its provisions were brought in by notification).",
+        "text": "In force; brought into force by notification (India Code gives 1 April 2014 as its enforcement date).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-04-2014; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Companies Act, 2013",
+        "act_number": "18",
+        "act_year": "2013",
+        "uuid": "f5bbbf6b-4247-400f-80fa-38c605132a8f",
+        "handle": "123456789/496128",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2013-08-29",
+        "enforced": "01-04-2014",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -854,18 +1251,32 @@
         "consumer forum",
         "consumer commission"
       ],
-      "url": "https://indiacode.gov.in/act/1b6c1754-47b1-411e-9607-1712a9caf368",
-      "url_alt": "https://www.indiacode.nic.in/handle/123456789/15256",
-      "url_checked": null,
+      "url": "https://indiacode.gov.in/items/1b6c1754-47b1-411e-9607-1712a9caf368",
+      "url_alt": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
-        "text": "In force; most provisions from 24 July 2020.",
+        "text": "In force; brought into force in parts by notification (India Code lists 24 July 2020 for the sections it names).",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: not marked repealed; India Code's enforcement field reads '24th July, 2020.-- S. 2 clauses (4), (13), (14), (16), (40), s. 10 to 27 ... vide notification No. S.O. 2421(E), dated 23rd July 2020'."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Consumer Protection Act, 2019",
+        "act_number": "35",
+        "act_year": "2019",
+        "uuid": "1b6c1754-47b1-411e-9607-1712a9caf368",
+        "handle": "123456789/496115",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2019-08-09",
+        "enforced": "24th July, 2020.-- S. 2 clauses (4), (13), (14), (16), (40), s. 10 to 27 (both inclusive), sub-clause (iv) of clause (a) of sub-section (1) of section 58, s. 88, 89, 92 and 93, 94, 96, 97 and 99, clause (f) to (m) of sub-section 2 and clauses (zg), (zh) and (zi) of sub-section 2 of s. 101, 104, vide notification No. S.O. 2421(E), dated 23rd July 2020, see Gazette of India, Extraordinary, Part II, sec. 3(ii).",
+        "verified_on": "2026-10-16"
       }
     },
     {
@@ -880,18 +1291,32 @@
         "limitation act"
       ],
       "phrases": [],
-      "url": "https://www.indiacode.nic.in/handle/123456789/1565",
+      "url": "https://indiacode.gov.in/items/5e69d11a-63e7-4a63-b86f-e063bcdeaee2",
       "url_alt": null,
-      "url_checked": null,
+      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 January 1964.",
         "confidence": "certain",
-        "reviewed": null
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-16: enforcement date 01-01-1964; not marked repealed."
       },
       "appeal": {
         "text": "",
         "confidence": "",
         "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Limitation Act, 1963",
+        "act_number": "36",
+        "act_year": "1963",
+        "uuid": "5e69d11a-63e7-4a63-b86f-e063bcdeaee2",
+        "handle": "123456789/496389",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1963-10-05",
+        "enforced": "01-01-1964",
+        "verified_on": "2026-10-16"
       }
     }
   ]
