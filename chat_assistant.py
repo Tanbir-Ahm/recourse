@@ -1077,7 +1077,8 @@ def _find_unsupported_case_generalizations(response_text: str, matches) -> list:
     to this one case.)
 
     Only fires when the response uses generalization language
-    (_CASE_GENERALIZATION_PAT) about a specific case AND that case's own
+    (_CASE_GENERALIZATION_PAT) ABOUT a specific case (same sentence as its name, or the next
+    sentence if that one points back to it; changed 2026-10-16, see _generalisation_about) AND that case's own
     retrieved excerpt(s) (from `matches`) contain NO holding-attribution
     language (_HOLDING_LANGUAGE_PAT) anywhere -- i.e. everything actually
     given for that case was fact/allegation narrative, never the court's
@@ -1106,13 +1107,48 @@ def _find_unsupported_case_generalizations(response_text: str, matches) -> list:
 
     flagged = []
     response_lower = response_text.lower()
+    sentences = None
     for name, texts in by_case.items():
         first_party = re.split(r"\s+vs?\.?\s+", name, maxsplit=1, flags=re.IGNORECASE)[0].strip()
         if len(first_party) < 4 or first_party.lower() not in response_lower:
             continue
         if not _HOLDING_LANGUAGE_PAT.search(" ".join(texts)):
-            flagged.append(name)
+            if sentences is None:
+                sentences = _answer_sentences(response_text)
+                parties = {re.split(r"\s+vs?\.?\s+", n, maxsplit=1, flags=re.IGNORECASE)[0].strip().lower() for n in by_case}
+            if _generalisation_about(first_party, sentences, parties):
+                flagged.append(name)
     return flagged
+
+
+# 2026-10-16 (owner: "Build"): the generalisation word must be ABOUT the case. Live lawyer answer (v3, production): the check fired on three famous cases (Prabir Purkayastha, Arnesh Kumar, Satender Kumar Antil)
+# because "shows that" / "establishes" appeared SOMEWHERE in a long note, and the retry doubled that question's cost (Rs 6.52 on top of Rs 6.41). Now the word has to sit in the same sentence as the case's name,
+# or in the very next sentence when that sentence begins by pointing back ("This ...", "It ...", "The case ...").
+_ABBREV_DOT = re.compile(r"\b(?:v|vs|no|nos|art|arts|sec|secs|dr|mr|mrs|ors|anr|etc|ltd)\.|\b[A-Z]\.", re.IGNORECASE)
+_POINTS_BACK = re.compile(r"^\W*(?:this|that|it|such|the (?:case|decision|judgment|judgement|ruling|court|bench))\b", re.IGNORECASE)
+
+
+def _answer_sentences(text):
+    """The answer split into sentences and lines, without splitting after 'v.', 'No.', 'Art.', initials ('A.R. Antulay') and the like."""
+    t = _ABBREV_DOT.sub(lambda m: m.group(0).replace(".", "\x00"), text or "")
+    parts = re.split(r"(?<=[.!?])[\"')\]*]*\s+|\n+", t)
+    return [p.replace("\x00", ".") for p in parts if p.strip()]
+
+
+def _generalisation_about(first_party, sentences, parties=()):
+    """True when a generalisation word (illustrates / shows that / demonstrates / establishes) is in a sentence that names the case, or in the next sentence if that one points back to it
+    and names no other case (`parties`: the first parties of all retrieved cases)."""
+    fp = first_party.lower()
+    others = [x for x in parties if x != fp and len(x) >= 4]
+    for i, sent in enumerate(sentences):
+        if fp not in sent.lower():
+            continue
+        if _CASE_GENERALIZATION_PAT.search(sent):
+            return True
+        nxt = sentences[i + 1] if i + 1 < len(sentences) else ""
+        if nxt and _POINTS_BACK.match(nxt) and fp not in nxt.lower() and not any(x in nxt.lower() for x in others) and _CASE_GENERALIZATION_PAT.search(nxt):
+            return True
+    return False
 
 
 # Combined pattern for the pilot-tier overreach check below: EITHER the generalization language
