@@ -841,6 +841,20 @@ def _shelf_display(code):
         return None
 
 
+_SHELF_AFTER_PREFIX = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?", re.IGNORECASE)
+
+
+def _shelf_act_named_after(tail):
+    """True when the text right after a section number names an Act-shelf Act ('of the PMLA', 'under the SC/ST Act', 'of the Prevention of Corruption Act, 1988'): _ACT_NAME_AFTER only knows the BNS/BNSS family,
+    so without this a number given to the PMLA could be completed with the name of another Act whose same-numbered section was the one retrieved ('Section 19 of the Prevention of Corruption Act, 1988 of the PMLA')."""
+    try:
+        import act_shelf
+        rest = tail[_SHELF_AFTER_PREFIX.match(tail).end():]
+        return any(p.match(rest) for p in act_shelf.name_patterns().values())
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _shelf_name_pattern(code):
     """The compiled pattern of the names an answer may use for an Act-shelf Act (its Act Directory aliases and display name); None for any other code."""
     try:
@@ -890,7 +904,7 @@ def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) 
         if not act:
             continue
         for m in re.finditer(r"\bSection\s+" + re.escape(num) + r"(?![0-9A-Za-z])(?:\s*\(\w+\))*", text, re.IGNORECASE):
-            if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]):
+            if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]) or _shelf_act_named_after(text[m.end():m.end() + 80]):
                 continue                                    # this mention names an Act already; look for another mention
             if _is_old_law_mention(text, m.start(), m.end()):
                 continue                                    # an old-law mention: not ours to complete

@@ -38,7 +38,7 @@ MODEL = "voyage-law-2"             # the model the sections were embedded with; 
 TOP_K_ONE = 5                      # sections by meaning for a question that draws one shelf Act ...
 TOP_K_TWO = 3                      # ... and for each of two
 FLOOR = 0.22                       # cosine under which a section is not handed over (act_shelf/EVAL_NOTES.md: scores are compressed inside one Act, so no high threshold)
-MAX_CHARS = 18000                  # characters of statute text handed over for the meaning-ranked sections of one question (shared by the Acts); the first section of an Act is exempt
+MAX_CHARS = 14000                  # characters of statute text handed over for one question (shared by the Acts; named and pointed sections always come); the first section of an Act is exempt. 18,000 and 14,000 handed the marked section over equally often on the test questions (28 of 29), 12,000 did not (27)
 MAX_NAMED = 3
 MAX_POINTED = 2
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
@@ -98,8 +98,8 @@ def manifest(path=None):
 
 
 def _alias_patterns(entry):
-    """The names a question or an answer may use for the Act: the Act Directory's aliases and short name (one source of truth), the manifest's display name, short name and full name."""
-    names = [entry.get("display"), entry.get("short"), entry.get("name")]
+    """The names a question or an answer may use for the Act: the Act Directory's aliases and short name (one source of truth), the manifest's display name, short name, full name and answer_names."""
+    names = [entry.get("display"), entry.get("short"), entry.get("name")] + list(entry.get("answer_names") or [])      # answer_names: other ways lawyers write the Act's name ("UA(P) Act"); they do not make the Directory detect anything
     try:
         import act_directory
         d = act_directory.load()["by_id"].get(entry["key"]) or {}
@@ -350,7 +350,7 @@ def _embed_query(text):
     """The question as a voyage-law-2 query vector (what semantic_retrieval does for the library); the cost is logged like the library's query embedding."""
     import voyageai
     from semantic_retrieval import _resolve_voyage_api_key
-    resp = voyageai.Client(api_key=_resolve_voyage_api_key()).embed([text], model=MODEL, input_type="query")
+    resp = voyageai.Client(api_key=_resolve_voyage_api_key(), max_retries=1, timeout=20).embed([text], model=MODEL, input_type="query")      # a hang here must not hold up the answer: after 20 seconds the sections the question names still go
     try:
         import cost_log
         cost_log.note_voyage("act_shelf_query_embed", MODEL, getattr(resp, "total_tokens", 0))

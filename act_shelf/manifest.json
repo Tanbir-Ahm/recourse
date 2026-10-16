@@ -8,6 +8,12 @@
       "name": "The Prevention of Corruption Act, 1988",
       "short": "Prevention of Corruption Act, 1988",
       "display": "Prevention of Corruption Act, 1988",
+      "answer_names": [
+        "P.C. Act",
+        "PC Act, 1988",
+        "Prevention of Corruption Act",
+        "Prevention of Corruption (Amendment) Act, 2018"
+      ],
       "citation": "Act No. 49 of 1988",
       "india_code": {
         "uuid": "5b300920-4878-4e39-8d87-fa87d4953f09",
@@ -47,6 +53,12 @@
       "name": "The Protection of Children from Sexual Offences Act, 2012",
       "short": "Protection of Children from Sexual Offences Act, 2012 (POCSO)",
       "display": "POCSO Act",
+      "answer_names": [
+        "POCSO",
+        "POCSO Act",
+        "POCSO Act, 2012",
+        "Protection of Children from Sexual Offences (POCSO) Act"
+      ],
       "citation": "Act No. 32 of 2012",
       "india_code": {
         "uuid": "60dad1b9-bbf1-4310-8fa1-62643beab7a6",
@@ -92,6 +104,13 @@
       "name": "The Unlawful Activities (Prevention) Act, 1967",
       "short": "Unlawful Activities (Prevention) Act, 1967 (UAPA)",
       "display": "UAPA",
+      "answer_names": [
+        "UAPA",
+        "UA(P)A",
+        "UA(P) Act",
+        "UAP Act",
+        "Unlawful Activities (Prevention) Act"
+      ],
       "citation": "Act No. 37 of 1967",
       "india_code": {
         "uuid": "fa986084-35d9-4391-a7e1-9561c880d8bb",
@@ -151,6 +170,13 @@
       "name": "The Prevention of Money-laundering Act, 2002",
       "short": "Prevention of Money-laundering Act, 2002 (PMLA)",
       "display": "PMLA",
+      "answer_names": [
+        "PMLA",
+        "PML Act",
+        "Money Laundering Act",
+        "Money-laundering Act",
+        "Prevention of Money Laundering Act"
+      ],
       "citation": "Act No. 15 of 2003",
       "india_code": {
         "uuid": "3babfe62-c9c8-49b3-8247-052834d2dfa4",
@@ -215,6 +241,17 @@
       "name": "The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989",
       "short": "Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989 (SC/ST Act)",
       "display": "SC/ST Act",
+      "answer_names": [
+        "SC/ST Act",
+        "SC/ST (PoA) Act",
+        "SC/ST PoA Act",
+        "SC ST Act",
+        "SCST Act",
+        "S.C./S.T. Act",
+        "Atrocities Act",
+        "Prevention of Atrocities Act",
+        "SC/ST (Prevention of Atrocities) Act"
+      ],
       "citation": "Act No. 33 of 1989",
       "india_code": {
         "uuid": "f9c8fb04-363a-4779-b628-0d9f9bb997e0",

@@ -267,6 +267,7 @@ def _prompt_used(group):
     return ("\n\n## Act text in the material\n"
             f"The person's question {_verb(group)} the {names}. The material above includes sections of {it}, each block labelled with the Act's name; the text is the official text as loaded from India Code. "
             f"Use only those sections for anything you say about {it}: do not state any other section number, punishment, procedure or route of appeal of {it} from memory. "
+            f"Name each of them with the Act shown in its label (for example \"Section 45 of the PMLA\"), not as a BNS or BNSS section. "
             "The material shows only the sections our search found closest to the question, not the whole Act. If the question needs a provision that is not among them, say in one sentence that the material does not show it "
             f"and that the full text is on India Code. A provision missing from the material does not mean {it} {'have' if len(group) > 1 else 'has'} none. "
             "Where a section's words and the person's facts do not clearly match, say so instead of stretching the section.\n")

@@ -258,7 +258,8 @@ PB = AD.prompt_block(PM)
 check(PB == AD.prompt_block(PM, held=None) == AD.prompt_block(PM, held={}) and "## Acts named in the question that are not in the material" in PB and "The text of that Act is not in the material above" in PB, "prompt_block with no held Act: the block that existed before, word for word")
 pb = AD.prompt_block(PM, held=HU)
 check("## Act text in the material" in pb and "not in the material above" not in pb and "A provision missing from the material does not mean that Act has none." in pb
-      and "do not state any other section number, punishment, procedure or route of appeal of that Act from memory" in pb, "prompt_block, text used: use only those sections, never conclude from a missing section")
+      and "do not state any other section number, punishment, procedure or route of appeal of that Act from memory" in pb
+      and 'Name each of them with the Act shown in its label (for example "Section 45 of the PMLA"), not as a BNS or BNSS section.' in pb, "prompt_block, text used: use only those sections, name the Act shown in the label, never conclude from a missing section")
 pb = AD.prompt_block(PM, held=HN)
 check("its text is loaded, but nothing close enough was found" in pb and "from memory" in pb and "not in the material above" not in pb, "prompt_block, text loaded but nothing found: say so in one sentence, nothing from memory")
 pb = AD.prompt_block(MIX, held=HM)
@@ -348,6 +349,21 @@ check(sent["calls"] == 1 and "[POCSO Act Section 7, Section/Para 7]" in sent["pr
 Q_UA = "Is bail possible under section 43D of the UAPA?"
 res, out = ask(Q_UA, like("UAPA", "43D"), "Section 43D of the Unlawful Activities (Prevention) Act, 1967 restricts bail.")
 check(sent["calls"] == 1 and "[UAPA Section 43D, Section/Para 43D]" in sent["prompt"], "UAPA: label, a lettered section, and the full name passes")
+
+# other ways of writing an Act's name pass the check and are never completed again
+for act, names in (("UAPA", ("UA(P) Act", "UA(P)A", "UAP Act")), ("PMLA", ("Money Laundering Act", "Money-laundering Act", "PML Act")), ("SCSTACT", ("SC/ST (PoA) Act", "S.C./S.T. Act", "SCST Act", "Atrocities Act")), ("PCACT", ("P.C. Act", "Prevention of Corruption Act")),
+                   ("POCSO", ("POCSO", "Protection of Children from Sexual Offences (POCSO) Act"))):
+    pat = CA._shelf_name_pattern(act)
+    check(all(pat.search(f"Section 7 of the {n}") for n in names) and all(CA._add_missing_acts(f"Section 7 of the {n} applies.", ["7"], {"7": act}) == f"Section 7 of the {n} applies." for n in names), f"{act}: {', '.join(names)} are accepted as the Act's name and are not completed again")
+check(not AD.detect("What does the UA(P) Act say about bail?") and not AD.detect("What does the SC/ST (PoA) Act say?"), "...but answer_names do not make the Directory detect anything (it does not know these spellings; adding them would be a Directory change for Mr. Advocate to approve)")
+
+# a number given to one shelf Act is never completed with another Act's name
+check(CA._add_missing_acts("Section 19 of the PMLA lets the ED arrest.", ["19"], {"19": "PCACT"}) == "Section 19 of the PMLA lets the ED arrest.", "a mention that already names the PMLA is not completed with the PC Act's name")
+check(CA._add_missing_acts("Section 3 under the SC/ST Act applies.", ["3"], {"3": "PMLA"}) == "Section 3 under the SC/ST Act applies." and CA._add_missing_acts("Section 7, of POCSO, defines it.", ["7"], {"7": "PCACT"}) == "Section 7, of POCSO, defines it.",
+      "...also 'under the SC/ST Act' and 'of POCSO'")
+check(CA._add_missing_acts("Section 19 lets the ED arrest.", ["19"], {"19": "PMLA"}) == "Section 19 of the PMLA lets the ED arrest.", "a bare number is completed with the Act it was retrieved under")
+res, out = ask(Q_PC, like("PCACT", "19"), "Section 19 of the PMLA requires previous sanction before a court takes cognizance.")
+check(res["state"] == "single_match" and res["response_text"] is None and sent["calls"] == 2, "end to end: a PC Act section given another shelf Act's name: the answer is withheld after the second try, not garbled")
 
 # a shelf Act and a BNSS section in one answer (the numbers collide: both have a section 19)
 CA._find_relevant_sections_for_turn = lambda cur, full, **kw: {"state": "single_match", "matches": [{"type": "statute", "act": "BNSS", "section_number": "35", "text": "35. When police may arrest without warrant.", "source": "semantic", "all_variants": {}}], "judgment_matches": []}
@@ -474,6 +490,14 @@ check(not at.exception and any("**BNSS Section 3**" in v for v in vals) and not 
 msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Short answer.", "act_notice": NOTE, "matches": SHELF_MS})
 check(msgs[0] == NOTE["text"] and "not yet read by our reviewer" in msgs[0], "WhatsApp: the notice is the first message")
 check(AP._shelf_act_name("PCACT") == "Prevention of Corruption Act, 1988" and AP._shelf_act_name("SCSTACT") == "SC/ST Act" and AP._shelf_act_name("BNS") is None, "PDF: the heading uses the Act's name for a shelf Act and nothing for any other code")
+import fitz
+pc_ms = S.search("q", [{"id": "pc_act_1988"}], embed_fn=like("PCACT", "19"))["matches"]
+rec = AP.record_from_result("Is sanction needed for a PC Act prosecution?", {"state": "single_match", "response_text": "Previous sanction is needed under Section 19 of the Prevention of Corruption Act, 1988 before a court takes cognizance.",
+                                                                         "matches": pc_ms, "situation_detected": False})
+pdf_bytes, pdf_report = AP.build_verified_pdf([rec])
+pdf_txt = " ".join("\n".join(pg.get_text() for pg in fitz.open(stream=pdf_bytes, filetype="pdf")).split())
+check([(x["act"], x["section_number"]) for x in rec["statutes"]] == [("PCACT", "19")] and pdf_report.get("ok") and "Section 19 of the Prevention of Corruption Act, 1988" in pdf_txt,
+      "PDF of the answer: a shelf section is listed among the sources under the Act's name, and the completeness check passes")
 check(CA._shelf_display("PMLA") == "PMLA" and CA._shelf_display("BNS") is None and CA._shelf_name_pattern("BNS") is None and CA._shelf_name_pattern("PMLA").search("the Prevention of Money-laundering Act, 2002"), "chat_assistant's lookups: shelf codes only")
 
 # ---------------------------------------------------------------- the gold set stays frozen
