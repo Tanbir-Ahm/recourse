@@ -845,6 +845,8 @@ def render_answer(result: dict):
             st.markdown('<p class="r-conf">More than one provision applies and they don\'t '
                         'all say the same thing &mdash; Recourse lays out each rather than '
                         'picking one for you.</p>', unsafe_allow_html=True)
+        if result.get("outside_scope_note"):            # SCOPE_GATE=open: a fixed notice, written by code, on an answer to a question outside the areas Recourse has checked in depth
+            st.markdown(f'<p class="r-conf">{esc(result["outside_scope_note"])}</p>', unsafe_allow_html=True)
         reply = result.get("response_text") or ""
         with st.container(border=True):
             st.markdown('<span class="r-ansmark"></span>', unsafe_allow_html=True)
@@ -1062,6 +1064,14 @@ def render_answer(result: dict):
         st.markdown("## Something isn't working right now")
         st.markdown('<div class="r-oos">This is a technical problem on Recourse\'s side, not '
                     'your question. Try again in a moment.</div>', unsafe_allow_html=True)
+
+    # Overruled Register for the person's own question (chat_assistant._attach_question_register_notes, 2026-10-16): even when the question cannot be answered here, a case they named
+    # that is on the register is flagged, because they may be about to rely on it elsewhere. Written by code, not by the model.
+    _refusal_notes = list(result.get("register_notes") or []) + list(result.get("register_possible") or [])
+    if _refusal_notes:
+        st.markdown('<div class="r-label">Currency notes (checked by code, not by the model)</div>', unsafe_allow_html=True)
+        for n in _refusal_notes:
+            st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
     return False
 
 

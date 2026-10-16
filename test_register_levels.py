@@ -48,6 +48,7 @@ check(RH.answer_notes("", question=Q_NAMED)["notes"] != [], "an empty or withhel
 # --- the prompt block
 b = RH.question_block(Q_NAMED)
 check(b.startswith("\n\n## Overruled Register -- the person's own question names a case") and "REGISTER NOTE (not yet confirmed): Salauddin" in b and "OPENING paragraph" in b and "do not describe what that case held" in b, "the prompt block tells the model to say how the case was treated in its opening, without describing the overruling case's holding")
+check("do not suggest that the person cite, raise or rely on the overruling case for any other point" in b and "Saying that the older case was overruled by it is fine" in b, "the prompt block also stops the model advising the person to rely on the overruling case for another point (situation exam run 3, S13)")
 b2 = RH.question_block(Q_NOYEAR)
 check("REGISTER POSSIBLE MATCH" in b2 and 'the question names "Naresh Kumar Yadav v. Ravindra Kumar"' in b2, "a case named without a year gets the POSSIBLE MATCH line")
 check(RH.question_block(Q_FIRST) == "" and RH.question_block(Q_PLAIN) == "" and RH.question_block("") == "" and RH.question_block(None) == "", "a first party only, an unrelated question and bad input give no block")

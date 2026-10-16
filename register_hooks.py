@@ -93,7 +93,8 @@ def question_block(question):
             return ""
         return ("\n\n## Overruled Register -- the person's own question names a case on our register (not optional)\n"
                 "They may be about to rely on this case. In your OPENING paragraph, before anything else about it, tell them plainly, in your own words, how the case was treated. "
-                "Name the overruling case only as the one that overruled it: do not describe what that case held. Do not state the older case's holding as current law.\n"
+                "Name the overruling case only as the one that overruled it: do not describe what that case held. Do not state the older case's holding as current law. "
+                "Saying that the older case was overruled by it is fine; do not suggest that the person cite, raise or rely on the overruling case for any other point, because you have not been shown what it held on that point.\n"
                 + "\n".join(lines) + "\n")
     except Exception as exc:  # noqa: BLE001
         logger.warning("register question block failed: %s", exc)

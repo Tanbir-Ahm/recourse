@@ -106,10 +106,32 @@ def _format_cited_judgments(links: list) -> str:
     return "\n".join(lines)
 
 
+_REFUSAL_NOTE_STATES = ("adjacent_uncovered", "covered_elsewhere_in_tool", "no_match", "classifier_unavailable", "retrieval_unavailable")
+
+
 def format_answer_for_whatsapp(result: dict) -> list:
     """Returns a list of message strings to send, in order. Never
     returns an empty list -- every state gets at least one honest
-    message, same discipline as the website's render_answer()."""
+    message, same discipline as the website's render_answer().
+
+    ADDED 2026-10-16: a question that cannot be answered here still gets the Overruled Register's note when it names a case on the register
+    (chat_assistant._attach_question_register_notes), as one extra message just before the closing 'consult a lawyer' line."""
+    messages = _format_messages(result)
+    try:
+        if result.get("state") in _REFUSAL_NOTE_STATES:
+            notes = list(result.get("register_notes") or []) + list(result.get("register_possible") or [])
+            if notes:
+                note_msg = "\n".join(["*Currency notes* (checked by code, not by the model):"] + [f"- {n}" for n in notes])
+                if messages and messages[-1] == _CONSULT_LINE:
+                    messages = messages[:-1] + [note_msg, _CONSULT_LINE]
+                else:
+                    messages = messages + [note_msg]
+    except Exception:  # noqa: BLE001 -- the refusal itself always goes out
+        pass
+    return messages
+
+
+def _format_messages(result: dict) -> list:
     state = result.get("state")
 
     if state == "budget_paused":
@@ -158,6 +180,8 @@ def format_answer_for_whatsapp(result: dict) -> list:
                 "don't all say the same thing -- here's each one, "
                 "rather than picking one for you:",
             )
+        if result.get("outside_scope_note"):        # SCOPE_GATE=open (chat_assistant.OUTSIDE_SCOPE_NOTE): a fixed notice, first, written by code
+            messages.insert(0, result["outside_scope_note"])
         pdf_n = result.get("pdf_offer_count")
         if result.get("situation_detected") and not pdf_n:
             messages.append(
