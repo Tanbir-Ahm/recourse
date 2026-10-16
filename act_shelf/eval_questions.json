@@ -1,0 +1,905 @@
+{
+ "written": "2026-10-16",
+ "by": "Claude (AI) before any retrieval number existed",
+ "about": "75 questions, 15 per Act, written from the Act's own section list and text. AI-marked, NOT a lawyer's list: 'expected' = the section(s) Claude judges answer the question; 'also_ok' = other sections that would be a reasonable first look (counted only in the lenient score). 'hard' = Claude expected retrieval to struggle (guess made before the run). Never edit a question after a run to improve a score; a mistake in the key is corrected only with a note in 'corrections_log'.",
+ "corrections_log": [],
+ "questions": [
+  {
+   "id": "PC01",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "A clerk in the municipal office is asking me for Rs 5,000 to pass my file. What is the punishment for him?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC02",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "I paid money to a government officer to get my licence renewed because he refused to move the file. Have I also committed a crime?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC03",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "Is sanction required to prosecute a retired public servant for an offence under section 13?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC04",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "Does the police need prior approval before starting an enquiry against a public servant for a decision taken in the course of his official duty?",
+   "expected": [
+    "17A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC05",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "Our company gave gifts and money to officials to win a government tender. Is the company itself liable and who in the company can be punished?",
+   "expected": [
+    "9"
+   ],
+   "also_ok": [
+    "10"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PC06",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "What is the presumption against a public servant who accepts an undue advantage and when does it arise?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC07",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "A government officer owns property far beyond his salary. Which provision deals with this?",
+   "expected": [
+    "13"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC08",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "Which police officers are competent to investigate offences under the Prevention of Corruption Act? Can a sub-inspector do it?",
+   "expected": [
+    "17"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC09",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "Can the court attach the property of a corrupt government officer?",
+   "expected": [
+    "18A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC10",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "To which court does an appeal lie from the judgment of a Special Judge under the Prevention of Corruption Act?",
+   "expected": [
+    "27"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC11",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "An agent collects the money on behalf of an officer who takes a bribe. Is the agent also punishable?",
+   "expected": [
+    "12"
+   ],
+   "also_ok": [
+    "7A"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PC12",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "Can a Special Judge try an offence under the Prevention of Corruption Act summarily?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC13",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "An officer was convicted once for taking a bribe and has been caught again. Is the punishment higher the second time?",
+   "expected": [
+    "14"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC14",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "q": "What matters must the court consider when fixing the fine on a person convicted of an offence of acquiring property by corrupt means?",
+   "expected": [
+    "16"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PC15",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "q": "I work in a nationalised bank. Am I a public servant for the purposes of the anti-corruption law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "PS01",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "What is the punishment for penetrative sexual assault on a child?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3",
+    "6"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS02",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "Someone touched my 8-year-old daughter's private parts over her clothes. What offence is this and what is the punishment?",
+   "expected": [
+    "7",
+    "8"
+   ],
+   "also_ok": [
+    "9",
+    "10"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS03",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "I know a neighbour is abusing a child but I do not want to get involved. Am I legally required to tell the police?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS04",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "What is the punishment for a person who fails to report an offence against a child to the police?",
+   "expected": [
+    "21"
+   ],
+   "also_ok": [
+    "19"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS05",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "Where should the statement of a child victim be recorded and by whom?",
+   "expected": [
+    "24"
+   ],
+   "also_ok": [
+    "25"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS06",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "Is there a presumption of guilt against the accused in a prosecution under the POCSO Act?",
+   "expected": [
+    "29"
+   ],
+   "also_ok": [
+    "30"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS07",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "Within what time must the child's evidence be recorded and the trial completed in a POCSO case?",
+   "expected": [
+    "35"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PS08",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "Can the accused sit in the courtroom and look at the child while she gives evidence?",
+   "expected": [
+    "36"
+   ],
+   "also_ok": [
+    "33",
+    "37"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS09",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "A 16-year-old boy is accused under the child sexual offences law. Will he be tried like an adult?",
+   "expected": [
+    "34"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PS10",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "Which court tries offences under the POCSO Act?",
+   "expected": [
+    "28"
+   ],
+   "also_ok": [
+    "33"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS11",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "Is it an offence to make a false complaint of child sexual abuse against someone just to harass him?",
+   "expected": [
+    "22"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PS12",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "A doctor examined my son's private parts for a medical condition with our consent. Can that be treated as sexual assault?",
+   "expected": [
+    "41"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "PS13",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "If the same act is an offence under POCSO and also under the Indian Penal Code, which punishment applies?",
+   "expected": [
+    "42"
+   ],
+   "also_ok": [
+    "42A"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS14",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "q": "Someone showed pornographic videos to my 12-year-old daughter. What offence is that?",
+   "expected": [
+    "11"
+   ],
+   "also_ok": [
+    "12",
+    "13",
+    "14"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PS15",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "q": "Can a child victim be medically examined before an FIR is registered?",
+   "expected": [
+    "27"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA01",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Can bail be granted to an accused under the UAPA and what is the test the court applies?",
+   "expected": [
+    "43D"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "UA02",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "My relative was arrested under the anti-terror law. For how long can the police go on investigating before they file the chargesheet?",
+   "expected": [
+    "43D"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "UA03",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "What is the definition of a terrorist act under the Unlawful Activities (Prevention) Act?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA04",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "What is the punishment for giving money to a terrorist organisation?",
+   "expected": [
+    "17",
+    "40"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA05",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Is previous sanction required for the court to take cognizance of an offence under Chapters IV and VI of the UAPA?",
+   "expected": [
+    "45"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA06",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Can the Central Government declare an individual a terrorist and how can he apply to be removed from the list?",
+   "expected": [
+    "35",
+    "36"
+   ],
+   "also_ok": [
+    "37"
+   ],
+   "hard": false
+  },
+  {
+   "id": "UA07",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "Can the government seize my property if I am accused of funding terrorism?",
+   "expected": [
+    "25"
+   ],
+   "also_ok": [
+    "24A",
+    "26",
+    "27",
+    "33"
+   ],
+   "hard": false
+  },
+  {
+   "id": "UA08",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "To which court does an appeal lie against an order of forfeiture of proceeds of terrorism?",
+   "expected": [
+    "28"
+   ],
+   "also_ok": [
+    "25"
+   ],
+   "hard": false
+  },
+  {
+   "id": "UA09",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "I attended one meeting of a banned organisation. Is that a crime?",
+   "expected": [
+    "10"
+   ],
+   "also_ok": [
+    "3",
+    "38"
+   ],
+   "hard": false
+  },
+  {
+   "id": "UA10",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Is there a presumption of guilt if arms or explosives are recovered from the accused?",
+   "expected": [
+    "43E"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA11",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "What is the punishment for being a member of a terrorist organisation under the UAPA?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [
+    "38"
+   ],
+   "hard": false
+  },
+  {
+   "id": "UA12",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "Which police officers are allowed to investigate offences under the UAPA? Can a sub-inspector do it?",
+   "expected": [
+    "43"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA13",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Is evidence collected by intercepting phone calls admissible under the UAPA?",
+   "expected": [
+    "46"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA14",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "q": "Can the court take away my passport if I am charge-sheeted under the anti-terror law?",
+   "expected": [
+    "51"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "UA15",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "q": "Under which section is an association declared unlawful and what is the role of the Tribunal?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4",
+    "5"
+   ],
+   "hard": false
+  },
+  {
+   "id": "SS01",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "Someone abused me by my caste name in front of other people. Which section applies?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "SS02",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Is anticipatory bail available to an accused under the SC/ST Atrocities Act?",
+   "expected": [
+    "18"
+   ],
+   "also_ok": [
+    "18A"
+   ],
+   "hard": false
+  },
+  {
+   "id": "SS03",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Does the police need a preliminary enquiry or approval before registering an FIR or arresting under the Atrocities Act?",
+   "expected": [
+    "18A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS04",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Where does an appeal lie against an order of the Special Court under the SC/ST Act?",
+   "expected": [
+    "14A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS05",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "What help and relief is a victim of a caste atrocity entitled to, and can the victim be heard at the bail hearing?",
+   "expected": [
+    "15A"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "hard": false
+  },
+  {
+   "id": "SS06",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "Is a police officer who ignores a complaint by a Dalit person also punishable?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS07",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Is there a presumption against the accused in a prosecution under the Atrocities Act?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS08",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "A person who is not from a Scheduled Caste forcibly took our land. Which law protects us and what is the punishment?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "SS09",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Can a person likely to commit an atrocity be removed from the area?",
+   "expected": [
+    "10"
+   ],
+   "also_ok": [
+    "11",
+    "12",
+    "13"
+   ],
+   "hard": false
+  },
+  {
+   "id": "SS10",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Which courts try offences under the SC/ST Act and are there exclusive special courts?",
+   "expected": [
+    "14"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS11",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "What is the punishment if someone commits a serious offence like murder against a Dalit person knowing his caste?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "SS12",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Does the Probation of Offenders Act apply to a person found guilty of an offence under the SC/ST Act?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS13",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "What does the law mean by atrocity and who counts as a member of a Scheduled Caste or Scheduled Tribe for this law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "SS14",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "q": "Can the property of a person convicted of a caste atrocity be forfeited?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "SS15",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "q": "Which provisions of the Indian Penal Code apply for the purposes of the SC/ST Act?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM01",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "What are the twin conditions for bail in a money-laundering case?",
+   "expected": [
+    "45"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM02",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "q": "The ED has arrested my brother. On what basis can they arrest him and must they tell him the grounds?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM03",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "q": "The ED has attached my flat. How long can the attachment stay and who confirms it?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [
+    "8",
+    "26"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM04",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "Where does an appeal lie against an order of the Adjudicating Authority?",
+   "expected": [
+    "26"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM05",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "Within how many days can an appeal be filed in the High Court against an order of the Appellate Tribunal?",
+   "expected": [
+    "42"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM06",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "Can the ED summon a person and compel him to give a statement? Is the proceeding a judicial proceeding?",
+   "expected": [
+    "50"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM07",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "q": "What is the punishment for money laundering?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM08",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "How is proceeds of crime defined under the money-laundering law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "PM09",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "On whom does the burden of proof lie in a money-laundering prosecution?",
+   "expected": [
+    "24"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM10",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "Can the ED search premises and seize records, and what must the officer record before doing so?",
+   "expected": [
+    "17"
+   ],
+   "also_ok": [
+    "16",
+    "18"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM11",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "q": "Which court tries money-laundering cases?",
+   "expected": [
+    "43"
+   ],
+   "also_ok": [
+    "44"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM12",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "Does the Code of Criminal Procedure apply to proceedings before the Special Court under the money-laundering law, including bail provisions?",
+   "expected": [
+    "46"
+   ],
+   "also_ok": [
+    "65"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM13",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "After the Adjudicating Authority confirms an attachment, what happens to the property and can it be restored to the claimant?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "9"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PM14",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "q": "How are a company and its directors held liable for money laundering?",
+   "expected": [
+    "70"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PM15",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "q": "Is an ED officer punishable for searching a place or arresting a person without recording reasons?",
+   "expected": [
+    "62"
+   ],
+   "also_ok": [],
+   "hard": false
+  }
+ ],
+ "questions_sha256": "8fe6280a105df2ac569fbd3add7c70a5cf296321a892463c77922716715b104c"
+}
