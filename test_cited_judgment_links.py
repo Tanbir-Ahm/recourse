@@ -99,6 +99,19 @@ check([l["case_name"] for l in r["cited_judgment_links"]] == [GOSWAMI], "a lone 
 r = ca._attach_cited_judgment_links(result("Kumar was there.", ["Arnesh Kumar v State of Bihar"]))
 check(r["cited_judgment_links"] == [], "but a short/common word ('Kumar') alone never links a case")
 
+# staging, 2026-10-16: a TADA answer that said "whether an alternative, current authority covers the same ground" was given a source link to NALSA v Union of India,
+# because the lone-surname fallback took the last word of the name ("Authority") and found the ordinary word in the text
+NALSA = "National Legal Services Authority v Union of India"
+r = ca._attach_cited_judgment_links(result("Ask whether an alternative, current authority covers the same ground. The Authority of the Court is not in doubt.", [NALSA]))
+check(r["cited_judgment_links"] == [], "the ordinary word 'authority' (any case) never links a case whose name ends in 'Authority'")
+r = ca._attach_cited_judgment_links(result("In National Legal Services Authority v Union of India the Court recognised a third gender.", [NALSA]))
+check([l["case_name"] for l in r["cited_judgment_links"]] == [NALSA], "...but the full name still does")
+r = ca._attach_cited_judgment_links(result("The goswami case says warrants need care.", [GOSWAMI]))
+check(r["cited_judgment_links"] == [], "a lone surname must be written as a name (capitalised): 'goswami' in lower case is not enough")
+r = ca._attach_cited_judgment_links(result("The Commission did not consider it, and the Corporation replied.", ["Delhi Development Authority v Some Commission", "Karnataka State Road Corporation v Another Corporation"]))
+check(r["cited_judgment_links"] == [], "last words that name an institution ('Commission', 'Corporation') never link a case on their own")
+check({"authority", "commission", "corporation", "association"} <= ca._GENERIC_LAST_WORDS, "the stop-list of institution words is in place")
+
 r = ca._attach_cited_judgment_links(result("goswami is discussed here, in Inder Mohan Goswami", [GOSWAMI], unverified=[GOSWAMI]))
 check(r["cited_judgment_links"] == [], "a case already shown in the pilot list is not linked twice")
 

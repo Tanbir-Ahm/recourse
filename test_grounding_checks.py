@@ -141,5 +141,19 @@ _mat = "evidently onerous and unreasonable. freakish. disproportionate to a legi
 check(G.check_quotes(_ans, _mat) == [], f"short quoted words and table cells do not produce a false alarm ({G.check_quotes(_ans, _mat)})")
 check(G.check_quotes('He said "this phrase was never in any passage at all" ok', _mat) == ["this phrase was never in any passage at all"], "a real invented quotation is still found")
 
+# --- situation exam run 3 (2026-10-16), question S18: the answer put its own paraphrase of the person's question in quotation marks and the quote check flagged it
+_q18 = "The police filed a charge sheet and the magistrate took cognizance. The complainant now asks the magistrate to order further investigation. Can the magistrate do that?"
+_a18 = 'None of the material covers this exact situation, so I can only tell you what is available on related powers, not a direct answer to "can the magistrate do this after cognizance on a police report."'
+_m18 = _q18 + "\nSection 175(3) of the BNSS lets a magistrate order an investigation."
+check(G.check_quotes(_a18, _m18) == ["can the magistrate do this after cognizance on a police report."], "without the question the paraphrase is flagged (the behaviour until now)")
+check(G.check_quotes(_a18, _m18, question=_q18) == [], "a paraphrase of the person's question, introduced as the answer to it, is not flagged")
+check(G.check_quotes(_a18, _m18, question=None) == G.check_quotes(_a18, _m18), "question=None behaves exactly as before")
+_inv = 'In reply to your question: the Court held "a magistrate cannot order further investigation after cognizance on a police report" in that case.'
+check(G.check_quotes(_inv, _m18, question=_q18) == [], "(documented limit) a quotation introduced as the reply to the question and made of the question's own words is excused")
+_inv2 = 'The Supreme Court held "a magistrate cannot order further investigation after cognizance on a police report" in that case.'
+check(G.check_quotes(_inv2, _m18, question=_q18) == ["a magistrate cannot order further investigation after cognizance on a police report"], "an invented holding NOT introduced as the person's question is still flagged, even when it shares the question's words")
+_inv3 = 'As you asked about the magistrate, the Court said "the quick brown fox jumps over the lazy dog every single day" there.'
+check(G.check_quotes(_inv3, _m18, question=_q18) == ["the quick brown fox jumps over the lazy dog every single day"], "a quotation introduced as the question but sharing none of its words is still flagged")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

@@ -1871,6 +1871,15 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + excerpt_anchors.block(question)
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # Overruled Register, lock (b) for the person's own question: a case the question names (with a year, or by both full names) that the register lists; "" otherwise
+            from register_hooks import question_block
+            retrieved_text = retrieved_text + question_block(question)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
+        try:                                       # SCOPE_GATE=open: a question the topic bar would have turned away gets a short scope note (_open_topic_block); "" otherwise
+            retrieved_text = retrieved_text + _open_topic_block(question)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
@@ -1919,7 +1928,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         g_material = "\n".join([question or "", retrieved_text or "", pilot_context or "", " ".join(str(m.get("case_name") or "") for m in (matches or []) if isinstance(m, dict))])
         g_cases, g_quotes = [], []
         if g_mode != "off":
-            g_cases, g_quotes = grounding_checks.check_cases(response_text, g_material), grounding_checks.check_quotes(response_text, g_material)
+            g_cases, g_quotes = grounding_checks.check_cases(response_text, g_material), grounding_checks.check_quotes(response_text, g_material, question=question)
         g_enforce = g_mode == "enforce" and bool(g_cases or g_quotes)
 
         def _g_finish(text, cases, quotes, retried):
@@ -2017,7 +2026,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 return None
             if g_mode == "off":
                 return retry_text
-            return _g_finish(retry_text, grounding_checks.check_cases(retry_text, g_material), grounding_checks.check_quotes(retry_text, g_material), True)
+            return _g_finish(retry_text, grounding_checks.check_cases(retry_text, g_material), grounding_checks.check_quotes(retry_text, g_material, question=question), True)
 
         return _g_finish(response_text, g_cases, g_quotes, False)
     except Exception:
@@ -3334,7 +3343,10 @@ def _answer_question_core(question, inline_domains=frozenset()):
                                there, not told "not covered"
       'adjacent_uncovered'  -- real legal question, but outside what this
                                tool covers anywhere (BNS/BNSS chat scope
-                               or the document-upload domains)
+                               or the document-upload domains). With
+                               SCOPE_GATE=open (2026-10-16) such a question
+                               goes through the in_scope pipeline instead
+                               and never reaches this state.
       'classifier_unavailable' -- couldn't even classify the question
       'no_match'           -- in scope, but nothing in the corpus cleared
                                the similarity threshold, AND no curated
@@ -3404,6 +3416,12 @@ def _answer_question_core(question, inline_domains=frozenset()):
         "in_scope", "adjacent_uncovered", "covered_elsewhere_in_tool",
     ):
         category, redirect_domain = "covered_elsewhere_in_tool", "freeze"
+
+    # SCOPE_GATE=open (2026-10-16): the topic bar is lifted. A question the classifier called 'adjacent_uncovered' goes through the in_scope pipeline below; 'unrelated' (not a legal question) and the
+    # inline domains are untouched. See the block above answer_question for what this does and does not promise.
+    if category == "adjacent_uncovered" and _scope_gate_open():
+        _open_topic_start(question, reasoning)
+        category = "in_scope"
 
     if category == "covered_elsewhere_in_tool":
         # A caller with NO document-upload handoff of its own (the
@@ -3531,6 +3549,9 @@ def _answer_question_core(question, inline_domains=frozenset()):
         # find_relevant_sections's result out of "no_match").
         if overrides:
             return _answer_single_match(question, overrides)
+        wider = _answer_from_wider_search_only(question)         # only for a question the topic bar was opened for (SCOPE_GATE=open) and only with SCI_SEARCH_MODE=feed; None otherwise
+        if wider is not None:
+            return wider
         return {"state": "no_match"}
 
     if result["state"] == "conflicting_matches":
@@ -3578,6 +3599,11 @@ def _answer_question_core(question, inline_domains=frozenset()):
 _PARTY_SPLIT_PAT = re.compile(r"\s+vs?\.?\s+", re.IGNORECASE)
 _ET_AL_TAIL_PAT = re.compile(r"(?:\s*,?\s*(?:and|&)\s+(?:anr|ors|others|another)\.?)+\s*$", re.IGNORECASE)
 _GENERIC_PARTY_PAT = re.compile(r"^(?:the\s+)?(?:state|union of india|government|central bureau|cbi)\b", re.IGNORECASE)
+# the last word of an institution's name is not a surname: never a reason to say an answer relies on that case (see the lone-surname fallback in _attach_cited_judgment_links)
+_GENERIC_LAST_WORDS = {"authority", "authorities", "commission", "commissioner", "commissioners", "corporation", "association", "government", "department", "board", "company", "society", "council", "services",
+                       "service", "limited", "bureau", "committee", "tribunal", "officer", "officers", "collector", "magistrate", "education", "institute", "university", "ministry", "panchayat",
+                       "municipality", "federation", "trust", "railway", "railways", "agency", "organisation", "organization", "directorate", "administration", "secretary", "inspector",
+                       "district", "court", "police", "department", "enterprises", "industries", "committee", "authority"}
 _LINK_STATES = ("single_match", "conflicting_matches")
 
 
@@ -3634,11 +3660,14 @@ def _attach_cited_judgment_links(result):
             named = _name_in_text(name, text)
             if not named:
                 # a lone surname is enough (the model often writes "the Goswami case") -- but only a distinctive one
-                # (6+ letters, more than one word in the name, and no other retrieved case ends in the same word)
+                # (6+ letters, more than one word in the name, and no other retrieved case ends in the same word).
+                # 2026-10-16: not an ordinary word of institutions ("Authority", "Commission", "Corporation" ...), and only as the capitalised name is written: staging showed
+                # "National Legal Services Authority v Union of India" listed under a TADA answer because the answer said "an alternative, current authority".
                 words = name.split()
                 last = words[-1].strip(".,") if words else ""
-                if len(words) >= 2 and len(last) >= 6 and sum(1 for n in names.values() if n.split() and n.split()[-1].strip(".,").lower() == last.lower()) == 1:
-                    named = _name_in_text(last, text)
+                if (len(words) >= 2 and len(last) >= 6 and last.lower() not in _GENERIC_LAST_WORDS
+                        and sum(1 for n in names.values() if n.split() and n.split()[-1].strip(".,").lower() == last.lower()) == 1):
+                    named = re.search(r"(?<!\w)" + re.escape(last) + r"(?!\w)", text) is not None
             if not named:
                 continue
             url = get_judgment_source_url(case)
@@ -3654,9 +3683,10 @@ def _attach_cited_judgment_links(result):
     return result
 
 
-def _attach_register_notes(result):
-    """Adds result['register_notes'] (sentences for every Overruled Register or warning-card case the answer names without saying it was overruled)
-    and result['register_not_checked'] (one fixed sentence naming cases on neither list). Answer states only; never raises; REGISTER_HOOKS=off skips it."""
+def _attach_register_notes(result, question=None):
+    """Adds result['register_notes'] (sentences for every Overruled Register or warning-card case the answer, or the person's question, names without the answer saying it was overruled),
+    result['register_possible'] (name-only matches: 'Possible match ...' and the list of decisions sharing a first party; see register_hooks.answer_notes) and result['register_not_checked'] (one fixed sentence
+    naming cases on neither list). Answer states only; never raises; REGISTER_HOOKS=off skips it."""
     try:
         if not isinstance(result, dict) or result.get("state") not in _LINK_STATES:
             return result
@@ -3672,15 +3702,161 @@ def _attach_register_notes(result):
             srcs = srcs + excerpt_anchors.names_in(result.get("response_text") or "")
         except Exception:  # noqa: BLE001
             pass
-        res = answer_notes(result.get("response_text") or "", exclude_names=srcs)
+        res = answer_notes(result.get("response_text") or "", exclude_names=srcs, question=question)
         if res["notes"]:
             result["register_notes"] = res["notes"]
+        if res.get("possible"):
+            result["register_possible"] = res["possible"]
         if res["not_checked"]:
             result["register_not_checked"] = res["not_checked"]
         if res["review"]:
             logger.info("register: weak match(es) for review: %s", res["review"])
     except Exception as exc:  # fail-open
         logger.warning("_attach_register_notes failed: %s", exc)
+    return result
+
+
+# Non-answer states that still get the register's note when the person's own question names a case on the register (2026-10-16, after situation exam run 3: 5 of the 12 questions that named an
+# overruled case were turned away with not a word about it, and the person may be about to rely on that case elsewhere). 'unrelated' (not a legal question) and 'budget_paused' get none.
+_REFUSAL_NOTE_STATES = ("adjacent_uncovered", "covered_elsewhere_in_tool", "no_match", "classifier_unavailable", "retrieval_unavailable")
+
+
+def _attach_question_register_notes(result, question=None):
+    """For a result that is NOT an answer (see _REFUSAL_NOTE_STATES): adds result['register_notes'] / result['register_possible'] from the person's own question alone (a case named with a year or
+    citation, by both full names, or by its first party; see register_hooks.answer_notes). There is no answer text, so no 'not checked' sentence. Never raises; REGISTER_HOOKS=off skips it."""
+    try:
+        if not isinstance(result, dict) or result.get("state") not in _REFUSAL_NOTE_STATES or not question:
+            return result
+        from register_hooks import answer_notes
+        res = answer_notes("", question=question)
+        if res["notes"]:
+            result["register_notes"] = res["notes"]
+        if res.get("possible"):
+            result["register_possible"] = res["possible"]
+    except Exception as exc:  # fail-open
+        logger.warning("_attach_question_register_notes failed: %s", exc)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# SCOPE_GATE (ADDED 2026-10-16, owner's instruction: "the site should accept all topics now").  on (default: today's behaviour) | open.
+#
+# WHAT THE BAR WAS: classify_scope sorts a question into in_scope, covered_elsewhere_in_tool, adjacent_uncovered or unrelated. On the website cheque bounce, bank freeze, domestic violence and NDPS are
+# answered inline (recourse_app passes inline_domains), so the only legal questions turned away were 'adjacent_uncovered': special laws such as TADA and the Prevention of Corruption Act, POCSO, UAPA, and civil,
+# family, tax, service and company matters. 'unrelated' (not a legal question at all) is NOT part of the bar and stays refused.
+#
+# WHAT 'open' DOES: an 'adjacent_uncovered' question goes through the same pipeline as an in_scope one (curated overrides, library retrieval, the wider search when SCI_SEARCH_MODE=feed, the register,
+# every check). Three honest additions, all written by code, none touching the Hard rules block: (1) a short scope note in the prompt telling the model not to refuse for that reason and to say plainly
+# what the material does not cover (_open_topic_block); (2) when the library finds nothing and SCI_SEARCH_MODE=feed, the answer is written from the wider-search passages alone
+# (_answer_from_wider_search_only; with the search off the question ends as 'no_match', as an in_scope question with no match does); (3) a fixed notice with the answer, result['outside_scope_note'].
+# One log line per opened question: SCOPE_OPEN {...}. NOT measured: how good these answers are. The library has no TADA, corruption-law or civil material, so such an answer rests on the wider search alone.
+# ---------------------------------------------------------------------------
+OUTSIDE_SCOPE_NOTE = ("This question is about an area Recourse has not checked in depth (Recourse is built around police arrests, FIRs, criminal procedure and bail). "
+                      "What follows rests only on what we could find; please confirm it with a lawyer who handles this area before you rely on it.")
+_OPEN_TOPIC_BLOCK = ("\n\n## Scope note -- this question is outside the criminal-procedure library\n"
+                     "The person's question is about a legal subject our library may not cover (a special law, or a civil, family, tax, service or company matter). Do not refuse it for that reason and do not say it is "
+                     "outside what you can discuss. Answer it the way you answer any other question: only from the legal information given in this prompt (the rules above still apply in full, including never adding a "
+                     "section number, case holding, punishment or Act name that is not in the material). Where the material does not cover a point, say so plainly in one sentence (\"I don't have information on ...\") "
+                     "and say which kind of lawyer or forum handles it, instead of filling the gap from memory.\n")
+
+
+import threading as _threading
+
+_OPEN_TOPIC = _threading.local()                 # per thread (a Streamlit session or a WhatsApp request): what is known about the question being answered if the topic bar was opened for it
+
+
+def _scope_gate_open():
+    return _env_value("SCOPE_GATE").lower() == "open"
+
+
+def _open_topic_reset():
+    _OPEN_TOPIC.info = None
+
+
+def _open_topic_start(question, reasoning):
+    _OPEN_TOPIC.info = {"question": question, "reasoning": reasoning or "", "wider_only": False}
+
+
+def _open_topic_info(question):
+    info = getattr(_OPEN_TOPIC, "info", None)
+    return info if info and info.get("question") == question else None
+
+
+def _open_topic_block(question):
+    """The scope note for a question the topic bar would have turned away ('' for every other question, and whenever SCOPE_GATE is not 'open')."""
+    return _OPEN_TOPIC_BLOCK if _scope_gate_open() and _open_topic_info(question) else ""
+
+
+def _answer_from_wider_search_only(question):
+    """SCOPE_GATE=open, a question the topic bar would have turned away, nothing in the library (state no_match) and SCI_SEARCH_MODE=feed: the answer is written from the wider-search passages alone
+    (generate_grounded_response adds them through sci_search_tier.feed_block, which keeps its own labels and register facts). Returns an answer dict or None (search off, nothing found, generation failed
+    or withheld by a check): the caller then ends as 'no_match', exactly as before. Never raises."""
+    try:
+        if not (_scope_gate_open() and _open_topic_info(question)):
+            return None
+        import sci_search_tier
+        if sci_search_tier.mode() != "feed" or not sci_search_tier.feed_block(question):
+            return None
+        response_text = generate_grounded_response(question, "")
+        if not response_text:
+            return None
+        _open_topic_info(question)["wider_only"] = True
+        return {"state": "single_match", "matches": [], "response_text": response_text, "situation_detected": False, "from_cache": False, "unverified_related_judgments": []}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_answer_from_wider_search_only failed: %s", exc)
+        return None
+
+
+def _library_summary(matches, limit=8):
+    """What the library supplied for a question, for the SCOPE_OPEN log line (names and numbers only, no text): {'judgments': [{case, score, via?}], 'sections': ['BNSS 482', ...]}. The score is the
+    retrieval score (a cosine similarity for a meaning hit; JUDGMENT_SIMILARITY_THRESHOLD is 0.40; 'via': 'lexical' marks a keyword backfill that ranked just below it). Never raises."""
+    try:
+        cases, secs = {}, []
+        for m in matches or []:
+            if not isinstance(m, dict):
+                continue
+            if m.get("type") == "judgment" and m.get("case_name"):
+                sc = m.get("score")
+                cur = cases.get(m["case_name"])
+                if cur is None or (isinstance(sc, (int, float)) and sc > (cur[0] if isinstance(cur[0], (int, float)) else -1)):
+                    cases[m["case_name"]] = (sc, m.get("retrieval"))
+            elif m.get("section_number") and not m.get("case_name"):
+                tag = f'{m.get("act") or "?"} {m.get("section_number")}'
+                if tag not in secs:
+                    secs.append(tag)
+        ranked = sorted(cases.items(), key=lambda kv: -(kv[1][0] if isinstance(kv[1][0], (int, float)) else -1))
+        judgments = []
+        for name, (sc, via) in ranked[:limit]:
+            d = {"case": name[:100], "score": round(float(sc), 3) if isinstance(sc, (int, float)) else None}
+            if via:
+                d["via"] = via
+            judgments.append(d)
+        return {"judgments": judgments, "sections": secs[:limit]}
+    except Exception:  # noqa: BLE001
+        return {"judgments": [], "sections": []}
+
+
+def _finish_open_topic(question, result):
+    """After the core has answered: marks an answer to an opened question with the fixed notice and writes the one SCOPE_OPEN log line: a hash of the question, the classifier's one-sentence reason, the
+    state, whether the answer came from the wider search alone, and (added 2026-10-16, after an irrelevant library judgment was listed under a TADA answer) what the library and the wider search each supplied
+    (names and scores only). Never raises."""
+    try:
+        info = _open_topic_info(question)
+        if not info or not isinstance(result, dict):
+            return result
+        if result.get("state") in _LINK_STATES:
+            result["outside_scope_note"] = OUTSIDE_SCOPE_NOTE
+        import hashlib
+        wider = []
+        try:
+            import sci_search_tier
+            wider = [n[:100] for n in sci_search_tier.fed_case_names()][:8]
+        except Exception:  # noqa: BLE001
+            pass
+        print("SCOPE_OPEN " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "reasoning": info.get("reasoning", "")[:160], "state": result.get("state"),
+                                          "wider_only": bool(info.get("wider_only")), "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_finish_open_topic failed: %s", exc)
     return result
 
 
@@ -3780,9 +3956,11 @@ def _answer_question_inner(question, inline_domains=frozenset()):
         excerpt_anchors.reset()
     except Exception:  # pragma: no cover
         pass
-    result = _answer_question_core(question, inline_domains=inline_domains)
+    _open_topic_reset()
+    result = _finish_open_topic(question, _answer_question_core(question, inline_domains=inline_domains))
     try:
-        result = _attach_register_notes(_attach_cited_judgment_links(result))
+        result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
+        result = _attach_question_register_notes(result, question=question)       # a refusal still tells the person that a case they named is on the register
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open

@@ -236,21 +236,43 @@ def _fuzzy_in(frag_norm, material_norm, threshold=0.95):
     return False
 
 
-def check_quotes(answer, material):
-    """The quotations (five words or more) whose words cannot be found in the material. Returns the original quotation texts."""
+_QUESTION_LEAD = re.compile(r"\b(?:(?:your|the)\s+(?:question|query|message|description)|you\s+(?:asked|ask|wrote|said|put\s+it|described)|asked\s+(?:whether|if|about)|answer\s+to|as\s+you\s+put|in\s+response\s+to)\b", re.I)
+_ECHO_STOP = {"the", "a", "an", "of", "on", "in", "to", "and", "or", "do", "does", "did", "this", "that", "it", "is", "are", "was", "be", "can", "could", "may", "i", "my", "you", "your", "we", "for", "if", "so"}
+
+
+def _echoes_question(cell, start, quote, question):
+    """True when a quotation the answer put in quotation marks is the answer's own paraphrase of the PERSON'S question, introduced as such ("not a direct answer to "can the magistrate do this ..."").
+    That is not a claim about a source, so it needs no notice. Narrow on purpose, so that an invented quotation from a judgment is never excused by it: BOTH the words just before the quotation must point at
+    the person's question (your question / you asked / answer to / ...) AND at least half of the quotation's content words must be words of the question."""
+    if not question:
+        return False
+    if not _QUESTION_LEAD.search(cell[max(0, start - 100):start]):
+        return False
+    words = [t for t in norm(quote).split() if t not in _ECHO_STOP]
+    if len(words) < 2:
+        return False
+    in_question = set(norm(question).split())
+    return sum(1 for t in words if t in in_question) / len(words) >= 0.5
+
+
+def check_quotes(answer, material, question=None):
+    """The quotations (five words or more) whose words cannot be found in the material. Returns the original quotation texts. `question` (optional): a quotation that is only the answer's paraphrase of
+    the person's own question, introduced as such, is not reported (see _echoes_question); without it the function behaves exactly as before."""
     bad = []
     try:
         mat = norm(material)
         cells = [c for line in (answer or "").split("\n") for c in line.split("|")]          # quote marks are paired inside one line / table cell, in order, so a short quoted word never pairs with a mark far away
-        for m in (m for c in cells for m in _QUOTE.finditer(c)):
-            q = m.group(1) or m.group(2)
-            if len(q) < _MIN_QUOTE_CHARS:
-                continue
-            for frag in _fragments(q):
-                fn = norm(frag)
-                if fn and fn not in mat and not _fuzzy_in(fn, mat):
-                    bad.append(q.strip())
-                    break
+        for cell in cells:
+            for m in _QUOTE.finditer(cell):
+                q = m.group(1) or m.group(2)
+                if len(q) < _MIN_QUOTE_CHARS:
+                    continue
+                for frag in _fragments(q):
+                    fn = norm(frag)
+                    if fn and fn not in mat and not _fuzzy_in(fn, mat):
+                        if not _echoes_question(cell, m.start(), q, question):
+                            bad.append(q.strip())
+                        break
     except Exception:  # noqa: BLE001
         return []
     return bad
