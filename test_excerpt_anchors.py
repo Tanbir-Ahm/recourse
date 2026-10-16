@@ -83,7 +83,7 @@ check("never say that a case is good law" in b, "the block forbids saying that a
 check("CrPC Section 309 corresponds to BNSS Section 346" in b and "CrPC Section 482 corresponds to BNSS Section 528" in b and "a pointer to verify" in b, "statute pointers come from the site's own concordance table")
 check("REGISTER FACT: Raj Deo Sharma v. The State of Bihar (1999) was overruled by P. Ramachandra Rao" in b, "the register's fact about the cases the excerpt names rides with the excerpt")
 check(len(E.fed()) == 2 and E.case_names() == ["P. Ramachandra Rao v. State of Karnataka", "Hussainara Khatoon (I) v. Home Secretary, State of Bihar"], "block() remembers what it handed over")
-check(len(b) < 8000, f"the block stays small ({len(b)} characters)")
+check(len(b) < 9500, f"the block stays small ({len(b)} characters; 2026-10-16: the closing guidance and the length note added about 1,400)")
 check(E.block("Can the police arrest me for cheating?") == "" and E.fed() == [], "a question on another subject gets no block and the memory is cleared")
 
 # --- a confirmed anchor needs no label
@@ -217,6 +217,25 @@ E.block(Q_DELAY)                                   # what generate_grounded_resp
 CA._answer_question_core = lambda q, inline_domains=frozenset(): (E.block(q), {"state": "single_match", "response_text": "The Supreme Court in P. Ramachandra Rao v. State of Karnataka (2002) said no fixed limit applies."})[1]
 out = CA._answer_question_inner(Q_DELAY)
 check(E.LABEL_UNCONFIRMED in out["response_text"] and len(out.get("anchor_excerpts") or []) == 2, "through answer_question's inner path the answer is labelled and lists the excerpts")
+
+# --- 2026-10-16: the guidance for "can the case be closed?" and the length note (a live answer said only that delay does not end a case, fused guidelines (9) and (11), and was squeezed by the 300-400 word limit)
+import answer_style as AS
+os.environ.pop("RESPONSE_STYLE", None)
+bg = E.block(Q_DELAY)
+check("guideline (9) of Antulay" in bg and "\"shall be quashed\"" in bg and "ordinary consequence" in bg and "conclude the trial within a fixed time" in bg, "the block tells the model that quashing is the ordinary consequence once the right is found infringed, and that a fixed-time order is the alternative")
+check("guideline (11) says WHERE to go" in bg and "Do not describe guideline (11) as a remedy" in bg and "grave and exceptional case" in bg, "and that guideline (11) is about the High Court route and stays, not a remedy")
+check("up to about 400 words" in bg, "v1: the block allows about 400 words for this multi-part answer")
+os.environ["RESPONSE_STYLE"] = "v3"
+bg3 = E.block(Q_DELAY)
+check("up to about 400 words" not in bg3 and "guideline (9) of Antulay" in bg3, "v3 keeps its own length rules (no 400-word note) but still gets the guidance")
+AS._LOCAL.channel = "whatsapp"
+os.environ["RESPONSE_STYLE"] = "v1"
+check("up to about 400 words" not in E.block(Q_DELAY), "WhatsApp keeps its character limit (no 400-word note)")
+AS._LOCAL.channel = None
+os.environ.pop("RESPONSE_STYLE", None)
+# the guidance is added only when the excerpts handed over really contain guidelines (9) and (11)
+fake = [{"excerpts": [{"segments": ["Only a general passage about Article 21."]}]}]
+check(E._closing_guidance(fake) == "", "no guidance when the excerpts do not contain Antulay's guidelines (9) and (11)")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

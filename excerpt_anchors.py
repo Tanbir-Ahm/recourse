@@ -155,6 +155,34 @@ def _statute_pointers(anchors):
         return ""
 
 
+def _closing_guidance(anchors):
+    """How to answer "can the case be closed because of the delay?" from the excerpts, using only what they literally say (added 2026-10-16 after a live answer said only that delay does not end a case, left out
+    that Antulay's guideline (9), as the Bench extracts it, ordinarily quashes, and turned guideline (11), which says where to go, into a remedy). '' unless the excerpts handed over contain guidelines (9) and (11)."""
+    text = " ".join(excerpt_text(ex) for a in anchors for ex in a["excerpts"])
+    if "shall be quashed" not in text or "(11)" not in text or "(9)" not in text:
+        return ""
+    return ("If the person asks whether the case can be closed, ended or dropped because of the delay, answer THAT in your opening and say all three parts: "
+            "(a) the seven-judge Bench holds that no outer time limit can be fixed and that a court is not obliged to end a trial merely because time has passed (its conclusion (4)); "
+            "(b) but guideline (9) of Antulay, as the Bench extracts it, says that where the court concludes that the right to speedy trial has been infringed, the charges or the conviction \"shall be quashed\" "
+            "-- this is the ordinary consequence -- though it is not the only course: the court may instead make another appropriate order, including an order to conclude the trial within a fixed time; "
+            "(c) guideline (11) says WHERE to go, not what the remedy is: an objection based on denial of the right should first be addressed to the High Court, which ordinarily should not stay the proceedings "
+            "except in a grave and exceptional case. Do not describe guideline (11) as a remedy, and do not attribute the fixed-time order or the quashing to it. "
+            "Do not leave the reader with only \"delay alone does not end a case\".\n")
+
+
+def _length_note():
+    """Under the v1 and v2 styles (a 300 to 400 word limit) this multi-part answer would have to squeeze two judgments into a few lines, which is where the live answer garbled a sentence. Say that 400 words
+    are allowed. Nothing for v3 (its own length rules) or WhatsApp (a character limit)."""
+    try:
+        import answer_style
+        if answer_style.template_key() in ("v1", "v2") and answer_style.get_channel() != "whatsapp":
+            return ("This is a multi-part question (the right, its limits, the route to court): up to about 400 words are allowed for this answer, so that these points are not squeezed into one crowded sentence. "
+                    "Keep it plain, keep each sentence to one idea, and keep the single next step.\n")
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
 def block(question):
     """The prompt section for this question ('' when no anchor applies). Remembers which anchors it handed over so the finished answer can be labelled and the page can list them."""
     try:
@@ -171,6 +199,9 @@ def block(question):
                  "The guidelines of A.R. Antulay and the passage of Kartar Singh are known to us only as the seven-judge Bench quotes them: if you mention either, say so. The four factors (length of delay, the justification for it, the accused's assertion of the right, and prejudice) are Kartar Singh's words as the Bench quotes them, not Antulay's; the duty of the prosecution to justify the delay is Antulay's guideline (10), not a provision of any statute. "
                  + (f"The first time you name one of these cases, put the words {LABEL_UNCONFIRMED} right after its name. " if unconfirmed else "")
                  + "If the person's facts do not fit these excerpts, say what is missing instead of stretching them.\n"]
+        for extra in (_closing_guidance(anchors), _length_note()):
+            if extra:
+                lines.append(extra)
         for a in anchors:
             lines.append(_head(a))
             for i, ex in enumerate(a["excerpts"], 1):

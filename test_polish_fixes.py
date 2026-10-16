@@ -38,9 +38,9 @@ md = "**Bottom line**\n\nText.\n\n**1. Section 482(2) of the BNSS: scope of cond
 out = promote(md, "lawyer")
 check("**1. Section 482(2) of the BNSS: scope of conditions on anticipatory bail**\n\nSection 482(2)" in out, f"the lawyer heading is not split at its colon ({out!r})")
 out_old = promote("**What the law says:** the court may attach conditions.\n", "")
-check(out_old.startswith("**What the law says:**\n\nthe court may attach"), "v1/v2 behaviour is unchanged: 'Label: body' still becomes a sub-head plus a paragraph")
+check(out_old.startswith("**What the law says:**\n\nThe court may attach"), "v1/v2: 'Label: body' still becomes a sub-head plus a paragraph, and the paragraph now starts with a capital")
 out_l = promote("**Right now:** do this first.\n", "layman")
-check(out_l.startswith("**Right now:**\n\ndo this first."), "a v3 layman line with text after the bold label is still split as before")
+check(out_l.startswith("**Right now:**\n\nDo this first."), "a v3 layman line with text after the bold label is still split, and the text starts with a capital")
 
 # 3. the quote-check log names the closest wording, so a false alarm can be told from a real misquote
 mat = "The Court observed that it would not be justified in imposing freak- ish conditions on the applicant and may impose necessary just and efficacious conditions."
@@ -74,5 +74,15 @@ i = src.index("def _footer():")
 seg = src[i:i + 600]
 check("register_hooks._off()" in seg and seg.index("_case_check_box()") > seg.index("register_hooks._off()"), "the footer shows the lawyers' case-check box only when REGISTER_HOOKS is not off")
 
+# 6. 2026-10-16: lowercase after a label that the page pushes onto its own line gets a capital (live answer: "**Short answer:** delay alone does not ...")
+live = "**Short answer:** delay alone does not automatically close a case.\n\n**What the law says about trial speed:** Section 346 requires day-to-day trial.\n\n**What's unclear here:** how much of the 9 years is attributable.\n"
+o = promote(live, "")
+check("**Short answer:**\n\nDelay alone does not" in o and "**What's unclear here:**\n\nHow much of the 9 years" in o and "**What the law says about trial speed:**\n\nSection 346" in o, f"labels split, text capitalised ({o!r})")
+check(promote("**Right now**\ncall a lawyer.\n", "") == "**Right now**\n\nCall a lawyer.\n", "a label with the text on the next line too")
+check(promote("**Short answer:** 9 years is long.\n", "") == "**Short answer:**\n\n9 years is long.\n", "a digit, or a text already starting with a capital, is left alone")
+check(promote("**Short answer:** Delay is not enough.\n\ntext continues here.\n", "") == "**Short answer:**\n\nDelay is not enough.\n\ntext continues here.\n", "a later lowercase paragraph (not under a label) is not touched")
+check(promote(promote(live, ""), "") == promote(live, ""), "applying it twice changes nothing")
+_v3 = "**Bottom line**\n\nText.\n\n**1. Section 482(2) of the BNSS: scope**\n\nSection 482(2) lets the court attach conditions.\n"
+check(promote(_v3, "lawyer") == _v3, "v3 lawyer headings and their paragraphs are unchanged")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

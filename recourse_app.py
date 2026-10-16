@@ -481,6 +481,8 @@ def _tame_sentence_bold(md: str, v3_label_max: int = 0) -> str:
     return _WHOLE_LINE_BOLD.sub(repl, md)
 
 
+_CAP_AFTER_HEADING = _re_lbl.compile(r"(?m)^(\s{0,3}\*\*[^*\n]{2,90}\*\*:?\n\n)([a-z])")
+
 _V3_HEADING_THEN_TEXT = _re_lbl.compile(r"(?m)^(\*\*[^*\n]{2,90}\*\*)[ \t]*\n(?!\n)")
 
 
@@ -492,7 +494,9 @@ def _promote_answer_labels(md: str, audience: str = "") -> str:
     md = _tame_sentence_bold(md, v3_label_max=v3_max)
     if v3_max:
         md = _V3_HEADING_THEN_TEXT.sub(lambda m: m.group(1) + "\n\n", md)       # a heading must stand alone, or the page's CSS would turn the whole paragraph into a sub-head
-    return _LEAD_LABEL.sub(lambda m: f"{m.group(1)}{m.group(2)}{m.group(3)}\n\n", md)
+    md = _LEAD_LABEL.sub(lambda m: f"{m.group(1)}{m.group(2)}{m.group(3)}\n\n", md)
+    # The model writes "**Short answer:** delay alone does not ..." (lowercase after a colon reads fine on one line); once the label is pushed onto its own line the text under it must start with a capital.
+    return _CAP_AFTER_HEADING.sub(lambda m: m.group(1) + m.group(2).upper(), md)
 
 
 # --------------------------------------------------------------------------
