@@ -1,0 +1,3085 @@
+{
+ "run_on": "2026-10-16",
+ "model": "voyage-law-2",
+ "questions_sha256": "8fe6280a105df2ac569fbd3add7c70a5cf296321a892463c77922716715b104c",
+ "question_tokens_billed_this_run": 201,
+ "note": "AI-marked gold set (Claude's, written and committed before this run); 75 questions; measures where the search puts the expected section, not answer quality.",
+ "overall": {
+  "semantic": {
+   "n": 75,
+   "hit@1": 0.733,
+   "hit@3": 0.893,
+   "hit@5": 0.947,
+   "hit@8": 0.96,
+   "mrr": 0.819
+  },
+  "keyword_bm25": {
+   "n": 75,
+   "hit@1": 0.613,
+   "hit@3": 0.76,
+   "hit@5": 0.8,
+   "hit@8": 0.893,
+   "mrr": 0.711
+  },
+  "fused_rrf": {
+   "n": 75,
+   "hit@1": 0.693,
+   "hit@3": 0.893,
+   "hit@5": 0.933,
+   "hit@8": 0.947,
+   "mrr": 0.801
+  }
+ },
+ "overall_lenient": {
+  "semantic": {
+   "n": 75,
+   "hit@1": 0.8,
+   "hit@3": 0.92,
+   "hit@5": 0.987,
+   "hit@8": 0.987,
+   "mrr": 0.866
+  },
+  "keyword_bm25": {
+   "n": 75,
+   "hit@1": 0.667,
+   "hit@3": 0.773,
+   "hit@5": 0.827,
+   "hit@8": 0.893,
+   "mrr": 0.746
+  },
+  "fused_rrf": {
+   "n": 75,
+   "hit@1": 0.747,
+   "hit@3": 0.933,
+   "hit@5": 0.947,
+   "hit@8": 0.96,
+   "mrr": 0.842
+  }
+ },
+ "by_act": {
+  "pc_act_1988": {
+   "semantic": {
+    "n": 15,
+    "hit@1": 0.533,
+    "hit@3": 0.8,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.685
+   },
+   "keyword_bm25": {
+    "n": 15,
+    "hit@1": 0.4,
+    "hit@3": 0.467,
+    "hit@5": 0.6,
+    "hit@8": 0.733,
+    "mrr": 0.492
+   },
+   "fused_rrf": {
+    "n": 15,
+    "hit@1": 0.533,
+    "hit@3": 0.933,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.716
+   }
+  },
+  "pmla_2002": {
+   "semantic": {
+    "n": 15,
+    "hit@1": 0.8,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.844
+   },
+   "keyword_bm25": {
+    "n": 15,
+    "hit@1": 0.733,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 1.0,
+    "mrr": 0.814
+   },
+   "fused_rrf": {
+    "n": 15,
+    "hit@1": 0.8,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.857
+   }
+  },
+  "pocso_act_2012": {
+   "semantic": {
+    "n": 15,
+    "hit@1": 0.867,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.922
+   },
+   "keyword_bm25": {
+    "n": 15,
+    "hit@1": 0.467,
+    "hit@3": 0.667,
+    "hit@5": 0.667,
+    "hit@8": 0.867,
+    "mrr": 0.608
+   },
+   "fused_rrf": {
+    "n": 15,
+    "hit@1": 0.667,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.786
+   }
+  },
+  "sc_st_act_1989": {
+   "semantic": {
+    "n": 15,
+    "hit@1": 0.8,
+    "hit@3": 0.933,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.874
+   },
+   "keyword_bm25": {
+    "n": 15,
+    "hit@1": 0.867,
+    "hit@3": 0.933,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.904
+   },
+   "fused_rrf": {
+    "n": 15,
+    "hit@1": 0.8,
+    "hit@3": 0.933,
+    "hit@5": 0.933,
+    "hit@8": 0.933,
+    "mrr": 0.872
+   }
+  },
+  "uapa_1967": {
+   "semantic": {
+    "n": 15,
+    "hit@1": 0.667,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 1.0,
+    "mrr": 0.771
+   },
+   "keyword_bm25": {
+    "n": 15,
+    "hit@1": 0.6,
+    "hit@3": 0.867,
+    "hit@5": 0.867,
+    "hit@8": 0.933,
+    "mrr": 0.736
+   },
+   "fused_rrf": {
+    "n": 15,
+    "hit@1": 0.667,
+    "hit@3": 0.867,
+    "hit@5": 0.933,
+    "hit@8": 1.0,
+    "mrr": 0.772
+   }
+  }
+ },
+ "by_kind": {
+  "layman": {
+   "semantic": {
+    "n": 34,
+    "hit@1": 0.676,
+    "hit@3": 0.882,
+    "hit@5": 0.912,
+    "hit@8": 0.941,
+    "mrr": 0.782
+   },
+   "keyword_bm25": {
+    "n": 34,
+    "hit@1": 0.412,
+    "hit@3": 0.559,
+    "hit@5": 0.618,
+    "hit@8": 0.824,
+    "mrr": 0.542
+   },
+   "fused_rrf": {
+    "n": 34,
+    "hit@1": 0.559,
+    "hit@3": 0.853,
+    "hit@5": 0.912,
+    "hit@8": 0.912,
+    "mrr": 0.717
+   }
+  },
+  "lawyer": {
+   "semantic": {
+    "n": 41,
+    "hit@1": 0.78,
+    "hit@3": 0.902,
+    "hit@5": 0.976,
+    "hit@8": 0.976,
+    "mrr": 0.85
+   },
+   "keyword_bm25": {
+    "n": 41,
+    "hit@1": 0.78,
+    "hit@3": 0.927,
+    "hit@5": 0.951,
+    "hit@8": 0.951,
+    "mrr": 0.851
+   },
+   "fused_rrf": {
+    "n": 41,
+    "hit@1": 0.805,
+    "hit@3": 0.927,
+    "hit@5": 0.951,
+    "hit@8": 0.976,
+    "mrr": 0.87
+   }
+  }
+ },
+ "by_hard": {
+  "False": {
+   "semantic": {
+    "n": 66,
+    "hit@1": 0.727,
+    "hit@3": 0.894,
+    "hit@5": 0.939,
+    "hit@8": 0.955,
+    "mrr": 0.814
+   },
+   "keyword_bm25": {
+    "n": 66,
+    "hit@1": 0.636,
+    "hit@3": 0.773,
+    "hit@5": 0.803,
+    "hit@8": 0.879,
+    "mrr": 0.723
+   },
+   "fused_rrf": {
+    "n": 66,
+    "hit@1": 0.712,
+    "hit@3": 0.894,
+    "hit@5": 0.924,
+    "hit@8": 0.939,
+    "mrr": 0.808
+   }
+  },
+  "True": {
+   "semantic": {
+    "n": 9,
+    "hit@1": 0.778,
+    "hit@3": 0.889,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.861
+   },
+   "keyword_bm25": {
+    "n": 9,
+    "hit@1": 0.444,
+    "hit@3": 0.667,
+    "hit@5": 0.778,
+    "hit@8": 1.0,
+    "mrr": 0.62
+   },
+   "fused_rrf": {
+    "n": 9,
+    "hit@1": 0.556,
+    "hit@3": 0.889,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.75
+   }
+  }
+ },
+ "thresholds": [
+  {
+   "threshold": 0.3,
+   "k": 3,
+   "found": 67,
+   "of": 75,
+   "avg_sections_returned": 2.91
+  },
+  {
+   "threshold": 0.3,
+   "k": 5,
+   "found": 71,
+   "of": 75,
+   "avg_sections_returned": 4.71
+  },
+  {
+   "threshold": 0.34,
+   "k": 3,
+   "found": 66,
+   "of": 75,
+   "avg_sections_returned": 2.81
+  },
+  {
+   "threshold": 0.34,
+   "k": 5,
+   "found": 70,
+   "of": 75,
+   "avg_sections_returned": 4.47
+  },
+  {
+   "threshold": 0.38,
+   "k": 3,
+   "found": 65,
+   "of": 75,
+   "avg_sections_returned": 2.64
+  },
+  {
+   "threshold": 0.38,
+   "k": 5,
+   "found": 69,
+   "of": 75,
+   "avg_sections_returned": 3.92
+  },
+  {
+   "threshold": 0.42,
+   "k": 3,
+   "found": 56,
+   "of": 75,
+   "avg_sections_returned": 2.15
+  },
+  {
+   "threshold": 0.42,
+   "k": 5,
+   "found": 58,
+   "of": 75,
+   "avg_sections_returned": 2.92
+  },
+  {
+   "threshold": 0.46,
+   "k": 3,
+   "found": 50,
+   "of": 75,
+   "avg_sections_returned": 1.65
+  },
+  {
+   "threshold": 0.46,
+   "k": 5,
+   "found": 51,
+   "of": 75,
+   "avg_sections_returned": 2.05
+  },
+  {
+   "threshold": 0.5,
+   "k": 3,
+   "found": 41,
+   "of": 75,
+   "avg_sections_returned": 1.2
+  },
+  {
+   "threshold": 0.5,
+   "k": 5,
+   "found": 41,
+   "of": 75,
+   "avg_sections_returned": 1.36
+  }
+ ],
+ "offtopic": [
+  {
+   "id": "OT01",
+   "act_key": "pc_act_1988",
+   "q": "I want to file a consumer complaint against a builder. Does the Prevention of Corruption Act help me get a refund?",
+   "top3": [
+    "1",
+    "30",
+    "2"
+   ],
+   "top3_scores": [
+    0.3804,
+    0.3671,
+    0.3048
+   ]
+  },
+  {
+   "id": "OT02",
+   "act_key": "pc_act_1988",
+   "q": "What is the minimum age to get a driving licence, and does the PC Act say anything about it?",
+   "top3": [
+    "30",
+    "29",
+    "21"
+   ],
+   "top3_scores": [
+    0.3083,
+    0.256,
+    0.2479
+   ]
+  },
+  {
+   "id": "OT03",
+   "act_key": "pocso_act_2012",
+   "q": "How do I file for divorce by mutual consent under the POCSO Act?",
+   "top3": [
+    "22",
+    "1",
+    "2"
+   ],
+   "top3_scores": [
+    0.1921,
+    0.1695,
+    0.1645
+   ]
+  },
+  {
+   "id": "OT04",
+   "act_key": "pocso_act_2012",
+   "q": "What is the stamp duty on a sale deed, according to the POCSO Act?",
+   "top3": [
+    "31",
+    "34",
+    "2"
+   ],
+   "top3_scores": [
+    0.199,
+    0.1895,
+    0.175
+   ]
+  },
+  {
+   "id": "OT05",
+   "act_key": "uapa_1967",
+   "q": "Does the UAPA tell me how to get a refund of GST that I paid by mistake?",
+   "top3": [
+    "43F",
+    "28",
+    "5"
+   ],
+   "top3_scores": [
+    0.1949,
+    0.1845,
+    0.1815
+   ]
+  },
+  {
+   "id": "OT06",
+   "act_key": "uapa_1967",
+   "q": "Under the UAPA, how many days of maternity leave is a woman entitled to?",
+   "top3": [
+    "53",
+    "9",
+    "5"
+   ],
+   "top3_scores": [
+    0.1723,
+    0.1471,
+    0.1434
+   ]
+  },
+  {
+   "id": "OT07",
+   "act_key": "pmla_2002",
+   "q": "Under the PMLA, what are the rules for adopting a child?",
+   "top3": [
+    "73",
+    "74",
+    "2"
+   ],
+   "top3_scores": [
+    0.2106,
+    0.209,
+    0.2087
+   ]
+  },
+  {
+   "id": "OT08",
+   "act_key": "pmla_2002",
+   "q": "Is a tenant protected from eviction under the PMLA?",
+   "top3": [
+    "5",
+    "1",
+    "8"
+   ],
+   "top3_scores": [
+    0.1755,
+    0.1697,
+    0.162
+   ]
+  },
+  {
+   "id": "OT09",
+   "act_key": "sc_st_act_1989",
+   "q": "How is income tax worked out on agricultural income under the SC/ST Act?",
+   "top3": [
+    "3",
+    "2",
+    "1"
+   ],
+   "top3_scores": [
+    0.3104,
+    0.3063,
+    0.2669
+   ]
+  },
+  {
+   "id": "OT10",
+   "act_key": "sc_st_act_1989",
+   "q": "Under the Atrocities Act, how do I register a trademark?",
+   "top3": [
+    "15A",
+    "1",
+    "21"
+   ],
+   "top3_scores": [
+    0.267,
+    0.2609,
+    0.2384
+   ]
+  }
+ ],
+ "rows": [
+  {
+   "id": "PC01",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "A clerk in the municipal office is asking me for Rs 5,000 to pass my file. What is the punishment for him?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 14,
+   "rank_lex_lenient": 14,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "7",
+    "11",
+    "7A",
+    "8",
+    "20"
+   ],
+   "top5_scores": [
+    0.531,
+    0.5074,
+    0.5037,
+    0.4764,
+    0.4105
+   ],
+   "expected_score": 0.531,
+   "n_sections": 33
+  },
+  {
+   "id": "PC02",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "I paid money to a government officer to get my licence renewed because he refused to move the file. Have I also committed a crime?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 10,
+   "rank_lex_lenient": 10,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "11",
+    "8",
+    "7",
+    "20",
+    "7A"
+   ],
+   "top5_scores": [
+    0.4391,
+    0.4321,
+    0.4,
+    0.391,
+    0.3833
+   ],
+   "expected_score": 0.4321,
+   "n_sections": 33
+  },
+  {
+   "id": "PC03",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is sanction required to prosecute a retired public servant for an offence under section 13?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "19",
+    "13",
+    "28",
+    "6",
+    "7"
+   ],
+   "top5_scores": [
+    0.5905,
+    0.431,
+    0.3922,
+    0.3812,
+    0.3782
+   ],
+   "expected_score": 0.5905,
+   "n_sections": 33
+  },
+  {
+   "id": "PC04",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Does the police need prior approval before starting an enquiry against a public servant for a decision taken in the course of his official duty?",
+   "expected": [
+    "17A"
+   ],
+   "also_ok": [],
+   "rank_sem": 3,
+   "rank_sem_lenient": 3,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "19",
+    "11",
+    "17A",
+    "13",
+    "2"
+   ],
+   "top5_scores": [
+    0.5085,
+    0.3983,
+    0.3891,
+    0.3601,
+    0.3574
+   ],
+   "expected_score": 0.3891,
+   "n_sections": 33
+  },
+  {
+   "id": "PC05",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Our company gave gifts and money to officials to win a government tender. Is the company itself liable and who in the company can be punished?",
+   "expected": [
+    "9"
+   ],
+   "also_ok": [
+    "10"
+   ],
+   "rank_sem": 3,
+   "rank_sem_lenient": 3,
+   "rank_lex": 5,
+   "rank_lex_lenient": 5,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "11",
+    "8",
+    "9",
+    "7A",
+    "20"
+   ],
+   "top5_scores": [
+    0.4459,
+    0.4235,
+    0.4167,
+    0.4131,
+    0.3997
+   ],
+   "expected_score": 0.4167,
+   "n_sections": 33
+  },
+  {
+   "id": "PC06",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the presumption against a public servant who accepts an undue advantage and when does it arise?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "20",
+    "11",
+    "7",
+    "7A",
+    "2"
+   ],
+   "top5_scores": [
+    0.7588,
+    0.6321,
+    0.5411,
+    0.5148,
+    0.4773
+   ],
+   "expected_score": 0.7588,
+   "n_sections": 33
+  },
+  {
+   "id": "PC07",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "A government officer owns property far beyond his salary. Which provision deals with this?",
+   "expected": [
+    "13"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 5,
+   "rank_lex_lenient": 5,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "13",
+    "11",
+    "17A",
+    "2",
+    "28"
+   ],
+   "top5_scores": [
+    0.4744,
+    0.3827,
+    0.3615,
+    0.3443,
+    0.3402
+   ],
+   "expected_score": 0.4744,
+   "n_sections": 33
+  },
+  {
+   "id": "PC08",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Which police officers are competent to investigate offences under the Prevention of Corruption Act? Can a sub-inspector do it?",
+   "expected": [
+    "17"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "17",
+    "18",
+    "1",
+    "19",
+    "17A"
+   ],
+   "top5_scores": [
+    0.4983,
+    0.4617,
+    0.4509,
+    0.4327,
+    0.4253
+   ],
+   "expected_score": 0.4983,
+   "n_sections": 33
+  },
+  {
+   "id": "PC09",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the court attach the property of a corrupt government officer?",
+   "expected": [
+    "18A"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 11,
+   "rank_lex_lenient": 11,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "17A",
+    "18A",
+    "13",
+    "19",
+    "11"
+   ],
+   "top5_scores": [
+    0.4825,
+    0.3864,
+    0.3825,
+    0.3753,
+    0.3636
+   ],
+   "expected_score": 0.3864,
+   "n_sections": 33
+  },
+  {
+   "id": "PC10",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "To which court does an appeal lie from the judgment of a Special Judge under the Prevention of Corruption Act?",
+   "expected": [
+    "27"
+   ],
+   "also_ok": [],
+   "rank_sem": 4,
+   "rank_sem_lenient": 4,
+   "rank_lex": 3,
+   "rank_lex_lenient": 3,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "1",
+    "17A",
+    "30",
+    "27",
+    "6"
+   ],
+   "top5_scores": [
+    0.4957,
+    0.4623,
+    0.4331,
+    0.4329,
+    0.4109
+   ],
+   "expected_score": 0.4329,
+   "n_sections": 33
+  },
+  {
+   "id": "PC11",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "An agent collects the money on behalf of an officer who takes a bribe. Is the agent also punishable?",
+   "expected": [
+    "12"
+   ],
+   "also_ok": [
+    "7A"
+   ],
+   "rank_sem": 9,
+   "rank_sem_lenient": 5,
+   "rank_lex": 21,
+   "rank_lex_lenient": 21,
+   "rank_fused": 13,
+   "rank_fused_lenient": 13,
+   "top5_sem": [
+    "11",
+    "20",
+    "7",
+    "8",
+    "7A"
+   ],
+   "top5_scores": [
+    0.4339,
+    0.4174,
+    0.409,
+    0.3785,
+    0.3761
+   ],
+   "expected_score": 0.2675,
+   "n_sections": 33
+  },
+  {
+   "id": "PC12",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can a Special Judge try an offence under the Prevention of Corruption Act summarily?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "6",
+    "4",
+    "5",
+    "3",
+    "1"
+   ],
+   "top5_scores": [
+    0.5786,
+    0.4984,
+    0.4914,
+    0.4297,
+    0.4286
+   ],
+   "expected_score": 0.5786,
+   "n_sections": 33
+  },
+  {
+   "id": "PC13",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "An officer was convicted once for taking a bribe and has been caught again. Is the punishment higher the second time?",
+   "expected": [
+    "14"
+   ],
+   "also_ok": [],
+   "rank_sem": 4,
+   "rank_sem_lenient": 4,
+   "rank_lex": 6,
+   "rank_lex_lenient": 6,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "7",
+    "8",
+    "11",
+    "14",
+    "7A"
+   ],
+   "top5_scores": [
+    0.4138,
+    0.4043,
+    0.3926,
+    0.3917,
+    0.3845
+   ],
+   "expected_score": 0.3917,
+   "n_sections": 33
+  },
+  {
+   "id": "PC14",
+   "act_key": "pc_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What matters must the court consider when fixing the fine on a person convicted of an offence of acquiring property by corrupt means?",
+   "expected": [
+    "16"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "16",
+    "7A",
+    "11",
+    "20",
+    "7"
+   ],
+   "top5_scores": [
+    0.594,
+    0.4304,
+    0.4025,
+    0.3934,
+    0.3808
+   ],
+   "expected_score": 0.594,
+   "n_sections": 33
+  },
+  {
+   "id": "PC15",
+   "act_key": "pc_act_1988",
+   "kind": "layman",
+   "hard": true,
+   "q": "I work in a nationalised bank. Am I a public servant for the purposes of the anti-corruption law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 6,
+   "rank_lex_lenient": 6,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "2",
+    "19",
+    "9",
+    "11",
+    "7"
+   ],
+   "top5_scores": [
+    0.4652,
+    0.4242,
+    0.3987,
+    0.384,
+    0.382
+   ],
+   "expected_score": 0.4652,
+   "n_sections": 33
+  },
+  {
+   "id": "PS01",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the punishment for penetrative sexual assault on a child?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3",
+    "6"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "5",
+    "12",
+    "8"
+   ],
+   "top5_scores": [
+    0.7158,
+    0.6873,
+    0.6535,
+    0.6191,
+    0.6066
+   ],
+   "expected_score": 0.7158,
+   "n_sections": 47
+  },
+  {
+   "id": "PS02",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "Someone touched my 8-year-old daughter's private parts over her clothes. What offence is this and what is the punishment?",
+   "expected": [
+    "7",
+    "8"
+   ],
+   "also_ok": [
+    "9",
+    "10"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 9,
+   "rank_lex_lenient": 9,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "7",
+    "12",
+    "8",
+    "11",
+    "3"
+   ],
+   "top5_scores": [
+    0.5083,
+    0.4754,
+    0.4454,
+    0.425,
+    0.4181
+   ],
+   "expected_score": 0.5083,
+   "n_sections": 47
+  },
+  {
+   "id": "PS03",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "I know a neighbour is abusing a child but I do not want to get involved. Am I legally required to tell the police?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 7,
+   "rank_lex_lenient": 7,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "19",
+    "20",
+    "23",
+    "24",
+    "22"
+   ],
+   "top5_scores": [
+    0.4312,
+    0.3691,
+    0.3487,
+    0.3151,
+    0.3131
+   ],
+   "expected_score": 0.4312,
+   "n_sections": 47
+  },
+  {
+   "id": "PS04",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the punishment for a person who fails to report an offence against a child to the police?",
+   "expected": [
+    "21"
+   ],
+   "also_ok": [
+    "19"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "21",
+    "19",
+    "22",
+    "5",
+    "9"
+   ],
+   "top5_scores": [
+    0.6102,
+    0.5682,
+    0.5236,
+    0.4862,
+    0.4708
+   ],
+   "expected_score": 0.6102,
+   "n_sections": 47
+  },
+  {
+   "id": "PS05",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Where should the statement of a child victim be recorded and by whom?",
+   "expected": [
+    "24"
+   ],
+   "also_ok": [
+    "25"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "24",
+    "25",
+    "26",
+    "36",
+    "19"
+   ],
+   "top5_scores": [
+    0.636,
+    0.5971,
+    0.5969,
+    0.5302,
+    0.4816
+   ],
+   "expected_score": 0.636,
+   "n_sections": 47
+  },
+  {
+   "id": "PS06",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is there a presumption of guilt against the accused in a prosecution under the POCSO Act?",
+   "expected": [
+    "29"
+   ],
+   "also_ok": [
+    "30"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 1,
+   "rank_fused": 2,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "30",
+    "29",
+    "22",
+    "36",
+    "33"
+   ],
+   "top5_scores": [
+    0.4817,
+    0.4359,
+    0.3008,
+    0.267,
+    0.2616
+   ],
+   "expected_score": 0.4359,
+   "n_sections": 47
+  },
+  {
+   "id": "PS07",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Within what time must the child's evidence be recorded and the trial completed in a POCSO case?",
+   "expected": [
+    "35"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "35",
+    "25",
+    "33",
+    "36",
+    "24"
+   ],
+   "top5_scores": [
+    0.629,
+    0.465,
+    0.4435,
+    0.4341,
+    0.4317
+   ],
+   "expected_score": 0.629,
+   "n_sections": 47
+  },
+  {
+   "id": "PS08",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the accused sit in the courtroom and look at the child while she gives evidence?",
+   "expected": [
+    "36"
+   ],
+   "also_ok": [
+    "33",
+    "37"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "36",
+    "37",
+    "24",
+    "33",
+    "25"
+   ],
+   "top5_scores": [
+    0.6255,
+    0.5049,
+    0.499,
+    0.4893,
+    0.4344
+   ],
+   "expected_score": 0.6255,
+   "n_sections": 47
+  },
+  {
+   "id": "PS09",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "A 16-year-old boy is accused under the child sexual offences law. Will he be tried like an adult?",
+   "expected": [
+    "34"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 34,
+   "rank_lex_lenient": 34,
+   "rank_fused": 11,
+   "rank_fused_lenient": 11,
+   "top5_sem": [
+    "34",
+    "33",
+    "28",
+    "11",
+    "13"
+   ],
+   "top5_scores": [
+    0.4791,
+    0.437,
+    0.4313,
+    0.4019,
+    0.4013
+   ],
+   "expected_score": 0.4791,
+   "n_sections": 47
+  },
+  {
+   "id": "PS10",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Which court tries offences under the POCSO Act?",
+   "expected": [
+    "28"
+   ],
+   "also_ok": [
+    "33"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "28",
+    "33",
+    "34",
+    "29",
+    "31"
+   ],
+   "top5_scores": [
+    0.4393,
+    0.3682,
+    0.3619,
+    0.3554,
+    0.3295
+   ],
+   "expected_score": 0.4393,
+   "n_sections": 47
+  },
+  {
+   "id": "PS11",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is it an offence to make a false complaint of child sexual abuse against someone just to harass him?",
+   "expected": [
+    "22"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "22",
+    "11",
+    "12",
+    "7",
+    "3"
+   ],
+   "top5_scores": [
+    0.6389,
+    0.573,
+    0.5081,
+    0.4702,
+    0.4293
+   ],
+   "expected_score": 0.6389,
+   "n_sections": 47
+  },
+  {
+   "id": "PS12",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": true,
+   "q": "A doctor examined my son's private parts for a medical condition with our consent. Can that be treated as sexual assault?",
+   "expected": [
+    "41"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 6,
+   "rank_lex_lenient": 6,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "41",
+    "7",
+    "27",
+    "3",
+    "11"
+   ],
+   "top5_scores": [
+    0.4736,
+    0.4516,
+    0.4413,
+    0.4013,
+    0.3777
+   ],
+   "expected_score": 0.4736,
+   "n_sections": 47
+  },
+  {
+   "id": "PS13",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "If the same act is an offence under POCSO and also under the Indian Penal Code, which punishment applies?",
+   "expected": [
+    "42"
+   ],
+   "also_ok": [
+    "42A"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "42",
+    "18",
+    "14",
+    "17",
+    "22"
+   ],
+   "top5_scores": [
+    0.4487,
+    0.4203,
+    0.4019,
+    0.3929,
+    0.3849
+   ],
+   "expected_score": 0.4487,
+   "n_sections": 47
+  },
+  {
+   "id": "PS14",
+   "act_key": "pocso_act_2012",
+   "kind": "layman",
+   "hard": false,
+   "q": "Someone showed pornographic videos to my 12-year-old daughter. What offence is that?",
+   "expected": [
+    "11"
+   ],
+   "also_ok": [
+    "12",
+    "13",
+    "14"
+   ],
+   "rank_sem": 3,
+   "rank_sem_lenient": 1,
+   "rank_lex": 6,
+   "rank_lex_lenient": 1,
+   "rank_fused": 5,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "13",
+    "15",
+    "11",
+    "14",
+    "12"
+   ],
+   "top5_scores": [
+    0.5091,
+    0.4764,
+    0.475,
+    0.4386,
+    0.4377
+   ],
+   "expected_score": 0.475,
+   "n_sections": 47
+  },
+  {
+   "id": "PS15",
+   "act_key": "pocso_act_2012",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can a child victim be medically examined before an FIR is registered?",
+   "expected": [
+    "27"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "27",
+    "24",
+    "41",
+    "25",
+    "26"
+   ],
+   "top5_scores": [
+    0.6517,
+    0.531,
+    0.4796,
+    0.4391,
+    0.43
+   ],
+   "expected_score": 0.6517,
+   "n_sections": 47
+  },
+  {
+   "id": "UA01",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "Can bail be granted to an accused under the UAPA and what is the test the court applies?",
+   "expected": [
+    "43D"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "43D",
+    "51",
+    "2",
+    "5",
+    "1"
+   ],
+   "top5_scores": [
+    0.3299,
+    0.2828,
+    0.2647,
+    0.2594,
+    0.255
+   ],
+   "expected_score": 0.3299,
+   "n_sections": 66
+  },
+  {
+   "id": "UA02",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": true,
+   "q": "My relative was arrested under the anti-terror law. For how long can the police go on investigating before they file the chargesheet?",
+   "expected": [
+    "43D"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "43D",
+    "25",
+    "51",
+    "23",
+    "43"
+   ],
+   "top5_scores": [
+    0.4194,
+    0.4033,
+    0.3824,
+    0.362,
+    0.3564
+   ],
+   "expected_score": 0.4194,
+   "n_sections": 66
+  },
+  {
+   "id": "UA03",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the definition of a terrorist act under the Unlawful Activities (Prevention) Act?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [],
+   "rank_sem": 3,
+   "rank_sem_lenient": 3,
+   "rank_lex": 16,
+   "rank_lex_lenient": 16,
+   "rank_fused": 6,
+   "rank_fused_lenient": 6,
+   "top5_sem": [
+    "1",
+    "2",
+    "15",
+    "5",
+    "18"
+   ],
+   "top5_scores": [
+    0.5412,
+    0.541,
+    0.5206,
+    0.4901,
+    0.4538
+   ],
+   "expected_score": 0.5206,
+   "n_sections": 66
+  },
+  {
+   "id": "UA04",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the punishment for giving money to a terrorist organisation?",
+   "expected": [
+    "17",
+    "40"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "17",
+    "40",
+    "39",
+    "21",
+    "18A"
+   ],
+   "top5_scores": [
+    0.6154,
+    0.6027,
+    0.5793,
+    0.579,
+    0.543
+   ],
+   "expected_score": 0.6154,
+   "n_sections": 66
+  },
+  {
+   "id": "UA05",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is previous sanction required for the court to take cognizance of an offence under Chapters IV and VI of the UAPA?",
+   "expected": [
+    "45"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "45",
+    "43",
+    "33",
+    "14",
+    "24A"
+   ],
+   "top5_scores": [
+    0.5896,
+    0.3913,
+    0.3784,
+    0.3773,
+    0.3574
+   ],
+   "expected_score": 0.5896,
+   "n_sections": 66
+  },
+  {
+   "id": "UA06",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can the Central Government declare an individual a terrorist and how can he apply to be removed from the list?",
+   "expected": [
+    "35",
+    "36"
+   ],
+   "also_ok": [
+    "37"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "36",
+    "35",
+    "51A",
+    "15",
+    "2"
+   ],
+   "top5_scores": [
+    0.6464,
+    0.5799,
+    0.5452,
+    0.4972,
+    0.4565
+   ],
+   "expected_score": 0.6464,
+   "n_sections": 66
+  },
+  {
+   "id": "UA07",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the government seize my property if I am accused of funding terrorism?",
+   "expected": [
+    "25"
+   ],
+   "also_ok": [
+    "24A",
+    "26",
+    "27",
+    "33"
+   ],
+   "rank_sem": 7,
+   "rank_sem_lenient": 3,
+   "rank_lex": 2,
+   "rank_lex_lenient": 1,
+   "rank_fused": 4,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "21",
+    "24",
+    "24A",
+    "51A",
+    "26"
+   ],
+   "top5_scores": [
+    0.5259,
+    0.5017,
+    0.4862,
+    0.4805,
+    0.4731
+   ],
+   "expected_score": 0.4479,
+   "n_sections": 66
+  },
+  {
+   "id": "UA08",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "To which court does an appeal lie against an order of forfeiture of proceeds of terrorism?",
+   "expected": [
+    "28"
+   ],
+   "also_ok": [
+    "25"
+   ],
+   "rank_sem": 4,
+   "rank_sem_lenient": 4,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "26",
+    "27",
+    "24A",
+    "28",
+    "24"
+   ],
+   "top5_scores": [
+    0.5978,
+    0.5767,
+    0.568,
+    0.4822,
+    0.4766
+   ],
+   "expected_score": 0.4822,
+   "n_sections": 66
+  },
+  {
+   "id": "UA09",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": false,
+   "q": "I attended one meeting of a banned organisation. Is that a crime?",
+   "expected": [
+    "10"
+   ],
+   "also_ok": [
+    "3",
+    "38"
+   ],
+   "rank_sem": 3,
+   "rank_sem_lenient": 1,
+   "rank_lex": 7,
+   "rank_lex_lenient": 4,
+   "rank_fused": 3,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "38",
+    "39",
+    "10",
+    "13",
+    "41"
+   ],
+   "top5_scores": [
+    0.3992,
+    0.3891,
+    0.3744,
+    0.3552,
+    0.326
+   ],
+   "expected_score": 0.3744,
+   "n_sections": 66
+  },
+  {
+   "id": "UA10",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is there a presumption of guilt if arms or explosives are recovered from the accused?",
+   "expected": [
+    "43E"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "43E",
+    "23",
+    "51",
+    "43B",
+    "43D"
+   ],
+   "top5_scores": [
+    0.6773,
+    0.3788,
+    0.3521,
+    0.3142,
+    0.3111
+   ],
+   "expected_score": 0.6773,
+   "n_sections": 66
+  },
+  {
+   "id": "UA11",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the punishment for being a member of a terrorist organisation under the UAPA?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [
+    "38"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "20",
+    "18A",
+    "38",
+    "16",
+    "18B"
+   ],
+   "top5_scores": [
+    0.6181,
+    0.5797,
+    0.5677,
+    0.5343,
+    0.5339
+   ],
+   "expected_score": 0.6181,
+   "n_sections": 66
+  },
+  {
+   "id": "UA12",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": false,
+   "q": "Which police officers are allowed to investigate offences under the UAPA? Can a sub-inspector do it?",
+   "expected": [
+    "43"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "43",
+    "43A",
+    "43F",
+    "5",
+    "45"
+   ],
+   "top5_scores": [
+    0.5179,
+    0.3952,
+    0.3757,
+    0.3673,
+    0.3441
+   ],
+   "expected_score": 0.5179,
+   "n_sections": 66
+  },
+  {
+   "id": "UA13",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is evidence collected by intercepting phone calls admissible under the UAPA?",
+   "expected": [
+    "46"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "46",
+    "1",
+    "5",
+    "43A",
+    "30"
+   ],
+   "top5_scores": [
+    0.3911,
+    0.2204,
+    0.2102,
+    0.1909,
+    0.1695
+   ],
+   "expected_score": 0.3911,
+   "n_sections": 66
+  },
+  {
+   "id": "UA14",
+   "act_key": "uapa_1967",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the court take away my passport if I am charge-sheeted under the anti-terror law?",
+   "expected": [
+    "51"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "51",
+    "15",
+    "51A",
+    "2",
+    "33"
+   ],
+   "top5_scores": [
+    0.582,
+    0.4354,
+    0.4229,
+    0.4189,
+    0.4091
+   ],
+   "expected_score": 0.582,
+   "n_sections": 66
+  },
+  {
+   "id": "UA15",
+   "act_key": "uapa_1967",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Under which section is an association declared unlawful and what is the role of the Tribunal?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4",
+    "5"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 1,
+   "rank_fused": 2,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "7",
+    "8",
+    "10"
+   ],
+   "top5_scores": [
+    0.6969,
+    0.6846,
+    0.5325,
+    0.5106,
+    0.4851
+   ],
+   "expected_score": 0.6846,
+   "n_sections": 66
+  },
+  {
+   "id": "SS01",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": true,
+   "q": "Someone abused me by my caste name in front of other people. Which section applies?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "2",
+    "8",
+    "17",
+    "1"
+   ],
+   "top5_scores": [
+    0.557,
+    0.4919,
+    0.4624,
+    0.4018,
+    0.3587
+   ],
+   "expected_score": 0.557,
+   "n_sections": 26
+  },
+  {
+   "id": "SS02",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is anticipatory bail available to an accused under the SC/ST Atrocities Act?",
+   "expected": [
+    "18"
+   ],
+   "also_ok": [
+    "18A"
+   ],
+   "rank_sem": 9,
+   "rank_sem_lenient": 9,
+   "rank_lex": 16,
+   "rank_lex_lenient": 16,
+   "rank_fused": 12,
+   "rank_fused_lenient": 12,
+   "top5_sem": [
+    "2",
+    "3",
+    "1",
+    "14",
+    "8"
+   ],
+   "top5_scores": [
+    0.4549,
+    0.4433,
+    0.4307,
+    0.4211,
+    0.4197
+   ],
+   "expected_score": 0.3582,
+   "n_sections": 26
+  },
+  {
+   "id": "SS03",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Does the police need a preliminary enquiry or approval before registering an FIR or arresting under the Atrocities Act?",
+   "expected": [
+    "18A"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "18A",
+    "17",
+    "9",
+    "1",
+    "4"
+   ],
+   "top5_scores": [
+    0.5922,
+    0.4269,
+    0.415,
+    0.3791,
+    0.3738
+   ],
+   "expected_score": 0.5922,
+   "n_sections": 26
+  },
+  {
+   "id": "SS04",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Where does an appeal lie against an order of the Special Court under the SC/ST Act?",
+   "expected": [
+    "14A"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "14A",
+    "14",
+    "10",
+    "2",
+    "13"
+   ],
+   "top5_scores": [
+    0.5045,
+    0.4577,
+    0.4427,
+    0.4062,
+    0.3994
+   ],
+   "expected_score": 0.5045,
+   "n_sections": 26
+  },
+  {
+   "id": "SS05",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": false,
+   "q": "What help and relief is a victim of a caste atrocity entitled to, and can the victim be heard at the bail hearing?",
+   "expected": [
+    "15A"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "15A",
+    "8",
+    "3",
+    "2",
+    "21"
+   ],
+   "top5_scores": [
+    0.5081,
+    0.5052,
+    0.4817,
+    0.4572,
+    0.4172
+   ],
+   "expected_score": 0.5081,
+   "n_sections": 26
+  },
+  {
+   "id": "SS06",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is a police officer who ignores a complaint by a Dalit person also punishable?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "2",
+    "17",
+    "9"
+   ],
+   "top5_scores": [
+    0.564,
+    0.4503,
+    0.4078,
+    0.3933,
+    0.3497
+   ],
+   "expected_score": 0.564,
+   "n_sections": 26
+  },
+  {
+   "id": "SS07",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is there a presumption against the accused in a prosecution under the Atrocities Act?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "8",
+    "15A",
+    "2",
+    "14",
+    "18"
+   ],
+   "top5_scores": [
+    0.4116,
+    0.3328,
+    0.3032,
+    0.2886,
+    0.2779
+   ],
+   "expected_score": 0.4116,
+   "n_sections": 26
+  },
+  {
+   "id": "SS08",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": true,
+   "q": "A person who is not from a Scheduled Caste forcibly took our land. Which law protects us and what is the punishment?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "2",
+    "17",
+    "1",
+    "8"
+   ],
+   "top5_scores": [
+    0.6242,
+    0.5059,
+    0.4585,
+    0.4549,
+    0.4196
+   ],
+   "expected_score": 0.6242,
+   "n_sections": 26
+  },
+  {
+   "id": "SS09",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can a person likely to commit an atrocity be removed from the area?",
+   "expected": [
+    "10"
+   ],
+   "also_ok": [
+    "11",
+    "12",
+    "13"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "10",
+    "17",
+    "11",
+    "3",
+    "21"
+   ],
+   "top5_scores": [
+    0.508,
+    0.4084,
+    0.3683,
+    0.2895,
+    0.2788
+   ],
+   "expected_score": 0.508,
+   "n_sections": 26
+  },
+  {
+   "id": "SS10",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Which courts try offences under the SC/ST Act and are there exclusive special courts?",
+   "expected": [
+    "14"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "14",
+    "2",
+    "3",
+    "8",
+    "15"
+   ],
+   "top5_scores": [
+    0.6276,
+    0.5685,
+    0.4862,
+    0.4628,
+    0.4467
+   ],
+   "expected_score": 0.6276,
+   "n_sections": 26
+  },
+  {
+   "id": "SS11",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": true,
+   "q": "What is the punishment if someone commits a serious offence like murder against a Dalit person knowing his caste?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "8",
+    "2",
+    "4",
+    "17"
+   ],
+   "top5_scores": [
+    0.5663,
+    0.5519,
+    0.4867,
+    0.4144,
+    0.392
+   ],
+   "expected_score": 0.5663,
+   "n_sections": 26
+  },
+  {
+   "id": "SS12",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Does the Probation of Offenders Act apply to a person found guilty of an offence under the SC/ST Act?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "19",
+    "3",
+    "2",
+    "8",
+    "14"
+   ],
+   "top5_scores": [
+    0.5972,
+    0.5128,
+    0.4888,
+    0.4267,
+    0.4031
+   ],
+   "expected_score": 0.5972,
+   "n_sections": 26
+  },
+  {
+   "id": "SS13",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": true,
+   "q": "What does the law mean by atrocity and who counts as a member of a Scheduled Caste or Scheduled Tribe for this law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "3",
+    "2",
+    "1",
+    "17",
+    "21"
+   ],
+   "top5_scores": [
+    0.6327,
+    0.5975,
+    0.5896,
+    0.5336,
+    0.5088
+   ],
+   "expected_score": 0.5975,
+   "n_sections": 26
+  },
+  {
+   "id": "SS14",
+   "act_key": "sc_st_act_1989",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the property of a person convicted of a caste atrocity be forfeited?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "3",
+    "7",
+    "2",
+    "8",
+    "17"
+   ],
+   "top5_scores": [
+    0.5749,
+    0.5152,
+    0.4746,
+    0.4725,
+    0.4189
+   ],
+   "expected_score": 0.5152,
+   "n_sections": 26
+  },
+  {
+   "id": "SS15",
+   "act_key": "sc_st_act_1989",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Which provisions of the Indian Penal Code apply for the purposes of the SC/ST Act?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "6",
+    "2",
+    "3",
+    "18",
+    "8"
+   ],
+   "top5_scores": [
+    0.6106,
+    0.6036,
+    0.6016,
+    0.458,
+    0.4545
+   ],
+   "expected_score": 0.6106,
+   "n_sections": 26
+  },
+  {
+   "id": "PM01",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What are the twin conditions for bail in a money-laundering case?",
+   "expected": [
+    "45"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "45",
+    "23",
+    "24",
+    "3",
+    "58B"
+   ],
+   "top5_scores": [
+    0.4134,
+    0.3981,
+    0.381,
+    0.3729,
+    0.3532
+   ],
+   "expected_score": 0.4134,
+   "n_sections": 73
+  },
+  {
+   "id": "PM02",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "hard": false,
+   "q": "The ED has arrested my brother. On what basis can they arrest him and must they tell him the grounds?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "19",
+    "62",
+    "45",
+    "50",
+    "17"
+   ],
+   "top5_scores": [
+    0.4685,
+    0.2984,
+    0.2884,
+    0.2723,
+    0.2637
+   ],
+   "expected_score": 0.4685,
+   "n_sections": 73
+  },
+  {
+   "id": "PM03",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "hard": false,
+   "q": "The ED has attached my flat. How long can the attachment stay and who confirms it?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [
+    "8",
+    "26"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "5",
+    "8",
+    "72",
+    "20",
+    "60"
+   ],
+   "top5_scores": [
+    0.3843,
+    0.3063,
+    0.2844,
+    0.2684,
+    0.249
+   ],
+   "expected_score": 0.3843,
+   "n_sections": 73
+  },
+  {
+   "id": "PM04",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Where does an appeal lie against an order of the Adjudicating Authority?",
+   "expected": [
+    "26"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "26",
+    "25",
+    "6",
+    "7",
+    "42"
+   ],
+   "top5_scores": [
+    0.5445,
+    0.5151,
+    0.4967,
+    0.469,
+    0.4231
+   ],
+   "expected_score": 0.5445,
+   "n_sections": 73
+  },
+  {
+   "id": "PM05",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Within how many days can an appeal be filed in the High Court against an order of the Appellate Tribunal?",
+   "expected": [
+    "42"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "42",
+    "26",
+    "35",
+    "25",
+    "39"
+   ],
+   "top5_scores": [
+    0.7066,
+    0.6278,
+    0.5173,
+    0.5005,
+    0.4569
+   ],
+   "expected_score": 0.7066,
+   "n_sections": 73
+  },
+  {
+   "id": "PM06",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can the ED summon a person and compel him to give a statement? Is the proceeding a judicial proceeding?",
+   "expected": [
+    "50"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "50",
+    "11",
+    "35",
+    "19",
+    "18"
+   ],
+   "top5_scores": [
+    0.4371,
+    0.4221,
+    0.3127,
+    0.307,
+    0.2871
+   ],
+   "expected_score": 0.4371,
+   "n_sections": 73
+  },
+  {
+   "id": "PM07",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the punishment for money laundering?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "24",
+    "23",
+    "58B"
+   ],
+   "top5_scores": [
+    0.6297,
+    0.5248,
+    0.4014,
+    0.3894,
+    0.3552
+   ],
+   "expected_score": 0.6297,
+   "n_sections": 73
+  },
+  {
+   "id": "PM08",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "How is proceeds of crime defined under the money-laundering law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 4,
+   "rank_sem_lenient": 4,
+   "rank_lex": 4,
+   "rank_lex_lenient": 4,
+   "rank_fused": 4,
+   "rank_fused_lenient": 4,
+   "top5_sem": [
+    "3",
+    "24",
+    "4",
+    "2",
+    "55"
+   ],
+   "top5_scores": [
+    0.6094,
+    0.5371,
+    0.4539,
+    0.4045,
+    0.3868
+   ],
+   "expected_score": 0.4045,
+   "n_sections": 73
+  },
+  {
+   "id": "PM09",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "On whom does the burden of proof lie in a money-laundering prosecution?",
+   "expected": [
+    "24"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "24",
+    "23",
+    "3",
+    "8",
+    "4"
+   ],
+   "top5_scores": [
+    0.5897,
+    0.4973,
+    0.459,
+    0.3666,
+    0.3593
+   ],
+   "expected_score": 0.5897,
+   "n_sections": 73
+  },
+  {
+   "id": "PM10",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can the ED search premises and seize records, and what must the officer record before doing so?",
+   "expected": [
+    "17"
+   ],
+   "also_ok": [
+    "16",
+    "18"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "17",
+    "18",
+    "16",
+    "22",
+    "62"
+   ],
+   "top5_scores": [
+    0.3908,
+    0.349,
+    0.3332,
+    0.3189,
+    0.3103
+   ],
+   "expected_score": 0.3908,
+   "n_sections": 73
+  },
+  {
+   "id": "PM11",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "hard": false,
+   "q": "Which court tries money-laundering cases?",
+   "expected": [
+    "43"
+   ],
+   "also_ok": [
+    "44"
+   ],
+   "rank_sem": 13,
+   "rank_sem_lenient": 1,
+   "rank_lex": 8,
+   "rank_lex_lenient": 6,
+   "rank_fused": 10,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "44",
+    "3",
+    "23",
+    "58B",
+    "8"
+   ],
+   "top5_scores": [
+    0.4965,
+    0.4853,
+    0.4634,
+    0.4374,
+    0.4294
+   ],
+   "expected_score": 0.3461,
+   "n_sections": 73
+  },
+  {
+   "id": "PM12",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Does the Code of Criminal Procedure apply to proceedings before the Special Court under the money-laundering law, including bail provisions?",
+   "expected": [
+    "46"
+   ],
+   "also_ok": [
+    "65"
+   ],
+   "rank_sem": 3,
+   "rank_sem_lenient": 3,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "44",
+    "45",
+    "46",
+    "58B",
+    "58A"
+   ],
+   "top5_scores": [
+    0.5931,
+    0.5229,
+    0.5185,
+    0.4642,
+    0.4419
+   ],
+   "expected_score": 0.5185,
+   "n_sections": 73
+  },
+  {
+   "id": "PM13",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "After the Adjudicating Authority confirms an attachment, what happens to the property and can it be restored to the claimant?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "9"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "8",
+    "5",
+    "20",
+    "9",
+    "60"
+   ],
+   "top5_scores": [
+    0.4702,
+    0.4393,
+    0.418,
+    0.3945,
+    0.3757
+   ],
+   "expected_score": 0.4702,
+   "n_sections": 73
+  },
+  {
+   "id": "PM14",
+   "act_key": "pmla_2002",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "How are a company and its directors held liable for money laundering?",
+   "expected": [
+    "70"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 3,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "70",
+    "3",
+    "4",
+    "24",
+    "23"
+   ],
+   "top5_scores": [
+    0.4821,
+    0.4021,
+    0.3597,
+    0.3362,
+    0.3335
+   ],
+   "expected_score": 0.4821,
+   "n_sections": 73
+  },
+  {
+   "id": "PM15",
+   "act_key": "pmla_2002",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is an ED officer punishable for searching a place or arresting a person without recording reasons?",
+   "expected": [
+    "62"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "62",
+    "18",
+    "19",
+    "16",
+    "17"
+   ],
+   "top5_scores": [
+    0.5617,
+    0.4236,
+    0.4149,
+    0.4061,
+    0.387
+   ],
+   "expected_score": 0.5617,
+   "n_sections": 73
+  }
+ ]
+}
