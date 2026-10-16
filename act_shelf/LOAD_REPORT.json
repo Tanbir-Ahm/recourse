@@ -1,0 +1,371 @@
+{
+ "written": "2026-10-16",
+ "reports": {
+  "pc_act_1988": {
+   "key": "pc_act_1988",
+   "act_id": "AC_CEN_26_36_00001_198849_1517807318890",
+   "loaded_on": "2026-10-16",
+   "sections": 35,
+   "omitted_sections": [
+    "24",
+    "31"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:49:28.754086Z",
+    "max": "2026-07-10T22:49:32.010087Z"
+   },
+   "pdf": {
+    "name": "a1988-49.pdf",
+    "sha256": "7696d19f33678c31a805f8acb05ac115f73229a0c75b0c0ca134dc34f3effca7",
+    "pages": 20,
+    "as_on": "21st May, 2025",
+    "toc": {
+     "toc_entries": 35,
+     "loaded": 35,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "corrections": [
+    {
+     "section": "28",
+     "from": "any otherlaw for",
+     "to": "any other law for",
+     "why": "India Code's PDF of the Act reads 'other law'; the database lost the space"
+    },
+    {
+     "section": "29",
+     "from": "subsection (1) of section 11",
+     "to": "sub-section (1) of section 11",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "fifth",
+     "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.893,
+    "below_0.90": {
+     "1": 0.893
+    }
+   }
+  },
+  "pocso_act_2012": {
+   "key": "pocso_act_2012",
+   "act_id": "AC_CEN_13_14_00005_201232_1517807323686",
+   "loaded_on": "2026-10-16",
+   "sections": 47,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:58:15.978428Z",
+    "max": "2026-07-10T21:58:20.262514Z"
+   },
+   "pdf": {
+    "name": "A2012-32.pdf",
+    "sha256": "5a173cc87d51624663dceb588d20a468ef49505be4fa131609d5867ac7dab021",
+    "pages": 20,
+    "as_on": "1st July, 2026",
+    "toc": {
+     "toc_entries": 47,
+     "loaded": 47,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "corrections": [
+    {
+     "section": "9",
+     "from": "a childs mental",
+     "to": "a child's mental",
+     "why": "India Code's PDF of the Act reads 'child's'; the database lost the apostrophe"
+    },
+    {
+     "section": "19",
+     "from": "under subsection (2) in a simple",
+     "to": "under sub-section (2) in a simple",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    },
+    {
+     "section": "28",
+     "from": "referred to in subsection (1)]",
+     "to": "referred to in sub-section (1)]",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    },
+    {
+     "section": "45",
+     "from": "(1) of section44.",
+     "to": "(1) of section 44.",
+     "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.829,
+    "below_0.90": {
+     "1": 0.829
+    }
+   }
+  },
+  "uapa_1967": {
+   "key": "uapa_1967",
+   "act_id": "AC_CEN_5_23_00001_196737_1517807318055",
+   "loaded_on": "2026-10-16",
+   "sections": 67,
+   "omitted_sections": [
+    "16A"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:18:58.024727Z",
+    "max": "2026-07-10T23:14:36.656364Z"
+   },
+   "pdf": {
+    "name": "a1967-37.pdf",
+    "sha256": "aaa7f3bc761ec6254d2571717cc13a4b045fa002edcd4f3ce59017b2fbe8e40c",
+    "pages": 35,
+    "as_on": "22nd August, 2025",
+    "toc": {
+     "toc_entries": 67,
+     "loaded": 67,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "corrections": [
+    {
+     "section": "25",
+     "from": "(d) bankers drafts;",
+     "to": "(d) banker's drafts;",
+     "why": "India Code's PDF of the Act reads 'banker's drafts'; the database lost the apostrophe"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "2",
+     "word": "3912",
+     "why": "a footnote the database has and the PDF (as on 22 Aug 2025) does not: 'Vide notification No. S.O. 3912(E), dated 30th October, 2019, this Act is made applicable to the Union territories of Jammu and Kashmir and of Ladakh'"
+    },
+    {
+     "section": "2",
+     "word": "ladakh",
+     "why": "the same footnote"
+    },
+    {
+     "section": "2",
+     "word": "vide",
+     "why": "the same footnote"
+    },
+    {
+     "section": "7",
+     "word": "gazetted",
+     "why": "the PDF reads 'gazette officer', a slip in the PDF; 'gazetted officer' is the standard wording and the database's"
+    },
+    {
+     "section": "7",
+     "word": "whereunder",
+     "why": "the PDF reads 'where under' (two words); 'whereunder' is the standard word and the database's"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.918,
+    "below_0.90": {}
+   }
+  },
+  "pmla_2002": {
+   "key": "pmla_2002",
+   "act_id": "AC_CEN_2_2_00035_200315_1517807326550",
+   "loaded_on": "2026-10-16",
+   "sections": 81,
+   "omitted_sections": [
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:15:50.166838Z",
+    "max": "2026-07-10T22:59:37.939644Z"
+   },
+   "pdf": {
+    "name": "A2003-15.pdf",
+    "sha256": "7c346efc01050956cf2014b8967348c26fb6d6c947f6721cd33c6a7b993560ea",
+    "pages": 51,
+    "as_on": "27th July, 2025",
+    "toc": {
+     "toc_entries": 81,
+     "loaded": 81,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "corrections": [
+    {
+     "section": "1",
+     "from": "Prevention of Moneylaundering Act",
+     "to": "Prevention of Money-laundering Act",
+     "why": "India Code's PDF of the Act reads 'Money-laundering' (the Act's own name); the database lost the hyphen"
+    },
+    {
+     "section": "2",
+     "from": "Prevention of Moneylaundering (Amendment) Act",
+     "to": "Prevention of Money-laundering (Amendment) Act",
+     "why": "India Code's PDF of the Act reads 'Money-laundering'; the database lost the hyphen"
+    },
+    {
+     "section": "8",
+     "from": "moneylaundering",
+     "to": "money-laundering",
+     "count": 2,
+     "why": "India Code's PDF of the Act reads 'money-laundering'; the database lost the hyphen (both places in the section)"
+    },
+    {
+     "section": "18",
+     "from": "or Magistrates Court",
+     "to": "or Magistrate's Court",
+     "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+    },
+    {
+     "section": "18",
+     "from": "the Magistrates Court",
+     "to": "the Magistrate's Court",
+     "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+    },
+    {
+     "section": "23",
+     "from": "such interconnected transactions",
+     "to": "such inter-connected transactions",
+     "why": "India Code's PDF of the Act reads 'inter-connected'; the database lost the hyphen"
+    },
+    {
+     "section": "72A",
+     "from": "inter-agency coordination for",
+     "to": "inter-agency co-ordination for",
+     "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.927,
+    "below_0.90": {}
+   }
+  },
+  "sc_st_act_1989": {
+   "key": "sc_st_act_1989",
+   "act_id": "AC_CEN_25_35_00002_198933_1517807322896",
+   "loaded_on": "2026-10-16",
+   "sections": 26,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:57:37.860034Z",
+    "max": "2026-07-10T22:57:33.577591Z"
+   },
+   "pdf": {
+    "name": "a1989-33.pdf",
+    "sha256": "ee5a4fc8c8f5afbd0c514a7ed87ed050ba635edf54f7b5b8ad3f48ac6ec90ea4",
+    "pages": 20,
+    "as_on": "21st September, 2025",
+    "toc": {
+     "toc_entries": 26,
+     "loaded": 26,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "corrections": [
+    {
+     "section": "2",
+     "from": "relations that onewould maintain",
+     "to": "relations that one would maintain",
+     "why": "India Code's PDF of the Act reads 'one would'; the database lost the space"
+    },
+    {
+     "section": "2",
+     "from": "any personacting in his",
+     "to": "any person acting in his",
+     "why": "India Code's PDF of the Act reads 'person acting'; the database lost the space"
+    },
+    {
+     "section": "3",
+     "from": "as a deva dasi or",
+     "to": "as a devadasi or",
+     "why": "India Code's PDF of the Act reads 'devadasi'"
+    },
+    {
+     "section": "3",
+     "from": "the recipients consent",
+     "to": "the recipient's consent",
+     "why": "India Code's PDF of the Act reads 'recipient's'; the database lost the apostrophe"
+    },
+    {
+     "section": "3",
+     "from": "belongs to suchmember,",
+     "to": "belongs to such member,",
+     "why": "India Code's PDF of the Act reads 'such member'; the database lost the space"
+    },
+    {
+     "section": "14A",
+     "from": "Ins. by Act1 of 2016",
+     "to": "Ins. by Act 1 of 2016",
+     "why": "India Code's PDF of the Act reads 'Act 1 of 2016'; the database lost the space",
+     "field": "footnotes"
+    },
+    {
+     "section": "15A",
+     "from": "the NonGovernment Organisations",
+     "to": "the Non-Government Organisations",
+     "why": "India Code's PDF of the Act reads 'Non-Government Organisations'; the database lost the hyphen"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "fifth",
+     "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.841,
+    "below_0.90": {
+     "1": 0.841
+    }
+   }
+  }
+ }
+}

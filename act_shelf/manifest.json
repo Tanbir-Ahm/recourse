@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "about": "The Act shelf (STATUTE_COVERAGE_PLAN.md step 2): Acts whose full text is loaded from India Code by build_act_chunks.py, checked against India Code's own PDF. 'corrections' are exact replacements of slips in India Code's database, each shown to be what the PDF reads; 'accepted' are spelling variants that are not slips. Nothing here says the text has been read by a person.",
+  "acts": [
+    {
+      "key": "pc_act_1988",
+      "code": "PCACT",
+      "name": "The Prevention of Corruption Act, 1988",
+      "short": "Prevention of Corruption Act, 1988",
+      "citation": "Act No. 49 of 1988",
+      "india_code": {
+        "uuid": "5b300920-4878-4e39-8d87-fa87d4953f09",
+        "handle": "123456789/496166",
+        "act_id": "AC_CEN_26_36_00001_198849_1517807318890"
+      },
+      "corrections": [
+        {
+          "section": "28",
+          "from": "any otherlaw for",
+          "to": "any other law for",
+          "why": "India Code's PDF of the Act reads 'other law'; the database lost the space"
+        },
+        {
+          "section": "29",
+          "from": "subsection (1) of section 11",
+          "to": "sub-section (1) of section 11",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "fifth",
+          "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+        }
+      ],
+      "loaded_on": "2026-10-16",
+      "sections_loaded": 35,
+      "pdf_as_on": "21st May, 2025",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "pocso_act_2012",
+      "code": "POCSO",
+      "name": "The Protection of Children from Sexual Offences Act, 2012",
+      "short": "Protection of Children from Sexual Offences Act, 2012 (POCSO)",
+      "citation": "Act No. 32 of 2012",
+      "india_code": {
+        "uuid": "60dad1b9-bbf1-4310-8fa1-62643beab7a6",
+        "handle": "123456789/496004",
+        "act_id": "AC_CEN_13_14_00005_201232_1517807323686"
+      },
+      "corrections": [
+        {
+          "section": "9",
+          "from": "a childs mental",
+          "to": "a child's mental",
+          "why": "India Code's PDF of the Act reads 'child's'; the database lost the apostrophe"
+        },
+        {
+          "section": "19",
+          "from": "under subsection (2) in a simple",
+          "to": "under sub-section (2) in a simple",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        },
+        {
+          "section": "28",
+          "from": "referred to in subsection (1)]",
+          "to": "referred to in sub-section (1)]",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        },
+        {
+          "section": "45",
+          "from": "(1) of section44.",
+          "to": "(1) of section 44.",
+          "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+        }
+      ],
+      "accepted": [],
+      "loaded_on": "2026-10-16",
+      "sections_loaded": 47,
+      "pdf_as_on": "1st July, 2026",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "uapa_1967",
+      "code": "UAPA",
+      "name": "The Unlawful Activities (Prevention) Act, 1967",
+      "short": "Unlawful Activities (Prevention) Act, 1967 (UAPA)",
+      "citation": "Act No. 37 of 1967",
+      "india_code": {
+        "uuid": "fa986084-35d9-4391-a7e1-9561c880d8bb",
+        "handle": "123456789/496521",
+        "act_id": "AC_CEN_5_23_00001_196737_1517807318055"
+      },
+      "corrections": [
+        {
+          "section": "25",
+          "from": "(d) bankers drafts;",
+          "to": "(d) banker's drafts;",
+          "why": "India Code's PDF of the Act reads 'banker's drafts'; the database lost the apostrophe"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "2",
+          "word": "3912",
+          "why": "a footnote the database has and the PDF (as on 22 Aug 2025) does not: 'Vide notification No. S.O. 3912(E), dated 30th October, 2019, this Act is made applicable to the Union territories of Jammu and Kashmir and of Ladakh'"
+        },
+        {
+          "section": "2",
+          "word": "ladakh",
+          "why": "the same footnote"
+        },
+        {
+          "section": "2",
+          "word": "vide",
+          "why": "the same footnote"
+        },
+        {
+          "section": "7",
+          "word": "gazetted",
+          "why": "the PDF reads 'gazette officer', a slip in the PDF; 'gazetted officer' is the standard wording and the database's"
+        },
+        {
+          "section": "7",
+          "word": "whereunder",
+          "why": "the PDF reads 'where under' (two words); 'whereunder' is the standard word and the database's"
+        }
+      ],
+      "loaded_on": "2026-10-16",
+      "sections_loaded": 67,
+      "pdf_as_on": "22nd August, 2025",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "pmla_2002",
+      "code": "PMLA",
+      "name": "The Prevention of Money-laundering Act, 2002",
+      "short": "Prevention of Money-laundering Act, 2002 (PMLA)",
+      "citation": "Act No. 15 of 2003",
+      "india_code": {
+        "uuid": "3babfe62-c9c8-49b3-8247-052834d2dfa4",
+        "handle": "123456789/496293",
+        "act_id": "AC_CEN_2_2_00035_200315_1517807326550"
+      },
+      "corrections": [
+        {
+          "section": "1",
+          "from": "Prevention of Moneylaundering Act",
+          "to": "Prevention of Money-laundering Act",
+          "why": "India Code's PDF of the Act reads 'Money-laundering' (the Act's own name); the database lost the hyphen"
+        },
+        {
+          "section": "2",
+          "from": "Prevention of Moneylaundering (Amendment) Act",
+          "to": "Prevention of Money-laundering (Amendment) Act",
+          "why": "India Code's PDF of the Act reads 'Money-laundering'; the database lost the hyphen"
+        },
+        {
+          "section": "8",
+          "from": "moneylaundering",
+          "to": "money-laundering",
+          "count": 2,
+          "why": "India Code's PDF of the Act reads 'money-laundering'; the database lost the hyphen (both places in the section)"
+        },
+        {
+          "section": "18",
+          "from": "or Magistrates Court",
+          "to": "or Magistrate's Court",
+          "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+        },
+        {
+          "section": "18",
+          "from": "the Magistrates Court",
+          "to": "the Magistrate's Court",
+          "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+        },
+        {
+          "section": "23",
+          "from": "such interconnected transactions",
+          "to": "such inter-connected transactions",
+          "why": "India Code's PDF of the Act reads 'inter-connected'; the database lost the hyphen"
+        },
+        {
+          "section": "72A",
+          "from": "inter-agency coordination for",
+          "to": "inter-agency co-ordination for",
+          "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+        }
+      ],
+      "accepted": [],
+      "loaded_on": "2026-10-16",
+      "sections_loaded": 81,
+      "pdf_as_on": "27th July, 2025",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "sc_st_act_1989",
+      "code": "SCSTACT",
+      "name": "The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989",
+      "short": "Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989 (SC/ST Act)",
+      "citation": "Act No. 33 of 1989",
+      "india_code": {
+        "uuid": "f9c8fb04-363a-4779-b628-0d9f9bb997e0",
+        "handle": "123456789/496156",
+        "act_id": "AC_CEN_25_35_00002_198933_1517807322896"
+      },
+      "corrections": [
+        {
+          "section": "2",
+          "from": "relations that onewould maintain",
+          "to": "relations that one would maintain",
+          "why": "India Code's PDF of the Act reads 'one would'; the database lost the space"
+        },
+        {
+          "section": "2",
+          "from": "any personacting in his",
+          "to": "any person acting in his",
+          "why": "India Code's PDF of the Act reads 'person acting'; the database lost the space"
+        },
+        {
+          "section": "3",
+          "from": "as a deva dasi or",
+          "to": "as a devadasi or",
+          "why": "India Code's PDF of the Act reads 'devadasi'"
+        },
+        {
+          "section": "3",
+          "from": "the recipients consent",
+          "to": "the recipient's consent",
+          "why": "India Code's PDF of the Act reads 'recipient's'; the database lost the apostrophe"
+        },
+        {
+          "section": "3",
+          "from": "belongs to suchmember,",
+          "to": "belongs to such member,",
+          "why": "India Code's PDF of the Act reads 'such member'; the database lost the space"
+        },
+        {
+          "section": "14A",
+          "from": "Ins. by Act1 of 2016",
+          "to": "Ins. by Act 1 of 2016",
+          "why": "India Code's PDF of the Act reads 'Act 1 of 2016'; the database lost the space",
+          "field": "footnotes"
+        },
+        {
+          "section": "15A",
+          "from": "the NonGovernment Organisations",
+          "to": "the Non-Government Organisations",
+          "why": "India Code's PDF of the Act reads 'Non-Government Organisations'; the database lost the hyphen"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "fifth",
+          "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+        }
+      ],
+      "loaded_on": "2026-10-16",
+      "sections_loaded": 26,
+      "pdf_as_on": "21st September, 2025",
+      "text_status": "machine_checked"
+    }
+  ]
+}
