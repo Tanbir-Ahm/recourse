@@ -830,6 +830,24 @@ def _section_act_map(matches) -> dict:
 _OLD_LAW_WORDS = r"(?:former|old|earlier|erstwhile|repealed|previous|original)"
 _ACT_NAME_AFTER = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:" + _OLD_LAW_WORDS + r"\s+)?(?:BNSS|BNS|IPC|CrPC|Cr\.?\s?P\.?\s?C\.?|Code|Act|Sanhita|Constitution|Evidence|Adhiniyam|Rules?)\b", re.IGNORECASE)
 _ACT_DISPLAY_FOR_REPAIR = {"NIACT": "NI Act", "ITACT": "IT Act"}
+
+
+def _shelf_display(code):
+    """The display name of an Act-shelf Act ('PMLA', 'SC/ST Act', 'Prevention of Corruption Act, 1988', ...: act_shelf manifest) for the label, the repaired citation and the retry instruction; None for any other code."""
+    try:
+        import act_shelf
+        return act_shelf.display_names().get(code)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _shelf_name_pattern(code):
+    """The compiled pattern of the names an answer may use for an Act-shelf Act (its Act Directory aliases and display name); None for any other code."""
+    try:
+        import act_shelf
+        return act_shelf.name_patterns().get(code)
+    except Exception:  # noqa: BLE001
+        return None
 # A mention of the OLD law ("Section 482 of the former Code", "Section 309 of the CrPC", "Section 309 (now Section 346 of the BNSS)", "the former Section 309"): not a BNS/BNSS mention, so it is neither
 # checked for a missing Act, nor given one, nor corrected (added 2026-10-15: "of the former Code" was not recognised and could be repaired into "of the BNSS of the former Code").
 _OLD_LAW_AFTER = re.compile(
@@ -876,7 +894,7 @@ def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) 
                 continue                                    # this mention names an Act already; look for another mention
             if _is_old_law_mention(text, m.start(), m.end()):
                 continue                                    # an old-law mention: not ours to complete
-            text = text[:m.end()] + " of the " + _ACT_DISPLAY_FOR_REPAIR.get(act, act) + text[m.end():]
+            text = text[:m.end()] + " of the " + (_ACT_DISPLAY_FOR_REPAIR.get(act) or _shelf_display(act) or act) + text[m.end():]
             break
     return text
 
@@ -968,7 +986,7 @@ def _find_sections_missing_act(response_text: str, section_act_map: dict, acts_a
         # variant(s) are checked here instead of assuming the code itself
         # is the name.
         acts = sorted((acts_all or {}).get(num) or {act})          # a number retrieved under both the BNS and the BNSS is satisfied by either name
-        if not any((_ACT_NAME_CHECK_PATTERNS.get(a) or re.compile(rf"\b{re.escape(a)}\b", re.IGNORECASE)).search(response_text or "") for a in acts):
+        if not any((_ACT_NAME_CHECK_PATTERNS.get(a) or _shelf_name_pattern(a) or re.compile(rf"\b{re.escape(a)}\b", re.IGNORECASE)).search(response_text or "") for a in acts):
             missing.append(num)
     return missing
 
@@ -1877,12 +1895,12 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         except Exception:  # pragma: no cover -- fail-open
             pass
         try:                                       # SCOPE_GATE=open: a question the topic bar would have turned away gets a short scope note (_open_topic_block); "" otherwise
-            retrieved_text = retrieved_text + _open_topic_block(question)
+            retrieved_text = retrieved_text + _open_topic_block(question, matches)
         except Exception:  # pragma: no cover -- fail-open
             pass
         try:                                       # Act Directory: a question that names an Act whose text is not in the library gets one short block saying so (act_directory.prompt_block); "" otherwise
             import act_directory
-            retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question))
+            retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question), held=_shelf_held(matches, question))
         except Exception:  # pragma: no cover -- fail-open
             pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
@@ -1976,7 +1994,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             if missing_act:
                 retry_prompt += _MISSING_ACT_RETRY_INSTRUCTION.format(
                     sections=", ".join(missing_act), first_section=missing_act[0],
-                    first_act=section_act_map[missing_act[0]],
+                    first_act=_shelf_display(section_act_map[missing_act[0]]) or section_act_map[missing_act[0]],
                 )
             if missing_companion:
                 retry_prompt += _MISSING_COMPANION_RETRY_INSTRUCTION.format(sections=", ".join(missing_companion))
@@ -2726,7 +2744,7 @@ def format_retrieved_text_for_prompt(matches):
         if m.get("case_name"):
             source = m["case_name"]
         elif m.get("act"):
-            act_display = _ACT_DISPLAY_NAME.get(m["act"], m["act"])
+            act_display = m.get("act_display") or _ACT_DISPLAY_NAME.get(m["act"], m["act"])      # act_display: an Act-shelf section carries the Act's name, not its internal code
             source = f"{act_display} Section {label}"
         else:
             source = f"Section {label}"
@@ -2735,6 +2753,10 @@ def format_retrieved_text_for_prompt(matches):
 
         if m.get("context_note"):
             block += "\n\n[Important legal context for this section]\n" + m["context_note"]
+
+        _sh = m.get("shelf") if isinstance(m.get("shelf"), dict) else None
+        if _sh and (_sh.get("footnotes") or "").strip():              # Act shelf: the amendment notes India Code prints with the section (who changed it, from when)
+            block += "\n\n[Amendment notes printed with this section on India Code; they are not tied to particular words]\n" + _sh["footnotes"].strip()
 
         # PROJECT 2 (citation_currency.py): judgment matches (identified by
         # case_name) get a currency check the same way statute matches get
@@ -3475,7 +3497,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # embedded chunk and returned no_match -- a plainly answerable
     # question producing an empty answer. Merged into statute_overrides
     # so it flows through the same combine-and-fallback logic below.
-    explicit = _explicit_section_matches(current_message)
+    explicit = _drop_sections_claimed_by_shelf(_explicit_section_matches(current_message), question, current_message)
     if explicit:
         seen = {(o.get("act"), o.get("section_number")) for o in statute_overrides}
         statute_overrides = statute_overrides + [
@@ -3520,8 +3542,12 @@ def _answer_question_core(question, inline_domains=frozenset()):
     from judgment_doctrine_map import get_judgment_doctrine_override
     judgment_overrides = get_judgment_doctrine_override(current_message)
 
+    # Act shelf (act_shelf.py; ACT_SHELF=on, default off): the full text of a few Acts that are not in the library, when the Act Directory finds one of them in the question. They join the overrides:
+    # a shelf Act named in the question reaches the answer regardless of what the library's own search finds. [] when the switch is off, so nothing here changes then.
+    shelf_overrides = _act_shelf_matches(question, current_message)
+
     # everything curated that must reach the answer regardless of ranking
-    overrides = statute_overrides + judgment_overrides
+    overrides = statute_overrides + judgment_overrides + shelf_overrides
 
     # Search on the CURRENT message first, falling back to the full
     # history-included question only if that narrow search finds nothing
@@ -3752,6 +3778,60 @@ def _acts_named(question):
         return []
 
 
+def _shelf_held(matches, question):
+    """Act shelf: {Directory id: {'state': 'used'|'unused', 'loaded_on'}} for the Acts the question names that have a working shelf (act_shelf.held_state); None when ACT_SHELF is off or none applies."""
+    try:
+        import act_shelf
+        if not act_shelf.enabled():
+            return None
+        return act_shelf.held_state(matches, _acts_named(question)) or None
+    except Exception:  # noqa: BLE001 -- fail-open
+        return None
+
+
+def _drop_sections_claimed_by_shelf(explicit, question, current_message):
+    """Act shelf: '_explicit_section_matches' reads 'section 45 of the PMLA' as BNS section 45 (a number with no BNS/BNSS/IT Act name after it defaults to the BNS). When ACT_SHELF is on and the
+    question names a shelf Act next to that number, the number is the shelf Act's: the BNS match is dropped, unless the question also puts that number next to some other name ('section 3 of POCSO and
+    section 3 of the BNS'). With ACT_SHELF off, or a question that names no shelf Act, nothing is dropped."""
+    try:
+        if not explicit:
+            return explicit
+        import act_shelf
+        if not act_shelf.enabled():
+            return explicit
+        ids = [a["id"] for a in _acts_named(question)]
+        if not ids:
+            return explicit
+        mine = {n for v in act_shelf.named_sections(current_message, ids).values() for n in v} - act_shelf.other_numbers(current_message, ids)
+        if not mine:
+            return explicit
+        return [e for e in explicit if not (e.get("source") == "explicit_section_ref" and str(e.get("section_number") or "").upper() in mine)]
+    except Exception:  # noqa: BLE001 -- fail-open
+        return explicit
+
+
+def _act_shelf_matches(question, current_message):
+    """Act shelf (act_shelf.py, ACT_SHELF=on, default off): when the Act Directory finds an Act with a shelf in the question, the sections of that Act that bear on it, as statute matches (source 'act_shelf') that
+    join the curated overrides. [] when the switch is off, when the question names no such Act, and on any failure. One log line per question that drew a shelf Act: ACT_SHELF {...} (a hash of the question, the
+    Acts, the sections and scores; never the question or the text)."""
+    try:
+        import act_shelf
+        if not act_shelf.enabled():
+            return []
+        acts = _acts_named(question)
+        if not acts:
+            return []
+        res = act_shelf.search(question, acts, current_message=current_message)
+        info = res.get("info") or {}
+        if info.get("acts"):
+            import hashlib
+            print("ACT_SHELF " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], **info}), flush=True)
+        return res.get("matches") or []
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_act_shelf_matches failed: %s", exc)
+        return []
+
+
 def _attach_act_notice(result, question=None):
     """Act Directory (2026-10-16): when the person's question names (or clearly describes) an Act whose text Recourse does not hold, adds result['act_notice'] = {'kind','acts','text','html'}, one fixed notice written
     by code. kind 'opened' = the topic bar was opened for this question (the notice replaces the generic outside-scope notice, so only one shows); 'answer' = an ordinary answer that also names such an Act;
@@ -3768,7 +3848,7 @@ def _attach_act_notice(result, question=None):
             kind = "opened" if _open_topic_info(question) else "answer"
         else:
             kind = "refusal"
-        note = act_directory.notice(acts, kind)
+        note = act_directory.notice(acts, kind, held=_shelf_held(result.get("matches"), question))
         if note:
             result["act_notice"] = note
     except Exception as exc:  # fail-open
@@ -3824,9 +3904,25 @@ def _open_topic_info(question):
     return info if info and info.get("question") == question else None
 
 
-def _open_topic_block(question):
-    """The scope note for a question the topic bar would have turned away ('' for every other question, and whenever SCOPE_GATE is not 'open')."""
-    return _OPEN_TOPIC_BLOCK if _scope_gate_open() and _open_topic_info(question) else ""
+_OPEN_TOPIC_EXAMPLES = "(for example TADA, the Prevention of Corruption Act, POCSO, UAPA, or a civil, tax or company law)"
+_OPEN_TOPIC_NAMES = (("TADA", None), ("the Prevention of Corruption Act", "pc_act_1988"), ("POCSO", "pocso_act_2012"), ("UAPA", "uapa_1967"))
+
+
+def _open_topic_block(question, matches=None):
+    """The scope note for a question the topic bar would have turned away ('' for every other question, and whenever SCOPE_GATE is not 'open').  When the Act shelf put an Act's text into the material
+    (matches), that Act leaves the note's list of examples of Acts that are NOT in the material; with no shelf text the note is exactly _OPEN_TOPIC_BLOCK."""
+    if not (_scope_gate_open() and _open_topic_info(question)):
+        return ""
+    block = _OPEN_TOPIC_BLOCK
+    try:
+        import act_shelf
+        held = set(act_shelf.shelf_ids(matches))
+        if held and _OPEN_TOPIC_EXAMPLES in block:
+            left = [n for n, aid in _OPEN_TOPIC_NAMES if aid not in held]
+            block = block.replace(_OPEN_TOPIC_EXAMPLES, "(for example " + "".join(f"{n}, " for n in left) + "or a civil, tax or company law)")
+    except Exception:  # noqa: BLE001
+        pass
+    return block
 
 
 def _answer_from_wider_search_only(question):

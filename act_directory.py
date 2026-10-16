@@ -151,9 +151,66 @@ def _holds(kind, many):
     return f"Recourse does not hold the text of {it}."
 
 
-def notice(acts, kind="answer", path=None):
+def _label(iso):
+    """'2026-10-16' -> '16 October 2026' ('' when it is not a date)."""
+    try:
+        d = datetime.date.fromisoformat(str(iso))
+        return f"{d.day} {d.strftime('%B %Y')}"
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _split_held(acts, held):
+    """The Acts of a question in three groups, by what act_shelf.held_state says about each: 'used' (the shelf's text of the Act reached the answer), 'unused' (the shelf holds the Act but nothing from it did),
+    'plain' (no working shelf: the Directory's own wording, as before the shelf existed).  held=None puts every Act in 'plain'."""
+    used, unused, plain = [], [], []
+    for a in acts:
+        h = (held or {}).get(a["id"])
+        state = h.get("state") if isinstance(h, dict) else None
+        (used if state == "used" else unused if state == "unused" else plain).append(a)
+    return used, unused, plain
+
+
+def _ref(group, whole):
+    """How a group of Acts is referred to in a sentence about it: ('that Act'|'those Acts', 'it'|'them', 'it'|'they') when the group is all the Acts of the question, else by name."""
+    many = len(group) > 1
+    if whole:
+        return ("those Acts", "them", "they") if many else ("that Act", "it", "it")
+    names = "the " + _the_list([a["short"] for a in group])
+    return (names, "them" if many else "it", "they" if many else "it")
+
+
+def _stamp(group, held):
+    dates = {(held.get(a["id"]) or {}).get("loaded_on") for a in group}
+    when = _label(next(iter(dates))) if len(dates) == 1 else ""
+    return (f"loaded {when}; " if when else "") + "not yet read by our reviewer"
+
+
+def _held_sentences(acts, kind, held):
+    """The sentences about whether Recourse holds each group's text, for a question whose Acts include at least one with a working shelf (see _split_held)."""
+    used, unused, plain = _split_held(acts, held)
+    whole = lambda g: len(g) == len(acts)  # noqa: E731
+    out = []
+    if used:
+        it, them, they = _ref(used, whole(used))
+        out.append(f"Recourse has loaded the official text of {it} from India Code ({_stamp(used, held)}). The answer below was written from the sections of {it} that our search found for this question; "
+                   f"{they} may contain other provisions that bear on your question.")
+    if unused and kind != "refusal":
+        it, them, they = _ref(unused, whole(unused))
+        out.append(f"Recourse has loaded the official text of {it}, but the answer below does not rest on {them}.")
+    if plain:
+        it, them, they = _ref(plain, whole(plain))
+        out.append(f"Recourse does not hold the text of {it}, so the answer below does not rest on {them}." if kind != "refusal" else f"Recourse does not hold the text of {it}.")
+    if kind == "opened":
+        out.append("Recourse has not checked this area in depth; please confirm what follows with a lawyer who handles this area before you rely on it.")
+    return out
+
+
+def notice(acts, kind="answer", path=None, held=None):
     """The fixed notice for the Acts a question names, as plain text (WhatsApp) and as escaped HTML (the page): {'kind','acts':[ids],'text','html'}, or None.
-    kind: 'opened' (the topic bar was opened for this question: carries the generic caution too), 'answer' (an ordinary answer that also names the Act), 'refusal' (the question was turned away)."""
+    kind: 'opened' (the topic bar was opened for this question: carries the generic caution too), 'answer' (an ordinary answer that also names the Act), 'refusal' (the question was turned away).
+    held (added 2026-10-16 with the Act shelf, act_shelf.held_state): {act id: {'state': 'used'|'unused', 'loaded_on': iso date}} for the Acts that have a working shelf.  None, or no Act of the question in it:
+    exactly the notice that existed before the shelf ('does not hold the text').  An Act whose shelf text reached the answer is described as loaded from India Code and not yet read by our reviewer."""
     try:
         if not acts or kind not in KINDS:
             return None
@@ -161,7 +218,11 @@ def notice(acts, kind="answer", path=None):
         many = len(acts) > 1
         esc = lambda s: _html.escape(s, quote=True)  # noqa: E731
         entries = [d["by_id"].get(a["id"]) or {} for a in acts]
-        subject, holds = _subject(acts, kind), _holds(kind, many)
+        subject = _subject(acts, kind)
+        if held and any(a["id"] in held for a in acts):
+            holds = " ".join(_held_sentences(acts, kind, held))
+        else:
+            holds = _holds(kind, many)
         extra = []                                                   # only what a person has confirmed
         for a, e in zip(acts, entries):
             for field in ("status", "appeal"):
@@ -177,25 +238,57 @@ def notice(acts, kind="answer", path=None):
             which = "each Act's name" if many else "the Act's name"
             link_text = f"Official text: India Code, {root} (search for {which})."
             link_html = f'Official text: <a href="{esc(root)}">India Code</a> (indiacode.gov.in), searching for {which}.'
-        text = " ".join([subject, holds] + extra + [link_text])
-        html = " ".join([esc(subject), esc(holds)] + [esc(x) for x in extra] + [link_html])
-        return {"kind": kind, "acts": [a["id"] for a in acts], "text": text, "html": html}
+        text = " ".join([p for p in [subject, holds] + extra + [link_text] if p])
+        html = " ".join([p for p in [esc(subject), esc(holds)] + [esc(x) for x in extra] + [link_html] if p])
+        out = {"kind": kind, "acts": [a["id"] for a in acts], "text": text, "html": html}
+        if held and any(a["id"] in held for a in acts):
+            out["held"] = {a["id"]: held[a["id"]]["state"] for a in acts if a["id"] in held}
+        return out
     except Exception:  # noqa: BLE001
         return None
 
 
-def prompt_block(acts):
-    """One short block for the answer prompt when the question names an Act that is not in the material ('' otherwise). It repeats the Hard rules for this case; it does not replace them."""
+def _verb(group):
+    return "names" if all(a.get("how") == "named" for a in group) else "names or looks like it is about"
+
+
+def _prompt_plain(group):
+    many = len(group) > 1
+    names = _the_list([a["short"] for a in group])
+    it, them = ("those Acts", "them") if many else ("that Act", "it")
+    return ("\n\n## Acts named in the question that are not in the material\n"
+            f"The person's question {_verb(group)} the {names}. The text of {it} is not in the material above: do not state any section number, punishment, procedure or route of appeal of {it} "
+            f"from memory, say in one sentence that the material does not contain {them}, and keep to what the material does show.\n")
+
+
+def _prompt_used(group):
+    names = _the_list([a["short"] for a in group])
+    it = "those Acts" if len(group) > 1 else "that Act"
+    return ("\n\n## Act text in the material\n"
+            f"The person's question {_verb(group)} the {names}. The material above includes sections of {it}, each block labelled with the Act's name; the text is the official text as loaded from India Code. "
+            f"Use only those sections for anything you say about {it}: do not state any other section number, punishment, procedure or route of appeal of {it} from memory. "
+            "The material shows only the sections our search found closest to the question, not the whole Act. If the question needs a provision that is not among them, say in one sentence that the material does not show it "
+            f"and that the full text is on India Code. A provision missing from the material does not mean {it} {'have' if len(group) > 1 else 'has'} none. "
+            "Where a section's words and the person's facts do not clearly match, say so instead of stretching the section.\n")
+
+
+def _prompt_unused(group):
+    names = _the_list([a["short"] for a in group])
+    it = "those Acts" if len(group) > 1 else "that Act"
+    return ("\n\n## Act named in the question: its text is loaded, but nothing close enough was found\n"
+            f"The person's question {_verb(group)} the {names}. Recourse holds the text of {it}, but no section of it was close enough to this question to be given to you above: do not state any section number, "
+            f"punishment, procedure or route of appeal of {it} from memory, say in one sentence that the material does not contain a provision of {it} on this point, and keep to what the material does show.\n")
+
+
+def prompt_block(acts, held=None):
+    """The blocks for the answer prompt when the question names an Act ('' otherwise). They repeat the Hard rules for this case; they do not replace them.  held (see notice): an Act whose shelf text reached the
+    answer gets the block that says so and forbids going beyond the sections given; an Act the shelf holds but nothing of which reached the answer gets the block that says nothing close enough was found;
+    every other Act gets the block that existed before the shelf, byte for byte."""
     try:
         if not acts:
             return ""
-        many = len(acts) > 1
-        names = _the_list([a["short"] for a in acts])
-        verb = "names" if all(a.get("how") == "named" for a in acts) else "names or looks like it is about"
-        it, them = ("those Acts", "them") if many else ("that Act", "it")
-        return ("\n\n## Acts named in the question that are not in the material\n"
-                f"The person's question {verb} the {names}. The text of {it} is not in the material above: do not state any section number, punishment, procedure or route of appeal of {it} "
-                f"from memory, say in one sentence that the material does not contain {them}, and keep to what the material does show.\n")
+        used, unused, plain = _split_held(acts, held)
+        return (_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_unused(unused) if unused else "")
     except Exception:  # noqa: BLE001
         return ""
 

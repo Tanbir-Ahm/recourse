@@ -443,7 +443,7 @@
   "citation": "Act No. 33 of 1989",
   "section_number": "18A",
   "title": "No enquiry or approval required.",
-  "text": "18A. No enquiry or approval required.\n[18A. No enquiry or approval required.-- (1) For the purposes of this Act,--\na) preliminary enquiry shall not be required for registration of a First Information Report against any person; or\n(b) the investigating officer shall not require approval for the arrest, if necessary, of any person, against whom an accusation of having committed an offence under this Act has been made and no procedure other than that provided under this Act or the Code shall apply.\n(2) The provisions of section 438 of the Code shall not apply to a case under this Act, notwithstanding any judgment or order or direction of any Court.]",
+  "text": "18A. No enquiry or approval required.\n[18A. No enquiry or approval required.-- (1) For the purposes of this Act,--\n(a) preliminary enquiry shall not be required for registration of a First Information Report against any person; or\n(b) the investigating officer shall not require approval for the arrest, if necessary, of any person, against whom an accusation of having committed an offence under this Act has been made and no procedure other than that provided under this Act or the Code shall apply.\n(2) The provisions of section 438 of the Code shall not apply to a case under this Act, notwithstanding any judgment or order or direction of any Court.]",
   "footnotes": "1. Ins. by Act 27 of 2018, s. 2 (w.e.f. 20-8-2018)",
   "omitted": false,
   "order": 21,
@@ -453,7 +453,16 @@
   "source_type": "primary",
   "loaded_on": "2026-10-16",
   "text_status": "machine_checked",
-  "last_modified": "2026-07-10T22:57:33.577591Z"
+  "last_modified": "2026-07-10T22:57:33.577591Z",
+  "corrections": [
+   {
+    "field": "text",
+    "from": "a) preliminary enquiry",
+    "to": "(a) preliminary enquiry",
+    "count": 1,
+    "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
+   }
+  ]
  },
  {
   "act": "SCSTACT",

@@ -155,6 +155,12 @@
      "from": "(d) bankers drafts;",
      "to": "(d) banker's drafts;",
      "why": "India Code's PDF of the Act reads 'banker's drafts'; the database lost the apostrophe"
+    },
+    {
+     "section": "2",
+     "from": "((d) court means",
+     "to": "(d) court means",
+     "why": "India Code's database has a stray opening bracket; the printed Act (PDF) reads '(d) “court” means'. The quotation marks around the defined terms of section 2 are also missing in the database; they are not restored (the words are identical)."
     }
    ],
    "accepted": [
@@ -348,6 +354,12 @@
      "from": "the NonGovernment Organisations",
      "to": "the Non-Government Organisations",
      "why": "India Code's PDF of the Act reads 'Non-Government Organisations'; the database lost the hyphen"
+    },
+    {
+     "section": "18A",
+     "from": "a) preliminary enquiry",
+     "to": "(a) preliminary enquiry",
+     "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
     }
    ],
    "accepted": [

@@ -827,6 +827,25 @@ def _render_currency_caveat(m):
         pass
 
 
+def _shelf_caption_html(m: dict) -> str:
+    """One small line under a statute heading in 'Read the source' for a section of the Act shelf (chat_assistant -> act_shelf.py): the text is India Code's, loaded on a date, not yet read by our reviewer;
+    the excerpt below is cut at 900 characters, so a longer section says so and links to the Act. '' for every other statute (BNS, BNSS, ...)."""
+    try:
+        sh = m.get("shelf") if isinstance(m, dict) else None
+        if not isinstance(sh, dict):
+            return ""
+        from act_shelf import loaded_label
+        when = loaded_label(sh.get("loaded_on"))
+        bits = ["Official text from India Code" + (f", loaded {esc(when)}" if when else "") + "; not yet read by our reviewer"]
+        if len(_clean_excerpt(m.get("text") or "")) > 900:
+            bits.append("shortened here")
+        url = sh.get("source_url")
+        link = f' &middot; <a href="{esc(url)}">the whole Act on India Code</a>' if url else ""
+        return f'<p class="r-foot">{"; ".join(bits)}{link}</p>'
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def render_answer(result: dict):
     """Render one chat_assistant.answer_question() result in the Recourse
     style. Every branch is honest: a real grounded answer, an out-of-scope
@@ -914,7 +933,10 @@ def render_answer(result: dict):
         if statutes or judgments:
             with st.expander("Read the source — the sections and judgments this rests on"):
                 for m in statutes:
-                    st.markdown(f'**{esc(m["act"])} Section {esc(m["section_number"])}**')
+                    st.markdown(f'**{esc(m.get("act_display") or m["act"])} Section {esc(m["section_number"])}**')
+                    _cap = _shelf_caption_html(m)
+                    if _cap:                                  # an Act-shelf section: where the text comes from, and that no reviewer has read it
+                        st.markdown(_cap, unsafe_allow_html=True)
                     st.markdown(f'<div class="r-mono">{esc(_clean_excerpt(m.get("text") or "")[:900])}</div>',
                                 unsafe_allow_html=True)
                 if judgments:
