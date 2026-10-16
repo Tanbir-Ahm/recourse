@@ -56,7 +56,7 @@ def prompt_facts(reg, texts, limit=MAX_FACTS):
             c = reg.clause_group(group)
             if not c:
                 continue
-            lead = sorted((x for x in group if x["trust"] not in R.NO_WORDING), key=lambda x: (R.TRUSTS.index(x["trust"]), x["id"]))[0]
+            lead = sorted((x for x in group if not R.unwordable(x)), key=lambda x: (R.TRUSTS.index(x["trust"]), x["id"]))[0]
             if lead["trust"] in R.TRUST_FIRM:
                 lines.append(f"REGISTER FACT: {c} Do not state its holding as current law; if you mention it, say it was {reg.phrase(lead)}.")
             else:

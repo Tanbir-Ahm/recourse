@@ -94,7 +94,8 @@ def question_block(question):
         return ("\n\n## Overruled Register -- the person's own question names a case on our register (not optional)\n"
                 "They may be about to rely on this case. In your OPENING paragraph, before anything else about it, tell them plainly, in your own words, how the case was treated. "
                 "Name the overruling case only as the one that overruled it: do not describe what that case held. Do not state the older case's holding as current law. "
-                "Saying that the older case was overruled by it is fine; do not suggest that the person cite, raise or rely on the overruling case for any other point, because you have not been shown what it held on that point.\n"
+                "Saying that the older case was overruled by it is fine; do not suggest that the person cite, raise or rely on the overruling case for any other point, because you have not been shown what it held on that point. "
+                "Where a line below says \"not yet confirmed\", use the word \"reported\" EVERY time you mention the treatment (\"reported to have been overruled\"), including in the next steps; never write that the case \"stands overruled\", \"is no longer good law\" or \"cannot be used\".\n"
                 + "\n".join(lines) + "\n")
     except Exception as exc:  # noqa: BLE001
         logger.warning("register question block failed: %s", exc)

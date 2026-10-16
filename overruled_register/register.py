@@ -32,6 +32,23 @@ DEFAULT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", 
 TRUST_FIRM = ("verified", "reviewer_confirmed")
 TRUSTS = ("verified", "reviewer_confirmed", "candidate", "unchecked", "rejected")
 NO_WORDING = ("unchecked", "rejected")
+HOLD_FLAGS = ("year_order_check",)
+
+
+def held(row):
+    """True for a row that must not be worded yet (2026-10-16). The build flags a list-1 row `year_order_check` when the overruling decision's years are ALL earlier than the overruled decision's: as
+    listed it is impossible (an earlier decision cannot overrule a later one), so the list has the two the wrong way round or is otherwise in error. Until a person confirms the entry
+    (`review.listing_ok`, set when the weekly review confirms or changes it) it gives no sentence, no note, no chain step and no prompt line. It stays in the register and in the weekly review.
+    Why: staging, 2026-10-16, the page told a user that Nalini (1999) "was overruled by Bilal Ahmed Kaloo (1997)" and that Bilal Ahmed Kaloo "was itself later overruled by Nalini": 11 verified
+    list-1 rows (8 of them stated as firm facts) say something of this kind about the later, controlling decision. A false warning against good law is as harmful as a missing one."""
+    return any(f in (row.get("flags") or ()) for f in HOLD_FLAGS) and not (row.get("review") or {}).get("listing_ok")
+
+
+def unwordable(row):
+    """A row that may not be put into words: unchecked or rejected, or held (see held)."""
+    return row["trust"] in NO_WORDING or held(row)
+
+
 TREATMENTS = ("overruled", "overruled_in_part", "not_good_law", "per_incuriam", "not_binding", "not_approved", "reversed_on_appeal", "disputed_listing")
 
 _PHRASE = {
@@ -374,8 +391,8 @@ class Register:
 
     # --- chains and wording
     def chain(self, row):
-        """Rows whose overruled decision is this row's overruling decision (B was itself later overruled / disapproved)."""
-        return [self.by_id[i] for i in self._chain.get(row["id"], ())]
+        """Rows whose overruled decision is this row's overruling decision (B was itself later overruled / disapproved). A row that cannot be worded (unchecked, rejected or held) is not a step in a chain."""
+        return [self.by_id[i] for i in self._chain.get(row["id"], ()) if not unwordable(self.by_id[i])]
 
     @staticmethod
     def _bname(row):
@@ -392,7 +409,7 @@ class Register:
 
     def clause(self, row, with_chain=True):
         """The sentence an answer may carry for this row, or None for an unchecked row. Firm for verified and reviewer-confirmed rows, hedged for candidates."""
-        if row["trust"] in NO_WORDING:
+        if unwordable(row):
             return None
         a = row["overruled"]
         label = a["name"] + (f" ({a['year']})" if a.get("year") else "")
@@ -412,7 +429,7 @@ class Register:
 
     def clause_group(self, rows):
         """One sentence for rows that concern the same overruled decision: the firmest row first, the others as 'also reported'."""
-        rows = sorted((r for r in rows if r["trust"] not in NO_WORDING), key=lambda r: (TRUSTS.index(r["trust"]), r["id"]))
+        rows = sorted((r for r in rows if not unwordable(r)), key=lambda r: (TRUSTS.index(r["trust"]), r["id"]))
         if not rows:
             return None
         lead, rest = rows[0], rows[1:]
@@ -481,7 +498,7 @@ class Register:
                         continue                                    # a distinctive second party that names none of the rows: another case
                     rows = []
                     for r2 in self._by_first.get(matched[0], ()):
-                        if r2["trust"] in NO_WORDING or r2 in rows:
+                        if unwordable(r2) or r2 in rows:
                             continue
                         if any(tuple(a[:len(matched)]) == matched and (len(a) == len(matched) or len(matched) == _N1) for a, _b in self._variants[r2["id"]]):
                             rows.append(r2)
@@ -498,13 +515,13 @@ class Register:
         """One list of rows per overruled decision (firmest first), rows that cannot be worded left out."""
         out, seen = [], set()
         for r in sorted(rows, key=lambda r: (TRUSTS.index(r["trust"]), r["id"])):
-            if r["trust"] in NO_WORDING:
+            if unwordable(r):
                 continue
             ids = self.decision_ids(r)
             if ids & seen:
                 continue
             seen |= ids
-            out.append([r] + [x for x in self.same_decision_rows(r) if x["trust"] not in NO_WORDING])
+            out.append([r] + [x for x in self.same_decision_rows(r) if not unwordable(x)])
         return out
 
     @staticmethod
@@ -561,9 +578,15 @@ def slim(rows):
         if r["trust"] in ("rejected",):
             continue
         a, b = r["overruled"], r["overruling"]
-        out.append({"id": r["id"], "source": r["source"], "trust": r["trust"], "treatment": r["treatment"], "scope": r.get("scope"),
-                    "overruled": {"name": a["name"], "alt_names": a.get("alt_names", []), "keys": a.get("keys", []), "year": a.get("year"), "years": a.get("years", [])},
-                    "overruling": {"name": b.get("name", ""), "keys": b.get("keys", []), "year": b.get("year"), "date": b.get("date"), "alt_names": b.get("alt_names", []), "years": b.get("years", [])}})
+        o = {"id": r["id"], "source": r["source"], "trust": r["trust"], "treatment": r["treatment"], "scope": r.get("scope"),
+             "overruled": {"name": a["name"], "alt_names": a.get("alt_names", []), "keys": a.get("keys", []), "year": a.get("year"), "years": a.get("years", [])},
+             "overruling": {"name": b.get("name", ""), "keys": b.get("keys", []), "year": b.get("year"), "date": b.get("date"), "alt_names": b.get("alt_names", []), "years": b.get("years", [])}}
+        hold = [f for f in (r.get("flags") or []) if f in HOLD_FLAGS]
+        if hold:                                                    # what the site needs to keep a held row silent (see held()); the reviewer's confirmation travels with it
+            o["flags"] = hold
+            if (r.get("review") or {}).get("listing_ok"):
+                o["review"] = {"listing_ok": r["review"]["listing_ok"]}
+        out.append(o)
     return out
 
 

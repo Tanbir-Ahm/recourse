@@ -49,6 +49,7 @@ check(RH.answer_notes("", question=Q_NAMED)["notes"] != [], "an empty or withhel
 b = RH.question_block(Q_NAMED)
 check(b.startswith("\n\n## Overruled Register -- the person's own question names a case") and "REGISTER NOTE (not yet confirmed): Salauddin" in b and "OPENING paragraph" in b and "do not describe what that case held" in b, "the prompt block tells the model to say how the case was treated in its opening, without describing the overruling case's holding")
 check("do not suggest that the person cite, raise or rely on the overruling case for any other point" in b and "Saying that the older case was overruled by it is fine" in b, "the prompt block also stops the model advising the person to rely on the overruling case for another point (situation exam run 3, S13)")
+check('use the word "reported" EVERY time' in b and 'never write that the case "stands overruled"' in b, "...and, for a row not yet confirmed, to say 'reported' every time, never 'stands overruled' (staging 2026-10-16, Q1 step 3)")
 b2 = RH.question_block(Q_NOYEAR)
 check("REGISTER POSSIBLE MATCH" in b2 and 'the question names "Naresh Kumar Yadav v. Ravindra Kumar"' in b2, "a case named without a year gets the POSSIBLE MATCH line")
 check(RH.question_block(Q_FIRST) == "" and RH.question_block(Q_PLAIN) == "" and RH.question_block("") == "" and RH.question_block(None) == "", "a first party only, an unrelated question and bad input give no block")
@@ -95,5 +96,19 @@ src = open("recourse_app.py", encoding="utf-8").read()
 check('reg_possible = result.get("register_possible")' in src and "for n in reg_possible or []" in src, "the page renders register_possible in the currency-notes box")
 wsrc = open("whatsapp_formatter.py", encoding="utf-8").read()
 check('result.get("register_possible")' in wsrc, "the WhatsApp message carries register_possible")
+
+# --- staging 2026-10-16: the page said Nalini (1999) "was overruled by Bilal Ahmed Kaloo (1997)": a list-1 row whose overruling decision is dated BEFORE the overruled one. Such rows are now held (register.held)
+Q_TADA = ("My brother was convicted of sedition by a TADA Designated Court and given life imprisonment. His lawyer is relying on Bilal Ahmed Kaloo v. State of Andhra Pradesh (1997) for the appeal. "
+          "How does that help him?")
+ANS_TADA = ("Bilal Ahmed Kaloo v. State of Andhra Pradesh (1997) was overruled by State through Superintendent of Police, CBI/SIT v. Nalini and Others (1999). "
+            "The lawyer should rely on State through Superintendent of Police, CBI/SIT v. Nalini and Others (1999) instead.")
+r = RH.answer_notes(ANS_TADA, question=Q_TADA)
+check(not any("itself later" in n or n.startswith("State through Superintendent of Police") for n in r["notes"]), f"the Nalini / Bilal pair: no note says Nalini was overruled, no 'itself later' chain step ({r['notes']})")
+r2 = RH.answer_notes("", question=Q_TADA)
+check(len(r2["notes"]) == 1 and r2["notes"][0].startswith("Bilal Ahmed Kaloo v. State of Andhra Pradesh (1997) was overruled by") and "itself later" not in r2["notes"][0], f"the refusal note for the real direction reads cleanly ({r2['notes']})")
+Q_NALINI = "He is relying on State through Superintendent of Police, CBI/SIT v. Nalini and Others (1999) for the appeal. Is it good law?"
+check(RH.question_block(Q_NALINI) == "" and RH.answer_notes("That is debated.", question=Q_NALINI)["notes"] == [], "a question naming Nalini itself (the later, controlling decision) draws no register line and no note")
+held_rows = [x for x in RH._load()[0].rows if x.get("flags")]
+check(len(held_rows) == 11 and all(RH._load()[0].clause(x) is None for x in held_rows), f"the bundle carries the 11 held rows and none of them is worded ({len(held_rows)})")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

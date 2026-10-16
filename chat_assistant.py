@@ -3599,6 +3599,11 @@ def _answer_question_core(question, inline_domains=frozenset()):
 _PARTY_SPLIT_PAT = re.compile(r"\s+vs?\.?\s+", re.IGNORECASE)
 _ET_AL_TAIL_PAT = re.compile(r"(?:\s*,?\s*(?:and|&)\s+(?:anr|ors|others|another)\.?)+\s*$", re.IGNORECASE)
 _GENERIC_PARTY_PAT = re.compile(r"^(?:the\s+)?(?:state|union of india|government|central bureau|cbi)\b", re.IGNORECASE)
+# the last word of an institution's name is not a surname: never a reason to say an answer relies on that case (see the lone-surname fallback in _attach_cited_judgment_links)
+_GENERIC_LAST_WORDS = {"authority", "authorities", "commission", "commissioner", "commissioners", "corporation", "association", "government", "department", "board", "company", "society", "council", "services",
+                       "service", "limited", "bureau", "committee", "tribunal", "officer", "officers", "collector", "magistrate", "education", "institute", "university", "ministry", "panchayat",
+                       "municipality", "federation", "trust", "railway", "railways", "agency", "organisation", "organization", "directorate", "administration", "secretary", "inspector",
+                       "district", "court", "police", "department", "enterprises", "industries", "committee", "authority"}
 _LINK_STATES = ("single_match", "conflicting_matches")
 
 
@@ -3655,11 +3660,14 @@ def _attach_cited_judgment_links(result):
             named = _name_in_text(name, text)
             if not named:
                 # a lone surname is enough (the model often writes "the Goswami case") -- but only a distinctive one
-                # (6+ letters, more than one word in the name, and no other retrieved case ends in the same word)
+                # (6+ letters, more than one word in the name, and no other retrieved case ends in the same word).
+                # 2026-10-16: not an ordinary word of institutions ("Authority", "Commission", "Corporation" ...), and only as the capitalised name is written: staging showed
+                # "National Legal Services Authority v Union of India" listed under a TADA answer because the answer said "an alternative, current authority".
                 words = name.split()
                 last = words[-1].strip(".,") if words else ""
-                if len(words) >= 2 and len(last) >= 6 and sum(1 for n in names.values() if n.split() and n.split()[-1].strip(".,").lower() == last.lower()) == 1:
-                    named = _name_in_text(last, text)
+                if (len(words) >= 2 and len(last) >= 6 and last.lower() not in _GENERIC_LAST_WORDS
+                        and sum(1 for n in names.values() if n.split() and n.split()[-1].strip(".,").lower() == last.lower()) == 1):
+                    named = re.search(r"(?<!\w)" + re.escape(last) + r"(?!\w)", text) is not None
             if not named:
                 continue
             url = get_judgment_source_url(case)
