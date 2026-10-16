@@ -3807,8 +3807,39 @@ def _answer_from_wider_search_only(question):
         return None
 
 
+def _library_summary(matches, limit=8):
+    """What the library supplied for a question, for the SCOPE_OPEN log line (names and numbers only, no text): {'judgments': [{case, score, via?}], 'sections': ['BNSS 482', ...]}. The score is the
+    retrieval score (a cosine similarity for a meaning hit; JUDGMENT_SIMILARITY_THRESHOLD is 0.40; 'via': 'lexical' marks a keyword backfill that ranked just below it). Never raises."""
+    try:
+        cases, secs = {}, []
+        for m in matches or []:
+            if not isinstance(m, dict):
+                continue
+            if m.get("type") == "judgment" and m.get("case_name"):
+                sc = m.get("score")
+                cur = cases.get(m["case_name"])
+                if cur is None or (isinstance(sc, (int, float)) and sc > (cur[0] if isinstance(cur[0], (int, float)) else -1)):
+                    cases[m["case_name"]] = (sc, m.get("retrieval"))
+            elif m.get("section_number") and not m.get("case_name"):
+                tag = f'{m.get("act") or "?"} {m.get("section_number")}'
+                if tag not in secs:
+                    secs.append(tag)
+        ranked = sorted(cases.items(), key=lambda kv: -(kv[1][0] if isinstance(kv[1][0], (int, float)) else -1))
+        judgments = []
+        for name, (sc, via) in ranked[:limit]:
+            d = {"case": name[:100], "score": round(float(sc), 3) if isinstance(sc, (int, float)) else None}
+            if via:
+                d["via"] = via
+            judgments.append(d)
+        return {"judgments": judgments, "sections": secs[:limit]}
+    except Exception:  # noqa: BLE001
+        return {"judgments": [], "sections": []}
+
+
 def _finish_open_topic(question, result):
-    """After the core has answered: marks an answer to an opened question with the fixed notice and writes the one SCOPE_OPEN log line. Never raises."""
+    """After the core has answered: marks an answer to an opened question with the fixed notice and writes the one SCOPE_OPEN log line: a hash of the question, the classifier's one-sentence reason, the
+    state, whether the answer came from the wider search alone, and (added 2026-10-16, after an irrelevant library judgment was listed under a TADA answer) what the library and the wider search each supplied
+    (names and scores only). Never raises."""
     try:
         info = _open_topic_info(question)
         if not info or not isinstance(result, dict):
@@ -3816,8 +3847,14 @@ def _finish_open_topic(question, result):
         if result.get("state") in _LINK_STATES:
             result["outside_scope_note"] = OUTSIDE_SCOPE_NOTE
         import hashlib
+        wider = []
+        try:
+            import sci_search_tier
+            wider = [n[:100] for n in sci_search_tier.fed_case_names()][:8]
+        except Exception:  # noqa: BLE001
+            pass
         print("SCOPE_OPEN " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "reasoning": info.get("reasoning", "")[:160], "state": result.get("state"),
-                                          "wider_only": bool(info.get("wider_only"))}), flush=True)
+                                          "wider_only": bool(info.get("wider_only")), "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("_finish_open_topic failed: %s", exc)
     return result

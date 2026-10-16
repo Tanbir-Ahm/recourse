@@ -50,6 +50,7 @@ def fake_retrieval(current_message, full_question, **kw):
 
 def fake_single(question, matches):
     CALLS["single"] += 1
+    ST._LOCAL.cases = [{"case_name": n} for n in FEED.get("cases", ())]       # what feed_block leaves behind for fed_case_names()
     return {"state": "single_match", "matches": matches, "response_text": "Library answer.", "situation_detected": False, "from_cache": False, "unverified_related_judgments": []}
 
 
@@ -66,10 +67,10 @@ ST.mode = lambda: FEED["mode"]
 ST.feed_block = lambda q: FEED["block"]
 
 
-def run(question=Q_TADA, category=("adjacent_uncovered", "A TADA appeal is outside BNS/BNSS.", None), retrieval=None, gate=None, feed=("off", "")):
+def run(question=Q_TADA, category=("adjacent_uncovered", "A TADA appeal is outside BNS/BNSS.", None), retrieval=None, gate=None, feed=("off", ""), fed_cases=()):
     CATEGORY["v"] = category
     RETRIEVAL["v"] = retrieval or {"state": "no_match"}
-    FEED["mode"], FEED["block"] = feed
+    FEED["mode"], FEED["block"], FEED["cases"] = feed[0], feed[1], tuple(fed_cases)
     CALLS["single"], CALLS["gen"] = 0, []
     if gate is None:
         os.environ.pop("SCOPE_GATE", None)
@@ -107,6 +108,25 @@ res, log = run(retrieval={"state": "single_match", "matches": [{"section_number"
 check(res["state"] == "single_match" and res["response_text"] == "Library answer." and CALLS["single"] == 1, "open: the question goes through the in_scope pipeline (library answer)")
 check(res.get("outside_scope_note") == CA.OUTSIDE_SCOPE_NOTE and "has not checked in depth" in res["outside_scope_note"], "open: the answer carries the fixed notice")
 check(len(log) == 1 and log[0]["state"] == "single_match" and log[0]["wider_only"] is False and "TADA" in log[0]["reasoning"] and len(log[0]["q"]) == 12 and Q_TADA not in json.dumps(log), "open: one SCOPE_OPEN line, with a hash of the question and not the question itself")
+
+# the log line also says what the library and the wider search each supplied (names and scores only), so that an irrelevant library hit can be seen in the log
+NALSA_NAME = "National Legal Services Authority v Union of India"
+LIB = {"state": "single_match", "matches": [{"section_number": "482", "act": "BNSS", "text": "x"}, {"section_number": "482", "act": "BNSS", "text": "again"}, {"section_number": "35", "act": "BNSS", "text": "y"}],
+       "judgment_matches": [{"type": "judgment", "case_name": NALSA_NAME, "score": 0.4123}, {"type": "judgment", "case_name": "Arnesh Kumar v State of Bihar", "score": 0.4551, "retrieval": "lexical"},
+                            {"type": "judgment", "case_name": NALSA_NAME, "score": 0.401}]}
+res, log = run(retrieval=LIB, gate="open", fed_cases=["State of Tamil Nadu Through Superintendent of Police,Cbi/Sit v. Nalini and 25 Others"])
+lib = log[0]["library"]
+check(lib["judgments"] == [{"case": "Arnesh Kumar v State of Bihar", "score": 0.455, "via": "lexical"}, {"case": NALSA_NAME, "score": 0.412}] and lib["sections"] == ["BNSS 482", "BNSS 35"],
+      f"SCOPE_OPEN names the library's judgments (best score first, one entry per case, how a keyword hit was found) and its sections ({lib})")
+check(log[0]["wider"] == ["State of Tamil Nadu Through Superintendent of Police,Cbi/Sit v. Nalini and 25 Others"], "...and the wider-search cases the model was handed")
+check(Q_TADA not in json.dumps(log) and "text" not in json.dumps(lib), "...without the question and without any passage text")
+res, log = run(retrieval={"state": "single_match", "matches": [], "judgment_matches": []}, gate="open")
+check(log[0]["library"] == {"judgments": [], "sections": []} and log[0]["wider"] == [], "an opened question with nothing from the library or the search logs empty lists")
+many = {"state": "single_match", "matches": [], "judgment_matches": [{"type": "judgment", "case_name": f"Case {i} v State", "score": 0.5 - i / 100} for i in range(12)]}
+res, log = run(retrieval=many, gate="open")
+check(len(log[0]["library"]["judgments"]) == 8 and log[0]["library"]["judgments"][0]["case"] == "Case 0 v State", "at most eight judgments are named")
+check(CA._library_summary(None) == {"judgments": [], "sections": []} and CA._library_summary("not a list") == {"judgments": [], "sections": []} and CA._library_summary([None, 3, {"type": "judgment"}]) == {"judgments": [], "sections": []},
+      "_library_summary never raises on odd input")
 
 # ---- open: nothing in the library ----
 res, log = run(gate="open")
