@@ -3757,7 +3757,11 @@ _OPEN_TOPIC_BLOCK = ("\n\n## Scope note -- this question is outside the criminal
                      "The person's question is about a legal subject our library may not cover (a special law, or a civil, family, tax, service or company matter). Do not refuse it for that reason and do not say it is "
                      "outside what you can discuss. Answer it the way you answer any other question: only from the legal information given in this prompt (the rules above still apply in full, including never adding a "
                      "section number, case holding, punishment or Act name that is not in the material). Where the material does not cover a point, say so plainly in one sentence (\"I don't have information on ...\") "
-                     "and say which kind of lawyer or forum handles it, instead of filling the gap from memory.\n")
+                     "and say which kind of lawyer or forum handles it, instead of filling the gap from memory. "
+                     "If the matter is governed by an Act or code other than the ones in the material (for example TADA, the Prevention of Corruption Act, POCSO, UAPA, or a civil, tax or company law), "
+                     "do not present a BNS or BNSS section as the governing provision, the offence, the procedure or the route of appeal for it unless the material itself shows that the section applies to that matter. "
+                     "A BNS or BNSS section that is only loosely related (for example a general appeal provision) is not a substitute for the statute that actually governs: say that the governing statute is not in "
+                     "the material and that the forum and the route of appeal come from that statute.\n")
 
 
 import threading as _threading

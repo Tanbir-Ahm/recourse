@@ -174,6 +174,8 @@ sent.clear()
 txt = CA2.generate_grounded_response(Q_TADA, "[BNSS Section 482]\nText.", matches=[])
 check(txt and "Scope note -- this question is outside the criminal-procedure library" in sent["prompt"] and sent["prompt"].index("Text.") < sent["prompt"].index("Scope note"), "open, bar opened for this question: the scope note follows the material")
 check("never adding a section number, case holding, punishment or Act name that is not in the material" in sent["prompt"], "the scope note keeps the Hard rules in force")
+check("do not present a BNS or BNSS section as the governing provision" in sent["prompt"] and "route of appeal" in sent["prompt"] and "for example a general appeal provision" in sent["prompt"]
+      and "the governing statute is not in the material" in sent["prompt"], "the scope note says not to stretch a BNS or BNSS section over a matter under another Act (production 2026-10-16: 'appeal under Section 420 of the BNSS' for a TADA conviction)")
 check("## Hard rules (never break)" in sent["prompt"] and "Use ONLY the legal information given below" in sent["prompt"], "the Hard rules block is still in the prompt, unchanged")
 os.environ.pop("SCOPE_GATE")
 sent.clear()

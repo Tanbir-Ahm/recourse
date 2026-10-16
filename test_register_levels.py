@@ -110,5 +110,13 @@ Q_NALINI = "He is relying on State through Superintendent of Police, CBI/SIT v. 
 check(RH.question_block(Q_NALINI) == "" and RH.answer_notes("That is debated.", question=Q_NALINI)["notes"] == [], "a question naming Nalini itself (the later, controlling decision) draws no register line and no note")
 held_rows = [x for x in RH._load()[0].rows if x.get("flags")]
 check(len(held_rows) == 11 and all(RH._load()[0].clause(x) is None for x in held_rows), f"the bundle carries the 11 held rows and none of them is worded ({len(held_rows)})")
+
+# --- production 2026-10-16 (gate open): the answer named the overruling case in full and the 'not checked' sentence called it "SIT v. Nalini and Others" (the name finder cuts a long first party at a comma and a slash)
+ANS_FULL = ("Bilal Ahmed Kaloo v. State of Andhra Pradesh (1997) was overruled by State through Superintendent of Police, CBI/SIT v. Nalini and Others (1999), so the lawyer relying on it is working with a "
+            "case that no longer states current law.")
+rf = RH.answer_notes(ANS_FULL, question=Q_TADA)
+check(not rf["not_checked"], f"the overruling case, named in full, is not called 'not checked' ({rf['not_checked']})")
+rg = RH.answer_notes(ANS_FULL + " The lawyer might also cite Ram Prasad v. State of Bihar (2012).", question=Q_TADA)
+check(bool(rg["not_checked"]) and "Ram Prasad v. State of Bihar" in rg["not_checked"] and "Nalini" not in rg["not_checked"], f"another case is still listed ({rg['not_checked']})")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
