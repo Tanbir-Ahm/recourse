@@ -1871,6 +1871,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + excerpt_anchors.block(question)
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # Overruled Register, lock (b) for the person's own question: a case the question names (with a year, or by both full names) that the register lists; "" otherwise
+            from register_hooks import question_block
+            retrieved_text = retrieved_text + question_block(question)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
@@ -3654,9 +3659,10 @@ def _attach_cited_judgment_links(result):
     return result
 
 
-def _attach_register_notes(result):
-    """Adds result['register_notes'] (sentences for every Overruled Register or warning-card case the answer names without saying it was overruled)
-    and result['register_not_checked'] (one fixed sentence naming cases on neither list). Answer states only; never raises; REGISTER_HOOKS=off skips it."""
+def _attach_register_notes(result, question=None):
+    """Adds result['register_notes'] (sentences for every Overruled Register or warning-card case the answer, or the person's question, names without the answer saying it was overruled),
+    result['register_possible'] (name-only matches: 'Possible match ...' and the list of decisions sharing a first party; see register_hooks.answer_notes) and result['register_not_checked'] (one fixed sentence
+    naming cases on neither list). Answer states only; never raises; REGISTER_HOOKS=off skips it."""
     try:
         if not isinstance(result, dict) or result.get("state") not in _LINK_STATES:
             return result
@@ -3672,9 +3678,11 @@ def _attach_register_notes(result):
             srcs = srcs + excerpt_anchors.names_in(result.get("response_text") or "")
         except Exception:  # noqa: BLE001
             pass
-        res = answer_notes(result.get("response_text") or "", exclude_names=srcs)
+        res = answer_notes(result.get("response_text") or "", exclude_names=srcs, question=question)
         if res["notes"]:
             result["register_notes"] = res["notes"]
+        if res.get("possible"):
+            result["register_possible"] = res["possible"]
         if res["not_checked"]:
             result["register_not_checked"] = res["not_checked"]
         if res["review"]:
@@ -3782,7 +3790,7 @@ def _answer_question_inner(question, inline_domains=frozenset()):
         pass
     result = _answer_question_core(question, inline_domains=inline_domains)
     try:
-        result = _attach_register_notes(_attach_cited_judgment_links(result))
+        result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open

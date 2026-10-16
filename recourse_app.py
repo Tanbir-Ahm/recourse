@@ -948,9 +948,12 @@ def render_answer(result: dict):
 
         # Overruled Register (register_hooks.py), added by code from the register and the checker's cards, not written by the model.
         reg_notes = result.get("register_notes")
-        if reg_notes or result.get("register_not_checked"):
+        reg_possible = result.get("register_possible")
+        if reg_notes or reg_possible or result.get("register_not_checked"):
             st.markdown('<div class="r-label">Currency notes (checked by code, not by the model)</div>', unsafe_allow_html=True)
             for n in reg_notes or []:
+                st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
+            for n in reg_possible or []:                       # name-only matches: possible, never stated as fact (register_hooks.answer_notes)
                 st.markdown(f'<div class="r-concord">{esc(n)}</div>', unsafe_allow_html=True)
             if result.get("register_not_checked"):
                 st.markdown(f'<p class="r-foot">{esc(result["register_not_checked"])}</p>', unsafe_allow_html=True)

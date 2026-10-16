@@ -121,6 +121,98 @@ def guard_answer(reg, answer):
     return {"findings": findings, "notes": notes, "review": review, "badge": bool(notes)}
 
 
+def _answer_says(reg, answer, group):
+    """True when the answer names a case of this decision group (with or without a year) and says next to it that it was overruled or the like."""
+    ids = {x["id"] for x in group}
+    return any(h["row"]["id"] in ids and acknowledged(answer, h["start"], h["end"]) for h in reg.scan(answer or ""))
+
+
+def extra_notes(reg, question, answer, base=None):
+    """2026-10-16 (the four levels): the notes the page adds beyond guard_answer(), from the person's QUESTION as well as the answer. {'notes': [sentences in the register's firm or hedged wording],
+    'possible': [sentences for name-only mentions]}. One note per overruled decision, the strongest level wins, and nothing is added for a decision the answer already speaks for (it names the case with
+    a year and the guard notes it or the answer says overruled next to it).
+      level 1  the question names the case with a year or citation and the answer neither names it nor says it was overruled -> the register's own clause (firm or 'reported ... not yet confirmed').
+      level 2  both full party names, no year or citation, in the question or the answer -> Register.possible_clause ('Possible match: ...'); several decisions with that name are all listed.
+      level 3  the QUESTION names a first party only ('Mohan Lal v. State') -> Register.list_clause: the register's decisions with that first party (at most ten shown).
+      level 4  a bare name, or a first party made of common words -> nothing."""
+    answer, question = answer or "", question or ""
+    base = base if base is not None else guard_answer(reg, answer)
+    done = set()
+    for f in base["findings"]:
+        row = reg.by_id.get(f["row_id"])
+        if row:
+            done |= reg.decision_ids(row)
+    notes, possible = [], []
+    for h in reg.scan(question):                                                  # level 1 from the question
+        if h["strength"] != "strong":
+            continue
+        r = h["row"]
+        ids = reg.decision_ids(r)
+        if ids & done:
+            continue
+        group = [r] + reg.same_decision_rows(r)
+        clause = reg.clause_group(group)
+        done |= ids
+        if clause is None or _answer_says(reg, answer, group):
+            continue
+        notes.append(clause)
+    for source, text in (("question", question), ("answer", answer)):               # level 2
+        by_pos = {}
+        for h in reg.scan(text):
+            if h["strength"] == "weak":
+                by_pos.setdefault(h["start"], []).append(h)
+        for _start, hs in sorted(by_pos.items()):
+            groups = [g for g in reg.groups([h["row"] for h in hs]) if not (reg.decision_ids(g[0]) & done)]
+            if not groups:
+                continue
+            ack = source == "answer" and acknowledged(answer, hs[0]["start"], hs[0]["end"])
+            for g in groups:
+                done |= reg.decision_ids(g[0])
+            if ack:
+                continue
+            clause = reg.possible_clause([g[0] for g in groups], source)
+            if clause and clause not in possible:
+                possible.append(clause)
+    for hit in reg.first_party_hits(question):                                     # level 3: the question only
+        groups = [g for g in reg.groups(hit["rows"]) if not (reg.decision_ids(g[0]) & done)]
+        if not groups:
+            continue
+        clause = reg.list_clause(hit["typed"], [g[0] for g in groups])
+        for g in groups:
+            done |= reg.decision_ids(g[0])
+        if clause and clause not in possible:
+            possible.append(clause)
+    return {"notes": notes, "possible": possible}
+
+
+def question_prompt_lines(reg, question, limit=MAX_FACTS):
+    """Lock (b) for the person's own question: the REGISTER FACT / REGISTER NOTE lines for the cases it names with a year or citation (prompt_facts), and one 'REGISTER POSSIBLE MATCH' line for each
+    case it names by both full party names without a year when that name belongs to one decision. Several decisions with one name, and first-party-only mentions, give no line (the page's note
+    covers them). The lines say how the case was treated and nothing about what it held."""
+    lines = prompt_facts(reg, [question], limit=limit)
+    strong_ids = set()
+    for h in reg.scan(question or ""):
+        if h["strength"] == "strong":
+            strong_ids |= reg.decision_ids(h["row"])
+    by_pos = {}
+    for h in reg.scan(question or ""):
+        if h["strength"] == "weak":
+            by_pos.setdefault(h["start"], []).append(h)
+    done = set(strong_ids)
+    for _start, hs in sorted(by_pos.items()):
+        groups = [g for g in reg.groups([h["row"] for h in hs]) if not (reg.decision_ids(g[0]) & done)]
+        if len(groups) != 1:
+            continue
+        lead = groups[0][0]
+        done |= reg.decision_ids(lead)
+        firm = lead["trust"] in R.TRUST_FIRM
+        typed = question[hs[0]["start"]:hs[0]["end"]]
+        lines.append(f'REGISTER POSSIBLE MATCH: the question names "{typed}". Our register {"lists" if firm else "reports"} {reg._label(lead)} as {reg.phrase(lead)}'
+                     f'{"" if firm else " (not yet confirmed by our reviewer)"}. No year or citation was given, so we cannot be sure it is the same case; if it may be, say so plainly in your opening '
+                     "paragraph and say how it was treated. Do not describe its holding as current law.")
+    return lines[:limit]
+
+
 def apply_notes(answer, result):
     """The answer with the standard block appended (the site may instead render the notes as a badge)."""
     if not result["notes"]:

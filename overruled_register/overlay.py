@@ -144,16 +144,23 @@ def case_mentions(text):
     return out
 
 
-def audit_answer(reg, overlay, text, exclude_names=()):
+def audit_answer(reg, overlay, text, exclude_names=(), question=None):
     """What the site adds to a finished answer. register_notes: the register guard's sentences (firm or 'reported ... not yet confirmed'); card_notes: one per case the answer names that has a warning or
     caution card and is not already a register case; not_checked: the cases the answer names that are on neither list (the fixed sentence is built from these names). A case is left out of not_checked
-    when it is the overruling case of a register note on this answer, or one of `exclude_names` (the judgments the site itself lists as the answer's sources): a note or a verified source already speaks for it. Never raises."""
+    when it is the overruling case of a register note on this answer, or one of `exclude_names` (the judgments the site itself lists as the answer's sources): a note or a verified source already speaks for it.
+    `question` (2026-10-16): the person's own words; register cases they name (with a year, by both full names, or by a first party) add register_notes (level 1) and `possible` sentences (levels 2 and 3), see register_guard.extra_notes. Never raises."""
     from . import register_guard as G
-    res = {"register_notes": [], "card_notes": [], "quiet": [], "not_checked": [], "review": []}
+    res = {"register_notes": [], "card_notes": [], "quiet": [], "not_checked": [], "review": [], "possible": []}
     skip = {R.party_sigs(n) for n in (exclude_names or ()) if n}
     try:
         g = G.guard_answer(reg, text or "")
         res["register_notes"], res["review"] = g["notes"], g["review"]
+        try:                                                      # 2026-10-16: the question is read too, and a name without a year is no longer silent (register_guard.extra_notes)
+            ex = G.extra_notes(reg, question, text or "", g)
+            res["register_notes"] = list(g["notes"]) + ex["notes"]
+            res["possible"] = ex["possible"]
+        except Exception:
+            pass
         covered = [(f["mention"] or "").lower() for f in g["findings"]]
         for f in g["findings"]:
             row = reg.by_id.get(f.get("row_id")) if reg is not None else None

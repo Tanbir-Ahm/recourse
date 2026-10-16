@@ -58,23 +58,46 @@ def demote_matches(matches):
         return matches
 
 
-def answer_notes(text, exclude_names=()):
-    """Lock (c): {'notes': [sentences to show], 'not_checked': one fixed sentence or None, 'review': [weak matches for a person]} for a finished answer.
-    notes = the register's sentences, then the checker's warning cards (worded as the card words them); a quiet card adds nothing."""
-    empty = {"notes": [], "not_checked": None, "review": []}
+def answer_notes(text, exclude_names=(), question=None):
+    """Lock (c): {'notes': [sentences to show], 'possible': [name-only sentences], 'not_checked': one fixed sentence or None, 'review': [weak matches for a person]} for a finished answer.
+    notes = the register's sentences, then the checker's warning cards (worded as the card words them); a quiet card adds nothing. `question` (2026-10-16, the four levels): the person's own words are
+    read too: a case they name with a year or citation adds a note (level 1); a case named by both full party names without a year adds a 'Possible match' sentence (level 2, in the question or
+    the answer); a first party only ('Mohan Lal v. State') adds the list of the register's decisions with that first party (level 3, the question only)."""
+    empty = {"notes": [], "possible": [], "not_checked": None, "review": []}
     if _off():
         return empty
     try:
         from overruled_register import overlay as OV
         reg, ov = _load()
-        res = OV.audit_answer(reg, ov, text or "", exclude_names=exclude_names)
+        res = OV.audit_answer(reg, ov, text or "", exclude_names=exclude_names, question=question)
         notes = list(res["register_notes"])
         for c in res["card_notes"]:
             notes.append(f'{c["case"]}: {c["note"]}')
-        return {"notes": notes, "not_checked": res.get("not_checked_sentence"), "review": res["review"]}
+        return {"notes": notes, "possible": list(res.get("possible") or []), "not_checked": res.get("not_checked_sentence"), "review": res["review"]}
     except Exception as exc:
         logger.warning("register guard failed: %s", exc)
         return empty
+
+
+def question_block(question):
+    """Lock (b) for the person's own question (2026-10-16): '' or a prompt section naming the register cases the question names with a year or citation (REGISTER FACT / REGISTER NOTE) or by both full party
+    names without a year (REGISTER POSSIBLE MATCH, one decision only). The model is told to say plainly, in its opening paragraph, how the case was treated and to name the overruling case only as the
+    one that overruled it. Never raises; REGISTER_HOOKS=off gives ''."""
+    if _off() or not question:
+        return ""
+    try:
+        from overruled_register import register_guard as G
+        reg, _ = _load()
+        lines = G.question_prompt_lines(reg, question)
+        if not lines:
+            return ""
+        return ("\n\n## Overruled Register -- the person's own question names a case on our register (not optional)\n"
+                "They may be about to rely on this case. In your OPENING paragraph, before anything else about it, tell them plainly, in your own words, how the case was treated. "
+                "Name the overruling case only as the one that overruled it: do not describe what that case held. Do not state the older case's holding as current law.\n"
+                + "\n".join(lines) + "\n")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("register question block failed: %s", exc)
+        return ""
 
 
 def result_flags(results):
