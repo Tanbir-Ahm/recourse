@@ -1,0 +1,58 @@
+{
+ "written": "2026-10-16",
+ "by": "Claude (AI), before any score was looked at",
+ "about": "Ten questions that name a shelf Act but ask for something the Act does not contain at all. Used only to see what the best within-Act score is when nothing is relevant, so that the floor below which the shelf hands over nothing can be chosen. No expected section.",
+ "questions": [
+  {
+   "id": "OT01",
+   "act_key": "pc_act_1988",
+   "q": "I want to file a consumer complaint against a builder. Does the Prevention of Corruption Act help me get a refund?"
+  },
+  {
+   "id": "OT02",
+   "act_key": "pc_act_1988",
+   "q": "What is the minimum age to get a driving licence, and does the PC Act say anything about it?"
+  },
+  {
+   "id": "OT03",
+   "act_key": "pocso_act_2012",
+   "q": "How do I file for divorce by mutual consent under the POCSO Act?"
+  },
+  {
+   "id": "OT04",
+   "act_key": "pocso_act_2012",
+   "q": "What is the stamp duty on a sale deed, according to the POCSO Act?"
+  },
+  {
+   "id": "OT05",
+   "act_key": "uapa_1967",
+   "q": "Does the UAPA tell me how to get a refund of GST that I paid by mistake?"
+  },
+  {
+   "id": "OT06",
+   "act_key": "uapa_1967",
+   "q": "Under the UAPA, how many days of maternity leave is a woman entitled to?"
+  },
+  {
+   "id": "OT07",
+   "act_key": "pmla_2002",
+   "q": "Under the PMLA, what are the rules for adopting a child?"
+  },
+  {
+   "id": "OT08",
+   "act_key": "pmla_2002",
+   "q": "Is a tenant protected from eviction under the PMLA?"
+  },
+  {
+   "id": "OT09",
+   "act_key": "sc_st_act_1989",
+   "q": "How is income tax worked out on agricultural income under the SC/ST Act?"
+  },
+  {
+   "id": "OT10",
+   "act_key": "sc_st_act_1989",
+   "q": "Under the Atrocities Act, how do I register a trademark?"
+  }
+ ],
+ "questions_sha256": "14bf45ab2fdf201bb4e705632534e21908f34e2cbaccf276e951b555b2ea284f"
+}
