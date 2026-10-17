@@ -379,6 +379,10 @@ button[kind="primary"]:disabled, button[kind="primaryFormSubmit"]:disabled{
 .r-oos{ border:1px solid var(--rule); border-left:3px solid var(--amber); background:var(--surface);
   border-radius:var(--r-sm); padding:1rem 1.2rem; margin:.6rem 0; line-height:1.55; }
 
+/* ---------- follow-up conversation (CHAT_MODE) ---------- */
+.r-asked{ border:1px solid var(--rule); border-left:3px solid var(--seal); background:var(--surface);
+  border-radius:var(--r-sm); padding:.7rem 1rem; margin:.9rem 0 .4rem; line-height:1.5; white-space:pre-wrap; }
+
 /* ---------- footer ---------- */
 .r-foot{ font-family:"IBM Plex Sans",sans-serif; font-size:.82rem; color:var(--muted); line-height:1.55; }
 a, a:visited{ color:var(--seal); text-underline-offset:2px; }
@@ -557,6 +561,24 @@ def _reset_answer():
     shows a stale reply."""
     for k in ("answer", "answer_msg", "doc", "doc_check", "doc_check_sig", "_sg_result"):
         st.session_state.pop(k, None)
+
+
+def _chat_on():
+    """CHAT_MODE=on | fold (web_chat.py): follow-up questions in one conversation, kept in this browser session only. Unset or off: the page is exactly as before."""
+    try:
+        import web_chat
+        return web_chat.enabled()
+    except Exception:
+        return False
+
+
+def _start_new_conversation():
+    """'Start a new question' (an on_click callback, so the box above may be emptied): forget the conversation, the answer and what hung off it."""
+    _reset_answer()
+    for _k in list(st.session_state.keys()):
+        if _k == "chat_turns" or _k.startswith("_petition_"):
+            st.session_state.pop(_k, None)
+    st.session_state.text = ""
 
 
 def _scroll_into_view(selector):
@@ -1344,6 +1366,51 @@ def render_petition_draft(question_text, *, checklist_result=None, doc_check_res
 
 
 # --------------------------------------------------------------------------
+# follow-up conversation (CHAT_MODE=on | fold; web_chat.py). Off by default.
+# --------------------------------------------------------------------------
+def _render_asked(n, text):
+    st.markdown(f'<div class="r-asked"><span class="r-src">Question {n} &middot; you asked</span><br>{esc(text or "")}</div>',
+                unsafe_allow_html=True)
+
+
+def _render_thread(turns):
+    """The finished questions of this conversation, each with its answer exactly as it was first shown (render_answer: every
+    note, warning and source box stays with its own answer)."""
+    for i, t in enumerate(turns, 1):
+        _render_asked(i, t.get("q"))
+        try:
+            render_answer(t.get("answer") or {})
+        except Exception:
+            logging.getLogger("recourse_app").exception("earlier answer render failed")
+        st.html('<hr class="r-rule">')
+
+
+def _render_followup_box(turns):
+    """Under the latest answer: the follow-up box (until the conversation reaches web_chat.MAX_TURNS questions) and 'Start a new question'."""
+    import web_chat
+    st.markdown('<div class="r-label" style="margin-top:1.3rem">Ask a follow-up</div>', unsafe_allow_html=True)
+    if web_chat.can_ask(turns):
+        with st.form("followup_form", border=False, clear_on_submit=True):
+            fu = st.text_area("Ask a follow-up", key="followup_text", height=90, label_visibility="collapsed", disabled=_busy,
+                              placeholder="e.g. Is that bailable? What should I take to the lawyer?") or ""
+            ask = st.form_submit_button("Reading…" if _busy else "Ask a follow-up  →", type="primary",
+                                        use_container_width=True, disabled=_busy)
+        st.markdown(f'<p class="r-foot">Question {len(turns)} of {web_chat.MAX_TURNS} in this conversation. Recourse reads your earlier '
+                    'questions in this conversation together with the new one. The conversation is kept only while this page is open: '
+                    'refreshing the page starts afresh.</p>', unsafe_allow_html=True)
+        if ask and fu.strip() and not _busy:
+            st.session_state["_busy"] = True
+            st.session_state["_busy_msg"] = fu.strip()
+            st.session_state["_busy_followup"] = True
+            st.rerun()
+    else:
+        st.markdown(f'<div class="r-oos">This conversation has reached its limit of {web_chat.MAX_TURNS} questions. '
+                    'Start a new question to go on.</div>', unsafe_allow_html=True)
+    st.button("Start a new question", key="chat_new", on_click=_start_new_conversation, disabled=_busy,
+              use_container_width=True)
+
+
+# --------------------------------------------------------------------------
 # run
 # --------------------------------------------------------------------------
 _new_q = msg.strip() if ((go or st.session_state.pop("_autorun", False)) and msg.strip()) else None
@@ -1354,19 +1421,35 @@ _new_q = msg.strip() if ((go or st.session_state.pop("_autorun", False)) and msg
 # clicking the button again while a (possibly slow) request is in flight.
 if _new_q and not _busy:
     for _k in list(st.session_state.keys()):
-        if _k in ("doc_check", "doc_check_sig", "_sg_result", "answer") \
+        if _k in ("doc_check", "doc_check_sig", "_sg_result", "answer", "chat_turns") \
            or _k.startswith("_petition_"):
-            st.session_state.pop(_k, None)      # never carry stale artefacts over
+            st.session_state.pop(_k, None)      # never carry stale artefacts over; a question from the box above starts a new conversation
     st.session_state["_busy"] = True
     st.session_state["_busy_msg"] = _new_q
+    st.session_state["_busy_followup"] = False
     st.rerun()
 
 if _busy:
     _q = st.session_state.get("_busy_msg") or msg
+    _chat = _chat_on()
+    _followup = _chat and bool(st.session_state.get("_busy_followup"))
+    _turns = list(st.session_state.get("chat_turns") or []) if _followup else []
+    if _turns:                                  # a follow-up: the conversation so far and the new question stay on the page while it is read
+        st.html('<hr class="r-rule">')
+        _render_thread(_turns)
+        _render_asked(len(_turns) + 1, _q)
     st.html('<hr class="r-rule">'
             '<div id="r-working" class="r-working"><span class="r-working-dot"></span>'
             'Reading the law and the judgments on this&hellip;</div>')
     _scroll_into_view("#r-working")
+    _engine_q, _chat_info = _q, None
+    if _chat:
+        try:
+            import web_chat
+            _engine_q, _chat_info = web_chat.question_for_engine(_turns, _q)       # the earlier questions folded in, and a follow-up made standalone (web_chat.py)
+        except Exception:
+            logging.getLogger("recourse_app").exception("chat fold failed")
+            _engine_q, _chat_info = _q, {"turn": len(_turns) + 1, "rewrite": "fold_failed", "folded": 0}
     try:
         # recourse_app is chat-only: cheque-bounce, bank-freeze,
         # (added 2026-09-14) domestic-violence (PWDVA), and
@@ -1374,28 +1457,52 @@ if _busy:
         # inline from the shared corpus rather than dead-ended with a
         # "covered elsewhere" redirect that points nowhere here.
         st.session_state.answer = _answer_question(
-            _q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
+            _engine_q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
             audience=("lawyer" if st.session_state.get("audience_choice") == "Lawyer" else "layman") if answer_style.style() == "v3" else None)
     except Exception:
         logging.getLogger("recourse_app").exception("answer_question failed")
         st.session_state.answer = {"state": "retrieval_unavailable"}
-    st.session_state.answer_msg = _q
+    if _chat:
+        try:
+            import web_chat
+            web_chat.log_turn(_engine_q, _chat_info)
+        except Exception:
+            pass
+        st.session_state.chat_turns = _turns + [{"q": _q, "answer": st.session_state.answer}]
+    if not _followup:
+        st.session_state.answer_msg = _q        # in a conversation this stays the first question (the one in the box above)
     st.session_state["_busy"] = False
     st.session_state.pop("_busy_msg", None)
+    st.session_state.pop("_busy_followup", None)
     st.rerun()
 
 answer = st.session_state.get("answer")
 if answer:
     _box_now = msg.strip()
     msg = st.session_state.get("answer_msg", msg)
+    _turns = (st.session_state.get("chat_turns") or []) if _chat_on() else []
     st.html('<hr class="r-rule">')
     # if the box has been edited since this answer was produced, say so
     if _box_now and _box_now != msg.strip():
-        st.markdown('<p class="r-foot">You\'ve changed your description &mdash; press '
-                    '<b>Check my situation</b> again to update the answer below.</p>',
-                    unsafe_allow_html=True)
+        if _turns:
+            st.markdown('<p class="r-foot">You\'ve changed the description in the box above &mdash; press '
+                        '<b>Check my situation</b> to start a new conversation with it, or ask a follow-up below.</p>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown('<p class="r-foot">You\'ve changed your description &mdash; press '
+                        '<b>Check my situation</b> again to update the answer below.</p>',
+                        unsafe_allow_html=True)
 
+    if len(_turns) > 1:                         # a conversation: the earlier questions and answers, then the latest question
+        _render_thread(_turns[:-1])
+        _render_asked(len(_turns), _turns[-1].get("q"))
     situation = render_answer(answer)
+    if _turns:
+        try:
+            _render_followup_box(_turns)
+        except Exception:
+            logging.getLogger("recourse_app").exception("follow-up box render failed")
+        msg = "\n\n".join(t.get("q") or "" for t in _turns)     # the drafts and checks below read the whole conversation, in the person's own words
 
     # ---- cheque-bounce / bank-freeze: the draft petition, up front ----
     if answer.get("state") == "single_match" and \
