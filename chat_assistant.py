@@ -3783,13 +3783,42 @@ def _attach_question_register_notes(result, question=None):
     return result
 
 
+import threading
+
+_ACTS_CACHE = threading.local()                  # per thread (a Streamlit session or a WhatsApp request): the Acts found for the question being answered, so the ACT_DETECT passes run once, not six times
+
+
 def _acts_named(question):
-    """The Acts of the Act Directory (act_directory.py) that the QUESTION names or clearly describes: [{'id','short','how'}], [] when none, when ACT_DIRECTORY=off, or on any failure."""
+    """The Acts of the Act Directory (act_directory.py) that the QUESTION names or clearly describes: [{'id','short','how'}], [] when none, when ACT_DIRECTORY=off, or on any failure.
+
+    With ACT_DETECT set (act_detect.py, added 2026-10-17; off by default, so nothing changes until the owner sets it) a SECOND pass is added for a question that names no Act but plainly describes one
+    ("my son ... a clerk in a government office ... taking money from a contractor"): everyday wording and the Acts' own vocabulary by regular expression, and, with ACT_DETECT=ai, one short Haiku call
+    when that finds nothing. Those matches carry how='likely', so the page says "looks like it is about the X Act", exactly as a Directory phrase match already does. The result is remembered for this
+    question because six places call this function and the AI pass must run at most once."""
     try:
         import act_directory
-        return act_directory.detect(question)
+        found = act_directory.detect(question)
     except Exception:  # noqa: BLE001 -- fail-open
         return []
+    try:
+        import act_detect
+        if not act_detect.enabled() or act_directory.mode() == "off":
+            return found
+        cached = getattr(_ACTS_CACHE, "value", None)
+        if isinstance(cached, tuple) and cached[0] == question:
+            return cached[1]
+        entries = [{"id": e["id"], "short": e["short"]} for e in act_directory.load()["acts"] if e.get("detect") is not False]
+        hits, rec = act_detect.more(question, found, entries)
+        by_id = {e["id"]: e for e in entries}
+        acts = (found + [{"id": h["id"], "short": by_id[h["id"]]["short"], "how": h["how"]} for h in hits if h["id"] in by_id])[:act_directory.MAX_ACTS]
+        if rec.get("pass") not in (None, "none"):
+            import hashlib
+            print("ACT_DETECT " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "named": [a["id"] for a in found], **rec}), flush=True)
+        _ACTS_CACHE.value = (question, acts)
+        return acts
+    except Exception as exc:  # noqa: BLE001 -- fail-open
+        logger.warning("act_detect pass failed: %s", type(exc).__name__)
+        return found
 
 
 def _shelf_held(matches, question):
