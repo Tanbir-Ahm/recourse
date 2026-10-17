@@ -46,7 +46,8 @@ MAX_NAMED = 3
 MAX_POINTED = 2
 WHOLE_ACT_MAX_CHARS = 6000         # a manifest entry may say "whole_act": true only for an Act this short (sections that are not omitted, in all); a longer Act with that flag is NOT held, so a slip in the manifest cannot hand over a long Act in full
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
-WINDOW = 45                        # characters either side of a section number in which the Act's name must stand
+WINDOW = 45                        # characters either side of a section number in which the Act's name must START (after the number) or END (before it): 'section 45 of the PMLA', 'PMLA section 45'
+NAME_ROOM = 110                    # how far past WINDOW a name may run: the longest name of an Act, the SC/ST Act's full title with its short name, is under 100 characters (until 2026-10-17 the whole name had to fit inside WINDOW, which no official title of a long-named Act does)
 GOOD_STATUS = ("machine_checked", "reviewed")
 # Housekeeping sections: they amend ANOTHER enactment or only repeal/save. Never ranked by meaning (staging 2026-10-17: PC Act s.29, "Amendment of the Ordinance 38 of 1944", ranked 2nd for a bribery question,
 # ahead of s.7, the offence), but still handed over when a question NAMES them by number. 'Amendment of Schedule' (UAPA s.35, a live power over the list of terrorist organisations) is NOT in this class.
@@ -315,8 +316,9 @@ def _names_between(text, lo, hi, alias_map, others):
 
 def _attributions(text, act_ids):
     """[(number, kind, act id)] for every section number in the text, with the name that stands next to it: kind 'act' (a shelf Act among act_ids; the third item is its id), 'other' (BNS, CrPC, another Act of the
-    Directory; the third item is None).  A number with no name next to it is left out.  A name stands next to a number when it follows it ('section 45 of the PMLA', within WINDOW characters and not past the next
-    section number) or, failing that, precedes it ('PMLA section 45'; a name an earlier number has already taken does not count)."""
+    Directory; the third item is None).  A number with no name next to it is left out.  A name stands next to a number when it follows it ('section 45 of the PMLA': it STARTS within WINDOW characters of the
+    number and lies before the next section number) or, failing that, precedes it ('PMLA section 45': it ENDS within WINDOW characters before the number; a name an earlier number has already taken does not
+    count).  A long official name ('section 5 of the Prevention of Damage to Public Property Act, 1984') therefore counts; it did not before 2026-10-17."""
     out = []
     text = (text or "").lower()
     alias_map = {}
@@ -332,8 +334,9 @@ def _attributions(text, act_ids):
     for i, m in enumerate(refs):
         prev_end = refs[i - 1].end() if i else 0
         next_start = refs[i + 1].start() if i + 1 < len(refs) else len(text)
-        after = sorted(_names_between(text, m.end(), min(m.end() + WINDOW, next_start), alias_map, others))
-        before = sorted((n for n in _names_between(text, max(m.start() - WINDOW, prev_end), m.start(), alias_map, others) if n[:2] not in taken), key=lambda n: -n[1])
+        after = sorted(n for n in _names_between(text, m.end(), min(m.end() + WINDOW + NAME_ROOM, next_start), alias_map, others) if n[0] - m.end() <= WINDOW)             # starts within WINDOW after the number
+        before = sorted((n for n in _names_between(text, max(m.start() - WINDOW - NAME_ROOM, prev_end), m.start(), alias_map, others) if m.start() - n[1] <= WINDOW and n[:2] not in taken),
+                        key=lambda n: -n[1])                                                                                                                                   # ends within WINDOW before it
         pick = after[0] if after else (before[0] if before else None)
         if pick is None:
             continue

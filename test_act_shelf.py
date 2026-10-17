@@ -169,6 +169,21 @@ check(NS("What is the punishment under section 45?") == {}, "a section number wi
 check(NS("Section 45 of the PMLA", ["pocso_act_2012"]) == {}, "an Act that was not asked for is ignored")
 check(NS("") == {} and NS(None) == {} and NS("section", ALL) == {}, "empty and odd input: nothing, no exception")
 
+# the full official name of an Act is long.  Found 2026-10-17, when 'section 5 of the Prevention of Damage to Public Property Act' named nothing: the whole name had to END within WINDOW characters of the number,
+# which no official name of a long-named Act does ('section 45 of the Prevention of Money-laundering Act, 2002' ends 52 characters after it).  Now the name must START within WINDOW characters after the number.
+FULL = lambda q: NS(q, ALLK)  # noqa: E731
+check(FULL("What does Section 45 of the Prevention of Money-laundering Act, 2002 say about bail?") == {"pmla_2002": ["45"]}, "full name: 'Section 45 of the Prevention of Money-laundering Act, 2002'")
+check(FULL("Explain section 4 of the Protection of Children from Sexual Offences Act, 2012.") == {"pocso_act_2012": ["4"]}, "full name: 'section 4 of the Protection of Children from Sexual Offences Act, 2012'")
+check(FULL("Is section 18 of the Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989 a bar to anticipatory bail?") == {"sc_st_act_1989": ["18"]}, "full name: the SC/ST Act's title, 90 characters")
+check(FULL("Section 43D of the Unlawful Activities (Prevention) Act, 1967 sets the bail test.") == {"uapa_1967": ["43D"]}, "full name: 'Section 43D of the Unlawful Activities (Prevention) Act, 1967'")
+check(FULL("What does section 5 of the Prevention of Damage to Public Property Act, 1984 say about bail?") == {"pdpp_act_1984": ["5"]}, "full name: 'section 5 of the Prevention of Damage to Public Property Act, 1984'")
+check(FULL("What does section 7 of the Muslim Women (Protection of Rights on Marriage) Act, 2019 say?") == {"muslim_women_act_2019": ["7"]}, "full name: 'section 7 of the Muslim Women (Protection of Rights on Marriage) Act, 2019'")
+check(FULL("Prevention of Money-laundering Act, 2002, section 45: what are the twin conditions?") == {"pmla_2002": ["45"]}, "full name before the number: 'Prevention of Money-laundering Act, 2002, section 45'")
+check(FULL("Does section 15 of the Juvenile Justice (Care and Protection of Children) Act, 2015 apply in a POCSO case?") == {}, "a long name of ANOTHER Act next to the number: the number is not ours")
+check(S.other_numbers("Does section 15 of the Juvenile Justice (Care and Protection of Children) Act, 2015 apply in a POCSO case?", ["pocso_act_2012"]) == {"15"}, "...and it is reported as another Act's number (so that the BNS section 15 is not pulled in for it)")
+check(FULL("Section 5 is the one I am worried about, because my brother was named in the FIR together with ten others, and this is under the Prevention of Damage to Public Property Act") == {}, "a name that starts far from the number (more than 45 characters) is still not tied to it")
+check(NS("Section 3 of the Protection of Children from Sexual Offences Act, 2012 and section 10 of the Prevention of Corruption Act, 1988") == {"pocso_act_2012": ["3"], "pc_act_1988": ["10"]}, "two long names in one sentence: each number goes to the name that follows it")
+
 # ---------------------------------------------------------------- the search
 r = S.search("a question", [{"id": "pmla_2002", "how": "named"}], embed_fn=like("PMLA", "45"))
 ms = r["matches"]
