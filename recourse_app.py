@@ -887,9 +887,8 @@ def render_answer(result: dict):
                         'all say the same thing &mdash; Recourse lays out each rather than '
                         'picking one for you.</p>', unsafe_allow_html=True)
         _act_note = result.get("act_notice")
-        if isinstance(_act_note, dict) and _act_note.get("html"):   # Act Directory (act_directory.py): the Act the question names, whose text is not in the library. It replaces the generic notice below, so only one shows
-            st.markdown(f'<p class="r-conf">{_act_note["html"]}</p>', unsafe_allow_html=True)          # already escaped by act_directory.notice
-        elif result.get("outside_scope_note"):          # SCOPE_GATE=open: a fixed notice, written by code, on an answer to a question outside the areas Recourse has checked in depth
+        _has_act_note = isinstance(_act_note, dict) and bool(_act_note.get("html"))      # Act Directory (act_directory.py): the Act the question names or looks like it is about. It replaces the generic notice, so only one shows
+        if not _has_act_note and result.get("outside_scope_note"):          # SCOPE_GATE=open: a fixed notice, written by code, on an answer to a question outside the areas Recourse has checked in depth
             st.markdown(f'<p class="r-conf">{esc(result["outside_scope_note"])}</p>', unsafe_allow_html=True)
         reply = result.get("response_text") or ""
         with st.container(border=True):
@@ -900,6 +899,8 @@ def render_answer(result: dict):
                 m0 = (result.get("matches") or [{}])[0]
                 st.markdown("Here is what the law says on this:\n\n> "
                             + esc((m0.get("text") or "").strip()[:800]))
+        if _has_act_note:        # owner's instruction 2026-10-17: this notice is never put BEFORE the answer; it stands directly under it (a refusal has no answer, so there it still follows its heading, see below)
+            st.markdown(f'<p class="r-conf">{_act_note["html"]}</p>', unsafe_allow_html=True)          # already escaped by act_directory.notice
 
         if result.get("audience") == "lawyer" and result.get("authorities"):
             try:

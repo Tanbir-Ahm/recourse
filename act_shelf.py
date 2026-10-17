@@ -44,7 +44,15 @@ MAX_POINTED = 2
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
 WINDOW = 45                        # characters either side of a section number in which the Act's name must stand
 GOOD_STATUS = ("machine_checked", "reviewed")
+# Housekeeping sections: they amend ANOTHER enactment or only repeal/save. Never ranked by meaning (staging 2026-10-17: PC Act s.29, "Amendment of the Ordinance 38 of 1944", ranked 2nd for a bribery question,
+# ahead of s.7, the offence), but still handed over when a question NAMES them by number. 'Amendment of Schedule' (UAPA s.35, a live power over the list of terrorist organisations) is NOT in this class.
+_HOUSEKEEPING = re.compile(r"^\s*(?:amendments?\s+of\s+(?:the\s+)?(?:[A-Z][\w()'.,-]*\s+)*?(?:Ordinance|Act|Code|Acts|Sanhita)\b.*|repeals?(?:\s+and\s+savings?)?|savings?|repealed|repeal\s+and\s+savings?)\W*$", re.I)
 _STATE = {}
+
+
+def _housekeeping(c):
+    """True for a section that only amends another enactment or repeals/saves (see _HOUSEKEEPING)."""
+    return bool(_HOUSEKEEPING.match(str(c.get("title") or "")))
 _LOCK = threading.Lock()
 
 
@@ -423,7 +431,7 @@ def search(question, acts, current_message=None, embed_fn=None):
                     if sc < FLOOR:
                         break
                     c = st["ranked"][int(i)]
-                    if str(c["section_number"]).upper() in seen:
+                    if str(c["section_number"]).upper() in seen or _housekeeping(c):
                         continue
                     if got >= want:
                         break

@@ -207,11 +207,13 @@ check([m["section_number"] for m in r["matches"]] == ["45"], "...but a named sec
 bad = []
 for k in KEYS:
     for c in SH["acts"][k]["ranked"]:
+        if S._housekeeping(c):           # amending / repealing / saving sections are never ranked by meaning (see S._HOUSEKEEPING); they come only when named, which the check below covers
+            continue
         r = S.search("q", [{"id": k}], embed_fn=like(c["act"], c["section_number"]))
         ms = r["matches"]
         if not (ms and ms[0]["section_number"] == str(c["section_number"]) and len(ms) <= S.TOP_K_ONE and sum(len(m["text"]) for m in ms) <= max(S.MAX_CHARS, len(ms[0]["text"])) and not any(m["shelf"]["omitted"] for m in ms)):
             bad.append((k, c["section_number"]))
-check(not bad, f"all {sum(len(SH['acts'][k]['ranked']) for k in KEYS)} sections as questions: itself first, at most five, within the cap, no stub ({bad[:5]})")
+check(not bad, f"all {sum(len(SH['acts'][k]['ranked']) for k in KEYS)} sections (less the 3 housekeeping ones) as questions: itself first, at most five, within the cap, no stub ({bad[:5]})")
 r = S.search("q", [{"id": "sc_st_act_1989"}], embed_fn=like("SCSTACT", "3"))
 check(r["matches"][0]["section_number"] == "3" and len(r["matches"][0]["text"]) > 11000, "a long section (the SC/ST Act's section 3, 11,800 characters) comes whole when it is the closest")
 r = S.search("q", [{"id": "sc_st_act_1989"}, {"id": "pmla_2002"}], embed_fn=like("SCSTACT", "3"))
@@ -458,7 +460,22 @@ with contextlib.redirect_stdout(buf):
     S._embed_query = boom
 check(got and got[0]["section_number"] == "50", "...and gets the shelf's sections")
 n = AD.notice(AD.detect(LK), "answer", held=HU)
-check(n["text"].startswith("This question also looks like it is about the Prevention of Money-laundering Act, 2002 (PMLA). Recourse has loaded"), "...and the notice keeps its 'looks like it is about' wording")
+check(n["text"].startswith("This question looks like it is about the Prevention of Money-laundering Act, 2002 (PMLA). Recourse has loaded") and " also " not in n["text"].split(".")[0], "...and the notice keeps its 'looks like it is about' wording, without a stray 'also' (staging 2026-10-17)")
+
+# housekeeping sections (amending another enactment, repeal, saving) are never ranked by meaning, but are still reached by number (staging 2026-10-17: PC Act s.29 ranked 2nd for a bribery question)
+pcs = {x["section_number"]: x for x in S.load()["acts"]["pc_act_1988"]["ranked"]}
+check(all(S._housekeeping(pcs[n_]) for n_ in ("29", "30")) and not any(S._housekeeping(pcs[n_]) for n_ in ("7", "13", "17A", "19", "20", "29A")), "housekeeping: PC Act s.29 (Amendment of the Ordinance 38 of 1944) and s.30 (Repeal and saving) are housekeeping; s.7, 13, 17A, 19, 20 and s.29A (rules) are not")
+uas = {x["section_number"]: x for x in S.load()["acts"]["uapa_1967"]["ranked"]}
+check(S._housekeeping(uas["50"]) and not S._housekeeping(uas["35"]), "housekeeping: UAPA s.50 (Saving) is, s.35 (Amendment of Schedule: a live power over the list of terrorist organisations) is not")
+def fixed(vec_for):
+    return lambda t: vec_for
+st_ = S.load()["acts"]["pc_act_1988"]
+i29 = [i for i, x in enumerate(st_["ranked"]) if x["section_number"] == "29"][0]
+v29 = np.array(st_["matrix"][i29], dtype=float)
+r_ = S.search("anything", [{"id": "pc_act_1988"}], embed_fn=fixed(v29))
+check(r_["info"]["per_act"]["pc_act_1988"]["meaning"] and all(m["section_number"] != "29" for m in r_["matches"]), "a question whose meaning is exactly s.29's still does not get s.29 by meaning ...")
+r_ = S.search("Does section 29 of the Prevention of Corruption Act say anything about the Ordinance?", [{"id": "pc_act_1988"}], embed_fn=fixed(v29))
+check(any(m["section_number"] == "29" and m["retrieval"] == "named" for m in r_["matches"]), "... but a question that NAMES section 29 still gets it")
 
 # ---------------------------------------------------------------- the page, WhatsApp, the PDF
 from streamlit.testing.v1 import AppTest
@@ -489,7 +506,10 @@ at, vals = page({"state": "single_match", "response_text": "Bail is restricted b
 check(not at.exception and any("**PMLA Section 45**" in v for v in vals), f"page: 'Read the source' heads the section with the Act's name, not its code (exception={at.exception})")
 check(any(f'<p class="r-foot">Official text from India Code, loaded {LOADED_LABEL}; not yet read by our reviewer' in v and "the whole Act on India Code" in v and "https://indiacode.gov.in/act/" in v for v in vals), "page: a line under it says where the text is from, when it was loaded and that no reviewer has read it, with a link")
 check(any("shortened here" in v for v in vals), "page: a section longer than the excerpt says that it is shortened")
-check(any("has loaded the official text of that Act from India Code" in v for v in vals) and not any("does not hold" in v for v in vals), "page: the notice above the answer")
+check(any("has loaded the official text of that Act from India Code" in v for v in vals) and not any("does not hold" in v for v in vals), "page: the notice is shown")
+ia = [i for i, v in enumerate(vals) if "Bail is restricted by Section 45 of the PMLA." in v]
+inn = [i for i, v in enumerate(vals) if "has loaded the official text of that Act from India Code" in v]
+check(ia and inn and inn[0] > ia[0], f"page: the notice stands UNDER the answer, never before it (owner's instruction 2026-10-17; answer at {ia[:1]}, notice at {inn[:1]})")
 at, vals = page({"state": "single_match", "response_text": "Bail is restricted by Section 3 of the Act.", "matches": [{"type": "statute", "act": "BNSS", "section_number": "3", "text": "3. Definitions.", "source": "semantic", "all_variants": {}}], "situation_detected": False})
 check(not at.exception and any("**BNSS Section 3**" in v for v in vals) and not any("Official text from India Code" in v for v in vals), "page: a BNSS section is headed and shown as before, with no shelf caption")
 msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Short answer.", "act_notice": NOTE, "matches": SHELF_MS})

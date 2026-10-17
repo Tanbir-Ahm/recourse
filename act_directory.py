@@ -137,7 +137,7 @@ def _subject(acts, kind):
     if named:
         parts.append(f"{also}names the {_the_list(named)}")
     if likely:
-        parts.append(f"{'also ' if (kind == 'answer' and not named) else ''}looks like it is about the {_the_list(likely)}")
+        parts.append(f"looks like it is about the {_the_list(likely)}")      # no 'also': with nothing else named it read as "This question also looks like ..." (owner's staging test, 2026-10-17)
     return "This question " + " and ".join(parts) + "."
 
 

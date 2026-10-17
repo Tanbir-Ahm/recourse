@@ -287,7 +287,7 @@ check(n_open["text"].startswith("This question names the Prevention of Corruptio
 check(n_ans["text"].startswith("This question also names the Prevention of Corruption Act, 1988. Recourse does not hold the text of that Act, so the answer below does not rest on it."), "answer: an ordinary answer that also names the Act")
 check(n_ref["text"].startswith("This question names the Prevention of Corruption Act, 1988. Recourse does not hold the text of that Act. Official text on India Code: "), "refusal: short")
 check(AD.notice(likely, "opened")["text"].startswith("This question looks like it is about the Prevention of Corruption Act, 1988."), "a phrase match says 'looks like it is about', never 'names'")
-check(AD.notice(likely, "answer")["text"].startswith("This question also looks like it is about the Prevention of Corruption Act, 1988."), "the same for an ordinary answer")
+check(AD.notice(likely, "answer")["text"].startswith("This question looks like it is about the Prevention of Corruption Act, 1988."), "the same for an ordinary answer, with no stray 'also' (staging 2026-10-17)")
 two = AD.detect("corruption case and the POCSO Act")
 check(AD.notice(two, "opened")["text"].startswith("This question names the Protection of Children from Sexual Offences Act, 2012 (POCSO) and looks like it is about the Prevention of Corruption Act, 1988. "
                                                    "Recourse has not checked this area in depth and does not hold the text of those Acts,"), "two Acts of different kinds: both said, plural wording")
