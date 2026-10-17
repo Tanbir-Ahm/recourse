@@ -513,6 +513,127 @@
      "1": 0.841
     }
    }
+  },
+  "muslim_women_act_2019": {
+   "key": "muslim_women_act_2019",
+   "act_id": "AC_CEN_3_20_00069_201920_1565334896444",
+   "loaded_on": "2026-10-17",
+   "sections": 8,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:57:37.370515Z",
+    "max": "2026-07-10T22:58:56.918513Z"
+   },
+   "pdf": {
+    "name": "A2019-20.pdf",
+    "sha256": "47cc04f72de7ac74c22c83c9902858fd6d79340ceeb3ddac85b277e689c25aab",
+    "pages": 5,
+    "as_on": "1st July,2026",
+    "toc": {
+     "toc_entries": 8,
+     "loaded": 8,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 0,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "7",
+     "from": "upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced with the permission of the Magistrate",
+     "to": "upon whom talaq is pronounced with the permission of the Magistrate",
+     "why": "India Code's database has copied the end of clause (a) into clause (b): 'or any person related to her by blood or marriage; is pronounced'. The PDF's clause (b) (printed page 3, read on the rendered page as well as in its text layer) says compounding is 'at the instance of the married Muslim woman upon whom talaq is pronounced with the permission of the Magistrate': at the woman's instance only. As the database has it, a reader would think a relative may compound the offence. The PDF prints no comma after 'pronounced' and none is added."
+    },
+    {
+     "section": "7",
+     "from": "after hearing the married Muslim woman upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced, is satisfied",
+     "to": "after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied",
+     "why": "the same splice in clause (c). The PDF's clause (c) reads 'after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied that there are reasonable grounds for granting bail': the Magistrate hears the woman, not her relatives."
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "made",
+     "why": "a footnote. The database words it 'this Act is made applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh'; the PDF's footnote reads 'Now applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh by the Notification of Government of India ... S.O. 3912 (E), dated 30th October, 2019 (w.e.f. 31-10-2019)'. The same notification and the same meaning in different words; not part of the Act's own text."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 8,
+    "words_compared": 563,
+    "bare_numbers_ignored": 0,
+    "differences": 2,
+    "accepted_in_manifest": 2,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.98,
+    "below_0.90": {}
+   }
+  },
+  "pdpp_act_1984": {
+   "key": "pdpp_act_1984",
+   "act_id": "AC_CEN_5_23_00018_198403_1517807325229",
+   "loaded_on": "2026-10-17",
+   "sections": 7,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:38:42.460941Z",
+    "max": "2026-07-10T22:38:42.829699Z"
+   },
+   "pdf": {
+    "name": "a1984-03.pdf",
+    "sha256": "0d5e550f84721abcb3d2cfcf5c1872821c17131d904f2df5e6c7fd016fc2def6",
+    "pages": 3,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 7,
+     "loaded": 7,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 0,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [],
+   "accepted": [
+    {
+     "section": "4",
+     "word": "rigrous",
+     "why": "a spelling slip. India Code's database reads 'rigrous imprisonment', its PDF reads 'regorous imprisonment' (a different slip), and both spell the same word 'rigorous' in section 3(2). Left as India Code's database has it: the PDF cannot confirm either spelling, and the meaning is not in doubt."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 7,
+    "words_compared": 649,
+    "bare_numbers_ignored": 0,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.919,
+    "below_0.90": {}
+   }
   }
  }
 }

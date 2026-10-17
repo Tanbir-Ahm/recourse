@@ -1,0 +1,38 @@
+{
+ "written": "2026-10-17",
+ "by": "Claude (AI), before any score was looked at",
+ "about": "Six questions that name one of the two new shelf Acts but ask for something it does not contain. Used only to see what the best within-Act score is when nothing is relevant, so that the floor (0.22) can be checked against two very short Acts. No expected section.",
+ "questions": [
+  {
+   "id": "OT11",
+   "act_key": "muslim_women_act_2019",
+   "q": "What is the punishment for domestic violence under the Muslim Women (Protection of Rights on Marriage) Act?"
+  },
+  {
+   "id": "OT12",
+   "act_key": "muslim_women_act_2019",
+   "q": "Can a Muslim woman get a divorce by khula under the Muslim Women Act, 2019?"
+  },
+  {
+   "id": "OT13",
+   "act_key": "muslim_women_act_2019",
+   "q": "What does the Muslim Women Act, 2019 say about a daughter's share in her father's property?"
+  },
+  {
+   "id": "OT14",
+   "act_key": "pdpp_act_1984",
+   "q": "What is the punishment for rioting under the Prevention of Damage to Public Property Act?"
+  },
+  {
+   "id": "OT15",
+   "act_key": "pdpp_act_1984",
+   "q": "Does the Prevention of Damage to Public Property Act let the government recover the cost of the damage from the accused?"
+  },
+  {
+   "id": "OT16",
+   "act_key": "pdpp_act_1984",
+   "q": "My private shop was set on fire by a mob. What does the Prevention of Damage to Public Property Act give me?"
+  }
+ ],
+ "questions_sha256": "fe0340b98b674f1b9270fa31a3a48c19798b0ff798569063fd758883d4d65281"
+}

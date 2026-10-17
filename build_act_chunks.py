@@ -51,6 +51,7 @@ SEARCH_URL = API_BASE + "/discover/search/objects"
 MANIFEST_PATH = os.path.join(HERE, "act_shelf", "manifest.json")
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 SECTION_LINE = re.compile(r"^\s*(\d{1,3}[A-Z]{0,3})\.\s+(\S.*)$")
+NO_PDF_DATE = "not printed on the PDF"          # what the manifest records as 'pdf_as_on' when the PDF carries no "[As on the ...]" line (the Prevention of Damage to Public Property Act's PDF has none)
 
 
 class LoadError(Exception):
@@ -693,12 +694,20 @@ def main(argv=None):
                 print(f"   ORDERED accepted but not found: {u}")
             print(f"   (strict comparison: {oc.get('sections_compared')} sections, {oc.get('words_compared')} words, {oc.get('differences')} differences, {oc.get('accepted_in_manifest')} accepted in the manifest, {len(oc.get('unexplained', []))} not explained)")
         if not args.report_only and not args.discover:
-            entry["loaded_on"], entry["sections_loaded"], entry["pdf_as_on"] = report["loaded_on"], report["sections"], pdf.get("as_on")
+            entry["loaded_on"], entry["sections_loaded"], entry["pdf_as_on"] = report["loaded_on"], report["sections"], pdf.get("as_on") or NO_PDF_DATE
             entry["text_status"] = "machine_checked" if not args.no_pdf else "unchecked"
             print("   wrote", write_act(entry, chunks, report, out_dir))
     if not args.report_only and not args.discover and reports:
-        with open(os.path.join(out_dir, "LOAD_REPORT.json"), "w", encoding="utf-8") as fh:
-            json.dump({"written": datetime.date.today().isoformat(), "reports": reports}, fh, indent=1, ensure_ascii=False)
+        report_path = os.path.join(out_dir, "LOAD_REPORT.json")
+        merged = {}
+        try:                                                    # a run with --only must not erase the reports of the Acts it did not load (found 2026-10-17, when the sixth and seventh Acts were added)
+            with open(report_path, encoding="utf-8") as fh:
+                merged = dict((json.load(fh) or {}).get("reports") or {})
+        except (OSError, ValueError, AttributeError):
+            merged = {}
+        merged.update(reports)
+        with open(report_path, "w", encoding="utf-8") as fh:
+            json.dump({"written": datetime.date.today().isoformat(), "reports": merged}, fh, indent=1, ensure_ascii=False)
             fh.write("\n")
         with open(args.manifest, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2, ensure_ascii=False)

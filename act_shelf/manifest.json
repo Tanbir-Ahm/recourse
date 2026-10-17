@@ -482,6 +482,102 @@
           "why": "what follows the last section in the PDF is the Schedule (the list of IPC offences that section 3(2)(va) refers to). The Schedule is NOT loaded on the shelf (only the numbered sections are)"
         }
       ]
+    },
+    {
+      "key": "muslim_women_act_2019",
+      "code": "MWACT",
+      "name": "The Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "short": "Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "display": "Muslim Women Act, 2019",
+      "answer_names": [
+        "Muslim Women (Protection of Rights on Marriage) Act",
+        "Muslim Women Act, 2019",
+        "Triple Talaq Act"
+      ],
+      "citation": "Act No. 20 of 2019",
+      "india_code": {
+        "uuid": "1f82ee21-741f-4a57-94ef-b26040d515b9",
+        "handle": "123456789/496444",
+        "act_id": "AC_CEN_3_20_00069_201920_1565334896444"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "7",
+          "from": "upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced with the permission of the Magistrate",
+          "to": "upon whom talaq is pronounced with the permission of the Magistrate",
+          "why": "India Code's database has copied the end of clause (a) into clause (b): 'or any person related to her by blood or marriage; is pronounced'. The PDF's clause (b) (printed page 3, read on the rendered page as well as in its text layer) says compounding is 'at the instance of the married Muslim woman upon whom talaq is pronounced with the permission of the Magistrate': at the woman's instance only. As the database has it, a reader would think a relative may compound the offence. The PDF prints no comma after 'pronounced' and none is added."
+        },
+        {
+          "section": "7",
+          "from": "after hearing the married Muslim woman upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced, is satisfied",
+          "to": "after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied",
+          "why": "the same splice in clause (c). The PDF's clause (c) reads 'after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied that there are reasonable grounds for granting bail': the Magistrate hears the woman, not her relatives."
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "made",
+          "why": "a footnote. The database words it 'this Act is made applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh'; the PDF's footnote reads 'Now applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh by the Notification of Government of India ... S.O. 3912 (E), dated 30th October, 2019 (w.e.f. 31-10-2019)'. The same notification and the same meaning in different words; not part of the Act's own text."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "7",
+          "loaded": "",
+          "pdf": "now applicable to the union territory of jammu and kashmir and the union territory of ladakh by the notification of government of india m o home affairs vide no s o 3912 e dated 30th october 2019 w e f 31 10 2019 4",
+          "why": "the PDF's footnote to section 1 (the notification S.O. 3912 (E)) is printed at the foot of page 3, where clause (b) of section 7 ends, and the page's running text carries it into the middle of section 7, between clauses (b) and (c). It is a footnote to section 1, not part of section 7 (checked on the rendered page)."
+        },
+        {
+          "section": "8",
+          "pdf_starts": "5 the supreme court in the matter of shayara bano vs union of india and others and other connected matters",
+          "why": "after the last section the PDF prints India Code's appended 'Statement of Objects and Reasons' of the Bill (it starts with the Supreme Court's judgment in Shayara Bano v. Union of India). It is not part of the Act and is not loaded."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 8,
+      "pdf_as_on": "1st July,2026",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "pdpp_act_1984",
+      "code": "PDPP",
+      "name": "The Prevention of Damage to Public Property Act, 1984",
+      "short": "Prevention of Damage to Public Property Act, 1984",
+      "display": "Prevention of Damage to Public Property Act, 1984",
+      "answer_names": [
+        "PDPP Act",
+        "PDPP Act, 1984",
+        "Damage to Public Property Act"
+      ],
+      "citation": "Act No. 3 of 1984",
+      "india_code": {
+        "uuid": "86c729f1-a26f-4e61-bd0f-6af03ae667ac",
+        "handle": "123456789/496532",
+        "act_id": "AC_CEN_5_23_00018_198403_1517807325229"
+      },
+      "pointers": [],
+      "corrections": [],
+      "accepted": [
+        {
+          "section": "4",
+          "word": "rigrous",
+          "why": "a spelling slip. India Code's database reads 'rigrous imprisonment', its PDF reads 'regorous imprisonment' (a different slip), and both spell the same word 'rigorous' in section 3(2). Left as India Code's database has it: the PDF cannot confirm either spelling, and the meaning is not in doubt."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "4",
+          "loaded": "rigrous",
+          "pdf": "regorous",
+          "why": "the same slip, seen by the in-order comparison: the database's 'rigrous' against the PDF's 'regorous'. Both are misspellings of 'rigorous' (section 3(2) of the same PDF spells it correctly). Not changed."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 7,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
     }
   ]
 }
