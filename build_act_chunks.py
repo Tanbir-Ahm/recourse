@@ -15,7 +15,14 @@ The checks (any hard failure stops the Act; nothing is written)
   3. every word of every loaded section must occur somewhere in that PDF. A word that does not is a typing slip in India Code's database (the files carry lost hyphens, apostrophes and spaces: "Moneylaundering",
      "childs mental", "otherlaw", "section44", a stray "br" after a bracket). Each is listed with the PDF's own reading; the manifest must either CORRECT it ('corrections': exact text, section, reason) or ACCEPT
      it ('accepted': a spelling variant that is not a slip, with the reason). A correction is itself checked: the corrected wording must be in the PDF. Nothing is corrected silently or by guesswork.
-  4. no HTML left over; the footnotes are kept (they carry the amendment history).
+  4. the strict, two-way, in-order comparison (2026-10-17): each section's text is read against the PDF's running text word by word, in order, in BOTH directions. A word that the database has and the PDF
+     does not (a doubled 'or or', a lost apostrophe) and a run of words that the PDF has and the database lacks (a whole proviso) are both found, which check 3 cannot do (it asks only whether each word
+     occurs SOMEWHERE in the PDF). The PDF's footnotes, page marks, chapter headings and footnote numbers are left out by layout (the rule India Code draws above the footnotes, the superscript size, capitals).
+     Every difference left is either corrected in the manifest, or listed under 'ordered_accepted' with a reason (a harmless wording difference, the omitted-section stubs the PDF prints, the Schedules that
+     follow the last section and are NOT loaded); anything else stops the Act, and so does an accepted entry that no longer matches anything.
+  5. no HTML left over; the footnotes are kept (they carry the amendment history). Two tidy-ups are made and recorded: the heading that India Code repeats at the start of the body of an amended section
+     ("[7. Offence ... .--Any public servant ...") is dropped, and the State or Union Territory amendments that India Code prints INSIDE a central section (under "STATE AMENDMENT") are moved to the field
+     'state_amendments' and replaced in the text by a one-line note: they apply only in that State, and one of them was 84% of the text (and of the embedding) of PC Act s.17A.
   What the PDF check cannot show: that the text is the law today (India Code's PDF is a snapshot, its date is printed on its first page and recorded as 'pdf_as_on'; the database records are newer), or that
   India Code itself is right. The status stays 'machine_checked' until a person reads the sections (see the sheet for Mr. Advocate); the site words it "official text loaded <date>, not yet read by our reviewer".
 
@@ -26,8 +33,10 @@ Usage (needs indiacode.gov.in reachable, python 'requests' and PyMuPDF):
 """
 import argparse
 import datetime
+import difflib
 import hashlib
 import html as _html
+import itertools
 import json
 import os
 import re
@@ -56,6 +65,14 @@ def norm_words(text):
 
 def _norm_title(text):
     return " ".join(norm_words(text))
+
+
+CMP_TOKEN = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
+
+
+def cmp_tokens(text):
+    """The unit of the strict comparison: lower-case words and numbers, an apostrophe inside a word kept ("person's" is one word, "persons" is another: that is the point), typographic quotes read as plain."""
+    return CMP_TOKEN.findall((text or "").lower().replace("\u2019", "'").replace("\u2018", "'"))
 
 
 def clean_html(raw):
@@ -156,6 +173,83 @@ def pdf_pages(pdf_bytes):
         import fitz
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     return [p.get_text() for p in doc]
+
+
+SCHEDULE_HEAD = re.compile(r"^\s*(THE\s+)?((FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH)\s+)?SCHEDULE\b")
+
+
+def _fitz():
+    try:
+        import pymupdf as fitz
+    except ImportError:
+        import fitz
+    return fitz
+
+
+def _footnote_rule_y(page):
+    """India Code draws a thin filled rectangle (about 144pt wide, under 2pt high, at the left margin) above the footnotes of a page; its y, or None when the page has no footnotes. The lowest one counts."""
+    ys = []
+    for d in page.get_drawings():
+        r = d["rect"]
+        if (r.y1 - r.y0) < 2.0 and 100 < (r.x1 - r.x0) < 200 and r.x0 < 120 and r.y0 > page.rect.height * 0.3:
+            ys.append(r.y0)
+    return max(ys) if ys else None
+
+
+def _is_furniture(span):
+    """The 'IndiaCode' mark at the foot of every page, the page numbers and the rule lines. Words that India Code's PDF sets in a stand-in font (a stray 'y.' in Calibri) are text and stay."""
+    font = span["font"]
+    if font.startswith("Helvetica"):
+        return True
+    if font.startswith(("Calibri", "ArialMT")):
+        return re.fullmatch(r"[\s\d_.\-]*", span["text"]) is not None
+    return False
+
+
+def pdf_body_lines(pdf_bytes):
+    """The running text of the PDF, line by line, WITHOUT what is not the Act's text: the footnotes (everything below the footnote rule of a page), the page furniture, and the superscript footnote numbers
+    (digits set at 8pt or less). Needs PyMuPDF."""
+    doc = _fitz().open(stream=pdf_bytes, filetype="pdf")
+    out = []
+    for page in doc:
+        ry = _footnote_rule_y(page)
+        for b in page.get_text("dict")["blocks"]:
+            for ln in b.get("lines", []):
+                if ry is not None and ln["bbox"][1] >= ry - 1:
+                    continue
+                spans = [sp for sp in ln["spans"] if not _is_furniture(sp)]
+                txt = "".join(sp["text"] for sp in spans if not (sp["size"] <= 8.0 and re.fullmatch(r"\s*\d+\s*", sp["text"])))
+                if txt.strip():
+                    out.append(txt)
+    return out
+
+
+def is_caps_line(line):
+    """A heading set in capitals (CHAPTER III, PART A, THE FIRST SCHEDULE, STATE AMENDMENT): letters all capital and no digit in the line ('1[14A.' is a section number, not a heading)."""
+    letters = re.sub(r"[^A-Za-z]", "", line or "")
+    return bool(letters) and letters == letters.upper() and not re.search(r"\d", line)
+
+
+def body_text(lines):
+    """The Act's own text from the PDF's lines: after the enacting words, capital-letter headings left out, ending where a Schedule begins (the Schedules are not loaded). LoadError if the enacting words are absent."""
+    enacting, start = re.compile(r"enacted\s+by\s+parliament", re.I), None
+    for i, ln in enumerate(lines):
+        if enacting.search(ln):
+            start = i + 1
+            break
+        if i + 1 < len(lines) and enacting.search(ln + " " + lines[i + 1]):          # 'BE it enacted by' / 'Parliament in the ... Year ... as follows:'
+            start = i + 2
+            break
+    if start is None:
+        raise LoadError("the PDF's running text has no 'enacted by Parliament': the Act's body cannot be told from its front matter")
+    kept = []
+    for ln in lines[start:]:
+        if is_caps_line(ln.strip()):
+            if SCHEDULE_HEAD.match(ln.strip()):
+                break
+            continue
+        kept.append(ln)
+    return "\n".join(kept)
 
 
 # ----------------------------------------------------------------------------------------------- loading and checking
@@ -275,7 +369,8 @@ def absent_words(chunks, vocab):
     """For every section: the words of its text and footnotes that occur nowhere in the PDF, each with a little context. [(section, word, context)]."""
     out = []
     for c in chunks:
-        body = c["text"].split("\n", 1)[1] if "\n" in c["text"] else c["text"]
+        whole = full_section_text(c)                      # the shelf's own note is not India Code's text; the State amendments set aside are
+        body = whole.split("\n", 1)[1] if "\n" in whole else whole
         foot = c.get("footnotes", "")
         for w in sorted({w for w in norm_words(body + " " + foot) if w not in vocab}):
             m, src = re.search(re.escape(w), body, re.I), body
@@ -302,36 +397,191 @@ def coverage_by_section(chunks, pages, n=4):
 
 
 def apply_corrections(chunks, corrections):
-    """Exact replacements the manifest lists: {'section', 'from', 'to', 'why', optional 'field': 'footnotes', optional 'count': n}. Each must find its text exactly n times (default once) in that section;
-    the text becomes the corrected text and the correction is recorded on the chunk."""
+    """Exact replacements the manifest lists: {'section', 'from', 'to', 'why', optional 'field': 'footnotes' or 'title', optional 'count': n}. Each must find its text exactly n times (default once) in that
+    section; the text becomes the corrected text and the correction is recorded on the chunk. A 'title' correction changes the title AND the heading line ('N. Title') that starts the text; it is for the
+    case where India Code's database title differs from the heading of the PDF's running text (the PDF's own arrangement of sections is not updated for amendments)."""
     by = {c["section_number"]: c for c in chunks}
     for fix in corrections or []:
         c = by.get(str(fix["section"]))
         if c is None:
             raise LoadError(f"correction for a section that was not loaded: {fix}")
-        field = fix.get("field", "text")                 # 'text' (default) or 'footnotes'
-        if field not in ("text", "footnotes"):
-            raise LoadError(f"correction field must be 'text' or 'footnotes': {fix}")
+        field = fix.get("field", "text")                 # 'text' (default), 'footnotes' or 'title'
+        if field not in ("text", "footnotes", "title"):
+            raise LoadError(f"correction field must be 'text', 'footnotes' or 'title': {fix}")
         want = int(fix.get("count", 1))                  # how many times the text occurs in that section: stated, so a correction can never hit more or less than the person who wrote it saw
         n = c[field].count(fix["from"])
         if n != want:
             raise LoadError(f"correction {fix['from']!r} in section {fix['section']} ({field}) matches {n} times (the manifest says {want})")
         c[field] = c[field].replace(fix["from"], fix["to"])
+        if field == "title":
+            head, sep, rest = c["text"].partition("\n")
+            if head.count(fix["from"]) != 1:
+                raise LoadError(f"title correction {fix['from']!r} in section {fix['section']}: the heading line {head!r} does not carry the title exactly once")
+            c["text"] = head.replace(fix["from"], fix["to"]) + sep + rest
         c.setdefault("corrections", []).append({"field": field, "from": fix["from"], "to": fix["to"], "count": want, "why": fix.get("why", "")})
     return chunks
 
 
-def check_corrections_in_pdf(corrections, vocab, pages):
-    """A correction is itself checked: every word of the corrected wording must be in the PDF, and the corrected phrase (words only) must occur in the PDF text."""
+def check_corrections_in_pdf(corrections, vocab, pages, body=None):
+    """A correction is itself checked: every word of the corrected wording must be in the PDF, and the corrected phrase (words only) must occur in the PDF text. `body` is the PDF's running text without its
+    footnotes and footnote numbers (body_text): a phrase that the PDF prints with a footnote number inside it ('Power of 1[Chairman] to transfer') is found there."""
     flat = " ".join(norm_words("\n".join(pages)))
     flat_joined = " ".join(norm_words(re.sub(r"-\s*\n\s*", "", "\n".join(pages))))
+    flat_body = " ".join(norm_words(body)) if body else ""
     bad = []
     for fix in corrections or []:
         words = norm_words(fix["to"])
         phrase = " ".join(words)
-        if any(w not in vocab for w in words) or (phrase not in flat and phrase not in flat_joined):
+        if any(w not in vocab for w in words) or (phrase not in flat and phrase not in flat_joined and (not flat_body or phrase not in flat_body)):
             bad.append(fix)
     return bad
+
+
+# ----------------------------------------------------------------------------------------------- two tidy-ups, and the strict comparison
+
+STATE_AMENDMENT_LABEL = re.compile(r"^\s*STATE\s+AMENDMENTS?\s*:?\s*$", re.I)
+NOTE_PREFIX = "[Note: India Code also prints State or Union Territory amendments of this section"
+
+
+def _state_label(lines):
+    """The name that follows the 'STATE AMENDMENT' label ('Karnataka', 'Arunachal Pradesh.--'), or None when the next line is not a name."""
+    for ln in lines:
+        ln = ln.strip()
+        if not ln:
+            continue
+        ln = re.sub(r"[\s.\-–—:]+$", "", ln)
+        if not ln or len(ln) > 100 or re.match(r"(amendment|insertion|substitution|in section)\b", ln, re.I):
+            return None
+        return ln
+    return None
+
+
+def strip_repeated_heading(c):
+    """India Code's body of an amended section starts with the section's number and heading again ("[7. Offence relating to public servant being bribed.-- Any public servant who,--"), and the chunk already
+    starts with 'N. Title': the second heading is dropped (an opening bracket stays, so the brackets still balance). Only when it is the same number and title word for word. True when it was dropped."""
+    head, sep, body = c["text"].partition("\n")
+    ht = cmp_tokens(head)
+    m = re.match(r"\s*(\[?)\s*", body)
+    rest = body[m.end():]
+    low = rest.lower().replace("\u2019", "'").replace("\u2018", "'")
+    found = list(itertools.islice(CMP_TOKEN.finditer(low), len(ht)))
+    if len(ht) < 2 or len(found) != len(ht) or [f.group() for f in found] != ht:
+        return False
+    rest = re.sub(r"^[\s.\-–—:,;]+", "", rest[found[-1].end():])
+    c["text"] = head + sep + m.group(1) + rest
+    return True
+
+
+def set_aside_state_amendments(c):
+    """A State or Union Territory amendment that India Code prints inside a central section (after a line 'STATE AMENDMENT') applies only there. It is moved to c['state_amendments'] and the text ends with a
+    one-line note, so the answer model neither applies Karnataka's wording to everyone nor spends 8,500 characters on it. True when something was set aside."""
+    lines = c["text"].split("\n")
+    for i, ln in enumerate(lines):
+        if STATE_AMENDMENT_LABEL.match(ln):
+            central, tail = "\n".join(lines[:i]).rstrip(), "\n".join(lines[i:]).strip()
+            label = _state_label(lines[i + 1:])
+            c["state_amendments"] = tail
+            c["text"] = central + "\n" + NOTE_PREFIX + (f" ({label})" if label else "") + "; they apply only there and are not set out here.]"
+            return True
+    return False
+
+
+def tidy_chunks(chunks):
+    """strip_repeated_heading and set_aside_state_amendments on every section; returns {'heading_repeated_removed': n, 'state_amendments_set_aside': [sections]}."""
+    removed, aside = 0, []
+    for c in chunks:
+        if strip_repeated_heading(c):
+            removed += 1
+            c["heading_repeat_removed"] = True
+        if set_aside_state_amendments(c):
+            aside.append(c["section_number"])
+    return {"heading_repeated_removed": removed, "state_amendments_set_aside": aside}
+
+
+def full_section_text(c):
+    """India Code's whole text of a section as the PDF prints it: the chunk's text without the note, then the State amendments that were set aside."""
+    t = "\n".join(ln for ln in c["text"].split("\n") if not ln.startswith(NOTE_PREFIX))
+    return t + ("\n" + c["state_amendments"] if c.get("state_amendments") else "")
+
+
+def _find_seq(hay, needle, start):
+    n = len(needle)
+    for i in range(start, len(hay) - n + 1):
+        if hay[i:i + n] == needle:
+            return i
+    return -1
+
+
+def ordered_compare(chunks, pdf_text):
+    """The strict comparison: each section against the PDF's running text, word by word, in order, both ways. `pdf_text` is body_text(...). Every non-omitted section is located in the PDF by its heading
+    (number and title, the longest prefix that is found, in order); its words are then aligned (difflib) with the PDF's words up to the next section's heading. Returns
+      {'sections', 'words', 'digits_ignored', 'diffs': [{'section', 'tag': 'delete'|'insert'|'replace', 'loaded', 'pdf', 'tail', 'loaded_ctx', 'pdf_ctx'}]}
+    'loaded' is what the database has and the PDF does not, 'pdf' what the PDF has and the database does not ('tail': the PDF has more after the section's last word). Not counted as differences: the same
+    letters split differently (a hyphen at a line end), and a bare number the PDF has (a footnote number set in full size). LoadError when a section cannot be located."""
+    pdf = cmp_tokens(pdf_text)
+    anchors, ptr = {}, 0
+    for idx, c in enumerate(chunks):
+        if c.get("omitted"):
+            continue
+        t = cmp_tokens(c["text"].split("\n", 1)[0])
+        pos = -1
+        for n in (6, 5, 4, 3, 2):
+            if len(t) >= n:
+                pos = _find_seq(pdf, t[:n], ptr)
+                if pos >= 0:
+                    break
+        if pos >= 0:
+            anchors[idx] = pos
+            ptr = pos + 1
+    missing = [c["section_number"] for idx, c in enumerate(chunks) if not c.get("omitted") and idx not in anchors]
+    if missing:
+        raise LoadError(f"section(s) {missing} cannot be located in the PDF's running text by their heading, so they cannot be compared")
+    order = sorted(anchors.items())
+    out = {"sections": 0, "words": 0, "digits_ignored": 0, "diffs": []}
+    for k, (idx, pos) in enumerate(order):
+        c = chunks[idx]
+        a = cmp_tokens("\n".join(ln for ln in full_section_text(c).split("\n") if not is_caps_line(ln)))
+        end = order[k + 1][1] if k + 1 < len(order) else min(len(pdf), pos + int(len(a) * 1.25) + 80)
+        b = pdf[pos:end]
+        out["sections"] += 1
+        out["words"] += len(a)
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+            if tag == "equal":
+                continue
+            lw, pw = a[i1:i2], b[j1:j2]
+            if tag == "replace" and "".join(lw) == "".join(pw):
+                continue
+            if tag == "insert" and all(re.fullmatch(r"\d{1,3}[a-z]?", w) for w in pw):
+                out["digits_ignored"] += 1
+                continue
+            out["diffs"].append({"section": c["section_number"], "tag": tag, "loaded": " ".join(lw), "pdf": " ".join(pw), "tail": tag == "insert" and i1 == len(a),
+                                 "loaded_ctx": " ".join(a[max(0, i1 - 6):i2 + 6]), "pdf_ctx": " ".join(b[max(0, j1 - 6):j2 + 6])})
+    return out
+
+
+def _entry_matches(entry, d):
+    if str(entry.get("section")) != d["section"]:
+        return False
+    if entry.get("pdf_starts") is not None:                                    # a tail: what the PDF prints after the section's last word
+        return d["tail"] and not d["loaded"] and d["pdf"].startswith(" ".join(cmp_tokens(entry["pdf_starts"])))
+    same = lambda x, y: sorted(cmp_tokens(x)) == sorted(cmp_tokens(y))         # noqa: E731 -- the same words, in whatever order the alignment found them
+    return not d["tail"] and same(entry.get("loaded", ""), d["loaded"]) and same(entry.get("pdf", ""), d["pdf"])
+
+
+def explain_differences(diffs, accepted):
+    """The manifest's 'ordered_accepted' entries ({'section', 'loaded', 'pdf', optional 'count', 'why'} or {'section', 'pdf_starts', 'why'}) against the differences found. Returns (unexplained differences,
+    accepted entries that matched nothing or fewer than their count). Both must be empty for the Act to load."""
+    left = [dict(a, _left=int(a.get("count", 1))) for a in accepted or []]
+    unexplained = []
+    for d in diffs:
+        for a in left:
+            if a["_left"] > 0 and _entry_matches(a, d):
+                a["_left"] -= 1
+                break
+        else:
+            unexplained.append(d)
+    unused = [{k: v for k, v in a.items() if k != "_left"} for a in left if a["_left"] > 0]
+    return unexplained, unused
 
 
 def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
@@ -360,10 +610,12 @@ def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
     if not cmp_["ok"]:
         raise LoadError(f"the loaded sections do not equal the PDF's arrangement of sections: {json.dumps({k: v for k, v in cmp_.items() if k != 'ok'}, ensure_ascii=False)[:600]}")
     vocab = pdf_vocabulary(pages)
-    bad_fix = check_corrections_in_pdf(entry.get("corrections"), vocab, pages)
+    body = body_text(pdf_body_lines(data))
+    bad_fix = check_corrections_in_pdf(entry.get("corrections"), vocab, pages, body)
     if bad_fix:
         raise LoadError(f"a correction is not what the PDF reads: {bad_fix}")
     apply_corrections(chunks, entry.get("corrections"))
+    report["tidy"] = tidy_chunks(chunks)
     left = absent_words(chunks, vocab)
     accepted = {(str(a["section"]), a["word"]) for a in entry.get("accepted") or []}
     unresolved = [(s, w, ctx) for s, w, ctx in left if (s, w) not in accepted]
@@ -376,7 +628,16 @@ def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
         raise LoadError("words in India Code's section text that are nowhere in its PDF, not corrected or accepted in the manifest: " + "; ".join(f"s.{s} '{w}' ...{ctx}..." for s, w, ctx in unresolved[:12]))
     if stale and not discover:
         raise LoadError(f"the manifest accepts words that are not (or no longer) absent: {stale}")
-    if any(re.search(r"[<>]|&[a-z]+;|\bstyle=", c["text"] + c["footnotes"]) for c in chunks):
+    ordered = ordered_compare(chunks, body)
+    unexplained, unused = explain_differences(ordered["diffs"], entry.get("ordered_accepted"))
+    report["ordered_check"] = {"sections_compared": ordered["sections"], "words_compared": ordered["words"], "bare_numbers_ignored": ordered["digits_ignored"], "differences": len(ordered["diffs"]),
+                               "accepted_in_manifest": len(ordered["diffs"]) - len(unexplained), "unexplained": unexplained, "accepted_unused": unused}
+    if unexplained and not discover:
+        raise LoadError("the loaded text differs from the PDF's running text, and the manifest neither corrects nor accepts it: " +
+                        "; ".join(f"s.{d['section']} [{d['tag']}] loaded={d['loaded'][:80]!r} pdf={d['pdf'][:80]!r} ...{d['pdf_ctx'][:80]}..." for d in unexplained[:8]))
+    if unused and not discover:
+        raise LoadError(f"the manifest accepts differences that are not (or no longer) there: {unused}")
+    if any(re.search(r"[<>]|&[a-z]+;|\bstyle=", c["text"] + c.get("state_amendments", "") + c["footnotes"]) for c in chunks):
         raise LoadError("HTML is left in a section")
     cov = coverage_by_section(chunks, pages)
     report["pdf_run_coverage"] = {"measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)", "min": min(cov.values()), "below_0.90": {k: v for k, v in cov.items() if v < 0.90}}
@@ -416,11 +677,19 @@ def main(argv=None):
             continue
         reports[entry["key"]] = report
         pdf = report.get("pdf") or {}
-        print(f"   {report['sections']} sections ({len(report['omitted_sections'])} omitted/repealed); PDF {pdf.get('name')} as on {pdf.get('as_on')}; corrections {len(report.get('corrections', []))}, accepted {len(report.get('accepted', []))}")
+        oc = report.get("ordered_check") or {}
+        strict = f"; strict comparison: {oc.get('words_compared')} words, {oc.get('differences')} differences, {oc.get('accepted_in_manifest')} accepted in the manifest" if oc else ""
+        print(f"   {report['sections']} sections ({len(report['omitted_sections'])} omitted/repealed); PDF {pdf.get('name')} as on {pdf.get('as_on')}; corrections {len(report.get('corrections', []))}, accepted words {len(report.get('accepted', []))}{strict}")
         if args.discover:
             for u in report.get("absent_words_unresolved", []):
                 print(f"   ABSENT s.{u['section']:<5} [{u['word']}]  ...{u['context']}...")
             print(f"   ({len(report.get('absent_words_unresolved', []))} words not in the PDF; PDF check of the arrangement of sections: {report['pdf']['toc']['ok']})")
+            oc = report.get("ordered_check") or {}
+            for d in oc.get("unexplained", []):
+                print(f"   ORDERED s.{d['section']:<5} [{d['tag']}{', tail' if d['tail'] else ''}] loaded={d['loaded'][:100]!r} pdf={d['pdf'][:100]!r}\n         loaded: ...{d['loaded_ctx'][:140]}...\n         pdf   : ...{d['pdf_ctx'][:140]}...")
+            for u in oc.get("accepted_unused", []):
+                print(f"   ORDERED accepted but not found: {u}")
+            print(f"   (strict comparison: {oc.get('sections_compared')} sections, {oc.get('words_compared')} words, {oc.get('differences')} differences, {oc.get('accepted_in_manifest')} accepted in the manifest, {len(oc.get('unexplained', []))} not explained)")
         if not args.report_only and not args.discover:
             entry["loaded_on"], entry["sections_loaded"], entry["pdf_as_on"] = report["loaded_on"], report["sections"], pdf.get("as_on")
             entry["text_status"] = "machine_checked" if not args.no_pdf else "unchecked"

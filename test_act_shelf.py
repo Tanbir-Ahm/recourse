@@ -46,6 +46,8 @@ def boom(text):
 
 S._embed_query = boom                     # every test injects its own embedding
 
+LOADED = {a["key"]: a["loaded_on"] for a in json.load(open(os.path.join(S.SHELF_DIR, "manifest.json"), encoding="utf-8"))["acts"]}      # the day the shelf was last loaded: it changes with every reload
+LOADED_LABEL = S.loaded_label(LOADED["pmla_2002"])
 EMB = json.load(open(os.path.join(S.SHELF_DIR, "shelf_embeddings.json"), encoding="utf-8"))
 VEC = {r["chunk_id"]: np.array(r["embedding"], dtype=float) for r in EMB["records"]}
 
@@ -137,7 +139,7 @@ check(sh2["acts"] == {} and len(sh2["problems"]) == 1, "a directory that does no
 S.load(refresh=True)                      # back to the real one
 
 os.environ["ACT_SHELF"] = "on"
-check(S.available("pmla_2002") and S.available("sc_st_act_1989") and not S.available("tada_1987") and not S.available("nonsense") and S.loaded_on("pmla_2002") == "2026-10-16", "with the switch on: the five Acts are available, TADA is not")
+check(S.available("pmla_2002") and S.available("sc_st_act_1989") and not S.available("tada_1987") and not S.available("nonsense") and S.loaded_on("pmla_2002") == LOADED["pmla_2002"], "with the switch on: the five Acts are available, TADA is not")
 
 # ---------------------------------------------------------------- the sections a question names
 ALL = KEYS
@@ -166,7 +168,7 @@ check(len(ms) == S.TOP_K_ONE and ms[0]["section_number"] == "45" and ms[0]["scor
 check([m["score"] for m in ms] == sorted((m["score"] for m in ms), reverse=True) and all(m["score"] >= S.FLOOR for m in ms), "...in falling order of score, none under the floor")
 m0 = ms[0]
 check(m0["type"] == "statute" and m0["act"] == "PMLA" and m0["act_key"] == "pmla_2002" and m0["act_display"] == "PMLA" and m0["source"] == "act_shelf" and m0["chunk_id"] == "act:PMLA:45" and m0["all_variants"] == {}
-      and m0["shelf"]["loaded_on"] == "2026-10-16" and m0["shelf"]["text_status"] == "machine_checked" and m0["shelf"]["source_url"].startswith("https://indiacode.gov.in/act/") and m0["text"].startswith("45. Offences to be cognizable and non-bailable."),
+      and m0["shelf"]["loaded_on"] == LOADED["pmla_2002"] and m0["shelf"]["text_status"] == "machine_checked" and m0["shelf"]["source_url"].startswith("https://indiacode.gov.in/act/") and m0["text"].startswith("45. Offences to be cognizable and non-bailable."),
       "the match carries what the prompt, the page and the checks need (Act code and name, official text, source, load date, status)")
 check(r["info"]["acts"] == ["pmla_2002"] and r["info"]["embed"] == "ok" and r["info"]["chars"] == sum(len(m["text"]) for m in ms), "the log information is there")
 r = S.search("Compare section 45 of the PMLA with section 4 of POCSO", [{"id": "pmla_2002"}, {"id": "pocso_act_2012"}], embed_fn=like("PMLA", "45"))
@@ -214,14 +216,17 @@ r = S.search("q", [{"id": "sc_st_act_1989"}], embed_fn=like("SCSTACT", "3"))
 check(r["matches"][0]["section_number"] == "3" and len(r["matches"][0]["text"]) > 11000, "a long section (the SC/ST Act's section 3, 11,800 characters) comes whole when it is the closest")
 r = S.search("q", [{"id": "sc_st_act_1989"}, {"id": "pmla_2002"}], embed_fn=like("SCSTACT", "3"))
 check(all(m["text"] for m in r["matches"]) and r["matches"][0]["text"] == SH["acts"]["sc_st_act_1989"]["by_num"]["3"]["text"], "...and no section is ever cut")
-r = S.search("q", [{"id": "pc_act_1988"}], embed_fn=like("PCACT", "17A"))
-check(r["matches"][0]["section_number"] == "17A" and r["info"]["chars"] <= S.MAX_CHARS, "the PC Act's section 17A (10,167 characters) as the closest: the others share what the cap leaves")
+r = S.search("q", [{"id": "sc_st_act_1989"}], embed_fn=like("SCSTACT", "3"))
+check(r["matches"][0]["section_number"] == "3" and len(r["matches"][0]["text"]) > 11000 and r["info"]["chars"] <= S.MAX_CHARS, "the SC/ST Act's section 3 (the longest section on the shelf, about 11,800 characters) as the closest: the others share what the cap leaves")
+t17a = next(m for m in S.search("q", [{"id": "pc_act_1988"}], embed_fn=like("PCACT", "17A"))["matches"] if m["section_number"] == "17A")["text"]
+check(len(t17a) < 2500 and "STATE AMENDMENT" not in t17a and "Anti-Corruption Bureau" not in t17a and "State or Union Territory amendments of this section (Union Territory of Jammu and Kashmir" in t17a,
+      "the PC Act's section 17A is the central text with a one-line note: the 8,500 characters of Jammu and Kashmir / Ladakh text that India Code prints inside it are set aside")
 
 # held state
 ms = S.search("q", [{"id": "pmla_2002"}], embed_fn=like("PMLA", "45"))["matches"]
 check(S.shelf_ids(ms) == ["pmla_2002"] and S.shelf_ids(None) == [] and S.shelf_ids([{"source": "curated"}, "x", None]) == [], "shelf_ids")
 hs = S.held_state(ms, [{"id": "pmla_2002"}, {"id": "pocso_act_2012"}, {"id": "tada_1987"}])
-check(hs == {"pmla_2002": {"state": "used", "loaded_on": "2026-10-16"}, "pocso_act_2012": {"state": "unused", "loaded_on": "2026-10-16"}}, f"held_state: used / unused / absent for an Act with no shelf ({hs})")
+check(hs == {"pmla_2002": {"state": "used", "loaded_on": LOADED["pmla_2002"]}, "pocso_act_2012": {"state": "unused", "loaded_on": LOADED["pocso_act_2012"]}}, f"held_state: used / unused / absent for an Act with no shelf ({hs})")
 os.environ.pop("ACT_SHELF")
 check(S.held_state(ms, [{"id": "pmla_2002"}]) == {}, "held_state with the switch off: nothing")
 os.environ["ACT_SHELF"] = "on"
@@ -482,7 +487,7 @@ def page(result):
 
 at, vals = page({"state": "single_match", "response_text": "Bail is restricted by Section 45 of the PMLA.", "matches": SHELF_MS, "situation_detected": False, "act_notice": NOTE})
 check(not at.exception and any("**PMLA Section 45**" in v for v in vals), f"page: 'Read the source' heads the section with the Act's name, not its code (exception={at.exception})")
-check(any('<p class="r-foot">Official text from India Code, loaded 16 October 2026; not yet read by our reviewer' in v and "the whole Act on India Code" in v and "https://indiacode.gov.in/act/" in v for v in vals), "page: a line under it says where the text is from, when it was loaded and that no reviewer has read it, with a link")
+check(any(f'<p class="r-foot">Official text from India Code, loaded {LOADED_LABEL}; not yet read by our reviewer' in v and "the whole Act on India Code" in v and "https://indiacode.gov.in/act/" in v for v in vals), "page: a line under it says where the text is from, when it was loaded and that no reviewer has read it, with a link")
 check(any("shortened here" in v for v in vals), "page: a section longer than the excerpt says that it is shortened")
 check(any("has loaded the official text of that Act from India Code" in v for v in vals) and not any("does not hold" in v for v in vals), "page: the notice above the answer")
 at, vals = page({"state": "single_match", "response_text": "Bail is restricted by Section 3 of the Act.", "matches": [{"type": "statute", "act": "BNSS", "section_number": "3", "text": "3. Definitions.", "source": "semantic", "all_variants": {}}], "situation_detected": False})

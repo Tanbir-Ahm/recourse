@@ -1,7 +1,8 @@
 """
 test_build_act_chunks.py -- the Act loader (build_act_chunks.py; 2026-10-16, STATUTE_COVERAGE_PLAN.md step 2) and the Act shelf data it wrote (act_shelf/).
-Part 1, no network: the text cleaning, the choice of records, the checks against the PDF (arrangement of sections; every word of every section must be in the PDF unless the manifest corrects or accepts it),
-the corrections, the failures, end to end with a fake India Code. Part 2: the shelf files as committed (counts, uniqueness, no HTML, the manifest, the sections the Directory's appeal lines cite).
+Part 1, no network: the text cleaning, the choice of records, the checks against the PDF (arrangement of sections; every word of every section must be in the PDF unless the manifest corrects or accepts it;
+the strict, two-way, in-order comparison of 2026-10-17 and the two tidy-ups), the corrections, the failures, end to end with a fake India Code and with a small PDF made on the spot. Part 2: the shelf files as
+committed (counts, uniqueness, no HTML, the manifest, the sections the Directory's appeal lines cite, the defects the strict comparison found and the corrections that fixed them).
 No network, no model, no cost. Run: python -X utf8 test_build_act_chunks.py
 """
 import copy
@@ -78,9 +79,9 @@ check(raises(B.build_sections, [], ACT, "d") is not None, "build_sections: no re
 # ---------------------------------------------------------------- Part 1: the PDF checks
 TOC_PAGE = ("THE TEST ACT, 1999\n_________\nARRANGEMENT OF SECTIONS\n________\nCHAPTER I\nPRELIMINARY\nSECTIONS\n1. Short title and extent.\n2. Definitions.\nCHAPTER II\nOFFENCES\n"
             "3. Offence of bribery.\n3A. Giving a\nbribe.\n4. Omitted.\n\nTHE TEST ACT, 1999\nACT NO. 1 OF 1999\nAn Act to prevent bribery.\nBE it enacted by Parliament as follows:--\n")
-BODY_PAGE = ("1. (1) This Act may be called the Test Act, 1999.\n(2) It extends to the whole of India.\n2. In this Act, public servant means any person who serves the Government.\n"
-             "3. Whoever takes a bribe shall be punished with imprisonment for three years.\n1. Subs. by Act 16 of 2018, s. 4, for the old section 3 (w.e.f. 26-7-2018).\n"
-             "3A. Whoever gives a bribe shall be punished with imprisonment for two years.\n4. [Omitted by the Test (Amendment) Act, 2018 (16 of 2018), s. 17 (w.e.f. 26-7-2018)].\n")
+BODY_PAGE = ("1. Short title and extent.—(1) This Act may be called the Test Act, 1999.\n(2) It extends to the whole of India.\n2. Definitions.—In this Act, public servant means any person who serves the Government.\n"
+             "3. Offence of bribery.—Whoever takes a bribe shall be punished with imprisonment for three years.\n1. Subs. by Act 16 of 2018, s. 4, for the old section 3 (w.e.f. 26-7-2018).\n"
+             "3A. Giving a bribe.—Whoever gives a bribe shall be punished with imprisonment for two years.\n4. Omitted.—[Omitted by the Test (Amendment) Act, 2018 (16 of 2018), s. 17 (w.e.f. 26-7-2018)].\n")
 PAGES = ["The Test Act, 1999\n(ACT NO. 1 OF 1999)\n[As on the 21st May, 2025]\nIndiaCode", TOC_PAGE, BODY_PAGE]
 toc = B.parse_toc(PAGES)
 check(toc == [("1", "Short title and extent."), ("2", "Definitions."), ("3", "Offence of bribery."), ("3A", "Giving a bribe."), ("4", "Omitted.")], f"parse_toc: numbers and titles, wrapped titles joined, stops at the long title ({toc})")
@@ -120,7 +121,7 @@ multi = copy.deepcopy(dup)
 B.apply_corrections(multi, [{"section": "3", "from": "zzz", "to": "gift", "count": 2, "why": "x"}])
 check(multi[2]["text"].count("gift") == 2 and "zzz" not in multi[2]["text"] and multi[2]["corrections"][0]["count"] == 2, "apply_corrections: a stated count replaces every occurrence, no more and no fewer")
 check("the manifest says 3" in (raises(B.apply_corrections, copy.deepcopy(dup), [{"section": "3", "from": "zzz", "to": "gift", "count": 3}]) or ""), "apply_corrections: a stated count that is not what is found stops the load")
-check(raises(B.apply_corrections, copy.deepcopy(chunks), [{"section": "99", "from": "a", "to": "b"}]) is not None and raises(B.apply_corrections, copy.deepcopy(chunks), [{"section": "3", "from": "bribe", "to": "x", "field": "title"}]) is not None, "apply_corrections: a section that was not loaded, or a field that does not exist, stops the load")
+check(raises(B.apply_corrections, copy.deepcopy(chunks), [{"section": "99", "from": "a", "to": "b"}]) is not None and raises(B.apply_corrections, copy.deepcopy(chunks), [{"section": "3", "from": "bribe", "to": "x", "field": "nonsense"}]) is not None, "apply_corrections: a section that was not loaded, or a field that does not exist, stops the load")
 check(B.check_corrections_in_pdf([{"to": "takes a bribe"}], vocab, PAGES) == [] and B.check_corrections_in_pdf([{"to": "takes a gift"}], vocab, PAGES) != [] and B.check_corrections_in_pdf([{"to": "bribe takes"}], vocab, PAGES) != [],
       "check_corrections_in_pdf: a correction must be what the PDF reads, word for word and in that order")
 cov = B.coverage_by_section(chunks, PAGES)
@@ -145,7 +146,10 @@ class FakeFetcher:
 
 
 B.pdf_pages = lambda data: data.decode("utf-8").split("\f")
-ENTRY = {"key": "test_act", "code": "TESTACT", "name": "The Test Act, 1999", "citation": "Act No. 1 of 1999", "india_code": {"uuid": "uuid-1", "act_id": "ACT1"}, "corrections": [], "accepted": []}
+REAL_PDF_BODY_LINES = B.pdf_body_lines
+B.pdf_body_lines = lambda data: [ln for pg in data.decode("utf-8").split("\f") for ln in pg.split("\n") if ln.strip() and not re.match(r"^\d{1,2}\. (Subs|Ins)\b", ln)]    # the fake PDF is plain text; the real layout rules are tested below on a real PDF
+ENTRY = {"key": "test_act", "code": "TESTACT", "name": "The Test Act, 1999", "citation": "Act No. 1 of 1999", "india_code": {"uuid": "uuid-1", "act_id": "ACT1"}, "corrections": [], "accepted": [],
+         "ordered_accepted": [{"section": "3A", "pdf_starts": "4 omitted omitted by the test amendment act", "why": "the stub of the omitted section 4, as the PDF prints it after section 3A"}]}
 ch, rep = B.build_act(ENTRY, FakeFetcher(RECS + DECOYS), "2026-10-16")
 check(len(ch) == 5 and rep["sections"] == 5 and rep["omitted_sections"] == ["4"] and rep["pdf"]["name"] == "a1999-1.pdf" and rep["pdf"]["as_on"] == "21st May, 2025" and rep["pdf"]["toc"]["ok"], "build_act: a faithful Act loads; the English PDF is picked by the Act's name; the report says what was checked")
 check(rep["pdf_run_coverage"]["min"] == 1.0 and rep["absent_words_unresolved"] == [] and rep["pdf"]["sha256"], "build_act: the report carries the coverage and the PDF's fingerprint")
@@ -173,6 +177,158 @@ ch4, rep4 = B.build_act(ENTRY, FakeFetcher(RECS + DECOYS), "d", with_pdf=False)
 check(rep4["pdf"] is None and "NOT checked" in rep4["note"], "build_act: without the PDF the report says the Act was NOT checked against it")
 ch5, rep5 = B.build_act(ENTRY, FakeFetcher(typo_recs + DECOYS), "d", discover=True)
 check([u["word"] for u in rep5["absent_words_unresolved"]] == ["takesa"], "build_act (discover): lists every absent word instead of stopping")
+
+
+# ---------------------------------------------------------------- Part 1: the strict, two-way, in-order comparison (2026-10-17) and the two tidy-ups
+check(B.cmp_tokens("That person’s handwriting; the Act, 1999 (2 of 1974)") == ["that", "person's", "handwriting", "the", "act", "1999", "2", "of", "1974"] and B.cmp_tokens("persons") != B.cmp_tokens("person's"),
+      "cmp_tokens: an apostrophe inside a word is kept (\"person's\" and \"persons\" are different words), typographic quotes read as plain")
+check(B.is_caps_line("CHAPTER III") and B.is_caps_line("THE FIRST SCHEDULE") and B.is_caps_line("STATE AMENDMENT") and not B.is_caps_line("1[14A. ") and not B.is_caps_line("(a) the Act") and not B.is_caps_line("") and not B.is_caps_line("CHAPTER 3"),
+      "is_caps_line: a heading in capitals with no digit; '1[14A.' (a section number) and ordinary text are not")
+LINES = ["The Test Act, 1999", "ARRANGEMENT OF SECTIONS", "1. Short title.", "BE it enacted by", "Parliament as follows:—", "CHAPTER I", "1. Short title.—This Act applies.", "2. Definitions.—In this Act, word means thing.", "THE FIRST SCHEDULE", "Organisation One"]
+check(B.body_text(LINES) == "1. Short title.—This Act applies.\n2. Definitions.—In this Act, word means thing.", "body_text: starts after the enacting words (even when they run over two lines), leaves out capital-letter headings, ends where a Schedule begins")
+check("enacted by Parliament" in (raises(B.body_text, ["1. Short title.—x"]) or ""), "body_text: a PDF with no enacting words stops the load")
+
+# strip_repeated_heading
+def chunk_of(num, title, body, **kw):
+    return dict({"section_number": num, "title": title, "text": f"{num}. {title}\n{body}", "footnotes": "", "omitted": False}, **kw)
+
+
+c = chunk_of("7", "Offence relating to public servant being bribed.", "[7. Offence relating to public servant being bribed.-- Any public servant who,--\n(a) takes a gift;]")
+check(B.strip_repeated_heading(c) and c["text"] == "7. Offence relating to public servant being bribed.\n[Any public servant who,--\n(a) takes a gift;]", f"strip_repeated_heading: the heading that India Code repeats at the start of the body goes, the opening bracket stays ({c['text']!r})")
+c = chunk_of("11", "Public servant obtaining undue advantage, without consideration.", "11. Public servant obtaining [undue advantage], without consideration.--Whoever, being a public servant, accepts ***")
+check(B.strip_repeated_heading(c) and c["text"] == "11. Public servant obtaining undue advantage, without consideration.\nWhoever, being a public servant, accepts ***", "strip_repeated_heading: brackets inside the repeated heading do not matter; no bracket, none added")
+c = chunk_of("42", "Alternative punishment.", "[42. Alternate punishment.-- Where an act is an offence]")
+before = c["text"]
+check(not B.strip_repeated_heading(c) and c["text"] == before, "strip_repeated_heading: a heading that differs by a word is NOT dropped (the title is corrected first; the comparison with the PDF would show it otherwise)")
+c = chunk_of("5", "Omitted.", "Omitted by Act 1 of 2000.")
+check(not B.strip_repeated_heading(c), "strip_repeated_heading: a body that does not start with the heading is left alone")
+
+# set_aside_state_amendments
+c = chunk_of("14", "Special Court.", "The State shall set up courts.\nSTATE AMENDMENT\nKarnataka\nAmendment of section 14.--In section 14 for the words \"x\" substitute \"y\".\n[Vide Karnataka Act 35 of 2003, s. 2 ]")
+check(B.set_aside_state_amendments(c) and c["text"] == "14. Special Court.\nThe State shall set up courts.\n[Note: India Code also prints State or Union Territory amendments of this section (Karnataka); they apply only there and are not set out here.]"
+      and c["state_amendments"].startswith("STATE AMENDMENT\nKarnataka\nAmendment of section 14.") and c["state_amendments"].endswith("s. 2 ]"), "set_aside_state_amendments: the State's text moves to its own field; the text keeps one note naming the State")
+c = chunk_of("42", "Alternate punishment.", "Where an act is an offence.\nState Amendment:\nArunachal Pradesh.--\nAmendment of section 42.--text")
+check(B.set_aside_state_amendments(c) and "(Arunachal Pradesh)" in c["text"], "set_aside_state_amendments: the label may be in any case and carry a colon; 'Arunachal Pradesh.--' is read as the name")
+c = chunk_of("9", "Offence.", "Text.\nSTATE AMENDMENT\nAmendment of section 9.--text")
+check(B.set_aside_state_amendments(c) and "amendments of this section; they apply only there" in c["text"] and "(" not in c["text"].split("\n")[-1], "set_aside_state_amendments: when the line after the label is not a name, the note names none")
+c = chunk_of("9", "Offence.", "Text without any State amendment.")
+check(not B.set_aside_state_amendments(c) and "state_amendments" not in c, "set_aside_state_amendments: nothing to set aside, nothing changed")
+c = chunk_of("17A", "Approval.", "[17A. Approval.-- No police officer shall act.]\nSTATE AMENDMENT\nUnion Territory of Jammu and Kashmir and Union Territory of Ladakh\n17B. A new section.")
+tidy = B.tidy_chunks([c])
+check(tidy == {"heading_repeated_removed": 1, "state_amendments_set_aside": ["17A"]} and c["heading_repeat_removed"] is True, "tidy_chunks: both tidy-ups on a section, counted and recorded")
+whole = B.full_section_text(c)
+check("Note:" not in whole and whole.startswith("17A. Approval.\n[No police officer shall act.]") and whole.endswith("17B. A new section."), "full_section_text: India Code's whole text again (the shelf's note out, the State amendment back in)")
+
+# the comparison itself
+TXT = "1. Short title.—(1) This Act may be called the Test Act. (2) It extends to the whole of India.\n2. Definitions.—In this Act, a public servant means any person who serves the Government.\n3. Offence.—Whoever takes a bribe shall be punished. Provided that the court may reduce it. Explanation.—Gift includes money."
+CH = [chunk_of("1", "Short title.", "(1) This Act may be called the Test Act. (2) It extends to the whole of India."), chunk_of("2", "Definitions.", "In this Act, a public servant means any person who serves the Government."),
+      chunk_of("3", "Offence.", "Whoever takes a bribe shall be punished. Provided that the court may reduce it. Explanation.—Gift includes money.")]
+oc = B.ordered_compare(CH, TXT)
+check(oc["diffs"] == [] and oc["sections"] == 3 and oc["words"] > 40, f"ordered_compare: text that equals the PDF's has no difference ({oc['diffs']})")
+
+
+def variant(sec, old_, new_):
+    cs = copy.deepcopy(CH)
+    for c_ in cs:
+        if c_["section_number"] == sec:
+            assert old_ in c_["text"], (old_, c_["text"])
+            c_["text"] = c_["text"].replace(old_, new_)
+    return B.ordered_compare(cs, TXT)["diffs"]
+
+
+d = variant("2", "a public servant means", "a public public servant means")
+check(len(d) == 1 and d[0]["tag"] == "delete" and d[0]["loaded"] == "public" and d[0]["pdf"] == "" and not d[0]["tail"], f"ordered_compare: a word the database doubles is found ({d})")
+d = variant("3", "takes a bribe", "takes a bribes")
+check(len(d) == 1 and d[0]["tag"] == "replace" and d[0]["loaded"] == "bribes" and d[0]["pdf"] == "bribe", "ordered_compare: a changed word is found")
+d = variant("3", " Provided that the court may reduce it.", "")
+check(len(d) == 1 and d[0]["tag"] == "insert" and d[0]["pdf"] == "provided that the court may reduce it" and not d[0]["tail"], f"ordered_compare: a whole proviso lost from the middle of a section is found ({d})")
+d = variant("3", " Explanation.—Gift includes money.", "")
+check(len(d) == 1 and d[0]["tag"] == "insert" and d[0]["tail"] and d[0]["pdf"] == "explanation gift includes money", f"ordered_compare: a sentence lost from the END of a section is found, and called a tail ({d})")
+d = variant("1", "the Test Act.", "the Test Act's")
+check(len(d) == 1 and d[0]["loaded"] == "act's" and d[0]["pdf"] == "act", "ordered_compare: an apostrophe that the PDF does not have is found")
+cs = copy.deepcopy(CH)
+oc2 = B.ordered_compare(cs, TXT.replace("Whoever takes", "Whoever 1 takes").replace("the Government.\n3.", "the Government.\n3."))
+check(oc2["diffs"] == [] and oc2["digits_ignored"] == 1, "ordered_compare: a bare footnote number in the PDF is not a difference, and is counted")
+oc3 = B.ordered_compare(CH, TXT.replace("any person who", "any per-\nson who"))
+check(oc3["diffs"] == [], "ordered_compare: the same letters split at a line end are not a difference")
+check("cannot be located" in (raises(B.ordered_compare, CH, TXT.replace("2. Definitions", "2. Meanings")) or ""), "ordered_compare: a section whose heading is not in the PDF stops the load (it cannot be compared)")
+om = copy.deepcopy(CH)
+om.insert(2, chunk_of("2A", "Omitted.", "Omitted by Act 3 of 2005.", omitted=True))
+check(B.ordered_compare(om, TXT)["sections"] == 3, "ordered_compare: an omitted record is not compared (the PDF's stub for it is an accepted tail instead)")
+sa = copy.deepcopy(CH)
+sa[1]["text"] += "\nSTATE AMENDMENT\nKarnataka\nIn section 2 insert x."
+B.set_aside_state_amendments(sa[1])
+pdf_sa = B.body_text(["BE it enacted by Parliament as follows:"] + TXT.replace("Government.\n3.", "Government.\nSTATE AMENDMENT\nKarnataka\nIn section 2 insert x.\n3.").split("\n"))
+check(B.ordered_compare(sa, pdf_sa)["diffs"] == [] and B.ordered_compare(sa, TXT)["diffs"] != [],
+      "ordered_compare: a State amendment set aside is read back in, so it is still compared with the PDF (equal when the PDF has it, a difference when it does not)")
+
+# explain_differences
+dd = [{"section": "7", "tag": "replace", "loaded": "gazetted", "pdf": "gazette", "tail": False}, {"section": "7", "tag": "replace", "loaded": "gazetted", "pdf": "gazette", "tail": False},
+      {"section": "16", "tag": "insert", "loaded": "", "pdf": "16a punishment for making demands omitted by act 3 of 2013 and more text", "tail": True},
+      {"section": "1", "tag": "delete", "loaded": "1967 37 of", "pdf": "", "tail": False}]
+acc = [{"section": "7", "loaded": "gazetted", "pdf": "gazette", "count": 2, "why": "x"}, {"section": "16", "pdf_starts": "16A. Punishment for making demands, omitted", "why": "x"}, {"section": "1", "loaded": "37 of 1967", "pdf": "", "why": "x"}]
+un, unused = B.explain_differences(dd, acc)
+check(un == [] and unused == [], f"explain_differences: accepted entries explain what they say (a count of 2, a tail by its first words, the same words in another order) ({un}, {unused})")
+un, unused = B.explain_differences(dd, acc[:1] + acc[2:])
+check([d_["section"] for d_ in un] == ["16"] and unused == [], "explain_differences: a difference nobody accepted is left over")
+un, unused = B.explain_differences(dd[:1] + dd[2:], acc)
+check(len(unused) == 1 and unused[0]["section"] == "7" and "_left" not in unused[0], "explain_differences: an accepted entry that matches fewer differences than its count is reported as unused")
+un, unused = B.explain_differences([dict(dd[2], pdf="a lost sentence then 16a punishment for making demands omitted")], acc[1:2])
+check(len(un) == 1 and len(unused) == 1, "explain_differences: a tail that does not START with the accepted words (a sentence lost before an omitted stub) is NOT explained")
+un, unused = B.explain_differences([dict(dd[0], section="8")], acc[:1])
+check(len(un) == 1, "explain_differences: an entry applies to its own section only")
+
+# title corrections
+tc = copy.deepcopy(chunks)
+B.apply_corrections(tc, [{"section": "3", "field": "title", "from": "Offence of bribery.", "to": "Offence of corruption.", "why": "the PDF's running text says so"}])
+check(tc[2]["title"] == "Offence of corruption." and tc[2]["text"].startswith("3. Offence of corruption.\n") and tc[2]["corrections"][0]["field"] == "title", "apply_corrections (title): the title and the heading line both change, and it is recorded")
+check("0 times" in (raises(B.apply_corrections, copy.deepcopy(chunks), [{"section": "3", "field": "title", "from": "Offence of corruption.", "to": "x"}]) or ""), "apply_corrections (title): text that is not the title stops the load")
+check(B.check_corrections_in_pdf([{"to": "Power of Chairman to transfer"}], B.pdf_vocabulary(["Power of 1[Chairman] to transfer cases"]), ["Power of 1[Chairman] to transfer cases"]) != []
+      and B.check_corrections_in_pdf([{"to": "Power of Chairman to transfer"}], B.pdf_vocabulary(["Power of 1[Chairman] to transfer cases"]), ["Power of 1[Chairman] to transfer cases"], "Power of [Chairman] to transfer cases") == [],
+      "check_corrections_in_pdf: a phrase the PDF prints with a footnote number inside it is found in the running text, where the footnote numbers are left out")
+
+# end to end with the strict comparison
+doubled = [rec("2", "Definitions.", "In this Act, public public servant means any person who serves the Government.") if B.md_first(r, "dc.identifier.section_number") == "2" else r for r in RECS]
+msg = raises(B.build_act, ENTRY, FakeFetcher(doubled + DECOYS), "d") or ""
+check("differs from the PDF" in msg and "public" in msg and "s.2" in msg, f"build_act: a doubled word that every other check passes stops the Act ({msg[:120]})")
+ch6, rep6 = B.build_act(dict(ENTRY, corrections=[{"section": "2", "from": "public public servant", "to": "public servant", "why": "the PDF reads 'public servant'"}]), FakeFetcher(doubled + DECOYS), "d")
+check(rep6["ordered_check"]["unexplained"] == [] and "public servant means" in ch6[1]["text"] and "public public" not in ch6[1]["text"], "build_act: the manifest's correction repairs it and the strict comparison then passes")
+lost = [rec("3", "Offence of bribery.", "Whoever takes a bribe.", FOOT["3"]) if B.md_first(r, "dc.identifier.section_number") == "3" else r for r in RECS]
+msg = raises(B.build_act, ENTRY, FakeFetcher(lost + DECOYS), "d") or ""
+check("differs from the PDF" in msg and "s.3" in msg and "shall be punished" in msg, f"build_act: a sentence lost from a section (every word of it is still in the PDF somewhere) stops the Act ({msg[:140]})")
+no_acc = {k: v for k, v in ENTRY.items() if k != "ordered_accepted"}
+check("neither corrects nor accepts" in (raises(B.build_act, no_acc, FakeFetcher(RECS + DECOYS), "d") or "") and "4 omitted" in (raises(B.build_act, no_acc, FakeFetcher(RECS + DECOYS), "d") or ""), "build_act: the PDF's stub of an omitted section is a difference until the manifest accepts it")
+check("no longer" in (raises(B.build_act, dict(ENTRY, ordered_accepted=ENTRY["ordered_accepted"] + [{"section": "2", "loaded": "x", "pdf": "y", "why": "z"}]), FakeFetcher(RECS + DECOYS), "d") or ""), "build_act: an accepted difference that is not there any more stops the Act")
+ch7, rep7 = B.build_act(dict(ENTRY, ordered_accepted=[]), FakeFetcher(RECS + DECOYS), "d", discover=True)
+check(len(rep7["ordered_check"]["unexplained"]) == 1 and rep7["ordered_check"]["unexplained"][0]["tail"], "build_act (discover): lists the differences instead of stopping")
+check(rep["ordered_check"]["differences"] == 1 and rep["ordered_check"]["accepted_in_manifest"] == 1 and rep["ordered_check"]["sections_compared"] == 4 and rep["tidy"] == {"heading_repeated_removed": 0, "state_amendments_set_aside": []}, "build_act: the report says what the strict comparison covered")
+
+# the layout rules on a real PDF made on the spot
+try:
+    import pymupdf as _fz
+except ImportError:
+    import fitz as _fz
+doc = _fz.open()
+pg = doc.new_page()
+pg.insert_text((72, 100), "BE it enacted by Parliament as follows:", fontsize=11, fontname="tiro")
+pg.insert_text((72, 120), "CHAPTER I", fontsize=11, fontname="tiro")
+pg.insert_text((72, 140), "1. Short title.", fontsize=11, fontname="tibo")
+pg.insert_text((130, 140), "This Act applies", fontsize=11, fontname="tiro")
+pg.insert_text((230, 134), "3", fontsize=7, fontname="tiro")
+pg.insert_text((240, 140), "to all.", fontsize=11, fontname="tiro")
+pg.insert_text((72, 160), "2. Definitions.", fontsize=11, fontname="tibo")
+pg.insert_text((150, 160), "A word means a thing.", fontsize=11, fontname="tiro")
+pg.insert_text((250, 800), "IndiaCode", fontsize=30, fontname="hebo")
+pg.draw_rect(_fz.Rect(76.6, 700, 220.6, 700.7), color=None, fill=(0, 0, 0))
+pg.insert_text((72, 712), "3. Subs. by Act 16 of 2018, s. 4, for the old section 1.", fontsize=9, fontname="tiro")
+pg.insert_text((72, 726), "A note that wraps onto a second line.", fontsize=9, fontname="tiro")
+pdf_lines = REAL_PDF_BODY_LINES(doc.tobytes())
+doc.close()
+joined = "\n".join(pdf_lines)
+check("This Act applies" in joined and "A word means a thing." in joined and "CHAPTER I" in joined, f"pdf_body_lines (a real PDF): the Act's lines are there ({pdf_lines})")
+check("Subs. by Act 16" not in joined and "wraps onto" not in joined, "pdf_body_lines: everything below the footnote rule of a page is left out")
+check("IndiaCode" not in joined and not re.search(r"applies\s*3", joined) and "3" not in "".join(ln for ln in pdf_lines if "applies" in ln).replace("1.", ""), "pdf_body_lines: the IndiaCode mark and the superscript footnote number are left out")
+check(B.body_text(pdf_lines) == "\n".join(ln for ln in pdf_lines if "CHAPTER" not in ln and "enacted" not in ln) and "CHAPTER" not in B.body_text(pdf_lines), "body_text on those lines: the enacting line and the capital heading are left out")
 
 # ---------------------------------------------------------------- Part 2: the shelf as committed
 SHELF = os.path.join(HERE, "act_shelf")
@@ -204,6 +360,31 @@ check("court of Sessions" in text("pocso_act_2012", "31") or "court of Session" 
 check("Moneylaundering" not in text("pmla_2002", "1") and "Money-laundering" in text("pmla_2002", "1") or "money-laundering" in text("pmla_2002", "1").lower(), "PMLA s.1: the Act's own name reads 'Money-laundering'")
 check(any(c["section_number"] == "7" and "three years" in c["text"] for c in SH["pc_act_1988"]) and any(c["section_number"] == "19" for c in SH["pc_act_1988"]), "PC Act: sections 7 and 19 are there")
 check(next(c for c in SH["pc_act_1988"] if c["section_number"] == "7")["footnotes"].startswith("1. Subs. by Act 16 of 2018"), "PC Act s.7: the footnote that carries the amendment date is kept")
+
+
+# ---- the strict comparison and the two tidy-ups, as committed (2026-10-17)
+for k, a in M.items():
+    oc_ = report[k]["ordered_check"]
+    n_real = len([c for c in SH[k] if not c["omitted"]])
+    check(oc_["unexplained"] == [] and oc_["accepted_unused"] == [] and oc_["sections_compared"] == n_real and oc_["words_compared"] > 5000 and oc_["differences"] == oc_["accepted_in_manifest"] == sum(int(x.get("count", 1)) for x in a["ordered_accepted"]),
+          f"{k}: the strict comparison covered all {n_real} sections ({oc_['words_compared']} words); every difference ({oc_['differences']}) is accepted in the manifest with a reason, none is left over")
+    check(all(x.get("why", "").strip() for x in a["ordered_accepted"]), f"{k}: every accepted difference says why")
+    check(not any(B.strip_repeated_heading(copy.deepcopy(c)) for c in SH[k]), f"{k}: no section starts its body with its own heading again")
+    check(not any(re.search(r"STATE\s+AMENDMENT", c["text"], re.I) for c in SH[k]), f"{k}: no State amendment text is left inside a section's text")
+    check(all((B.NOTE_PREFIX in c["text"]) == bool(c.get("state_amendments")) and c["text"].count(B.NOTE_PREFIX) <= 1 for c in SH[k]), f"{k}: a section that has State amendments set aside carries exactly one note, and no other section has one")
+    check(not any(re.search(r"\b([A-Za-z]+)\s+\1\b", (c.get(f) or ""), re.I) for c in SH[k] for f in ("text", "footnotes", "state_amendments")), f"{k}: no word is doubled anywhere ('or or', 'of of' were database slips)")
+check({c["section_number"] for k in SH for c in SH[k] if c.get("state_amendments")} == {"17A", "42", "14"} and len(SH["pc_act_1988"][[c["section_number"] for c in SH["pc_act_1988"]].index("17A")]["text"]) < 2500,
+      "State amendments set aside: PC Act 17A (Jammu and Kashmir / Ladakh), POCSO 42 (Arunachal Pradesh), SC/ST 14 (Karnataka); section 17A is now short (it was 10,167 characters, 84% of them the Union Territory text)")
+sec = lambda k, n: next(c for c in SH[k] if c["section_number"] == n)  # noqa: E731
+check("closure report before the Special Court; or]" in sec("pmla_2002", "44")["text"] and sec("pmla_2002", "44")["text"].index("closure report") < sec("pmla_2002", "44")["text"].index("[(c) if the court which has taken cognizance"),
+      "PMLA s.44: the proviso the database had lost (closure report) is there, between clause (b) and clause (c)")
+check("property or lease-hold" in sec("pmla_2002", "9")["text"] and "section 12 of the Smugglers" in sec("pmla_2002", "25")["text"] and "that person's handwriting" in sec("pmla_2002", "22")["text"] and "victim's age" in sec("sc_st_act_1989", "15A")["text"],
+      "PMLA ss.9, 22, 25 and SC/ST s.15A: the doubled words and the lost apostrophes are repaired")
+t9 = sec("pocso_act_2012", "9")["text"]
+check(t9.count("is said to commit aggravated sexual assault") == 1 and t9.rstrip().endswith("attains early sexual maturity,]\nis said to commit aggravated sexual assault.") and "naked in public;\n[(v)" in t9,
+      "POCSO s.9: 'is said to commit aggravated sexual assault' comes once, after the last clause (v), as in the PDF (the database had put it after (u))")
+check(sec("pocso_act_2012", "42")["title"] == "Alternate punishment." and sec("pocso_act_2012", "42")["text"].startswith("42. Alternate punishment.\n") and sec("uapa_1967", "43")["title"].endswith("offences under Chapters IV and VI.") and sec("pmla_2002", "37")["title"] == "Power of Chairman to transfer cases.",
+      "titles corrected to the heading of the PDF's running text: POCSO 42, UAPA 43, PMLA 37")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

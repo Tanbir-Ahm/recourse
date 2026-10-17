@@ -42,10 +42,22 @@
           "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
         }
       ],
-      "loaded_on": "2026-10-16",
+      "loaded_on": "2026-10-17",
       "sections_loaded": 35,
       "pdf_as_on": "21st May, 2025",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "23",
+          "pdf_starts": "24 statement by bribe giver not to subject him to prosecution omitted by the prevention of corruption",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (section 24, omitted by Act 16 of 2018)"
+        },
+        {
+          "section": "30",
+          "pdf_starts": "31 omission of certain sections of act 45 of 1860",
+          "why": "the PDF prints the stub of the omitted section 31, then India Code's appended 'Statement of Objects and Reasons' of the 1987 Bill, which is not part of the Act"
+        }
+      ]
     },
     {
       "key": "pocso_act_2012",
@@ -90,13 +102,33 @@
           "from": "(1) of section44.",
           "to": "(1) of section 44.",
           "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+        },
+        {
+          "section": "9",
+          "from": "naked in public, is said to commit aggravated sexual assault.\n[(v) whoever persuades",
+          "to": "naked in public;\n[(v) whoever persuades",
+          "why": "in the PDF clause (u) ends 'naked in public;' and the words 'is said to commit aggravated sexual assault' come once, after the LAST clause (v); the database put them after (u) and left (v) without them (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "9",
+          "from": "attains early sexual maturity.]",
+          "to": "attains early sexual maturity,]\nis said to commit aggravated sexual assault.",
+          "why": "the other half of the same correction: the PDF ends section 9 '... attains early sexual maturity,] is said to commit aggravated sexual assault.' (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "42",
+          "field": "title",
+          "from": "Alternative punishment.",
+          "to": "Alternate punishment.",
+          "why": "the heading of the PDF's running text and of the database's own body read 'Alternate punishment'; the database title says 'Alternative' (strict comparison, 2026-10-17)"
         }
       ],
       "accepted": [],
-      "loaded_on": "2026-10-16",
+      "loaded_on": "2026-10-17",
       "sections_loaded": 47,
       "pdf_as_on": "1st July, 2026",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "ordered_accepted": []
     },
     {
       "key": "uapa_1967",
@@ -130,6 +162,13 @@
           "from": "((d) court means",
           "to": "(d) court means",
           "why": "India Code's database has a stray opening bracket; the printed Act (PDF) reads '(d) “court” means'. The quotation marks around the defined terms of section 2 are also missing in the database; they are not restored (the words are identical)."
+        },
+        {
+          "section": "43",
+          "field": "title",
+          "from": "Officers competent to investigate offence under Chapters IV and VI.",
+          "to": "Officers competent to investigate offences under Chapters IV and VI.",
+          "why": "the heading of the PDF's running text reads 'offences'; the database title (and the PDF's arrangement of sections) say 'offence' (strict comparison, 2026-10-17)"
         }
       ],
       "accepted": [
@@ -159,10 +198,41 @@
           "why": "the PDF reads 'where under' (two words); 'whereunder' is the standard word and the database's"
         }
       ],
-      "loaded_on": "2026-10-16",
+      "loaded_on": "2026-10-17",
       "sections_loaded": 67,
       "pdf_as_on": "22nd August, 2025",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "1",
+          "loaded": "37 of 1967",
+          "pdf": "",
+          "why": "India Code's database adds the Act's number '(37 of 1967)' after the short title; the printed PDF does not have it. The number is correct; nothing is changed"
+        },
+        {
+          "section": "7",
+          "loaded": "gazetted",
+          "pdf": "gazette",
+          "count": 2,
+          "why": "twice, 'any gazetted officer of the Government': the PDF's text reads 'gazette officer', the database 'gazetted officer'. The database reading is the ordinary expression; whether the print itself says 'gazette' is not known to us. Not changed"
+        },
+        {
+          "section": "16",
+          "pdf_starts": "16a punishment for making demands of radioactive substances",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (section 16A, omitted by Act 3 of 2013)"
+        },
+        {
+          "section": "25",
+          "loaded": "traveller's cheques",
+          "pdf": "traveller scheques",
+          "why": "the PDF's text layer has lost the apostrophe and the space ('traveller scheques'); the database reads \"traveller's cheques\", which is right. Not changed"
+        },
+        {
+          "section": "53",
+          "pdf_starts": "see sections 2 1 m 35 36 and 38",
+          "why": "what follows the last section in the PDF is the First Schedule (the list of terrorist organisations) and the other Schedules. The Schedules are NOT loaded on the shelf (only the numbered sections are)"
+        }
+      ]
     },
     {
       "key": "pmla_2002",
@@ -227,13 +297,51 @@
           "from": "inter-agency coordination for",
           "to": "inter-agency co-ordination for",
           "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+        },
+        {
+          "section": "9",
+          "from": "property or or lease-hold",
+          "to": "property or lease-hold",
+          "why": "the database doubles the word 'or'; the PDF reads 'any encumbrance on the property or lease-hold interest' (found by the strict two-way comparison of 2026-10-17)"
+        },
+        {
+          "section": "22",
+          "from": "that persons handwriting",
+          "to": "that person's handwriting",
+          "why": "the database lost the apostrophe; the PDF reads \"that person's handwriting\" (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "25",
+          "from": "section 12 of of the",
+          "to": "section 12 of the",
+          "why": "the database doubles the word 'of'; the PDF reads 'sub-section (1) of section 12 of the Smugglers and Foreign Exchange Manipulators' (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "44",
+          "from": "committed to it for trial];\n[(c) if the court which has taken cognizance",
+          "to": "committed to it for trial];\n[Provided that after conclusion of investigation, if no offence of money-laundering is made out requiring filing of such complaint, the said authority shall submit a closure report before the Special Court; or]\n[(c) if the court which has taken cognizance",
+          "why": "the database LOST this proviso (its own footnote 4, 'Ins. by s. 21, ibid. (w.e.f. 15-2-2013)', refers to it, but the text has no proviso); the PDF prints it between clause (b) and clause (c) of section 44(1). Wording copied from the PDF (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "37",
+          "field": "title",
+          "from": "Power of Chairperson to transfer cases.",
+          "to": "Power of Chairman to transfer cases.",
+          "why": "the heading of the PDF's running text reads 'Power of [Chairman] to transfer cases' (footnote 1: 'Subs. by Act 28 of 2016, s. 232, for \"Chairperson\"'); the database body already reads '[Chairman]' but its title kept the old word, and so does the PDF's own arrangement of sections (not updated). The running text wins (strict comparison, 2026-10-17)"
         }
       ],
       "accepted": [],
-      "loaded_on": "2026-10-16",
+      "loaded_on": "2026-10-17",
       "sections_loaded": 81,
       "pdf_as_on": "27th July, 2025",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "26",
+          "pdf_starts": "27 compositions etc of appellate tribunal omitted by the finance act",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (sections 27 to 34 are the omitted stubs of Chapter VI)"
+        }
+      ]
     },
     {
       "key": "sc_st_act_1989",
@@ -323,6 +431,12 @@
           "from": "a) preliminary enquiry",
           "to": "(a) preliminary enquiry",
           "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
+        },
+        {
+          "section": "15A",
+          "from": "the victims age",
+          "to": "the victim's age",
+          "why": "the database lost the apostrophe; the PDF reads \"the victim's age or gender\" (strict comparison, 2026-10-17)"
         }
       ],
       "accepted": [
@@ -332,10 +446,17 @@
           "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
         }
       ],
-      "loaded_on": "2026-10-16",
+      "loaded_on": "2026-10-17",
       "sections_loaded": 26,
       "pdf_as_on": "21st September, 2025",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "23",
+          "pdf_starts": "see section 3 2 va section under the indian penal code",
+          "why": "what follows the last section in the PDF is the Schedule (the list of IPC offences that section 3(2)(va) refers to). The Schedule is NOT loaded on the shelf (only the numbered sections are)"
+        }
+      ]
     }
   ]
 }

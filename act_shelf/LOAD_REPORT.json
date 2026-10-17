@@ -1,10 +1,10 @@
 {
- "written": "2026-10-16",
+ "written": "2026-10-17",
  "reports": {
   "pc_act_1988": {
    "key": "pc_act_1988",
    "act_id": "AC_CEN_26_36_00001_198849_1517807318890",
-   "loaded_on": "2026-10-16",
+   "loaded_on": "2026-10-17",
    "sections": 35,
    "omitted_sections": [
     "24",
@@ -29,6 +29,12 @@
      "ok": true
     }
    },
+   "tidy": {
+    "heading_repeated_removed": 13,
+    "state_amendments_set_aside": [
+     "17A"
+    ]
+   },
    "corrections": [
     {
      "section": "28",
@@ -52,6 +58,15 @@
    ],
    "absent_words_unresolved": [],
    "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 33,
+    "words_compared": 8921,
+    "bare_numbers_ignored": 0,
+    "differences": 2,
+    "accepted_in_manifest": 2,
+    "unexplained": [],
+    "accepted_unused": []
+   },
    "pdf_run_coverage": {
     "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
     "min": 0.893,
@@ -63,7 +78,7 @@
   "pocso_act_2012": {
    "key": "pocso_act_2012",
    "act_id": "AC_CEN_13_14_00005_201232_1517807323686",
-   "loaded_on": "2026-10-16",
+   "loaded_on": "2026-10-17",
    "sections": 47,
    "omitted_sections": [],
    "record_last_modified": {
@@ -84,6 +99,12 @@
      "title_differences": [],
      "ok": true
     }
+   },
+   "tidy": {
+    "heading_repeated_removed": 5,
+    "state_amendments_set_aside": [
+     "42"
+    ]
    },
    "corrections": [
     {
@@ -109,23 +130,52 @@
      "from": "(1) of section44.",
      "to": "(1) of section 44.",
      "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+    },
+    {
+     "section": "9",
+     "from": "naked in public, is said to commit aggravated sexual assault.\n[(v) whoever persuades",
+     "to": "naked in public;\n[(v) whoever persuades",
+     "why": "in the PDF clause (u) ends 'naked in public;' and the words 'is said to commit aggravated sexual assault' come once, after the LAST clause (v); the database put them after (u) and left (v) without them (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "9",
+     "from": "attains early sexual maturity.]",
+     "to": "attains early sexual maturity,]\nis said to commit aggravated sexual assault.",
+     "why": "the other half of the same correction: the PDF ends section 9 '... attains early sexual maturity,] is said to commit aggravated sexual assault.' (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "42",
+     "field": "title",
+     "from": "Alternative punishment.",
+     "to": "Alternate punishment.",
+     "why": "the heading of the PDF's running text and of the database's own body read 'Alternate punishment'; the database title says 'Alternative' (strict comparison, 2026-10-17)"
     }
    ],
    "accepted": [],
    "absent_words_unresolved": [],
    "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 47,
+    "words_compared": 7946,
+    "bare_numbers_ignored": 6,
+    "differences": 0,
+    "accepted_in_manifest": 0,
+    "unexplained": [],
+    "accepted_unused": []
+   },
    "pdf_run_coverage": {
     "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
-    "min": 0.829,
+    "min": 0.746,
     "below_0.90": {
-     "1": 0.829
+     "1": 0.829,
+     "42": 0.746
     }
    }
   },
   "uapa_1967": {
    "key": "uapa_1967",
    "act_id": "AC_CEN_5_23_00001_196737_1517807318055",
-   "loaded_on": "2026-10-16",
+   "loaded_on": "2026-10-17",
    "sections": 67,
    "omitted_sections": [
     "16A"
@@ -149,6 +199,10 @@
      "ok": true
     }
    },
+   "tidy": {
+    "heading_repeated_removed": 25,
+    "state_amendments_set_aside": []
+   },
    "corrections": [
     {
      "section": "25",
@@ -161,6 +215,13 @@
      "from": "((d) court means",
      "to": "(d) court means",
      "why": "India Code's database has a stray opening bracket; the printed Act (PDF) reads '(d) “court” means'. The quotation marks around the defined terms of section 2 are also missing in the database; they are not restored (the words are identical)."
+    },
+    {
+     "section": "43",
+     "field": "title",
+     "from": "Officers competent to investigate offence under Chapters IV and VI.",
+     "to": "Officers competent to investigate offences under Chapters IV and VI.",
+     "why": "the heading of the PDF's running text reads 'offences'; the database title (and the PDF's arrangement of sections) say 'offence' (strict comparison, 2026-10-17)"
     }
    ],
    "accepted": [
@@ -192,16 +253,25 @@
    ],
    "absent_words_unresolved": [],
    "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 66,
+    "words_compared": 12391,
+    "bare_numbers_ignored": 0,
+    "differences": 6,
+    "accepted_in_manifest": 6,
+    "unexplained": [],
+    "accepted_unused": []
+   },
    "pdf_run_coverage": {
     "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
-    "min": 0.918,
+    "min": 0.917,
     "below_0.90": {}
    }
   },
   "pmla_2002": {
    "key": "pmla_2002",
    "act_id": "AC_CEN_2_2_00035_200315_1517807326550",
-   "loaded_on": "2026-10-16",
+   "loaded_on": "2026-10-17",
    "sections": 81,
    "omitted_sections": [
     "27",
@@ -231,6 +301,10 @@
      "title_differences": [],
      "ok": true
     }
+   },
+   "tidy": {
+    "heading_repeated_removed": 14,
+    "state_amendments_set_aside": []
    },
    "corrections": [
     {
@@ -275,11 +349,51 @@
      "from": "inter-agency coordination for",
      "to": "inter-agency co-ordination for",
      "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+    },
+    {
+     "section": "9",
+     "from": "property or or lease-hold",
+     "to": "property or lease-hold",
+     "why": "the database doubles the word 'or'; the PDF reads 'any encumbrance on the property or lease-hold interest' (found by the strict two-way comparison of 2026-10-17)"
+    },
+    {
+     "section": "22",
+     "from": "that persons handwriting",
+     "to": "that person's handwriting",
+     "why": "the database lost the apostrophe; the PDF reads \"that person's handwriting\" (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "25",
+     "from": "section 12 of of the",
+     "to": "section 12 of the",
+     "why": "the database doubles the word 'of'; the PDF reads 'sub-section (1) of section 12 of the Smugglers and Foreign Exchange Manipulators' (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "44",
+     "from": "committed to it for trial];\n[(c) if the court which has taken cognizance",
+     "to": "committed to it for trial];\n[Provided that after conclusion of investigation, if no offence of money-laundering is made out requiring filing of such complaint, the said authority shall submit a closure report before the Special Court; or]\n[(c) if the court which has taken cognizance",
+     "why": "the database LOST this proviso (its own footnote 4, 'Ins. by s. 21, ibid. (w.e.f. 15-2-2013)', refers to it, but the text has no proviso); the PDF prints it between clause (b) and clause (c) of section 44(1). Wording copied from the PDF (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "37",
+     "field": "title",
+     "from": "Power of Chairperson to transfer cases.",
+     "to": "Power of Chairman to transfer cases.",
+     "why": "the heading of the PDF's running text reads 'Power of [Chairman] to transfer cases' (footnote 1: 'Subs. by Act 28 of 2016, s. 232, for \"Chairperson\"'); the database body already reads '[Chairman]' but its title kept the old word, and so does the PDF's own arrangement of sections (not updated). The running text wins (strict comparison, 2026-10-17)"
     }
    ],
    "accepted": [],
    "absent_words_unresolved": [],
    "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 73,
+    "words_compared": 18369,
+    "bare_numbers_ignored": 3,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
    "pdf_run_coverage": {
     "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
     "min": 0.927,
@@ -289,7 +403,7 @@
   "sc_st_act_1989": {
    "key": "sc_st_act_1989",
    "act_id": "AC_CEN_25_35_00002_198933_1517807322896",
-   "loaded_on": "2026-10-16",
+   "loaded_on": "2026-10-17",
    "sections": 26,
    "omitted_sections": [],
    "record_last_modified": {
@@ -310,6 +424,12 @@
      "title_differences": [],
      "ok": true
     }
+   },
+   "tidy": {
+    "heading_repeated_removed": 6,
+    "state_amendments_set_aside": [
+     "14"
+    ]
    },
    "corrections": [
     {
@@ -360,6 +480,12 @@
      "from": "a) preliminary enquiry",
      "to": "(a) preliminary enquiry",
      "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
+    },
+    {
+     "section": "15A",
+     "from": "the victims age",
+     "to": "the victim's age",
+     "why": "the database lost the apostrophe; the PDF reads \"the victim's age or gender\" (strict comparison, 2026-10-17)"
     }
    ],
    "accepted": [
@@ -371,6 +497,15 @@
    ],
    "absent_words_unresolved": [],
    "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 26,
+    "words_compared": 7129,
+    "bare_numbers_ignored": 0,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
    "pdf_run_coverage": {
     "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
     "min": 0.841,
