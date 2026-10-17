@@ -5,11 +5,15 @@ the strict, two-way, in-order comparison of 2026-10-17 and the two tidy-ups), th
 committed (counts, uniqueness, no HTML, the manifest, the sections the Directory's appeal lines cite, the defects the strict comparison found and the corrections that fixed them).
 No network, no model, no cost. Run: python -X utf8 test_build_act_chunks.py
 """
+import contextlib
 import copy
+import io
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 
 import build_act_chunks as B
 
@@ -178,6 +182,32 @@ check(rep4["pdf"] is None and "NOT checked" in rep4["note"], "build_act: without
 ch5, rep5 = B.build_act(ENTRY, FakeFetcher(typo_recs + DECOYS), "d", discover=True)
 check([u["word"] for u in rep5["absent_words_unresolved"]] == ["takesa"], "build_act (discover): lists every absent word instead of stopping")
 
+# main(): a run with --only must not erase the other Acts' reports (found 2026-10-17, when the sixth and seventh Acts were added), and a PDF with no "[As on the ...]" line is recorded as such
+tmpd = tempfile.mkdtemp()
+mpath = os.path.join(tmpd, "manifest.json")
+E1 = copy.deepcopy(ENTRY)
+E2 = dict(copy.deepcopy(ENTRY), key="test_act2", code="TESTACT2", whole_act=True)                 # a flag set by hand in the manifest must survive a reload
+json.dump({"schema": 1, "about": "test", "acts": [E1, E2]}, open(mpath, "w"))
+REAL_FETCHER = B.Fetcher
+try:
+    quiet = io.StringIO()
+    B.Fetcher = lambda: FakeFetcher(RECS + DECOYS)
+    with contextlib.redirect_stdout(quiet):
+        rc1 = B.main(["--manifest", mpath, "--only", "test_act"])
+    B.Fetcher = lambda: FakeFetcher(RECS + DECOYS, pdf_pages_=[PAGES[0].replace("[As on the 21st May, 2025]\n", ""), TOC_PAGE, BODY_PAGE])
+    with contextlib.redirect_stdout(quiet):
+        rc2 = B.main(["--manifest", mpath, "--only", "test_act2"])
+    rep_all = json.load(open(os.path.join(tmpd, "LOAD_REPORT.json"), encoding="utf-8"))["reports"]
+    man_all = {a["key"]: a for a in json.load(open(mpath, encoding="utf-8"))["acts"]}
+    check(rc1 == 0 and rc2 == 0 and set(rep_all) == {"test_act", "test_act2"} and os.path.exists(os.path.join(tmpd, "test_act.json")) and os.path.exists(os.path.join(tmpd, "test_act2.json")),
+          "main(--only): the second run adds its report to the first's instead of replacing it, and each Act has its own file")
+    check(man_all["test_act"]["pdf_as_on"] == "21st May, 2025" and man_all["test_act2"]["pdf_as_on"] == B.NO_PDF_DATE == "not printed on the PDF" and rep_all["test_act2"]["pdf"]["as_on"] is None,
+          "main(): the manifest records the PDF's date, or 'not printed on the PDF' when it has none (the raw report keeps None)")
+    check(man_all["test_act2"].get("whole_act") is True and "whole_act" not in man_all["test_act"], "main(): a reload keeps the hand-set 'whole_act' flag of an entry and does not add it to another")
+finally:
+    B.Fetcher = REAL_FETCHER
+    shutil.rmtree(tmpd, ignore_errors=True)
+
 
 # ---------------------------------------------------------------- Part 1: the strict, two-way, in-order comparison (2026-10-17) and the two tidy-ups
 check(B.cmp_tokens("That person’s handwriting; the Act, 1999 (2 of 1974)") == ["that", "person's", "handwriting", "the", "act", "1999", "2", "of", "1974"] and B.cmp_tokens("persons") != B.cmp_tokens("person's"),
@@ -335,8 +365,9 @@ SHELF = os.path.join(HERE, "act_shelf")
 manifest = json.load(open(os.path.join(SHELF, "manifest.json"), encoding="utf-8"))
 M = {a["key"]: a for a in manifest["acts"]}
 directory = {a["id"]: a for a in json.load(open(os.path.join(HERE, "acts_directory.json"), encoding="utf-8"))["acts"]}
-check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"], "manifest: the five Acts the owner chose")
-check(len({a["code"] for a in M.values()}) == 5 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: five distinct upper-case codes")
+check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984"], "manifest: the five Acts the owner chose, then the two very short ones added on 2026-10-17")
+check(len({a["code"] for a in M.values()}) == 7 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: seven distinct upper-case codes")
+check([k for k, a in M.items() if a.get("whole_act")] == ["muslim_women_act_2019", "pdpp_act_1984"], "manifest: only the two very short Acts are marked whole_act")
 check(all(a["india_code"]["uuid"] == directory[k]["indiacode"]["uuid"] and a["name"] == directory[k]["name"] and a["citation"] == "Act No. " + directory[k]["act_no"] for k, a in M.items()), "manifest: each Act is the Directory's Act (same India Code record, name and number)")
 check(all(f.get("why", "").strip() for a in M.values() for f in a["corrections"]) and all(f.get("why", "").strip() for a in M.values() for f in a["accepted"]), "manifest: every correction and every accepted difference says why")
 check(all(a.get("text_status") == "machine_checked" and a.get("loaded_on") and a.get("sections_loaded") and a.get("pdf_as_on") for a in M.values()), "manifest: every Act records when it was loaded, how many sections, the PDF's date and that it is only machine-checked")
@@ -366,7 +397,7 @@ check(next(c for c in SH["pc_act_1988"] if c["section_number"] == "7")["footnote
 for k, a in M.items():
     oc_ = report[k]["ordered_check"]
     n_real = len([c for c in SH[k] if not c["omitted"]])
-    check(oc_["unexplained"] == [] and oc_["accepted_unused"] == [] and oc_["sections_compared"] == n_real and oc_["words_compared"] > 5000 and oc_["differences"] == oc_["accepted_in_manifest"] == sum(int(x.get("count", 1)) for x in a["ordered_accepted"]),
+    check(oc_["unexplained"] == [] and oc_["accepted_unused"] == [] and oc_["sections_compared"] == n_real and oc_["words_compared"] > 500 and oc_["differences"] == oc_["accepted_in_manifest"] == sum(int(x.get("count", 1)) for x in a["ordered_accepted"]),
           f"{k}: the strict comparison covered all {n_real} sections ({oc_['words_compared']} words); every difference ({oc_['differences']}) is accepted in the manifest with a reason, none is left over")
     check(all(x.get("why", "").strip() for x in a["ordered_accepted"]), f"{k}: every accepted difference says why")
     check(not any(B.strip_repeated_heading(copy.deepcopy(c)) for c in SH[k]), f"{k}: no section starts its body with its own heading again")
@@ -385,6 +416,19 @@ check(t9.count("is said to commit aggravated sexual assault") == 1 and t9.rstrip
       "POCSO s.9: 'is said to commit aggravated sexual assault' comes once, after the last clause (v), as in the PDF (the database had put it after (u))")
 check(sec("pocso_act_2012", "42")["title"] == "Alternate punishment." and sec("pocso_act_2012", "42")["text"].startswith("42. Alternate punishment.\n") and sec("uapa_1967", "43")["title"].endswith("offences under Chapters IV and VI.") and sec("pmla_2002", "37")["title"] == "Power of Chairman to transfer cases.",
       "titles corrected to the heading of the PDF's running text: POCSO 42, UAPA 43, PMLA 37")
+
+# ---- the two very short Acts (2026-10-17)
+mw7 = sec("muslim_women_act_2019", "7")["text"]
+check(mw7.count("or any person related to her by blood or marriage") == 1 and "(a) an offence punishable under this Act shall be cognizable, if information relating to the commission of the offence is given to an officer in charge of a police station by the married Muslim woman upon whom talaq is pronounced or any person related to her by blood or marriage;" in mw7
+      and "compoundable, at the instance of the married Muslim woman upon whom talaq is pronounced with the permission of the Magistrate, on such terms and conditions as he may determine;" in mw7
+      and "after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied that there are reasonable grounds for granting bail" in mw7 and "; is pronounced" not in mw7,
+      "Muslim Women Act s.7: the clause (a) wording stays, and the splice India Code's database had copied into clauses (b) and (c) ('or any person related to her by blood or marriage; is pronounced') is gone: compounding and the bail hearing are the woman's, as in the PDF")
+check(len(M["muslim_women_act_2019"]["corrections"]) == 2 and all(c["section"] == "7" for c in M["muslim_women_act_2019"]["corrections"]) and sum(len(c.get("corrections", [])) for c in SH["muslim_women_act_2019"]) == 2,
+      "Muslim Women Act: exactly two corrections, both in s.7, each recorded on the chunk")
+check("rigrous imprisonment" in sec("pdpp_act_1984", "4")["text"] and "rigorous imprisonment" in sec("pdpp_act_1984", "3")["text"] and M["pdpp_act_1984"]["pdf_as_on"] == B.NO_PDF_DATE and M["pdpp_act_1984"]["accepted"][0]["word"] == "rigrous",
+      "Public Property Act: 'rigrous' in s.4 is left as India Code's database has it (its PDF reads 'regorous'; s.3(2) of both reads 'rigorous'), the manifest accepts it with a reason, and the PDF carries no date")
+check(len(SH["muslim_women_act_2019"]) == 8 and len(SH["pdpp_act_1984"]) == 7 and not any(c["omitted"] for k in ("muslim_women_act_2019", "pdpp_act_1984") for c in SH[k]) and all(c.get("footnotes") == "" for c in SH["pdpp_act_1984"] if c["section_number"] != "1"),
+      "the two short Acts: 8 and 7 sections, none omitted; the Public Property Act's only footnote is the one on section 1")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

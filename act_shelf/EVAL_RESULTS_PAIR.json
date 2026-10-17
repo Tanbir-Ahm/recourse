@@ -1,0 +1,1653 @@
+{
+ "run_on": "2026-10-17",
+ "model": "voyage-law-2",
+ "questions_sha256": "7083910d223182da3b06a2abd4ec2dbd496705f46e766deb70e30b7d2b378e89",
+ "question_tokens_billed_this_run": 0,
+ "note": "AI-marked gold set (Claude's, written and committed before this run); 24 questions; measures where the search puts the expected section, not answer quality.",
+ "overall": {
+  "semantic": {
+   "n": 24,
+   "hit@1": 0.792,
+   "hit@3": 0.917,
+   "hit@5": 0.958,
+   "hit@8": 1.0,
+   "mrr": 0.868
+  },
+  "keyword_bm25": {
+   "n": 24,
+   "hit@1": 0.708,
+   "hit@3": 0.875,
+   "hit@5": 0.917,
+   "hit@8": 1.0,
+   "mrr": 0.8
+  },
+  "fused_rrf": {
+   "n": 24,
+   "hit@1": 0.75,
+   "hit@3": 0.875,
+   "hit@5": 0.958,
+   "hit@8": 1.0,
+   "mrr": 0.831
+  }
+ },
+ "overall_lenient": {
+  "semantic": {
+   "n": 24,
+   "hit@1": 0.875,
+   "hit@3": 0.958,
+   "hit@5": 1.0,
+   "hit@8": 1.0,
+   "mrr": 0.925
+  },
+  "keyword_bm25": {
+   "n": 24,
+   "hit@1": 0.75,
+   "hit@3": 0.958,
+   "hit@5": 1.0,
+   "hit@8": 1.0,
+   "mrr": 0.858
+  },
+  "fused_rrf": {
+   "n": 24,
+   "hit@1": 0.833,
+   "hit@3": 0.958,
+   "hit@5": 1.0,
+   "hit@8": 1.0,
+   "mrr": 0.899
+  }
+ },
+ "by_act": {
+  "muslim_women_act_2019": {
+   "semantic": {
+    "n": 12,
+    "hit@1": 0.917,
+    "hit@3": 0.917,
+    "hit@5": 0.917,
+    "hit@8": 1.0,
+    "mrr": 0.927
+   },
+   "keyword_bm25": {
+    "n": 12,
+    "hit@1": 0.667,
+    "hit@3": 0.75,
+    "hit@5": 0.833,
+    "hit@8": 1.0,
+    "mrr": 0.74
+   },
+   "fused_rrf": {
+    "n": 12,
+    "hit@1": 0.667,
+    "hit@3": 0.833,
+    "hit@5": 0.917,
+    "hit@8": 1.0,
+    "mrr": 0.767
+   }
+  },
+  "pdpp_act_1984": {
+   "semantic": {
+    "n": 12,
+    "hit@1": 0.667,
+    "hit@3": 0.917,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.808
+   },
+   "keyword_bm25": {
+    "n": 12,
+    "hit@1": 0.75,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.861
+   },
+   "fused_rrf": {
+    "n": 12,
+    "hit@1": 0.833,
+    "hit@3": 0.917,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.896
+   }
+  }
+ },
+ "by_kind": {
+  "layman": {
+   "semantic": {
+    "n": 12,
+    "hit@1": 0.583,
+    "hit@3": 0.833,
+    "hit@5": 0.917,
+    "hit@8": 1.0,
+    "mrr": 0.735
+   },
+   "keyword_bm25": {
+    "n": 12,
+    "hit@1": 0.5,
+    "hit@3": 0.75,
+    "hit@5": 0.833,
+    "hit@8": 1.0,
+    "mrr": 0.656
+   },
+   "fused_rrf": {
+    "n": 12,
+    "hit@1": 0.583,
+    "hit@3": 0.75,
+    "hit@5": 0.917,
+    "hit@8": 1.0,
+    "mrr": 0.704
+   }
+  },
+  "lawyer": {
+   "semantic": {
+    "n": 12,
+    "hit@1": 1.0,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 1.0
+   },
+   "keyword_bm25": {
+    "n": 12,
+    "hit@1": 0.917,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.944
+   },
+   "fused_rrf": {
+    "n": 12,
+    "hit@1": 0.917,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.958
+   }
+  }
+ },
+ "by_hard": {
+  "False": {
+   "semantic": {
+    "n": 20,
+    "hit@1": 0.8,
+    "hit@3": 0.95,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.885
+   },
+   "keyword_bm25": {
+    "n": 20,
+    "hit@1": 0.8,
+    "hit@3": 0.9,
+    "hit@5": 0.9,
+    "hit@8": 1.0,
+    "mrr": 0.865
+   },
+   "fused_rrf": {
+    "n": 20,
+    "hit@1": 0.85,
+    "hit@3": 0.9,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.889
+   }
+  },
+  "True": {
+   "semantic": {
+    "n": 4,
+    "hit@1": 0.75,
+    "hit@3": 0.75,
+    "hit@5": 0.75,
+    "hit@8": 1.0,
+    "mrr": 0.781
+   },
+   "keyword_bm25": {
+    "n": 4,
+    "hit@1": 0.25,
+    "hit@3": 0.75,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.479
+   },
+   "fused_rrf": {
+    "n": 4,
+    "hit@1": 0.25,
+    "hit@3": 0.75,
+    "hit@5": 0.75,
+    "hit@8": 1.0,
+    "mrr": 0.542
+   }
+  }
+ },
+ "thresholds": [
+  {
+   "threshold": 0.3,
+   "k": 3,
+   "found": 22,
+   "of": 24,
+   "avg_sections_returned": 2.62
+  },
+  {
+   "threshold": 0.3,
+   "k": 5,
+   "found": 23,
+   "of": 24,
+   "avg_sections_returned": 4.0
+  },
+  {
+   "threshold": 0.34,
+   "k": 3,
+   "found": 22,
+   "of": 24,
+   "avg_sections_returned": 2.5
+  },
+  {
+   "threshold": 0.34,
+   "k": 5,
+   "found": 23,
+   "of": 24,
+   "avg_sections_returned": 3.67
+  },
+  {
+   "threshold": 0.38,
+   "k": 3,
+   "found": 22,
+   "of": 24,
+   "avg_sections_returned": 2.5
+  },
+  {
+   "threshold": 0.38,
+   "k": 5,
+   "found": 22,
+   "of": 24,
+   "avg_sections_returned": 3.29
+  },
+  {
+   "threshold": 0.42,
+   "k": 3,
+   "found": 21,
+   "of": 24,
+   "avg_sections_returned": 2.04
+  },
+  {
+   "threshold": 0.42,
+   "k": 5,
+   "found": 21,
+   "of": 24,
+   "avg_sections_returned": 2.5
+  },
+  {
+   "threshold": 0.46,
+   "k": 3,
+   "found": 19,
+   "of": 24,
+   "avg_sections_returned": 1.58
+  },
+  {
+   "threshold": 0.46,
+   "k": 5,
+   "found": 19,
+   "of": 24,
+   "avg_sections_returned": 1.79
+  },
+  {
+   "threshold": 0.5,
+   "k": 3,
+   "found": 13,
+   "of": 24,
+   "avg_sections_returned": 1.0
+  },
+  {
+   "threshold": 0.5,
+   "k": 5,
+   "found": 13,
+   "of": 24,
+   "avg_sections_returned": 1.0
+  }
+ ],
+ "offtopic": [
+  {
+   "id": "OT11",
+   "act_key": "muslim_women_act_2019",
+   "q": "What is the punishment for domestic violence under the Muslim Women (Protection of Rights on Marriage) Act?",
+   "top3": [
+    "1",
+    "4",
+    "7"
+   ],
+   "top3_scores": [
+    0.6033,
+    0.5486,
+    0.4747
+   ]
+  },
+  {
+   "id": "OT12",
+   "act_key": "muslim_women_act_2019",
+   "q": "Can a Muslim woman get a divorce by khula under the Muslim Women Act, 2019?",
+   "top3": [
+    "1",
+    "2",
+    "8"
+   ],
+   "top3_scores": [
+    0.5627,
+    0.5248,
+    0.507
+   ]
+  },
+  {
+   "id": "OT13",
+   "act_key": "muslim_women_act_2019",
+   "q": "What does the Muslim Women Act, 2019 say about a daughter's share in her father's property?",
+   "top3": [
+    "1",
+    "8",
+    "6"
+   ],
+   "top3_scores": [
+    0.5811,
+    0.5103,
+    0.4131
+   ]
+  },
+  {
+   "id": "OT14",
+   "act_key": "pdpp_act_1984",
+   "q": "What is the punishment for rioting under the Prevention of Damage to Public Property Act?",
+   "top3": [
+    "1",
+    "3",
+    "7"
+   ],
+   "top3_scores": [
+    0.5518,
+    0.5463,
+    0.5269
+   ]
+  },
+  {
+   "id": "OT15",
+   "act_key": "pdpp_act_1984",
+   "q": "Does the Prevention of Damage to Public Property Act let the government recover the cost of the damage from the accused?",
+   "top3": [
+    "7",
+    "1",
+    "2"
+   ],
+   "top3_scores": [
+    0.5207,
+    0.5022,
+    0.4738
+   ]
+  },
+  {
+   "id": "OT16",
+   "act_key": "pdpp_act_1984",
+   "q": "My private shop was set on fire by a mob. What does the Prevention of Damage to Public Property Act give me?",
+   "top3": [
+    "1",
+    "7",
+    "2"
+   ],
+   "top3_scores": [
+    0.482,
+    0.476,
+    0.4488
+   ]
+  }
+ ],
+ "whole_path": [
+  {
+   "id": "MW01",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW02",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW03",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW04",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW05",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW06",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW07",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW08",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW09",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW10",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW11",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "MW12",
+   "act_key": "muslim_women_act_2019",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3302,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD01",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD02",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD03",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD04",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD05",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD06",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD07",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD08",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD09",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD10",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD11",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  },
+  {
+   "id": "PD12",
+   "act_key": "pdpp_act_1984",
+   "delivered": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+   ],
+   "expected_in": true,
+   "also_ok_in": true,
+   "chars": 3813,
+   "embed": "not needed",
+   "error": null
+  }
+ ],
+ "rows": [
+  {
+   "id": "MW01",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": false,
+   "q": "My husband said talaq three times on WhatsApp and left. Is that divorce valid under the new law?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 8,
+   "rank_lex_lenient": 4,
+   "rank_fused": 5,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "3",
+    "4",
+    "2",
+    "6",
+    "5"
+   ],
+   "top5_scores": [
+    0.5258,
+    0.4437,
+    0.4055,
+    0.3576,
+    0.3458
+   ],
+   "expected_score": 0.5258,
+   "n_sections": 8
+  },
+  {
+   "id": "MW02",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": false,
+   "q": "How many years in jail can a Muslim husband get for pronouncing instant talaq?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "6",
+    "7",
+    "5"
+   ],
+   "top5_scores": [
+    0.7091,
+    0.6111,
+    0.4796,
+    0.4782,
+    0.4706
+   ],
+   "expected_score": 0.7091,
+   "n_sections": 8
+  },
+  {
+   "id": "MW03",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": true,
+   "q": "After instant talaq my husband refuses to give me or my children any money. What can I claim?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 3,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "5",
+    "6",
+    "3",
+    "4",
+    "2"
+   ],
+   "top5_scores": [
+    0.4871,
+    0.4344,
+    0.4023,
+    0.3784,
+    0.336
+   ],
+   "expected_score": 0.4871,
+   "n_sections": 8
+  },
+  {
+   "id": "MW04",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": false,
+   "q": "Who gets the children after the husband says talaq, the mother or the father?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "6",
+    "3",
+    "5",
+    "4",
+    "2"
+   ],
+   "top5_scores": [
+    0.6173,
+    0.5001,
+    0.4778,
+    0.4573,
+    0.3934
+   ],
+   "expected_score": 0.6173,
+   "n_sections": 8
+  },
+  {
+   "id": "MW05",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": false,
+   "q": "My husband emailed me the word talaq. He says an email does not count. Does it?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 6,
+   "rank_lex_lenient": 2,
+   "rank_fused": 3,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "2",
+    "4",
+    "7",
+    "6"
+   ],
+   "top5_scores": [
+    0.5274,
+    0.4262,
+    0.4077,
+    0.3126,
+    0.2978
+   ],
+   "expected_score": 0.5274,
+   "n_sections": 8
+  },
+  {
+   "id": "MW06",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "hard": true,
+   "q": "My husband said talaq in 2018, before this law was passed. Can he still be punished?",
+   "expected": [
+    "1"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "rank_sem": 8,
+   "rank_sem_lenient": 1,
+   "rank_lex": 4,
+   "rank_lex_lenient": 1,
+   "rank_fused": 6,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "7",
+    "8",
+    "2"
+   ],
+   "top5_scores": [
+    0.5547,
+    0.4852,
+    0.4131,
+    0.3795,
+    0.3718
+   ],
+   "expected_score": 0.3125,
+   "n_sections": 8
+  },
+  {
+   "id": "MW07",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is an offence under the Muslim Women (Protection of Rights on Marriage) Act cognizable, and who may give the information to the police?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "7",
+    "1",
+    "2",
+    "4",
+    "8"
+   ],
+   "top5_scores": [
+    0.6362,
+    0.5165,
+    0.4399,
+    0.3927,
+    0.392
+   ],
+   "expected_score": 0.6362,
+   "n_sections": 8
+  },
+  {
+   "id": "MW08",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can the accused in a triple talaq case be released on bail without the Magistrate hearing the wife?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "7",
+    "3",
+    "6",
+    "4",
+    "5"
+   ],
+   "top5_scores": [
+    0.4963,
+    0.4145,
+    0.3873,
+    0.3857,
+    0.3739
+   ],
+   "expected_score": 0.4963,
+   "n_sections": 8
+  },
+  {
+   "id": "MW09",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "At whose instance can an offence under the Act be compounded, and with whose permission?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "7",
+    "8",
+    "2",
+    "1",
+    "4"
+   ],
+   "top5_scores": [
+    0.4287,
+    0.179,
+    0.1737,
+    0.1498,
+    0.1423
+   ],
+   "expected_score": 0.4287,
+   "n_sections": 8
+  },
+  {
+   "id": "MW10",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "How does the Act define talaq, and does the definition cover talaq-e-hasan?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "2",
+    "3",
+    "4",
+    "6",
+    "7"
+   ],
+   "top5_scores": [
+    0.605,
+    0.5802,
+    0.4931,
+    0.4887,
+    0.4781
+   ],
+   "expected_score": 0.605,
+   "n_sections": 8
+  },
+  {
+   "id": "MW11",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Which Magistrate decides the amount of subsistence allowance under the Act?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "5",
+    "2",
+    "7",
+    "6",
+    "8"
+   ],
+   "top5_scores": [
+    0.5017,
+    0.2122,
+    0.2034,
+    0.1609,
+    0.113
+   ],
+   "expected_score": 0.5017,
+   "n_sections": 8
+  },
+  {
+   "id": "MW12",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Does the Act extend to the Union territories of Jammu and Kashmir and Ladakh?",
+   "expected": [
+    "1"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "1",
+    "2",
+    "8",
+    "7",
+    "3"
+   ],
+   "top5_scores": [
+    0.3974,
+    0.3026,
+    0.2815,
+    0.2199,
+    0.2103
+   ],
+   "expected_score": 0.3974,
+   "n_sections": 8
+  },
+  {
+   "id": "PD01",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the punishment for burning a government bus during a protest?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "2",
+    "7",
+    "1"
+   ],
+   "top5_scores": [
+    0.4772,
+    0.4434,
+    0.3851,
+    0.3263,
+    0.3056
+   ],
+   "expected_score": 0.4772,
+   "n_sections": 7
+  },
+  {
+   "id": "PD02",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "My son has been arrested for damaging a government building in a riot. How many years can he get?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "2",
+    "1",
+    "7"
+   ],
+   "top5_scores": [
+    0.4583,
+    0.4234,
+    0.2985,
+    0.2818,
+    0.2787
+   ],
+   "expected_score": 0.4234,
+   "n_sections": 7
+  },
+  {
+   "id": "PD03",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "Will bail be easy for a person arrested for breaking public property in a bandh?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "rank_sem": 5,
+   "rank_sem_lenient": 5,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 4,
+   "rank_fused_lenient": 4,
+   "top5_sem": [
+    "3",
+    "2",
+    "4",
+    "1",
+    "5"
+   ],
+   "top5_scores": [
+    0.4248,
+    0.4133,
+    0.4058,
+    0.3927,
+    0.3479
+   ],
+   "expected_score": 0.3479,
+   "n_sections": 7
+  },
+  {
+   "id": "PD04",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "Does damaging the property of a state-owned company count as damaging public property?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "2",
+    "4",
+    "1",
+    "7"
+   ],
+   "top5_scores": [
+    0.5121,
+    0.4987,
+    0.4476,
+    0.4324,
+    0.4312
+   ],
+   "expected_score": 0.4987,
+   "n_sections": 7
+  },
+  {
+   "id": "PD05",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is a municipal corporation's property also covered by this law on damaging public property?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "2",
+    "7",
+    "1",
+    "4"
+   ],
+   "top5_scores": [
+    0.5403,
+    0.5151,
+    0.4687,
+    0.4649,
+    0.4318
+   ],
+   "expected_score": 0.5151,
+   "n_sections": 7
+  },
+  {
+   "id": "PD06",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the judge give less than six months for damaging a water supply installation?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "3",
+    "4",
+    "7",
+    "2",
+    "1"
+   ],
+   "top5_scores": [
+    0.4907,
+    0.3955,
+    0.2703,
+    0.2459,
+    0.2433
+   ],
+   "expected_score": 0.4907,
+   "n_sections": 7
+  },
+  {
+   "id": "PD07",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Is a company in which the Government holds shares 'public property' for the purposes of the Act?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "2",
+    "7",
+    "1",
+    "3",
+    "6"
+   ],
+   "top5_scores": [
+    0.5231,
+    0.3399,
+    0.3294,
+    0.2979,
+    0.2795
+   ],
+   "expected_score": 0.5231,
+   "n_sections": 7
+  },
+  {
+   "id": "PD08",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the minimum sentence for mischief by fire or explosive substance causing damage to public property, and can the court go below it?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "4",
+    "3",
+    "2",
+    "1",
+    "7"
+   ],
+   "top5_scores": [
+    0.7305,
+    0.6556,
+    0.4388,
+    0.3829,
+    0.3184
+   ],
+   "expected_score": 0.7305,
+   "n_sections": 7
+  },
+  {
+   "id": "PD09",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Under the Act, must the prosecution be heard before an accused or convicted person in custody is released on bail?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "5",
+    "6",
+    "7",
+    "2",
+    "1"
+   ],
+   "top5_scores": [
+    0.6309,
+    0.2622,
+    0.2081,
+    0.2022,
+    0.1721
+   ],
+   "expected_score": 0.6309,
+   "n_sections": 7
+  },
+  {
+   "id": "PD10",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What does 'mischief' mean in this Act?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "2",
+    "3",
+    "4",
+    "1",
+    "7"
+   ],
+   "top5_scores": [
+    0.6306,
+    0.5652,
+    0.4695,
+    0.4022,
+    0.3775
+   ],
+   "expected_score": 0.6306,
+   "n_sections": 7
+  },
+  {
+   "id": "PD11",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "Is damage to a railway or a power station treated as a graver offence under the Act than damage to an ordinary government office?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 2,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "3",
+    "4",
+    "2",
+    "1",
+    "7"
+   ],
+   "top5_scores": [
+    0.5816,
+    0.5393,
+    0.5048,
+    0.4486,
+    0.3931
+   ],
+   "expected_score": 0.5816,
+   "n_sections": 7
+  },
+  {
+   "id": "PD12",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "Does the Act stop the police from also registering cases under other laws for the same act of destruction?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "6",
+    "7",
+    "2",
+    "1",
+    "3"
+   ],
+   "top5_scores": [
+    0.498,
+    0.4968,
+    0.4656,
+    0.4384,
+    0.3777
+   ],
+   "expected_score": 0.498,
+   "n_sections": 7
+  }
+ ]
+}

@@ -538,7 +538,8 @@
       "loaded_on": "2026-10-17",
       "sections_loaded": 8,
       "pdf_as_on": "1st July,2026",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "whole_act": true
     },
     {
       "key": "pdpp_act_1984",
@@ -577,7 +578,8 @@
       "loaded_on": "2026-10-17",
       "sections_loaded": 7,
       "pdf_as_on": "not printed on the PDF",
-      "text_status": "machine_checked"
+      "text_status": "machine_checked",
+      "whole_act": true
     }
   ]
 }

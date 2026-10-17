@@ -30,8 +30,10 @@ FAILURES = []
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(HERE, "recourse_app.py")
 KEYS = ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"]
-COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26}
-CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT"}
+NEW = ["muslim_women_act_2019", "pdpp_act_1984"]                 # added 2026-10-17: two very short Acts, handed over whole (manifest "whole_act")
+ALLK = KEYS + NEW
+COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26, "muslim_women_act_2019": 8, "pdpp_act_1984": 7}
+CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT", "muslim_women_act_2019": "MWACT", "pdpp_act_1984": "PDPP"}
 
 
 def check(cond, msg):
@@ -77,12 +79,13 @@ check(off_matches == [] and buf.getvalue() == "" and CA._shelf_held([], "Section
 
 # ---------------------------------------------------------------- the shelf itself
 SH = S.load()
-check(set(SH["acts"]) == set(KEYS) and all(SH["acts"][k]["ok"] for k in KEYS) and SH["problems"] == [], f"the shelf loads: five Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
-check(all(len(SH["acts"][k]["by_num"]) == COUNTS[k] for k in KEYS), "every section of every Act is reachable by number (omitted and repealed stubs too)")
-check(all(len(SH["acts"][k]["ranked"]) == COUNTS[k] - n for k, n in (("pc_act_1988", 2), ("pocso_act_2012", 0), ("uapa_1967", 1), ("pmla_2002", 8), ("sc_st_act_1989", 0))), "omitted and repealed stubs are not searched by meaning")
-check(all(SH["acts"][k]["code"] == CODES[k] for k in KEYS) and all(SH["acts"][k]["text_status"] == "machine_checked" for k in KEYS), "codes as expected; the status is machine_checked (nobody has read the text)")
-check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act"}, "display names (for the label and the repaired citation)")
-check(all(k in {a["id"] for a in AD.load()["acts"]} for k in KEYS), "every shelf Act is an Act of the Directory (same ids)")
+check(set(SH["acts"]) == set(ALLK) and all(SH["acts"][k]["ok"] for k in ALLK) and SH["problems"] == [], f"the shelf loads: seven Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
+check(all(len(SH["acts"][k]["by_num"]) == COUNTS[k] for k in ALLK), "every section of every Act is reachable by number (omitted and repealed stubs too)")
+check(all(len(SH["acts"][k]["ranked"]) == COUNTS[k] - n for k, n in (("pc_act_1988", 2), ("pocso_act_2012", 0), ("uapa_1967", 1), ("pmla_2002", 8), ("sc_st_act_1989", 0), ("muslim_women_act_2019", 0), ("pdpp_act_1984", 0))), "omitted and repealed stubs are not searched by meaning")
+check(all(SH["acts"][k]["code"] == CODES[k] for k in ALLK) and all(SH["acts"][k]["text_status"] == "machine_checked" for k in ALLK), "codes as expected; the status is machine_checked (nobody has read the text)")
+check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act", "MWACT": "Muslim Women Act, 2019", "PDPP": "Prevention of Damage to Public Property Act, 1984"}, "display names (for the label and the repaired citation)")
+check(all(k in {a["id"] for a in AD.load()["acts"]} for k in ALLK), "every shelf Act is an Act of the Directory (same ids)")
+check([k for k in ALLK if SH["acts"][k]["whole"]] == NEW, "only the two very short Acts are handed over whole; the five long ones are searched by meaning")
 check(S.loaded_label("2026-10-16") == "16 October 2026" and S.loaded_label("nonsense") == "" and S.loaded_label(None) == "", "the date label")
 
 
@@ -550,6 +553,84 @@ check([(x["act"], x["section_number"]) for x in rec["statutes"]] == [("PCACT", "
       "PDF of the answer: a shelf section is listed among the sources under the Act's name, and the completeness check passes")
 check(CA._shelf_display("PMLA") == "PMLA" and CA._shelf_display("BNS") is None and CA._shelf_name_pattern("BNS") is None and CA._shelf_name_pattern("PMLA").search("the Prevention of Money-laundering Act, 2002"), "chat_assistant's lookups: shelf codes only")
 
+# ---------------------------------------------------------------- the two very short Acts, handed over whole (2026-10-17)
+os.environ["ACT_SHELF"] = "on"
+MW, PD = "muslim_women_act_2019", "pdpp_act_1984"
+Q_MW_DATE = "My husband said talaq in 2018, before this law was passed. Can he still be punished?"
+r = S.search(Q_MW_DATE, [{"id": MW}], embed_fn=boom)
+check([m["section_number"] for m in r["matches"]] == ["1", "2", "3", "4", "5", "6", "7", "8"] and all(m["retrieval"] == "whole" and m["score"] is None for m in r["matches"]),
+      "a very short Act is handed over whole, in the Act's own order, whatever the question")
+check(r["info"]["embed"] == "not needed" and r["info"]["per_act"][MW]["whole"] is True and r["info"]["chars"] == sum(len(c["text"]) for c in SH["acts"][MW]["ranked"]) < S.WHOLE_ACT_MAX_CHARS,
+      "...with no question vector and no Voyage call (embed_fn=boom would have failed the search), and well under the length limit")
+check(all(m["text"] == SH["acts"][MW]["by_num"][m["section_number"]]["text"] for m in r["matches"]) and "pronounced with the permission of the Magistrate" in next(m["text"] for m in r["matches"] if m["section_number"] == "7"),
+      "...each section is India Code's text as loaded, with the two corrected clauses of section 7")
+r = S.search("What does section 5 of the Muslim Women Act, 2019 say?", [{"id": MW}], embed_fn=boom)
+secs = [(m["section_number"], m["retrieval"]) for m in r["matches"]]
+check(secs[0] == ("5", "named") and [x for x, _ in secs] == ["5", "1", "2", "3", "4", "6", "7", "8"] and r["info"]["per_act"][MW]["named"] == ["5"], f"a named section comes first and is not repeated ({secs})")
+r = S.search("Is bail easy for a person accused under the Prevention of Damage to Public Property Act?", [{"id": PD}], embed_fn=boom)
+check([m["section_number"] for m in r["matches"]] == ["1", "2", "3", "4", "5", "6", "7"] and r["info"]["per_act"][PD]["whole"] is True, "the Public Property Act: all seven sections, the saving clause (section 6) and the repeal included")
+r = S.search("q", [{"id": MW}, {"id": PD}], embed_fn=boom)
+check(len(r["matches"]) == 15 and r["info"]["embed"] == "not needed" and {m["act_key"] for m in r["matches"]} == {MW, PD}, "two whole Acts in one question: both in full, still no Voyage call")
+r = S.search("q", [{"id": MW}, {"id": "pmla_2002"}], embed_fn=like("PMLA", "45"))
+by = {}
+for m in r["matches"]:
+    by.setdefault(m["act_key"], []).append((m["section_number"], m["retrieval"]))
+check(len(by[MW]) == 8 and all(x == "whole" for _, x in by[MW]) and by["pmla_2002"][0] == ("45", "meaning") and all(x == "meaning" for _, x in by["pmla_2002"]) and r["info"]["embed"] == "ok",
+      "a whole Act next to a long one: the short Act in full, the long Act still searched by meaning (and the question is embedded, once, for that)")
+r = S.search("q", [{"id": MW}], embed_fn=boom)
+hs = S.held_state(r["matches"], [{"id": MW}, {"id": "pmla_2002"}])
+check(hs[MW] == {"state": "used", "loaded_on": LOADED[MW], "whole": True} and "whole" not in hs["pmla_2002"], "held_state marks a whole Act, and only that")
+tmp, d = shelf_copy()
+edit_json(os.path.join(d, "manifest.json"), lambda data: data["acts"][3].__setitem__("whole_act", True))
+sh2 = S.load(d, refresh=True)
+check(not sh2["acts"]["pmla_2002"]["ok"] and "whole_act" in sh2["acts"]["pmla_2002"]["problems"][0] and all(sh2["acts"][k]["ok"] for k in ALLK if k != "pmla_2002"),
+      "the flag on a long Act (a slip in the manifest): that Act is not held, so a long Act is never handed over in full; the others are")
+shutil.rmtree(tmp)
+tmp, d = shelf_copy()
+edit_json(os.path.join(d, "manifest.json"), lambda data: data["acts"][5].pop("whole_act"))
+sh2 = S.load(d, refresh=True)
+r = S.search("My husband gave me instant talaq. What can I claim for my children?", [{"id": MW}], embed_fn=like("MWACT", "6"))
+check(not sh2["acts"][MW]["whole"] and sh2["acts"][MW]["ok"], "without the flag the same Act is an ordinary shelf Act (searched by meaning)")
+shutil.rmtree(tmp)
+
+acts_mw = [{"id": MW, "short": "Muslim Women (Protection of Rights on Marriage) Act, 2019", "how": "likely"}]
+r = S.search("q", acts_mw, embed_fn=boom)
+hs = S.held_state(r["matches"], acts_mw)
+n = AD.notice(acts_mw, "answer", held=hs)
+check("That Act is short, so the answer below was written from all of its sections; any rules made under it are not included." in n["text"] and "our search found" not in n["text"] and "other provisions" not in n["text"]
+      and "not yet read by our reviewer" in n["text"] and n["held"] == {MW: "used"}, f"the notice for a whole Act says so, and does not say 'the sections our search found' ({n['text'][:140]})")
+pb = AD.prompt_block(acts_mw, held=hs)
+check("includes EVERY section of that Act" in pb and "only the sections our search found" not in pb and "any rules made under that Act, or what the courts have held" in pb and "from memory" in pb,
+      "the prompt block for a whole Act says the material holds every section, not what the courts have held, and still forbids anything from memory")
+check(AD.prompt_block(acts_mw, held={MW: {"state": "used", "loaded_on": LOADED[MW]}}) == AD._prompt_used(acts_mw), "...and an Act that is not whole still gets the block it had before, word for word")
+
+Q_MW = "My husband gave me triple talaq on WhatsApp. What is the punishment under the Muslim Women Act, 2019?"
+res, out = ask(Q_MW, boom, "Under Section 4 of the Muslim Women Act, 2019, a Muslim husband who pronounces talaq can be imprisoned for up to three years and fined.")
+p = sent.get("prompt", "")
+mws = [m for m in res["matches"] if m.get("source") == "act_shelf"]
+check(res["state"] == "single_match" and [m["section_number"] for m in mws] == ["1", "2", "3", "4", "5", "6", "7", "8"] and all(m["act"] == "MWACT" for m in mws), "end to end: a question that names the Muslim Women Act reaches the answer with all eight sections")
+check("[Muslim Women Act, 2019 Section 4, Section/Para 4]\n4. Punishment for pronouncing talaq." in p and "MWACT" not in p and "includes EVERY section of that Act" in p, "the prompt labels each section with the Act's name, gives the whole Act, and carries the 'whole Act' block")
+check("## Hard rules (never break)" in p and "Use ONLY the legal information given below" in p, "the Hard rules block is still in the prompt, unchanged")
+check("It shall extend to the whole of India except the State of Jammu and Kashmir*." in p and "[Amendment notes printed with this section on India Code" in p and "made applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh" in p,
+      "section 1(2) says 'except the State of Jammu and Kashmir*': the India Code footnote that the Act now applies to Jammu and Kashmir and Ladakh goes to the model with it, so the Act's reach is not misread")
+check(res["response_text"].startswith("Under Section 4 of the Muslim Women Act, 2019,") and sent["calls"] == 1, "a good answer comes out unchanged, with one paid call")
+n = res["act_notice"]
+check(n["held"] == {MW: "used"} and "written from all of its sections" in n["text"], f"the notice on the page says the Act was given in full ({n['text'][:100]})")
+lines = [l for l in out.splitlines() if l.startswith("ACT_SHELF ")]
+lj = json.loads(lines[0][len("ACT_SHELF "):]) if lines else {}
+check(len(lines) == 1 and lj["acts"] == [MW] and lj["embed"] == "not needed" and lj["per_act"][MW]["whole"] is True and Q_MW not in lines[0], "one ACT_SHELF log line: the Act, 'not needed' for the embedding, 'whole'; never the question")
+res, out = ask(Q_MW, boom, "Section 4 punishes the husband with imprisonment for up to three years and a fine.")
+check(res["response_text"].startswith("Section 4 of the Muslim Women Act, 2019 punishes the husband") and sent["calls"] == 1, f"the Act's name is added by code after a bare 'Section 4' ({res['response_text'][:70]!r})")
+res, out = ask(Q_MW, boom, "Section 4 of the BNSS punishes the husband with imprisonment for up to three years and a fine.")
+check(res["state"] == "single_match" and res["response_text"] is None and sent["calls"] == 2, "a section of the Muslim Women Act given another Act's name: the answer is not shown (checked twice, withheld)")
+Q_PD = "My son is accused of burning a bus in the protest. What does the Prevention of Damage to Public Property Act say about bail?"
+res, out = ask(Q_PD, boom, "Under Section 5 of the Prevention of Damage to Public Property Act, 1984, bail is not given unless the prosecution has been given an opportunity to oppose it.")
+p = sent.get("prompt", "")
+check(res["state"] == "single_match" and len([m for m in res["matches"] if m.get("source") == "act_shelf"]) == 7 and "[Prevention of Damage to Public Property Act, 1984 Section 5, Section/Para 5]" in p and res["response_text"] is not None,
+      "end to end: the Public Property Act reaches the answer with all seven sections, labelled with its name")
+check("omitted by Act 34 of 2019" in p and "It extends to the whole of India ***." in p, "the Public Property Act's section 1 comes with the footnote that the Jammu and Kashmir exception was omitted in 2019")
+os.environ.pop("ACT_SHELF", None)
+
 # ---------------------------------------------------------------- the gold set stays frozen
 import hashlib
 gold = json.load(open(os.path.join(S.SHELF_DIR, "eval_questions.json"), encoding="utf-8"))
@@ -557,6 +638,14 @@ body = json.dumps(gold["questions"], sort_keys=True, ensure_ascii=False)
 check(hashlib.sha256(body.encode("utf-8")).hexdigest() == gold["questions_sha256"] and gold["questions_sha256"].startswith("8fe6280a105d"), "the retrieval gold set is unchanged since it was frozen (committed before the first run)")
 miss = [(q["id"], s) for q in gold["questions"] for s in q["expected"] + q["also_ok"] if s not in SH["acts"][q["act_key"]]["by_num"] or SH["acts"][q["act_key"]]["by_num"][s].get("omitted")]
 check(not miss, f"every section the gold set expects exists on the shelf and is not a stub ({miss[:3]})")
+
+pair = json.load(open(os.path.join(S.SHELF_DIR, "eval_questions_pair.json"), encoding="utf-8"))
+check(hashlib.sha256(json.dumps(pair["questions"], sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest() == pair["questions_sha256"] and pair["questions_sha256"].startswith("7083910d2231") and len(pair["questions"]) == 24,
+      "the 24 gold questions for the two short Acts are unchanged since they were frozen (committed before any retrieval run on them)")
+miss = [(q["id"], s_) for q in pair["questions"] for s_ in q["expected"] + q["also_ok"] if s_ not in SH["acts"][q["act_key"]]["by_num"] or SH["acts"][q["act_key"]]["by_num"][s_].get("omitted")]
+check(not miss, f"every section the pair gold set expects exists on the shelf and is not a stub ({miss[:3]})")
+offp = json.load(open(os.path.join(S.SHELF_DIR, "eval_offtopic_questions_pair.json"), encoding="utf-8"))
+check(hashlib.sha256(json.dumps(offp["questions"], sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest() == offp["questions_sha256"] and offp["questions_sha256"].startswith("fe0340b98b67"), "the six off-topic probes for the two short Acts are unchanged")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

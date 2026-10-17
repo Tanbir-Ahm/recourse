@@ -185,6 +185,36 @@ def offtopic_scores(path, shelf, cache_path):
     return rows, billed
 
 
+def whole_path(gold):
+    """For the questions whose Act the manifest marks "whole_act": the REAL search (act_shelf.search, ACT_SHELF=on for this call only) with an embedding function that fails if it is ever called.
+    A very short Act is handed over in full, so the question is whether every section the gold set expects (strict and also_ok) is in what is handed over, and that no Voyage call was made.
+    This checks the delivery, not whether the answer model uses the right section. -> rows (empty when no gold question is about a whole Act)."""
+    import act_shelf
+    with open(os.path.join(SHELF, "manifest.json"), encoding="utf-8") as fh:
+        whole_keys = {a["key"] for a in json.load(fh)["acts"] if a.get("whole_act")}
+    rows = []
+    before = os.environ.get("ACT_SHELF")
+    os.environ["ACT_SHELF"] = "on"
+    try:
+        def _no_voyage(_text):
+            raise AssertionError("a whole Act must not need a question vector")
+        for q in gold["questions"]:
+            if q["act_key"] not in whole_keys:
+                continue
+            res = act_shelf.search(q["q"], [{"id": q["act_key"]}], embed_fn=_no_voyage)
+            got = [m["section_number"] for m in res["matches"]]
+            want = [str(x).upper() for x in q["expected"]]
+            ok_also = [str(x).upper() for x in q.get("also_ok", [])]
+            rows.append({"id": q["id"], "act_key": q["act_key"], "delivered": got, "expected_in": all(w in [g.upper() for g in got] for w in want),
+                         "also_ok_in": all(w in [g.upper() for g in got] for w in ok_also), "chars": res["info"]["chars"], "embed": res["info"]["embed"], "error": res["info"].get("error")})
+    finally:
+        if before is None:
+            os.environ.pop("ACT_SHELF", None)
+        else:
+            os.environ["ACT_SHELF"] = before
+    return rows
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--gold", default=os.path.join(SHELF, "eval_questions.json"))
@@ -204,7 +234,7 @@ def main(argv=None):
     billed += off_billed
     methods = {"semantic": "rank_sem", "keyword_bm25": "rank_lex", "fused_rrf": "rank_fused"}
     result = {"run_on": datetime.date.today().isoformat(), "model": MODEL, "questions_sha256": gold["questions_sha256"], "question_tokens_billed_this_run": billed,
-              "note": "AI-marked gold set (Claude's, written and committed before this run); 75 questions; measures where the search puts the expected section, not answer quality.",
+              "note": f"AI-marked gold set (Claude's, written and committed before this run); {len(gold['questions'])} questions; measures where the search puts the expected section, not answer quality.",
               "overall": {m: summarize(rows, k) for m, k in methods.items()},
               "overall_lenient": {m: summarize(rows, k + "_lenient") for m, k in methods.items()},
               "by_act": {a: {m: summarize([r for r in rows if r["act_key"] == a], k) for m, k in methods.items()} for a in sorted({r["act_key"] for r in rows})},
@@ -212,6 +242,7 @@ def main(argv=None):
               "by_hard": {str(h): {m: summarize([r for r in rows if r["hard"] == h], k) for m, k in methods.items()} for h in (False, True)},
               "thresholds": threshold_table(rows, [0.30, 0.34, 0.38, 0.42, 0.46, 0.50], (3, 5)),
               "offtopic": off_rows,
+              "whole_path": whole_path(gold),
               "rows": rows}
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(result, fh, indent=1)
@@ -236,6 +267,13 @@ def main(argv=None):
         print("\noff-topic probes (a shelf Act named, something it does not contain asked): best within-Act score " + ", ".join(f"{t:.3f}" for t in tops))
         gold_tops = sorted(r["top5_scores"][0] for r in rows)
         print(f"  for comparison, the best score on the {len(rows)} gold questions: lowest {gold_tops[0]:.3f}, 10th lowest {gold_tops[9]:.3f}, median {gold_tops[len(gold_tops) // 2]:.3f}")
+    if result["whole_path"]:
+        wp = result["whole_path"]
+        print(f"\nwhole-Act delivery (the real search; the Act is handed over in full, no question vector): {sum(1 for r in wp if r['expected_in'])} of {len(wp)} have the expected section(s) among those handed over, "
+              f"{sum(1 for r in wp if r['also_ok_in'])} of {len(wp)} the also-ok ones as well; embedding calls: {sum(1 for r in wp if r['embed'] != 'not needed')}; errors: {sum(1 for r in wp if r['error'])}")
+        for r in wp:
+            if not (r["expected_in"] and r["also_ok_in"]) or r["error"] or r["embed"] != "not needed":
+                print(f"  PROBLEM {r['id']}: {r}")
     print("\nmisses (semantic, expected not in the top 5)")
     for r in rows:
         if r["rank_sem"] is None or r["rank_sem"] > 5:

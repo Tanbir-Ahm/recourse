@@ -191,10 +191,17 @@ def _held_sentences(acts, kind, held):
     used, unused, plain = _split_held(acts, held)
     whole = lambda g: len(g) == len(acts)  # noqa: E731
     out = []
+    used_full = [a for a in used if (held.get(a["id"]) or {}).get("whole")]          # a very short Act, handed to the answer in full
+    used = [a for a in used if a not in used_full]
     if used:
         it, them, they = _ref(used, whole(used))
         out.append(f"Recourse has loaded the official text of {it} from India Code ({_stamp(used, held)}). The answer below was written from the sections of {it} that our search found for this question; "
                    f"{they} may contain other provisions that bear on your question.")
+    if used_full:
+        it, them, they = _ref(used_full, whole(used_full))
+        many_full = len(used_full) > 1
+        out.append(f"Recourse has loaded the official text of {it} from India Code ({_stamp(used_full, held)}). {it[:1].upper() + it[1:]} {'are' if many_full else 'is'} short, so the answer below was written from all of "
+                   f"{'their' if many_full else 'its'} sections; any rules made under {them} are not included.")
     if unused and kind != "refusal":
         it, them, they = _ref(unused, whole(unused))
         out.append(f"Recourse has loaded the official text of {it}, but the answer below does not rest on {them}.")
@@ -273,6 +280,18 @@ def _prompt_used(group):
             "Where a section's words and the person's facts do not clearly match, say so instead of stretching the section.\n")
 
 
+def _prompt_used_whole(group):
+    """The same block for an Act that is handed over in FULL (a very short Act: act_shelf 'whole_act'): the material holds every section, so it must not say 'only the sections our search found'."""
+    names = _the_list([a["short"] for a in group])
+    it = "those Acts" if len(group) > 1 else "that Act"
+    return ("\n\n## Act text in the material\n"
+            f"The person's question {_verb(group)} the {names}. The material above includes EVERY section of {it} ({'they are' if len(group) > 1 else 'it is'} short), each block labelled with the Act's name; the text is the official text as loaded from India Code. "
+            f"Use only those sections for anything you say about {it}: do not state any other section number, punishment, procedure or route of appeal of {it} from memory. "
+            f"Name each of them with the Act shown in its label (for example \"Section 45 of the PMLA\"), not as a BNS or BNSS section. "
+            f"The material does not include any rules made under {it}, or what the courts have held about {it}: if the question needs those, say in one sentence that the material does not show them and that the full text is on India Code. "
+            "Where a section's words and the person's facts do not clearly match, say so instead of stretching the section.\n")
+
+
 def _prompt_unused(group):
     names = _the_list([a["short"] for a in group])
     it = "those Acts" if len(group) > 1 else "that Act"
@@ -289,7 +308,10 @@ def prompt_block(acts, held=None):
         if not acts:
             return ""
         used, unused, plain = _split_held(acts, held)
-        return (_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_unused(unused) if unused else "")
+        used_full = [a for a in used if (held.get(a["id"]) or {}).get("whole")]
+        used = [a for a in used if a not in used_full]
+        return ((_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_used_whole(used_full) if used_full else "")
+                + (_prompt_unused(unused) if unused else ""))
     except Exception:  # noqa: BLE001
         return ""
 
