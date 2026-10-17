@@ -55,9 +55,12 @@ def near(a, b, n=100):
 # ---------------------------------------------------------------------------------------------- the words
 # 'about' is the one line the AI pass is given for the Act; 'wide' are the word-pass patterns; 'not_when' stops the word pass for that Act when the question also says this.
 _ROLE = r"(?:public servant|government (?:officer|official|servant|employee|staff)|govt\.? (?:officer|official)|officer|official|clerk|inspector|constable|head constable|sub-?inspector|tehsildar|patwari|talathi|revenue officer|municipal (?:officer|official|clerk)|peon|babu|customs officer|excise officer|income[- ]tax officer|registrar|sub-?registrar|engineer|doctor at the government hospital|teacher at the government school)"
-_PAY = r"(?:asked for|asking for|ask for|demand|demands|demanded|demanding|took|take|takes|taking|accept|accepts|accepted|accepting|received|receiving|paid|pay|paying|gave|give|giving|offered|offering|collect|collects|collected|collecting)"
+_PAY = r"(?:asked (?:me |us |him |her )?for|asking (?:me |us |him |her )?for|ask for|demand|demands|demanded|demanding|took|take|takes|taking|accept|accepts|accepted|accepting|received|receiving|paid|pay|paying|gave|give|giving|offered|offering|collect|collects|collected|collecting)"
 _MONEY = r"(?:bribe|money|cash|rs\.?\s*\d|rupees|₹\s*\d|commission|percentage|per cent|percent|cut|gift|gifts|speed money|under the table|hafta)"
 _OFFICIAL_WORK = r"(?:file|files|bill|bills|licen[cs]e|permit|tender|certificate|papers|paperwork|work|registration|mutation|transfer|pension|passport|ration card|no[- ]objection|noc|clearance|approval|sanction|case diary)"
+
+# A word that makes a question about a PUBLIC servant (stricter than _ROLE: a bare "officer" or "clerk" can work in a private firm)
+_PUBLIC_ROLE = r"\b(?:public servants?|govern?ment (?:officer|official|servant|employee|staff|clerk|hospital|school|doctor|teacher|department|office)|govt\.? (?:officer|official|servant|employee|staff|clerk|hospital|school|office)|sarkari|police(?:man|men|woman)?|constable|sub-?inspector|inspector|tehsildar|patwari|talathi|revenue (?:officer|department)|municipal|municipality|corporation officer|panchayat|customs officer|excise officer|income[- ]tax officer|registrar|sub-?registrar|babu|vigilance|anti[- ]corruption)\b"
 
 ACTS = {
     # ---- the five Acts whose text is on the shelf ----
@@ -72,8 +75,11 @@ ACTS = {
             near(_ROLE, near(_OFFICIAL_WORK, _MONEY, 60), 90),                      # "to pass my file", "to clear my bill", "to move the file"
             near(r"\b(?:property|assets|wealth|house|land)\b", r"\b(?:far )?beyond (?:his|her|their) (?:known )?(?:salary|income|means)\b", 80),
         ],
-        # the workbook's own guard: a private-sector payment, and election bribery (a different offence), are not this Act
-        "not_when": r"\b(?:private (?:company|firm|sector|bank|hospital|school|college)|my boss|shopkeeper|landlord|builder|contractor asked me|voter|voters|election|elections|poll|polling|candidate)\b",
+        # the workbook's own guard, in two parts. Election bribery (a different offence) always stops the word pass.
+        "not_when": r"\b(?:voter|voters|election|elections|poll|polling|candidate)\b",
+        # A private-sector payment stops it too, UNLESS the question also names a public servant: "I am a builder and the municipal officer asked me for Rs 50,000" is this Act.
+        "soft_not_when": r"\b(?:private (?:company|firm|sector|bank|hospital|school|college)|my boss|shopkeeper|landlord|builder|contractor asked me)\b",
+        "lifted_by": _PUBLIC_ROLE,
     },
     "pocso_act_2012": {
         "about": "a SEXUAL offence against a child (anyone under 18): touching, assault, rape, harassment, showing or making pornography, and the special court, child-friendly procedure and mandatory reporting that go with it.",
@@ -88,8 +94,12 @@ ACTS = {
     "uapa_1967": {
         "about": "the anti-terror law: a terrorist act, terrorist funding, membership of or support for a banned (terrorist) organisation, an association declared unlawful, and bail in such a case.",
         "wide": [
-            r"\bterroris[mt]\w*", r"\bterror (?:funding|financing|case|charge|act)\b", r"\banti[- ]terror (?:law|act|case)\b",
+            # terrorism named WITH a case context (workbook N2: terror* near booked/arrested/accused/charged/FIR/bail/case); the bare word is not enough, a person asking what terrorism is does not need this Act
+            near(r"\bterroris[mt]\w*", r"\b(?:booked|arrest\w*|accused|charged?|charges|chargesheet|FIR|bail|case|cases|trial|custody|detained|detention|under (?:section|the)|jail|police|court|NIA)\b", 80),
+            r"\bterror (?:funding|financing|case|charge|act)\b", r"\banti[- ]terror (?:law|act|case)\b",
             r"\bunlawful association\b", r"\bdeclared unlawful\b", r"\bproceeds of terrorism\b", r"\bterrorist gang\b",
+            r"\bterrorist (?:organi[sz]ations?|individuals?|list)\b",                       # the Act's own terms (schedule of terrorist organisations; designation of an individual): added because the stricter first pattern lost two questions that use them
+            near(r"\b(?:declar\w+|designat\w+|notif\w+|list(?:ed)?)\b", r"\bterroris[mt]\w*", 60),   # "declare an individual a terrorist"
             near(r"\bbanned\b", r"\b(?:organi[sz]ation|outfit|group|association)\b", 40),
         ],
         "not_when": "",
@@ -98,7 +108,7 @@ ACTS = {
         "about": "money laundering: the Enforcement Directorate (ED) attaching or freezing property, proceeds of crime, a summons or arrest by the ED, bail in a laundering case, and the duties of banks and other reporting entities.",
         "wide": [
             r"\bmoney[- ]launder\w+", r"\blaundering\b", r"\bproceeds of crime\b", r"\breporting entit\w+", r"\badjudicating authority\b", r"\bprovisional attachment\b",
-            r"\benforcement directorate\b",
+            near(r"\benforcement directorate\b", r"\b(?:attach\w*|froze|frozen|freez\w*|arrest\w*|summon\w*|raid\w*|seiz\w*|notice|case|bail|questioned|ECIR|propert\w+|assets?|bank|account|investigat\w*|inquir\w*|enquir\w*|appear\w*|launder\w*)\b", 80),   # a cue is required (the workbook's own audit: the bare name also turns up in news talk)
             near(r"(?-i:\bED\b)", r"\b(?:attach\w*|froze|frozen|freez\w*|arrest\w*|summon\w*|raid\w*|seiz\w*|notice|case|bail|questioned)\b", 60),   # workbook N2; ED is case-sensitive so "ed" inside a word never matches
         ],
         "not_when": "",
@@ -175,7 +185,9 @@ def _compiled():
         for act_id, spec in ACTS.items():
             try:
                 out[act_id] = {"wide": [re.compile(p, FLAGS) for p in spec["wide"]],
-                               "not_when": re.compile(spec["not_when"], FLAGS) if spec.get("not_when") else None}
+                               "not_when": re.compile(spec["not_when"], FLAGS) if spec.get("not_when") else None,
+                               "soft_not_when": re.compile(spec["soft_not_when"], FLAGS) if spec.get("soft_not_when") else None,
+                               "lifted_by": re.compile(spec["lifted_by"], FLAGS) if spec.get("lifted_by") else None}
             except re.error as exc:  # pragma: no cover -- a broken pattern must never break an answer
                 logger.warning("act_detect: pattern for %s did not compile (%s); that Act is skipped", act_id, exc)
         _COMPILED = out
@@ -192,6 +204,8 @@ def wide(question, ids=None):
             if ids is not None and act_id not in ids:
                 continue
             if c["not_when"] and c["not_when"].search(question):
+                continue
+            if c["soft_not_when"] and c["soft_not_when"].search(question) and not (c["lifted_by"] and c["lifted_by"].search(question)):
                 continue
             for i, p in enumerate(c["wide"]):
                 if p.search(question):

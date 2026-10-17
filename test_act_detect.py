@@ -57,6 +57,16 @@ FOUND = [
     ("My 16-year-old son was arrested for stealing a bike", "jj_act_2015", "a child accused of an ordinary offence"),
     ("Police found a country-made pistol in our store room", "arms_act_1959", "a firearm found by the police"),
     ("He was caught drunk driving on the highway", "mv_act_1988", "drunk driving"),
+    # weakness 1 (2026-10-17): a private-sector word no longer blocks the Act when a public servant is named too
+    ("I am a builder and the municipal officer asked me for Rs 50,000 to approve my plan", "pc_act_1988", "'builder' plus a municipal officer: the guard is lifted"),
+    ("I own a shop and a police constable took Rs 2000 from me every month", "pc_act_1988", "'shop...' plus a constable: the guard is lifted"),
+    # weakness 3: terrorism WITH a case context, and the Act's own terms
+    ("My nephew was booked for terrorism and is in custody", "uapa_1967", "terrorism near 'booked' and 'custody'"),
+    ("What is the punishment for giving money to a terrorist organisation?", "uapa_1967", "the Act's own term 'terrorist organisation'"),
+    ("Can the Central Government declare an individual a terrorist?", "uapa_1967", "designation of an individual as a terrorist"),
+    # weakness 2: the Enforcement Directorate WITH a cue
+    ("The Enforcement Directorate attached my house last month", "pmla_2002", "the Directorate near 'attached'"),
+    ("I got a summons from the Enforcement Directorate", "pmla_2002", "the Directorate near 'summons'"),
 ]
 for q, act, why in FOUND:
     check(act in w(q), f"word pass finds {act}: {why}  ({w(q)})")
@@ -76,6 +86,12 @@ NOT_FOUND = [
     ("Someone snatched my gold chain on the road. Which section applies and is it bailable?", None, "an ordinary BNS question raises no Act at all"),
     ("My sister was arrested at night with no woman police officer there. Is that allowed?", None, "an ordinary BNSS question raises no Act at all"),
     ("Can the police arrest me for cheating without a warrant?", None, "an ordinary arrest question raises no Act at all"),
+    # weaknesses 1 to 3 (2026-10-17): the stricter rules still hold
+    ("My boss in a private company asked me for a commission to clear my bill", "pc_act_1988", "a private payment with no public servant named stays blocked"),
+    ("A candidate gave voters money before the election and the election officer took a bribe", "pc_act_1988", "the election guard still blocks even when a public servant is named"),
+    ("What is terrorism and how do countries define it?", "uapa_1967", "a bare mention of terrorism, with no case, is not the Act"),
+    ("The film is about terrorism and how it spreads", "uapa_1967", "the same"),
+    ("The Enforcement Directorate has its headquarters in Delhi", "pmla_2002", "the name alone, with no cue word, is not the Act"),
 ]
 for q, act, why in NOT_FOUND:
     got = w(q)
