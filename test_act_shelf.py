@@ -130,6 +130,11 @@ sh2 = S.load(d, refresh=True)
 check(not sh2["acts"]["sc_st_act_1989"]["ok"] and "pointer" in sh2["acts"]["sc_st_act_1989"]["problems"][0], "a pointer to a section that is not in the Act: that Act is not held")
 shutil.rmtree(tmp)
 tmp, d = shelf_copy()
+edit_json(os.path.join(d, "manifest.json"), lambda data: data["acts"][0]["pointers"][0].__setitem__("patterns", ["(unclosed"]))
+sh2 = S.load(d, refresh=True)
+check(not sh2["acts"]["pc_act_1988"]["ok"] and "pointer" in sh2["acts"]["pc_act_1988"]["problems"][0] and all(sh2["acts"][k]["ok"] for k in KEYS if k != "pc_act_1988"), "a pointer pattern that does not compile: that Act is not held, the others are")
+shutil.rmtree(tmp)
+tmp, d = shelf_copy()
 os.remove(os.path.join(d, "uapa_1967.json"))
 sh2 = S.load(d, refresh=True)
 check(not sh2["acts"]["uapa_1967"]["ok"] and all(sh2["acts"][k]["ok"] for k in KEYS if k != "uapa_1967"), "a missing section file: that Act is not held")
@@ -462,6 +467,26 @@ check(got and got[0]["section_number"] == "50", "...and gets the shelf's section
 n = AD.notice(AD.detect(LK), "answer", held=HU)
 check(n["text"].startswith("This question looks like it is about the Prevention of Money-laundering Act, 2002 (PMLA). Recourse has loaded") and " also " not in n["text"].split(".")[0], "...and the notice keeps its 'looks like it is about' wording, without a stray 'also' (staging 2026-10-17)")
 
+# the 'payer' pointer (owner's staging test 2026-10-17: the tehsildar answer never told the family who paid that giving is itself an offence, section 8, with a seven-day report for a person compelled)
+def payer(q):
+    r_ = S.search(q, [{"id": "pc_act_1988"}], embed_fn=ZERO)
+    return [m for m in r_["matches"] if m.get("pointer_tag") == "payer" and m["section_number"] == "8" and m["retrieval"] == "pointer"]
+for q_ in ("The tehsildar took Rs 10,000 from us to sign our land papers",
+           "I paid money to a government officer to get my licence renewed because he refused to move the file. Have I also committed a crime?",
+           "We paid the tehsildar Rs 500 and now he wants more", "Is giving a bribe also an offence?", "I was forced to pay the inspector Rs 2000",
+           "My father gave Rs 5000 to the clerk to clear his pension papers"):
+    check(len(payer(q_)) == 1, f"payer pointer fires: {q_[:70]!r}")
+for q_ in ("My son works as a clerk in a government office. He was arrested yesterday for taking money from a contractor.",
+           "A clerk in the municipal office is asking me for Rs 5,000 to pass my file. What is the punishment for him?",
+           "Can the court attach the property of a corrupt government officer?", "I gave a statement to the vigilance officer yesterday",
+           "The officer demanded a percentage from my brother", "Our company gave gifts and money to officials to win a government tender. Is the company itself liable?"):
+    check(payer(q_) == [], f"payer pointer does NOT fire: {q_[:70]!r}")
+check(S.search("I paid the clerk Rs 500", [{"id": "uapa_1967"}], embed_fn=ZERO)["matches"] == [] and S.search("I paid the clerk Rs 500", [{"id": "pmla_2002"}], embed_fn=ZERO)["matches"] == [], "...and only the Prevention of Corruption Act has it")
+m8 = payer("We paid the tehsildar Rs 500 and now he wants more")[0]
+check("Provided further that the person so compelled shall report the matter" in m8["text"] and "seven days" in m8["text"], "section 8's own text, with the provisos, is what is handed over")
+blk = CA._payer_block([m8])
+check("OPENING paragraph" in blk and "seven days" in blk and "Do not say whether this person was compelled" in blk and "speak to a lawyer at once" in blk and "reporting promptly" in blk, "the prompt gets the instruction about the payer: say what section 8 says, no verdict, see a lawyer, report promptly")
+check(CA._payer_block([]) == "" and CA._payer_block(None) == "" and CA._payer_block([{"source": "act_shelf", "section_number": "8", "retrieval": "meaning"}]) == "" and CA._payer_block([{"source": "semantic", "pointer_tag": "payer", "section_number": "8"}]) == "", "...and nothing in the prompt unless the payer pointer handed section 8 over")
 # housekeeping sections (amending another enactment, repeal, saving) are never ranked by meaning, but are still reached by number (staging 2026-10-17: PC Act s.29 ranked 2nd for a bribery question)
 pcs = {x["section_number"]: x for x in S.load()["acts"]["pc_act_1988"]["ranked"]}
 check(all(S._housekeeping(pcs[n_]) for n_ in ("29", "30")) and not any(S._housekeeping(pcs[n_]) for n_ in ("7", "13", "17A", "19", "20", "29A")), "housekeeping: PC Act s.29 (Amendment of the Ordinance 38 of 1944) and s.30 (Repeal and saving) are housekeeping; s.7, 13, 17A, 19, 20 and s.29A (rules) are not")

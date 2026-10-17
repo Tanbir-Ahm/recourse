@@ -20,7 +20,32 @@
         "handle": "123456789/496166",
         "act_id": "AC_CEN_26_36_00001_198849_1517807318890"
       },
-      "pointers": [],
+      "pointers": [
+        {
+          "tag": "payer",
+          "phrases": [
+            "paid a bribe",
+            "gave a bribe",
+            "giving a bribe",
+            "paying a bribe",
+            "bribe i paid",
+            "bribe we paid",
+            "forced to pay",
+            "compelled to pay",
+            "made me pay",
+            "made us pay"
+          ],
+          "patterns": [
+            "\\b(?:took|taken|taking|extorted|collected|received|accepted)\\b.{0,60}\\bfrom\\s+(?:us|me|my\\s+(?:father|mother|brother|sister|husband|wife|son|daughter|family|parents|uncle|aunt|friend|neighbou?r))\\b",
+            "\\b(?:i|we)\\b\\s+(?:\\w+\\s+){0,2}(?:paid|pay|gave|give|handed|offered)\\b.{0,80}\\b(?:rs\\.?\\s*\\d|rupees|₹|money|cash|bribe|commission|amount|lakh|thousand)\\b",
+            "\\b(?:paid|gave|handed|offered)\\s+(?:\\w+\\s+){0,2}(?:to\\s+)?(?:the\\s+|a\\s+)?(?:officer|official|clerk|tehsildar|constable|inspector|public\\s+servant|peon|babu|patwari|sub-?registrar)\\b"
+          ],
+          "sections": [
+            "8"
+          ],
+          "why": "Section 8 makes GIVING an undue advantage to a public servant an offence; its provisos exempt a person who was compelled to give it only if he reports the matter to the law enforcement authority or investigating agency within seven days of giving it. A question in which the person paid or was made to pay never uses the words 'section 8', and a search by meaning ranks the offence of TAKING (s.7) first (staging 2026-10-17: the tehsildar answer said nothing about the payer's own position)."
+        }
+      ],
       "corrections": [
         {
           "section": "28",

@@ -305,7 +305,7 @@ def ai(question, entries, call=None):
                 logger.warning("act_detect.ai: %s dropped, its quote is not in the question", act_id)
                 continue                            # the words must be the person's own
             if not any(h["id"] == act_id for h in out):
-                out.append({"id": act_id, "how": "likely", "why": "ai"})
+                out.append({"id": act_id, "how": "likely", "why": "ai", "quote": quote.strip()[:200]})      # the quote is for the evaluation script; the log line (more()) never carries it
             if len(out) >= MAX_HITS:
                 break
         return out, inr

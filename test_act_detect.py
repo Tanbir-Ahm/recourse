@@ -103,7 +103,7 @@ def stub(payload, seen=None):
 
 seen = {}
 hits, inr = AD.ai(Q_AI, ENTRIES, call=stub({"acts": [{"id": "pc_act_1988", "quote": "a corrupt government officer"}]}, seen))
-check(hits == [{"id": "pc_act_1988", "how": "likely", "why": "ai"}] and inr == 0.21, f"AI pass: a clean reply is used ({hits})")
+check(hits == [{"id": "pc_act_1988", "how": "likely", "why": "ai", "quote": "a corrupt government officer"}] and inr == 0.21, f"AI pass: a clean reply is used, with the words it quoted ({hits})")
 check("- pc_act_1988: Prevention of Corruption Act, 1988." in seen["prompt"] and "bribery or corruption BY A PUBLIC SERVANT" in seen["prompt"], "the AI is given the Directory's ids with one line each")
 check("A payment to a PRIVATE person" in seen["prompt"] and "An agency is not an Act" in seen["prompt"], "the workbook's false-positive rules are in the brief")
 check(seen["prompt"].rstrip().endswith(Q_AI), "the question is the last thing in the brief")

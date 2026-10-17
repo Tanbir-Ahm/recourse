@@ -1917,6 +1917,10 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question), held=_shelf_held(matches, question))
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # the person PAID (or was made to pay) a public servant: section 8 of the Prevention of Corruption Act is in the material; say what it says about the payer (_payer_block); "" otherwise
+            retrieved_text = retrieved_text + _payer_block(matches)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
@@ -3819,6 +3823,25 @@ def _acts_named(question):
     except Exception as exc:  # noqa: BLE001 -- fail-open
         logger.warning("act_detect pass failed: %s", type(exc).__name__)
         return found
+
+
+def _payer_block(matches):
+    """A prompt section for a question in which the person PAID, or was made to pay, money to a public servant (owner's staging test 2026-10-17: the answer treated a family who had paid Rs 10,000 as pure victims
+    and never mentioned that giving is itself an offence under section 8 of the Prevention of Corruption Act, which exempts a person who was compelled only if he reports within seven days). It fires only when the
+    Act shelf handed over section 8 because of the shelf's 'payer' pointer (act_shelf/manifest.json), so the section's own text, with its provisos, is in the material. '' otherwise. It asks the model to say what the
+    section says, not to decide whether this person was compelled or has committed an offence."""
+    try:
+        hit = [m for m in (matches or []) if isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("pointer_tag") == "payer" and str(m.get("section_number")).upper() == "8"]
+        if not hit:
+            return ""
+        return ("\n\n## The person appears to have paid, or been made to pay, money to a public servant\n"
+                "Section 8 of the Prevention of Corruption Act, 1988 is in the material above because the question describes a payment. In your OPENING paragraph or in the \"right now\" part, say plainly and in your own words, "
+                "using ONLY what that section's text shows: (1) that giving an undue advantage to a public servant can itself be an offence under section 8; (2) that the section's provisos say it does not apply where a person "
+                "is compelled to give it, but that the person so compelled must report the matter to the law enforcement authority or investigating agency within seven days of giving it. Do not say whether this person "
+                "was compelled, and do not say that this person has or has not committed an offence: the facts are not known to you. Tell them to speak to a lawyer at once, because the seven days run from the day of the payment, "
+                "and include reporting promptly as one of the things they can do. Do not suggest that they pay anything further or confront the public servant.\n")
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _shelf_held(matches, question):

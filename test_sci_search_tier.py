@@ -288,5 +288,22 @@ check("Hemendhra" in nc2 and "Balbir" in nc2 and "Ram Prasad" in nc2, "with no w
 check(T.fed_names_in(ans) == [], "fed_names_in is empty when nothing was fed")
 SCEN["res"] = None
 
+# ---- labels: one label, after the WHOLE case name (owner's staging test 2026-10-17: the label stood inside names and was doubled, nine times in one paragraph)
+L_ = T.LABEL
+cs_ = [{"case_name": "Union of India v. Kanhaiya Prasad"}, {"case_name": "Gautam Kundu v. Assistant Director, Directorate of Enforcement"}, {"case_name": "Rajeswar Tiwari & Ors v. Nanda Kishore Roy"}, {"case_name": "Rohit Tandon v. Enforcement Directorate"}]
+o_ = T.label_fed_cases(f"in Union of India {L_} v. Kanhaiya Prasad (2025), the Court said", cs_)
+check(o_ == f"in Union of India v. Kanhaiya Prasad (2025) {L_}, the Court said", f"a label the model put after the first party is moved to the end of the name ({o_!r})")
+o_ = T.label_fed_cases(f"noted in Gautam Kundu v. Assistant Director {L_}, Directorate of Enforcement (2015) and in Rohit Tandon v. Enforcement Directorate (2017) {L_}.", cs_)
+check(o_ == f"noted in Gautam Kundu v. Assistant Director, Directorate of Enforcement (2015) {L_} and in Rohit Tandon v. Enforcement Directorate (2017) {L_}.", f"a label inside a comma name is moved to the end of the whole name; a label already in place stays ({o_!r})")
+o_ = T.label_fed_cases(f"In Rajeswar Tiwari & Ors {L_} v. Nanda Kishore Roy (2010) {L_}, the Court looked", cs_)
+check(o_.count(L_) == 1 and o_ == f"In Rajeswar Tiwari & Ors v. Nanda Kishore Roy (2010) {L_}, the Court looked", f"a doubled label (one inside the name, one after) becomes one ({o_!r})")
+o_ = T.label_fed_cases("In Rajeswar Tiwari & Ors v. Nanda Kishore Roy (2010), the Court held.", cs_)
+check(o_ == f"In Rajeswar Tiwari & Ors v. Nanda Kishore Roy (2010) {L_}, the Court held.", f"'& Ors' before 'v.' no longer makes the code label the first party only ({o_!r})")
+o_ = T.label_fed_cases(f"A case no one fed, X v. Y {L_}, was also read.", cs_)
+check(o_ == f"A case no one fed, X v. Y {L_}, was also read.", "a label that belongs to no case we can find is left alone")
+o_ = T.label_fed_cases(f"In *Rohit Tandon v. Enforcement Directorate* (2017) {L_}, the Court said.", cs_)
+check(o_ == f"In *Rohit Tandon v. Enforcement Directorate* (2017) {L_}, the Court said.", "an italic name with its label after it is unchanged")
+check(T.label_fed_cases("", cs_) == "" and T.label_fed_cases("text", []) == "text", "empty text and no cases: unchanged")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

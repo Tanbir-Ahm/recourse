@@ -278,7 +278,7 @@ def _locate(text, case_name):
     p1, p2 = _parties(case_name)
     span = None
     if p1 and p2:
-        m = re.search(r"\b(?:the\s+)?" + _words_re(p1) + _MARK + _V + r"(?:the\s+)?" + _words_re(p2) + _EXTRA, text, re.I)
+        m = re.search(r"\b(?:the\s+)?" + _words_re(p1) + _EXTRA + _MARK + _V + r"(?:the\s+)?" + _words_re(p2) + _EXTRA, text, re.I)      # '& Ors' / '& Anr' may stand between the first party and 'v.' ('Rajeswar Tiwari & Ors v. Nanda Kishore Roy')
         span = (m.start(), m.end()) if m else None
     if span is None:
         p1 = re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I)             # the answer may drop 'Dr.' from the name
@@ -291,6 +291,9 @@ def _locate(text, case_name):
             if tail_v:
                 end = sp[0] + tail_v.start()
             if p2:
+                m_x = re.match(_EXTRA, text[end:], re.I)                                  # '& Ors' between the first party and 'v.': step over it, then take the second party (was: the label landed inside the name)
+                if m_x and m_x.end() and re.match(_MARK + _V, text[end + m_x.end():], re.I):
+                    end += m_x.end()
                 end = _extend_second_party(text, end)
                 m = re.match(_EXTRA, text[end:], re.I)
                 end += m.end() if m else 0
@@ -351,12 +354,55 @@ _REPORT_CITE = re.compile(r"\s*,?\s*(?:\(?(?:19|20)\d\d\)?\s+(?:\d{1,2}\s+)?(?:S
                           r"|AIR\s+(?:19|20)\d\d\s+(?:SC|[A-Za-z]{2,5})\s+\d+)")
 
 
+_NEVER = re.compile(r"(?!)")
+
+
+def _drop_midname_labels(text, cases, label):
+    """Removes a copy of `label` that stands INSIDE a case name (the model wrote 'Union of India (from a wider search ...) v. Kanhaiya Prasad (2025)' or '... v. Assistant Director (label), Directorate of
+    Enforcement (2015)'; the code then added a second one after the whole name: nine labels in one paragraph, staging 2026-10-17). The case is located with every copy of the label taken out; a copy that starts
+    before the last character of the name (with its italics marks and bracket) is inside it and is dropped. A copy after the name, or one that belongs to no case we can find, is left alone."""
+    try:
+        rx = re.compile(r"[ \t]*" + re.escape(label))
+        copies = [(m.start(), m.end()) for m in rx.finditer(text)]
+        if not copies:
+            return text
+        keep, pos = [], 0
+        for a, b in copies:
+            keep.extend(range(pos, a))
+            pos = b
+        keep.extend(range(pos, len(text)))
+        stripped = "".join(text[i] for i in keep)
+        drop = set()
+        for c in cases or []:
+            span = _locate(stripped, c.get("case_name") or "")
+            if span is None:
+                continue
+            end = _name_end(stripped, span[1], _NEVER)
+            if end < 1 or end > len(keep):
+                continue
+            last, first = keep[end - 1], keep[span[0]]
+            for a, b in copies:
+                if first <= a < last:
+                    drop.add((a, b))
+        if not drop:
+            return text
+        out, pos = [], 0
+        for a, b in sorted(copies):
+            if (a, b) in drop:
+                out.append(text[pos:a])
+                pos = b
+        out.append(text[pos:])
+        return "".join(out)
+    except Exception:  # noqa: BLE001
+        return text
+
+
 def label_cases(text, cases, label, note_re, span_re, tidy=None):
     """Puts `label` right after the first mention of each case in a finished answer, unless the answer already says so there (`note_re` recognises the model's own wording of the label, `span_re` a label
     that is already in the text). The case is found by its full name, else by a distinctive party name, allowing a typo. The label goes after the whole name (including '& Another', italics marks and a
     year in brackets), never inside a name or inside another label. Returns the text unchanged on any problem."""
     try:
-        out = text or ""
+        out = _drop_midname_labels(text or "", cases, label)
         seen = set()
         for c in cases or []:
             key = re.sub(r"\W+", " ", (c.get("case_name") or "").lower()).strip()

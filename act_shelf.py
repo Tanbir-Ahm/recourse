@@ -164,11 +164,15 @@ def _load_act(entry, embeddings, base):
         return st
     for p in entry.get("pointers") or []:
         rxs = [r for r in (_flex(x) for x in p.get("phrases") or []) if r is not None]
+        try:                                                  # 'patterns' (added 2026-10-17): regular expressions, for a cue that is not one fixed phrase ("took Rs 10,000 from us"); case-insensitive
+            rxs += [re.compile(x, re.IGNORECASE | re.DOTALL) for x in p.get("patterns") or []]
+        except (re.error, TypeError):
+            rxs = []
         secs = [str(s).upper() for s in p.get("sections") or []]
         if not rxs or not secs or any(s not in by_num for s in secs):
-            st["problems"].append(f"a pointer is malformed or points to a section that is not in the Act: {p.get('phrases')}")
+            st["problems"].append(f"a pointer is malformed or points to a section that is not in the Act: {p.get('phrases') or p.get('patterns')}")
             return st
-        st["pointers"].append({"rx": rxs, "sections": secs, "phrases": list(p["phrases"])})
+        st["pointers"].append({"rx": rxs, "sections": secs, "phrases": list(p.get("phrases") or []) + list(p.get("patterns") or []), "tag": p.get("tag")})
     st.update(ok=True, by_num=by_num, ranked=ranked, matrix=np.array(vectors, dtype=float), aliases=_alias_patterns(entry))
     return st
 
@@ -411,14 +415,21 @@ def search(question, acts, current_message=None, embed_fn=None):
                     seen.add(n)
                     mine.append(_match(st, st["by_num"][n], "named", None))
                     rec["named"].append(n)
-            pointed = []
+            pointed, tags = [], {}
             for p in st["pointers"]:
                 if any(rx.search(lowered) for rx in p["rx"]):
-                    pointed += [s for s in p["sections"] if s not in pointed]
+                    for s_ in p["sections"]:
+                        if s_ not in pointed:
+                            pointed.append(s_)
+                            if p.get("tag"):
+                                tags[s_] = p["tag"]
             for n in pointed[:MAX_POINTED]:
                 if n not in seen:
                     seen.add(n)
-                    mine.append(_match(st, st["by_num"][n], "pointer", None))
+                    mm = _match(st, st["by_num"][n], "pointer", None)
+                    if tags.get(n):
+                        mm["pointer_tag"] = tags[n]                    # e.g. 'payer': why this pointer fired (chat_assistant adds an instruction to the prompt for it)
+                    mine.append(mm)
                     rec["pointed"].append(n)
             want = max(MIN_MEANING, k_meaning - len(mine))
             if qvec is not None:
