@@ -31,9 +31,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(HERE, "recourse_app.py")
 KEYS = ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"]
 NEW = ["muslim_women_act_2019", "pdpp_act_1984"]                 # added 2026-10-17: two very short Acts, handed over whole (manifest "whole_act")
-ALLK = KEYS + NEW
-COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26, "muslim_women_act_2019": 8, "pdpp_act_1984": 7}
-CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT", "muslim_women_act_2019": "MWACT", "pdpp_act_1984": "PDPP"}
+LONG2 = ["dowry_prohibition_act_1961", "jj_act_2015"]           # added 2026-10-17 (later): two more Acts, normal meaning-search path (Dowry 13 sections, JJ 112; both over the whole_act size limit)
+ALLK = KEYS + NEW + LONG2
+COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26, "muslim_women_act_2019": 8, "pdpp_act_1984": 7, "dowry_prohibition_act_1961": 13, "jj_act_2015": 112}
+CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT", "muslim_women_act_2019": "MWACT", "pdpp_act_1984": "PDPP", "dowry_prohibition_act_1961": "DOWRY", "jj_act_2015": "JJACT"}
 
 
 def check(cond, msg):
@@ -79,11 +80,11 @@ check(off_matches == [] and buf.getvalue() == "" and CA._shelf_held([], "Section
 
 # ---------------------------------------------------------------- the shelf itself
 SH = S.load()
-check(set(SH["acts"]) == set(ALLK) and all(SH["acts"][k]["ok"] for k in ALLK) and SH["problems"] == [], f"the shelf loads: seven Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
+check(set(SH["acts"]) == set(ALLK) and all(SH["acts"][k]["ok"] for k in ALLK) and SH["problems"] == [], f"the shelf loads: nine Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
 check(all(len(SH["acts"][k]["by_num"]) == COUNTS[k] for k in ALLK), "every section of every Act is reachable by number (omitted and repealed stubs too)")
-check(all(len(SH["acts"][k]["ranked"]) == COUNTS[k] - n for k, n in (("pc_act_1988", 2), ("pocso_act_2012", 0), ("uapa_1967", 1), ("pmla_2002", 8), ("sc_st_act_1989", 0), ("muslim_women_act_2019", 0), ("pdpp_act_1984", 0))), "omitted and repealed stubs are not searched by meaning")
+check(all(len(SH["acts"][k]["ranked"]) == COUNTS[k] - n for k, n in (("pc_act_1988", 2), ("pocso_act_2012", 0), ("uapa_1967", 1), ("pmla_2002", 8), ("sc_st_act_1989", 0), ("muslim_women_act_2019", 0), ("pdpp_act_1984", 0), ("dowry_prohibition_act_1961", 0), ("jj_act_2015", 0))), "omitted and repealed stubs are not searched by meaning")
 check(all(SH["acts"][k]["code"] == CODES[k] for k in ALLK) and all(SH["acts"][k]["text_status"] == "machine_checked" for k in ALLK), "codes as expected; the status is machine_checked (nobody has read the text)")
-check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act", "MWACT": "Muslim Women Act, 2019", "PDPP": "Prevention of Damage to Public Property Act, 1984"}, "display names (for the label and the repaired citation)")
+check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act", "MWACT": "Muslim Women Act, 2019", "PDPP": "Prevention of Damage to Public Property Act, 1984", "DOWRY": "Dowry Prohibition Act, 1961", "JJACT": "Juvenile Justice Act, 2015"}, "display names (for the label and the repaired citation)")
 check(all(k in {a["id"] for a in AD.load()["acts"]} for k in ALLK), "every shelf Act is an Act of the Directory (same ids)")
 check([k for k in ALLK if SH["acts"][k]["whole"]] == NEW, "only the two very short Acts are handed over whole; the five long ones are searched by meaning")
 check(S.loaded_label("2026-10-16") == "16 October 2026" and S.loaded_label("nonsense") == "" and S.loaded_label(None) == "", "the date label")
@@ -179,8 +180,8 @@ check(FULL("Section 43D of the Unlawful Activities (Prevention) Act, 1967 sets t
 check(FULL("What does section 5 of the Prevention of Damage to Public Property Act, 1984 say about bail?") == {"pdpp_act_1984": ["5"]}, "full name: 'section 5 of the Prevention of Damage to Public Property Act, 1984'")
 check(FULL("What does section 7 of the Muslim Women (Protection of Rights on Marriage) Act, 2019 say?") == {"muslim_women_act_2019": ["7"]}, "full name: 'section 7 of the Muslim Women (Protection of Rights on Marriage) Act, 2019'")
 check(FULL("Prevention of Money-laundering Act, 2002, section 45: what are the twin conditions?") == {"pmla_2002": ["45"]}, "full name before the number: 'Prevention of Money-laundering Act, 2002, section 45'")
-check(FULL("Does section 15 of the Juvenile Justice (Care and Protection of Children) Act, 2015 apply in a POCSO case?") == {}, "a long name of ANOTHER Act next to the number: the number is not ours")
-check(S.other_numbers("Does section 15 of the Juvenile Justice (Care and Protection of Children) Act, 2015 apply in a POCSO case?", ["pocso_act_2012"]) == {"15"}, "...and it is reported as another Act's number (so that the BNS section 15 is not pulled in for it)")
+check(FULL("Does section 15 of the Motor Vehicles Act, 1988 apply in a POCSO case?") == {}, "a long name of ANOTHER Act (one not on the shelf) next to the number: the number is not ours")
+check(S.other_numbers("Does section 15 of the Motor Vehicles Act, 1988 apply in a POCSO case?", ["pocso_act_2012"]) == {"15"}, "...and it is reported as another Act's number (so that the BNS section 15 is not pulled in for it)")
 check(FULL("Section 5 is the one I am worried about, because my brother was named in the FIR together with ten others, and this is under the Prevention of Damage to Public Property Act") == {}, "a name that starts far from the number (more than 45 characters) is still not tied to it")
 check(NS("Section 3 of the Protection of Children from Sexual Offences Act, 2012 and section 10 of the Prevention of Corruption Act, 1988") == {"pocso_act_2012": ["3"], "pc_act_1988": ["10"]}, "two long names in one sentence: each number goes to the name that follows it")
 

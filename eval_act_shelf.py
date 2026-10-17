@@ -258,10 +258,12 @@ def main(argv=None):
     print("\nsemantic, by kind / hard (strict)")
     for kd, b in result["by_kind"].items():
         s = b["semantic"]
-        print(f"  {kd:8s} n={s['n']} " + "  ".join(f"top{k}={s[f'hit@{k}']:.2f}" for k in K_LIST))
+        if s["n"]:
+            print(f"  {kd:8s} n={s['n']} " + "  ".join(f"top{k}={s[f'hit@{k}']:.2f}" for k in K_LIST))
     for h, b in result["by_hard"].items():
         s = b["semantic"]
-        print(f"  hard={h:5s} n={s['n']} " + "  ".join(f"top{k}={s[f'hit@{k}']:.2f}" for k in K_LIST))
+        if s["n"]:
+            print(f"  hard={h:5s} n={s['n']} " + "  ".join(f"top{k}={s[f'hit@{k}']:.2f}" for k in K_LIST))
     if off_rows:
         tops = sorted(r["top3_scores"][0] for r in off_rows)
         print("\noff-topic probes (a shelf Act named, something it does not contain asked): best within-Act score " + ", ".join(f"{t:.3f}" for t in tops))

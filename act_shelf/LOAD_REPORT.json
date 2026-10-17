@@ -634,6 +634,328 @@
     "min": 0.919,
     "below_0.90": {}
    }
+  },
+  "dowry_prohibition_act_1961": {
+   "key": "dowry_prohibition_act_1961",
+   "act_id": "AC_CEN_13_14_00003_196128_1517807322681",
+   "loaded_on": "2026-10-17",
+   "sections": 13,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:21:09.295747Z",
+    "max": "2026-07-10T22:26:02.669024Z"
+   },
+   "pdf": {
+    "name": "a1961-28.pdf",
+    "sha256": "d29bf14c8e7cffe5914086e1ce832b34467150caa2c66aee0fd107deba764dea",
+    "pages": 6,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 12,
+     "loaded": 13,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [
+      "8A"
+     ],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 6,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [],
+   "accepted": [
+    {
+     "section": "6",
+     "word": "therefor",
+     "why": "The PDF prints “therefor” immediately followed by an amendment bracket with no space (“specified therefor[or as required by sub-section (3),]”), so “therefor” is not a separate word in the PDF's word list although it is present in the PDF; the database spaces it. “therefor” (= for that) is the correct legal word, not a misspelling of “therefore”."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 13,
+    "words_compared": 2095,
+    "bare_numbers_ignored": 0,
+    "differences": 3,
+    "accepted_in_manifest": 3,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.784,
+    "below_0.90": {
+     "1": 0.784
+    }
+   }
+  },
+  "jj_act_2015": {
+   "key": "jj_act_2015",
+   "act_id": "AC_CEN_13_14_000010_201602_1517807328168",
+   "loaded_on": "2026-10-17",
+   "sections": 112,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:58:04.245711Z",
+    "max": "2026-07-10T21:58:13.950600Z"
+   },
+   "pdf": {
+    "name": "a2016-2.pdf",
+    "sha256": "d21c39b496757d19d873207dfbed3729128ca34c0daff199cb808ea32b49a322",
+    "pages": 48,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 112,
+     "loaded": 112,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 1,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "2",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "2",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "2",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "3",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "8",
+     "from": "childs",
+     "to": "child's",
+     "count": 2,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "8",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "11",
+     "from": "childs",
+     "to": "child's",
+     "count": 2,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "20",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "23",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "28",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "31",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "35",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "36",
+     "from": "childrens",
+     "to": "children's",
+     "count": 3,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "46",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "52",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "69",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "70",
+     "from": "noncompliance",
+     "to": "non-compliance",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “non-compliance”."
+    },
+    {
+     "section": "76",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "93",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "95",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "97",
+     "from": "nongovernmental",
+     "to": "non-governmental",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “non-governmental”."
+    },
+    {
+     "section": "99",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "107",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "110",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "2",
+     "from": "a [has been or is being or is likely to be] for carrying out",
+     "to": "a [child care institution], for carrying out",
+     "count": 1,
+     "why": "India Code's database corrupted the definition of “Child Welfare Officer” (clause 17): the amendment-inserted defined term in the brackets was overwritten by a fragment (“has been or is being or is likely to be”) copied from clause (viii) of the definition of “child in need of care and protection”. The PDF's clause (17) reads “an officer attached to a [child care institution], for carrying out the directions”. Corrected against the PDF."
+    },
+    {
+     "section": "2",
+     "field": "footnotes",
+     "from": "Childrens Home",
+     "to": "Children's Home",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in this amendment footnote; the PDF reads “Children's Home”."
+    },
+    {
+     "section": "9",
+     "from": "the persons claim",
+     "to": "the person's claim",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's claim”."
+    },
+    {
+     "section": "11",
+     "from": "such persons charge",
+     "to": "such person's charge",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “such person's charge”."
+    },
+    {
+     "section": "12",
+     "from": "the persons release",
+     "to": "the person's release",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's release”."
+    },
+    {
+     "section": "44",
+     "from": "the parents homes once the parent's are determined",
+     "to": "the parent's homes once the parents are determined",
+     "count": 1,
+     "why": "India Code's database put the possessive apostrophe on the wrong word: it reads “the parents homes once the parent's are determined”. The PDF reads “the parent's homes once the parents are determined” (the home belongs to the parent; the parents are determined). Corrected against the PDF."
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 112,
+    "words_compared": 25886,
+    "bare_numbers_ignored": 15,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.942,
+    "below_0.90": {}
+   }
   }
  }
 }

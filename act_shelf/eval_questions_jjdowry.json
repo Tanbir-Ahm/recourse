@@ -7,7 +7,7 @@
   {
    "id": "D01",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "My in-laws are demanding a car and cash from my family before the wedding. Is that illegal?",
    "expected": [
     "4"
@@ -21,7 +21,7 @@
   {
    "id": "D02",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "My husband's family took gold and a large sum as dowry at our marriage. What is the punishment for taking it?",
    "expected": [
     "3"
@@ -56,7 +56,7 @@
   {
    "id": "D05",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "A newspaper carried an advertisement offering a share in property in return for marrying a man. Is that an offence?",
    "expected": [
     "4A"
@@ -78,7 +78,7 @@
   {
    "id": "D07",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "My parents gave jewellery and money at my wedding. Who does that property legally belong to?",
    "expected": [
     "6"
@@ -122,7 +122,7 @@
   {
    "id": "D11",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "Is there a government officer whose job is to deal with dowry complaints?",
    "expected": [
     "8B"
@@ -133,7 +133,7 @@
   {
    "id": "D12",
    "act_key": "dowry_prohibition_act_1961",
-   "kind": "lay",
+   "kind": "layman",
    "q": "I gave dowry because my in-laws pressured me. Can I be punished for giving it, not just them?",
    "expected": [
     "3"
@@ -146,7 +146,7 @@
   {
    "id": "J01",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "My 16-year-old son is accused of a serious crime. Can he be tried as an adult?",
    "expected": [
     "15"
@@ -171,7 +171,7 @@
   {
    "id": "J03",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "The police have caught my child, who is accused of an offence. Can he get bail?",
    "expected": [
     "12"
@@ -195,7 +195,7 @@
   {
    "id": "J05",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "A child was found begging on the street. What does this law do about it?",
    "expected": [
     "76"
@@ -217,7 +217,7 @@
   {
    "id": "J07",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "We want to adopt a child from a children's home in India. What is the process?",
    "expected": [
     "58"
@@ -242,7 +242,7 @@
   {
    "id": "J09",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "A child has no parents and needs care. Who decides what happens to the child?",
    "expected": [
     "27"
@@ -269,7 +269,7 @@
   {
    "id": "J11",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "Can a newspaper print the name and photo of a child who is involved in a case?",
    "expected": [
     "74"
@@ -291,7 +291,7 @@
   {
    "id": "J13",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "A man used a child to carry and sell drugs. What offence is that under this Act?",
    "expected": [
     "78"
@@ -315,7 +315,7 @@
   {
    "id": "J15",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "A warden beat my child at a children's home. Is that an offence?",
    "expected": [
     "82"
@@ -337,7 +337,7 @@
   {
    "id": "J17",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "Up to what age is a person treated as a child under this law?",
    "expected": [
     "2"
@@ -361,7 +361,7 @@
   {
    "id": "J19",
    "act_key": "jj_act_2015",
-   "kind": "lay",
+   "kind": "layman",
    "q": "Someone kidnapped a child. What does the Juvenile Justice Act say about it?",
    "expected": [
     "84"
@@ -381,5 +381,5 @@
    "hard": false
   }
  ],
- "questions_sha256": "af0e1f5e83b6ae2dfae1a26b278952b26a38fb08e876556a12da641af7facb35"
+ "questions_sha256": "f48a03ad8b3dbb8d3e238700ba2985c414cb8d6dfdb745123eb987b4f3446af7"
 }

@@ -580,6 +580,301 @@
       "pdf_as_on": "not printed on the PDF",
       "text_status": "machine_checked",
       "whole_act": true
+    },
+    {
+      "key": "dowry_prohibition_act_1961",
+      "code": "DOWRY",
+      "name": "The Dowry Prohibition Act, 1961",
+      "short": "Dowry Prohibition Act, 1961",
+      "display": "Dowry Prohibition Act, 1961",
+      "answer_names": [
+        "Dowry Prohibition Act",
+        "Dowry Act"
+      ],
+      "citation": "Act No. 28 of 1961",
+      "india_code": {
+        "uuid": "8dc8e1b4-7147-45ea-9e82-5911aa3816d4",
+        "handle": "123456789/496002",
+        "act_id": "AC_CEN_13_14_00003_196128_1517807322681"
+      },
+      "pointers": [],
+      "corrections": [],
+      "accepted": [
+        {
+          "section": "6",
+          "word": "therefor",
+          "why": "The PDF prints “therefor” immediately followed by an amendment bracket with no space (“specified therefor[or as required by sub-section (3),]”), so “therefor” is not a separate word in the PDF's word list although it is present in the PDF; the database spaces it. “therefor” (= for that) is the correct legal word, not a misspelling of “therefore”."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "2",
+          "pdf_starts": "haryana for section 2 3 and 4 of the dowry prohibition act 1961",
+          "why": "The PDF appends the Haryana State amendments to the Dowry Prohibition Act after the central text; India Code's database (the central Act) does not carry them, and we do not load State amendments. The PDF's extra text here is the Haryana amendment of sections 2 to 4; it applies only in Haryana and is not part of the central Act."
+        },
+        {
+          "section": "6",
+          "pdf_starts": "haryana amendment of section 6 of parliament act 28 of 1961",
+          "why": "The PDF's Haryana State amendment of section 6; not part of the central Act and not loaded (State amendments are not on the shelf)."
+        },
+        {
+          "section": "7",
+          "pdf_starts": "haryana substitution of section 7 of parliament act 28 of 1961",
+          "why": "The PDF's Haryana State amendment (substitution) of section 7; not part of the central Act and not loaded (State amendments are not on the shelf)."
+        }
+      ],
+      "toc_absent": [
+        "8A"
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 13,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "jj_act_2015",
+      "code": "JJACT",
+      "name": "The Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "short": "Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "display": "Juvenile Justice Act, 2015",
+      "answer_names": [
+        "Juvenile Justice Act",
+        "JJ Act",
+        "Juvenile Justice (Care and Protection of Children) Act, 2015"
+      ],
+      "citation": "Act No. 2 of 2016",
+      "india_code": {
+        "uuid": "bfa75673-9ac9-4ce8-b5cf-836472c94203",
+        "handle": "123456789/496000",
+        "act_id": "AC_CEN_13_14_000010_201602_1517807328168"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "2",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "2",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "2",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "3",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "8",
+          "from": "childs",
+          "to": "child's",
+          "count": 2,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "8",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "11",
+          "from": "childs",
+          "to": "child's",
+          "count": 2,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "20",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "23",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "28",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "31",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "35",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "36",
+          "from": "childrens",
+          "to": "children's",
+          "count": 3,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "46",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "52",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "69",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "70",
+          "from": "noncompliance",
+          "to": "non-compliance",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “non-compliance”."
+        },
+        {
+          "section": "76",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "93",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "95",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "97",
+          "from": "nongovernmental",
+          "to": "non-governmental",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “non-governmental”."
+        },
+        {
+          "section": "99",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "107",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "110",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "2",
+          "from": "a [has been or is being or is likely to be] for carrying out",
+          "to": "a [child care institution], for carrying out",
+          "count": 1,
+          "why": "India Code's database corrupted the definition of “Child Welfare Officer” (clause 17): the amendment-inserted defined term in the brackets was overwritten by a fragment (“has been or is being or is likely to be”) copied from clause (viii) of the definition of “child in need of care and protection”. The PDF's clause (17) reads “an officer attached to a [child care institution], for carrying out the directions”. Corrected against the PDF."
+        },
+        {
+          "section": "2",
+          "field": "footnotes",
+          "from": "Childrens Home",
+          "to": "Children's Home",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in this amendment footnote; the PDF reads “Children's Home”."
+        },
+        {
+          "section": "9",
+          "from": "the persons claim",
+          "to": "the person's claim",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's claim”."
+        },
+        {
+          "section": "11",
+          "from": "such persons charge",
+          "to": "such person's charge",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “such person's charge”."
+        },
+        {
+          "section": "12",
+          "from": "the persons release",
+          "to": "the person's release",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's release”."
+        },
+        {
+          "section": "44",
+          "from": "the parents homes once the parent's are determined",
+          "to": "the parent's homes once the parents are determined",
+          "count": 1,
+          "why": "India Code's database put the possessive apostrophe on the wrong word: it reads “the parents homes once the parent's are determined”. The PDF reads “the parent's homes once the parents are determined” (the home belongs to the parent; the parents are determined). Corrected against the PDF."
+        }
+      ],
+      "accepted": [],
+      "ordered_accepted": [
+        {
+          "section": "61",
+          "loaded": "procedure for disposal of adoption proceedings",
+          "pdf": "",
+          "why": "India Code's database prints the section heading a second time, inside an amendment bracket, at the start of the body (“61. Procedure for disposal of adoption proceedings\\n[Procedure for disposal of adoption proceedings].---(1)...”). The heading already stands as the section's title line, and the PDF prints it once. Left as the database has it; the repeat is harmless and changes no words of the provision."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 112,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
     }
   ]
 }

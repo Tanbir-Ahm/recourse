@@ -103,6 +103,15 @@ c3[2]["title"] = "Offence of bri-bery."
 check(B.compare_toc(toc, c3)["ok"], "compare_toc: hyphenation in a title does not matter")
 check(B.parse_toc(["no arrangement here"]) == [] and not B.compare_toc([], chunks)["ok"], "parse_toc: a PDF with no arrangement of sections gives nothing, and that fails the comparison")
 
+# toc_absent: a section in the body but missing from the PRINTED arrangement-of-sections (e.g. the Dowry Act's 8A, an amendment-inserted section the front index was not updated for)
+chunks_8a = chunks[:4] + [dict(chunks[3], section_number="3B", title="Inserted.")] + chunks[4:]        # 3B is only in loaded, not in the toc
+c_bad = B.compare_toc(toc, chunks_8a)
+check(not c_bad["ok"] and c_bad["only_in_loaded"] == ["3B"], "compare_toc: a body-only section still fails when it is NOT declared toc_absent")
+c_ok = B.compare_toc(toc, chunks_8a, toc_absent=["3B"])
+check(c_ok["ok"] and c_ok["only_in_loaded"] == [] and c_ok["toc_absent_seen"] == ["3B"] and c_ok["same_order"], "compare_toc: declaring the body-only section toc_absent passes, and it is recorded in toc_absent_seen")
+c_stale = B.compare_toc(toc, chunks, toc_absent=["9Z"])
+check(not c_stale["ok"] and c_stale["toc_absent_unused"] == ["9Z"], "compare_toc: a toc_absent declaration that is not actually only-in-loaded is reported as unused and fails (no stale declarations)")
+
 vocab = B.pdf_vocabulary(PAGES)
 check(B.absent_words(chunks, vocab) == [], "absent_words: a faithful load has none")
 typo = copy.deepcopy(chunks)
@@ -365,9 +374,12 @@ SHELF = os.path.join(HERE, "act_shelf")
 manifest = json.load(open(os.path.join(SHELF, "manifest.json"), encoding="utf-8"))
 M = {a["key"]: a for a in manifest["acts"]}
 directory = {a["id"]: a for a in json.load(open(os.path.join(HERE, "acts_directory.json"), encoding="utf-8"))["acts"]}
-check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984"], "manifest: the five Acts the owner chose, then the two very short ones added on 2026-10-17")
-check(len({a["code"] for a in M.values()}) == 7 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: seven distinct upper-case codes")
-check([k for k, a in M.items() if a.get("whole_act")] == ["muslim_women_act_2019", "pdpp_act_1984"], "manifest: only the two very short Acts are marked whole_act")
+check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984", "dowry_prohibition_act_1961", "jj_act_2015"],
+      "manifest: the five Acts the owner chose, the two very short ones, then the Dowry (1961) and Juvenile Justice (2015) Acts added on 2026-10-17")
+check(len({a["code"] for a in M.values()}) == 9 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: nine distinct upper-case codes")
+check([k for k, a in M.items() if a.get("whole_act")] == ["muslim_women_act_2019", "pdpp_act_1984"], "manifest: only the two very short Acts are marked whole_act (the Dowry and JJ Acts are over the size limit)")
+check(M["dowry_prohibition_act_1961"].get("toc_absent") == ["8A"] and all("toc_absent" not in a for k, a in M.items() if k != "dowry_prohibition_act_1961"),
+      "manifest: only the Dowry Act declares toc_absent (section 8A, in the PDF body but omitted from the printed arrangement of sections)")
 check(all(a["india_code"]["uuid"] == directory[k]["indiacode"]["uuid"] and a["name"] == directory[k]["name"] and a["citation"] == "Act No. " + directory[k]["act_no"] for k, a in M.items()), "manifest: each Act is the Directory's Act (same India Code record, name and number)")
 check(all(f.get("why", "").strip() for a in M.values() for f in a["corrections"]) and all(f.get("why", "").strip() for a in M.values() for f in a["accepted"]), "manifest: every correction and every accepted difference says why")
 check(all(a.get("text_status") == "machine_checked" and a.get("loaded_on") and a.get("sections_loaded") and a.get("pdf_as_on") for a in M.values()), "manifest: every Act records when it was loaded, how many sections, the PDF's date and that it is only machine-checked")

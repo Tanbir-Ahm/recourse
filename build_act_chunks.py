@@ -344,17 +344,27 @@ def parse_toc(pages):
     return [(n, t) for n, t in out]
 
 
-def compare_toc(toc, chunks):
-    """The PDF's arrangement of sections against what was loaded: same numbers, same order, same titles (words only, 'non-compliance' = 'noncompliance')."""
+def compare_toc(toc, chunks, toc_absent=()):
+    """The PDF's arrangement of sections against what was loaded: same numbers, same order, same titles (words only, 'non-compliance' = 'noncompliance').
+    `toc_absent` are section numbers the manifest declares the PDF's printed arrangement-of-sections omits although the PDF's BODY has them (a real section the front index was not updated for, e.g. an
+    amendment-inserted section); they are allowed to be 'only in loaded' and are ignored for the order check, but the section's text is still verified against the PDF's running text by ordered_compare, so the
+    guarantee that every loaded section is in the PDF is not weakened. A declared number that is NOT actually only-in-loaded is reported in 'toc_absent_unused' and makes the load fail (a stale declaration)."""
+    absent = set(toc_absent or ())
     t_nums, c_nums = [n for n, _ in toc], [c["section_number"] for c in chunks]
-    only_toc, only_loaded = [n for n in t_nums if n not in c_nums], [n for n in c_nums if n not in t_nums]
+    only_toc = [n for n in t_nums if n not in c_nums]
+    only_loaded_all = [n for n in c_nums if n not in t_nums]
+    only_loaded = [n for n in only_loaded_all if n not in absent]           # the ones that still fail the check
+    toc_absent_seen = [n for n in only_loaded_all if n in absent]
+    toc_absent_unused = [n for n in sorted(absent) if n not in only_loaded_all]
+    order_nums = [n for n in c_nums if n not in absent]                     # the order check ignores the declared-absent sections
     tmap = {n: t for n, t in toc}
     squash = lambda s: "".join(norm_words(s))  # noqa: E731
     title_diffs = [(c["section_number"], c["title"], tmap[c["section_number"]]) for c in chunks
                    if c["section_number"] in tmap and squash(c["title"]) != squash(tmap[c["section_number"]])
                    and not (squash(c["title"]) in squash(tmap[c["section_number"]]) or squash(tmap[c["section_number"]]) in squash(c["title"]))]
-    return {"toc_entries": len(toc), "loaded": len(chunks), "only_in_pdf": only_toc, "only_in_loaded": only_loaded, "same_order": t_nums == c_nums, "title_differences": title_diffs,
-            "ok": bool(toc) and not only_toc and not only_loaded and t_nums == c_nums and not title_diffs}
+    return {"toc_entries": len(toc), "loaded": len(chunks), "only_in_pdf": only_toc, "only_in_loaded": only_loaded, "toc_absent_seen": toc_absent_seen, "toc_absent_unused": toc_absent_unused,
+            "same_order": order_nums == t_nums, "title_differences": title_diffs,
+            "ok": bool(toc) and not only_toc and not only_loaded and not toc_absent_unused and order_nums == t_nums and not title_diffs}
 
 
 def pdf_vocabulary(pages):
@@ -608,7 +618,7 @@ def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
         return chunks, report
     name, data, pages = pick_english_pdf(fetcher.original_pdfs(ic["uuid"]), entry["name"])
     toc = parse_toc(pages)
-    cmp_ = compare_toc(toc, chunks)
+    cmp_ = compare_toc(toc, chunks, entry.get("toc_absent"))
     report["pdf"] = {"name": name, "sha256": hashlib.sha256(data).hexdigest(), "pages": len(pages), "as_on": pdf_as_on(pages), "toc": cmp_}
     if not cmp_["ok"]:
         raise LoadError(f"the loaded sections do not equal the PDF's arrangement of sections: {json.dumps({k: v for k, v in cmp_.items() if k != 'ok'}, ensure_ascii=False)[:600]}")
