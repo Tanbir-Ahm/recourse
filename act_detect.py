@@ -171,6 +171,10 @@ _ABOUT = {
     "companies_act_2013": "companies: fraud in company affairs, directors' liability, an SFIO investigation, filings and winding up.",
     "consumer_protection_act_2019": "a complaint by a consumer about a defective product or deficient service, before a Consumer Commission.",
     "limitation_act_1963": "the time limit for bringing a case to court, and when a delay can be condoned.",
+    "child_marriage_act_2006": "a child marriage (a girl under 18 or a boy under 21 married): making it voidable, stopping it by court injunction, and the punishment of those who arrange or conduct it.",
+    "pcr_act_1955": "the practice of untouchability: refusing a person entry to a temple, well, shop, hospital or public place, or other social disabilities, because of 'untouchability' (a different Act from the SC/ST Atrocities Act).",
+    "pdpp_act_1984": "damage to public property: a bus, train, government building or other public property damaged or burned in a protest, riot or bandh, and the special bail rule for it.",
+    "muslim_women_act_2019": "instant triple talaq (talaq-e-biddat): pronouncing talaq three times at once, which the Act makes void and punishable, with the wife's subsistence allowance and custody of her minor children.",
 }
 for _id, _about in _ABOUT.items():
     ACTS.setdefault(_id, {"about": _about, "wide": [], "not_when": ""})

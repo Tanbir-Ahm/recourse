@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated": "2026-10-16",
+  "generated": "2026-10-17",
   "about": "The Act Directory (STATUTE_COVERAGE_PLAN.md step 1): Acts whose text Recourse does not hold. Code spots an Act the person's question NAMES (aliases) or clearly describes (phrases) and says so, with a link to the official text. NOTHING in 'status' or 'appeal' is shown to a user until a person has confirmed it (reviewed); a link is shown only after url_checked is set, otherwise the notice points to the India Code home page. Drafted by Claude from general knowledge and India Code search results; NOT checked by a lawyer.",
   "reviewer": "Mr. Advocate",
   "fallback_url": "https://indiacode.gov.in/",
@@ -42,7 +42,7 @@
       ],
       "url": "https://indiacode.gov.in/items/5b300920-4878-4e39-8d87-fa87d4953f09",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force. Amended by the Lokpal and Lokayuktas Act, 2013 (from 16 January 2014) and by the Prevention of Corruption (Amendment) Act, 2018 (from 26 July 2018).",
         "confidence": "certain",
@@ -66,7 +66,7 @@
         "repealed_by": null,
         "enacted": "1988-09-09",
         "enforced": "09-09-1988",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -89,7 +89,7 @@
       ],
       "url": "https://indiacode.gov.in/items/60dad1b9-bbf1-4310-8fa1-62643beab7a6",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 14 November 2012. Amended by the Criminal Law (Amendment) Acts of 2013 and 2018 and by the Protection of Children from Sexual Offences (Amendment) Act, 2019.",
         "confidence": "certain",
@@ -113,7 +113,7 @@
         "repealed_by": null,
         "enacted": "2012-06-19",
         "enforced": "14-11-2012",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -133,7 +133,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/fa986084-35d9-4391-a7e1-9561c880d8bb",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force. Amended several times, including by Act 29 of 2004, Act 35 of 2008, Act 3 of 2013 (the 2012 Amendment Act) and Act 28 of 2019 (from 14 August 2019).",
         "confidence": "certain",
@@ -157,7 +157,7 @@
         "repealed_by": null,
         "enacted": "1967-12-30",
         "enforced": "30-12-1967",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -179,7 +179,7 @@
       ],
       "url": "https://indiacode.gov.in/items/3babfe62-c9c8-49b3-8247-052834d2dfa4",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 2005. Amended several times: India Code's footnotes cite amending Acts of 2005, 2009, 2013, 2015, 2016, 2018 and 2019.",
         "confidence": "certain",
@@ -203,7 +203,7 @@
         "repealed_by": null,
         "enacted": "2003-01-17",
         "enforced": "01-07-2005",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -241,7 +241,7 @@
       ],
       "url": "https://indiacode.gov.in/items/f9c8fb04-363a-4779-b628-0d9f9bb997e0",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 30 January 1990. Amended by Act 1 of 2016 (from 26 January 2016) and by Act 27 of 2018 (which inserted section 18A).",
         "confidence": "certain",
@@ -265,7 +265,7 @@
         "repealed_by": null,
         "enacted": "1989-09-11",
         "enforced": "30-01-1990",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -283,7 +283,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/834e1f7b-9f8d-4573-b79f-81b9035b832a",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "No longer in force: India Code lists it as repealed by Act 30 of 2001, and it had ceased to operate earlier, in May 1995. As enacted it was to remain in force for two years from 24 May 1987 (section 1(4)); later amendments extended that. Section 1(4) saved things done, rights acquired and proceedings begun before it ended.",
         "confidence": "likely",
@@ -307,7 +307,7 @@
         "repealed_by": "Act 30 of 2001",
         "enacted": null,
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -325,7 +325,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/4bdc7685-15f7-4a59-b450-2cd286416959",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force. Amended in 2019 (India Code's footnote to section 22 cites Act 16 of 2019, from 2 August 2019).",
         "confidence": "certain",
@@ -349,7 +349,7 @@
         "repealed_by": null,
         "enacted": "2008-12-31",
         "enforced": "31-12-2008",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -366,7 +366,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/78a46eb4-21bf-49ee-bd08-6b8e8655631c",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 October 1962.",
         "confidence": "certain",
@@ -389,7 +389,7 @@
         "repealed_by": null,
         "enacted": "1959-12-23",
         "enforced": "01-10-1962",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -412,7 +412,7 @@
       ],
       "url": "https://indiacode.gov.in/items/8dc8e1b4-7147-45ea-9e82-5911aa3816d4",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 1961. Amended in 1984 and 1986.",
         "confidence": "certain",
@@ -435,7 +435,7 @@
         "repealed_by": null,
         "enacted": "1961-05-20",
         "enforced": "01-07-1961",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -459,7 +459,7 @@
       ],
       "url": "https://indiacode.gov.in/items/bfa75673-9ac9-4ce8-b5cf-836472c94203",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 15 January 2016.",
         "confidence": "certain",
@@ -482,7 +482,7 @@
         "repealed_by": null,
         "enacted": "2015-12-31",
         "enforced": "15-01-2016",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -507,7 +507,7 @@
       ],
       "url": "https://indiacode.gov.in/items/2bbbcc40-38f1-4b15-ae94-646b85db4ee7",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 1989. Amended several times, including by the Motor Vehicles (Amendment) Act, 2019.",
         "confidence": "certain",
@@ -530,7 +530,7 @@
         "repealed_by": null,
         "enacted": "1988-10-14",
         "enforced": "01-07-1989",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -547,7 +547,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/5b38b7b8-6708-4630-85d2-8b14a28e53d3",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 February 1963.",
         "confidence": "certain",
@@ -570,7 +570,7 @@
         "repealed_by": null,
         "enacted": "1962-12-13",
         "enforced": "01-02-1963",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -589,7 +589,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/1f98f6d0-ec9d-42f0-bd50-dc34d25998e1",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force, brought into force in stages by notification: some sections from 22 June 2017, most from 1 July 2017.",
         "confidence": "certain",
@@ -612,7 +612,7 @@
         "repealed_by": null,
         "enacted": "2017-04-12",
         "enforced": "22nd June, 2017 for sections 1, 2, 3, 4, 5, 10, 22, 23, 24, 25, 26, 27, 28, 29, 30, 139, 146 and 164 1st July, 2017 for sections 6 to 9, 11 to 21, 31 to 41, 42 (except proviso to sub-section (9) of S 42), 43 (except proviso to subsection (9) of S 43), 44 to 50, 53 to 138, 140 to 163, 165 to 174.",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -629,7 +629,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/c37854bc-64c2-4314-9370-1dd418016ce5",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 April 1955.",
         "confidence": "certain",
@@ -652,7 +652,7 @@
         "repealed_by": null,
         "enacted": "1955-04-01",
         "enforced": "01-04-1955",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -672,7 +672,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/7c9c8305-5b02-4711-8f96-ed0f636f0cb4",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force. It was called the Suppression of Immoral Traffic in Women and Girls Act, 1956 until Act 44 of 1986 renamed it (from 26 January 1987).",
         "confidence": "certain",
@@ -695,7 +695,7 @@
         "repealed_by": null,
         "enacted": "1956-12-30",
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -717,7 +717,7 @@
       ],
       "url": "https://indiacode.gov.in/items/6497706b-d8a5-4486-a968-9975498de966",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 9 December 2013.",
         "confidence": "certain",
@@ -740,7 +740,7 @@
         "repealed_by": null,
         "enacted": "2013-04-22",
         "enforced": "09-12-2013",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -759,7 +759,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/2cc52f43-b784-447c-b84e-38cebfda552e",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force; it takes effect in each State from the date that State notifies (section 1(3)).",
         "confidence": "certain",
@@ -782,7 +782,7 @@
         "repealed_by": null,
         "enacted": "2007-12-29",
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -800,7 +800,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/972afbe0-a2de-415d-9df5-8d70038056ad",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "Repealed by the Bharatiya Nyaya Sanhita, 2023 (Act 45 of 2023), in force from 1 July 2024. Offences committed before that date, and proceedings and penalties for them, remain governed by the IPC (BNS section 358(2)).",
         "confidence": "certain",
@@ -824,7 +824,7 @@
         "repealed_by": "Act 45 of 2023",
         "enacted": null,
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -843,7 +843,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/973d60aa-105c-4a2f-94f1-7640f0b5d6a7",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "Repealed by the Bharatiya Nagarik Suraksha Sanhita, 2023 (Act 46 of 2023), in force from 1 July 2024. An appeal, application, trial, inquiry or investigation pending on that date continues under the old Code (BNSS section 531(2)(a)).",
         "confidence": "certain",
@@ -867,7 +867,7 @@
         "repealed_by": "Act 46 of 2023",
         "enacted": null,
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -885,7 +885,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/b62073e0-4d33-4348-8eda-d92af40af24b",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "Repealed by the Bharatiya Sakshya Adhiniyam, 2023 (Act 47 of 2023), in force from 1 July 2024.",
         "confidence": "certain",
@@ -908,7 +908,7 @@
         "repealed_by": "Act 47 of 2023",
         "enacted": null,
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -928,7 +928,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/9e461245-2c13-4171-9d9d-267425c01e1d",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 2024.",
         "confidence": "certain",
@@ -951,7 +951,7 @@
         "repealed_by": null,
         "enacted": "2023-12-25",
         "enforced": "1-7-2024",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -968,7 +968,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/3d38ec80-965e-4df0-a2d2-3d97cb1dc702",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 January 1909.",
         "confidence": "certain",
@@ -991,7 +991,7 @@
         "repealed_by": null,
         "enacted": "1908-03-21",
         "enforced": "1909-01-01",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1009,7 +1009,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/0e782442-f035-4d53-aace-81b1552a8cf2",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 September 1872.",
         "confidence": "certain",
@@ -1032,7 +1032,7 @@
         "repealed_by": null,
         "enacted": "1872-04-25",
         "enforced": "1872-09-01",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1049,7 +1049,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/2b436b95-ae89-4c5f-ab70-3d5ef5ffd8e8",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 July 1882.",
         "confidence": "certain",
@@ -1072,7 +1072,7 @@
         "repealed_by": null,
         "enacted": "1882-02-17",
         "enforced": "1882-07-01",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1089,7 +1089,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/33e4083a-e967-4091-b91f-915b4d3f95a8",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 18 May 1955. Amended several times (India Code lists amending Acts of 1956, 1976, 1999, 2001 and 2003).",
         "confidence": "certain",
@@ -1112,7 +1112,7 @@
         "repealed_by": null,
         "enacted": "1955-05-18",
         "enforced": "18-05-1955",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1129,7 +1129,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/3371dabc-b1ab-4bb1-874d-0411dd1c44bd",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 17 June 1956. Section 6 was substituted by the Hindu Succession (Amendment) Act, 2005 (Act 39 of 2005) from 9 September 2005.",
         "confidence": "certain",
@@ -1152,7 +1152,7 @@
         "repealed_by": null,
         "enacted": "1956-06-17",
         "enforced": "17-06-1956",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1169,7 +1169,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/0b2a1b74-1516-4012-b097-ca14d948c38e",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "Repealed by the Income-tax Act, 2025 (Act 30 of 2025). Claude's recollection, not read: the new Act applies from 1 April 2026, and the 1961 Act still governs earlier tax years.",
         "confidence": "likely",
@@ -1192,7 +1192,7 @@
         "repealed_by": "Act 30 of 2025",
         "enacted": null,
         "enforced": null,
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1209,7 +1209,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/f5bbbf6b-4247-400f-80fa-38c605132a8f",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force; brought into force by notification (India Code gives 1 April 2014 as its enforcement date).",
         "confidence": "certain",
@@ -1232,7 +1232,7 @@
         "repealed_by": null,
         "enacted": "2013-08-29",
         "enforced": "01-04-2014",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1253,7 +1253,7 @@
       ],
       "url": "https://indiacode.gov.in/items/1b6c1754-47b1-411e-9607-1712a9caf368",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force; brought into force in parts by notification (India Code lists 24 July 2020 for the sections it names).",
         "confidence": "certain",
@@ -1276,7 +1276,7 @@
         "repealed_by": null,
         "enacted": "2019-08-09",
         "enforced": "24th July, 2020.-- S. 2 clauses (4), (13), (14), (16), (40), s. 10 to 27 (both inclusive), sub-clause (iv) of clause (a) of sub-section (1) of section 58, s. 88, 89, 92 and 93, 94, 96, 97 and 99, clause (f) to (m) of sub-section 2 and clauses (zg), (zh) and (zi) of sub-section 2 of s. 101, 104, vide notification No. S.O. 2421(E), dated 23rd July 2020, see Gazette of India, Extraordinary, Part II, sec. 3(ii).",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
       }
     },
     {
@@ -1293,7 +1293,7 @@
       "phrases": [],
       "url": "https://indiacode.gov.in/items/5e69d11a-63e7-4a63-b86f-e063bcdeaee2",
       "url_alt": null,
-      "url_checked": "2026-10-16 (machine: India Code's own record matches on title, number and year)",
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
       "status": {
         "text": "In force since 1 January 1964.",
         "confidence": "certain",
@@ -1316,7 +1316,210 @@
         "repealed_by": null,
         "enacted": "1963-10-05",
         "enforced": "01-01-1964",
-        "verified_on": "2026-10-16"
+        "verified_on": "2026-10-17"
+      }
+    },
+    {
+      "id": "child_marriage_act_2006",
+      "priority": 2,
+      "detect": true,
+      "name": "The Prohibition of Child Marriage Act, 2006",
+      "short": "Prohibition of Child Marriage Act, 2006",
+      "act_no": "6 of 2007",
+      "pack": "none",
+      "aliases": [
+        "prohibition of child marriage act",
+        "child marriage act",
+        "pcma",
+        "child marriage prohibition act"
+      ],
+      "phrases": [
+        "child marriage",
+        "child marriages",
+        "underage marriage",
+        "underage marriages",
+        "underage wedding",
+        "child marriage prohibition officer",
+        "married below the legal age",
+        "marriage below the legal age"
+      ],
+      "url": "https://indiacode.gov.in/items/81cb6494-1a0a-4c88-95ec-baf6cb43a9f5",
+      "url_alt": null,
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 1 November 2007. The words \"except the State of Jammu and Kashmir\" were omitted from section 1 from 31 October 2019.",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-17: enforcement date 01-11-2007 (footnote to section 1: notification S.O. 1850(E) of 30 October 2007); not marked repealed; footnote to section 1: the words \"except the State of Jammu and Kashmir\" omitted by Act 34 of 2019, s. 95 and the Fifth Schedule (w.e.f. 31-10-2019). The Act has no appeal section of its own (sections 1 to 21 read), so no appeal line is drafted."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Prohibition of Child Marriage Act, 2006",
+        "act_number": "6",
+        "act_year": "2007",
+        "uuid": "81cb6494-1a0a-4c88-95ec-baf6cb43a9f5",
+        "handle": "123456789/496001",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2007-01-10",
+        "enforced": "01-11-2007",
+        "verified_on": "2026-10-17"
+      }
+    },
+    {
+      "id": "pcr_act_1955",
+      "priority": 2,
+      "detect": true,
+      "name": "The Protection of Civil Rights Act, 1955",
+      "short": "Protection of Civil Rights Act, 1955",
+      "act_no": "22 of 1955",
+      "pack": "none",
+      "aliases": [
+        "protection of civil rights act",
+        "pcr act",
+        "untouchability offences act",
+        "civil rights act 1955"
+      ],
+      "phrases": [
+        "practice of untouchability",
+        "practising untouchability",
+        "practicing untouchability",
+        "enforcing untouchability",
+        "untouchability offence",
+        "untouchability offences",
+        "untouchability case"
+      ],
+      "url": "https://indiacode.gov.in/items/49c97aa1-20b3-4883-b39a-55283b85909b",
+      "url_alt": null,
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 1 June 1955. It was first called the Untouchability (Offences) Act and took its present name by amendments in force from 19 November 1976 (Act 106 of 1976).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-17: enforcement date 01-06-1955 (footnote to section 1: notification S.R.O. 1109(E) of 23 May 1955); not marked repealed; footnote to section 1: \"the Protection of Civil Rights Act\" substituted for \"the Untouchability (Offences) Act\" (w.e.f. 19-11-1976); footnotes to sections 3 to 17 and others cite Act 106 of 1976 (w.e.f. 19-11-1976). The Act has no appeal section of its own (sections 1 to 17 read, section 9 mentions only a conviction \"not reversed or quashed in any appeal or revision\"), so no appeal line is drafted."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Protection of Civil Rights Act, 1955",
+        "act_number": "22",
+        "act_year": "1955",
+        "uuid": "49c97aa1-20b3-4883-b39a-55283b85909b",
+        "handle": "123456789/496522",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1955-05-08",
+        "enforced": "01-06-1955",
+        "verified_on": "2026-10-17"
+      }
+    },
+    {
+      "id": "pdpp_act_1984",
+      "priority": 2,
+      "detect": true,
+      "name": "The Prevention of Damage to Public Property Act, 1984",
+      "short": "Prevention of Damage to Public Property Act, 1984",
+      "act_no": "3 of 1984",
+      "pack": "none",
+      "aliases": [
+        "prevention of damage to public property act",
+        "damage to public property act",
+        "pdpp act",
+        "pdpp"
+      ],
+      "phrases": [
+        "damage to public property",
+        "damaging public property",
+        "damaged public property",
+        "destruction of public property",
+        "destroying public property",
+        "destroyed public property",
+        "public property damage"
+      ],
+      "url": "https://indiacode.gov.in/items/86c729f1-a26f-4e61-bd0f-6af03ae667ac",
+      "url_alt": null,
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 28 January 1984. The words \"except the State of Jammu and Kashmir\" were omitted from section 1 from 31 October 2019.",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-17: section 1(3) says the Act is deemed to have come into force on 28 January 1984, and India Code gives the enforcement date 28-01-1984; not marked repealed; footnote to section 1: the words \"except the State of Jammu and Kashmir\" omitted by Act 34 of 2019, s. 95 and the Fifth Schedule (w.e.f. 31-10-2019). The Act has no appeal section of its own (sections 1 to 7 read), so no appeal line is drafted."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Prevention of Damage to Public Property Act, 1984",
+        "act_number": "3",
+        "act_year": "1984",
+        "uuid": "86c729f1-a26f-4e61-bd0f-6af03ae667ac",
+        "handle": "123456789/496532",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1984-03-16",
+        "enforced": "28-01-1984",
+        "verified_on": "2026-10-17"
+      }
+    },
+    {
+      "id": "muslim_women_act_2019",
+      "priority": 2,
+      "detect": true,
+      "name": "The Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "short": "Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "act_no": "20 of 2019",
+      "pack": "none",
+      "aliases": [
+        "muslim women protection of rights on marriage act",
+        "muslim women act 2019",
+        "triple talaq act",
+        "triple talaq law"
+      ],
+      "phrases": [
+        "triple talaq",
+        "instant talaq",
+        "talaq e biddat",
+        "pronounced talaq three times",
+        "talaq three times"
+      ],
+      "url": "https://indiacode.gov.in/items/1f82ee21-741f-4a57-94ef-b26040d515b9",
+      "url_alt": null,
+      "url_checked": "2026-10-17 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 19 September 2018 (section 1(3) says the Act is deemed to have come into force on that day). It replaced the Muslim Women (Protection of Rights on Marriage) Second Ordinance, 2019. Since 30 October 2019 it also applies in the Union territories of Jammu and Kashmir and Ladakh.",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-17: section 1(3) deems the Act in force on the 19th day of September, 2018, and India Code gives the enforcement date 19-9-2018; not marked repealed; section 8 repeals the Second Ordinance, 2019 (Ord. 4 of 2019); footnote to section 1: Notification S.O. 3912 (E) of 30 October 2019 makes the Act applicable to the Union territories of Jammu and Kashmir and Ladakh. The Act has no appeal section of its own (sections 1 to 8 read), so no appeal line is drafted."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Muslim Women (Protection of Rights on Marriage) Act, 2019.",
+        "act_number": "20",
+        "act_year": "2019",
+        "uuid": "1f82ee21-741f-4a57-94ef-b26040d515b9",
+        "handle": "123456789/496444",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2019-07-31",
+        "enforced": "19-9-2018",
+        "verified_on": "2026-10-17"
       }
     }
   ]

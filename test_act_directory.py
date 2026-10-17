@@ -45,7 +45,7 @@ ACTS = RAW["acts"]
 PRIORITY = [a["id"] for a in ACTS if a.get("priority") == 1]
 
 # ---------------------------------------------------------------- data integrity
-check(RAW.get("schema") == 1 and len(ACTS) == 30, f"the directory holds 30 Acts ({len(ACTS)})")
+check(RAW.get("schema") == 1 and len(ACTS) == 34, f"the directory holds 34 Acts ({len(ACTS)})")
 check(len({a["id"] for a in ACTS}) == len(ACTS), "every id is unique")
 check(PRIORITY == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"], f"the five priority Acts are the ones the owner accepted ({PRIORITY})")
 check(all(a.get("name") and a.get("short") and a.get("act_no") and a.get("aliases") for a in ACTS), "every entry has a name, a short name, an Act number and at least one alias")
@@ -204,10 +204,14 @@ OTHERS = {
     "companies_act_2013": ["Director disqualification under the Companies Act?", "companies act section 447 fraud punishment", "Can the Companies Act be used against a private company director for cheating?"],
     "consumer_protection_act_2019": ["I want to file a complaint in the consumer court for a defective phone.", "consumer protection act e-commerce rules", "Which consumer forum has jurisdiction for Rs 30 lakh?"],
     "limitation_act_1963": ["Limitation Act: is a claim for a loan barred after three years?", "limitation act section 5 condonation", "How does the Limitation Act treat acknowledgment of a debt?"],
+    "child_marriage_act_2006": ["Can a child marriage be stopped by a court order before the wedding?", "Prohibition of Child Marriage Act, who can file a complaint?", "my cousin was married off at 16, is it a child marriage and voidable?", "child marriage prohibition officer powers"],
+    "pcr_act_1955": ["Protection of Civil Rights Act section 7 punishment", "He was stopped from entering the temple, a case of practice of untouchability?", "PCR Act and SC ST Act, which applies?", "untouchability offences act, old name"],
+    "pdpp_act_1984": ["A bus was burned during the bandh, which law is used: the Prevention of Damage to Public Property Act?", "pdpp act bail rules", "Damage to Public Property Act section 3 punishment", "He was arrested for damage to public property during the protest"],
+    "muslim_women_act_2019": ["Muslim Women (Protection of Rights on Marriage) Act, 2019 section 4 punishment", "My husband said triple talaq on WhatsApp, what can I do?", "Is bail possible in a triple talaq case?", "talaq e biddat complaint by the wife"],
 }
-check(len(OTHERS) == 23 and set(OTHERS) | set(PRIORITY) == {a["id"] for a in ACTS if a["detect"]}, "the test set covers every detected Act")
+check(len(OTHERS) == 27 and set(OTHERS) | set(PRIORITY) == {a["id"] for a in ACTS if a["detect"]}, "the test set covers every detected Act")
 bad = {a: [q for q in qs if a not in ids(q)] for a, qs in OTHERS.items()}
-check(not any(bad.values()), f"3 natural questions for each of the other 23 Acts are all found ({ {k: v for k, v in bad.items() if v} })")
+check(not any(bad.values()), f"3 natural questions for each of the other 27 Acts are all found ({ {k: v for k, v in bad.items() if v} })")
 
 # how a match was made
 check(AD.detect("My father is accused under the PC Act") == [{"id": "pc_act_1988", "short": "Prevention of Corruption Act, 1988", "how": "named"}], "a name gives how='named'")
@@ -244,6 +248,12 @@ CONTROLS = [
     "The CPC says nothing about this.",
     "My HMA claim is pending.",
     "Nia filed a complaint at the police station.",
+    "My divorce petition is pending in the family court and my husband wants maintenance.",
+    "My husband divorced me and now refuses to pay maintenance under Section 144 of the BNSS.",
+    "A mob damaged my private shop during the riot. Can I claim compensation?",
+    "He was arrested for mischief after breaking a neighbour's wall.",
+    "My sister got married at 19 against our wishes and we want to file a missing person complaint.",
+    "I was refused entry to a private club and I want to know my rights.",
     "The IT Act says nothing about this.",
     "What is the EC Act?",
     "My PC acts up every day.",
