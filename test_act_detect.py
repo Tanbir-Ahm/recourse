@@ -67,6 +67,30 @@ FOUND = [
     # weakness 2: the Enforcement Directorate WITH a cue
     ("The Enforcement Directorate attached my house last month", "pmla_2002", "the Directorate near 'attached'"),
     ("I got a summons from the Enforcement Directorate", "pmla_2002", "the Directorate near 'summons'"),
+    # the Muslim Women (Protection of Rights on Marriage) Act, 2019 (added 2026-10-17)
+    ("Mere shohar ne phone par teen talaq bol diya. Kya main police mein complaint kar sakti hoon?", "muslim_women_act_2019", "Hinglish: 'teen talaq'"),
+    ("Last night in front of his brothers he said talaq, talaq, talaq and threw me out of the house.", "muslim_women_act_2019", "the word said three times in a row"),
+    ("My husband sent me a voice message with the word talaq repeated three times. Can I file an FIR against him?", "muslim_women_act_2019", "talaq near 'three times'"),
+    ("He wrote talak on a paper three times and handed it to my father.", "muslim_women_act_2019", "a different spelling of talaq"),
+    ("My brother is in jail because his wife complained that he gave her talaq by SMS.", "muslim_women_act_2019", "talaq by SMS, with jail"),
+    ("He sent a talaqnama on stamp paper through his lawyer saying I am divorced with immediate effect.", "muslim_women_act_2019", "talaqnama on stamp paper, immediate effect"),
+    ("Is a Muslim husband liable if he gives oral talaq in anger in a single breath?", "muslim_women_act_2019", "'in a single breath' is instant"),
+    ("My neighbour is Muslim and her husband said 'I divorce you' three times during an argument and then threw her out.", "muslim_women_act_2019", "no word talaq: a Muslim husband, 'I divorce you' three times"),
+    ("My cousin's husband said 'you are divorced' thrice in front of the qazi. She is Muslim. Is that valid?", "muslim_women_act_2019", "no word talaq: 'thrice', a qazi, Muslim"),
+    ("I am a Muslim woman. My husband left me after sending an email that says he divorces me immediately.", "muslim_women_act_2019", "no word talaq: a Muslim husband divorced by email"),
+    ("What is the punishment under the Muslim Women Act for pronouncing talaq?", "muslim_women_act_2019", "the bare name of the Act near talaq"),
+    ("talaq e bidat kya hai? kya ye ab crime hai?", "muslim_women_act_2019", "talaq-e-bidat spelling"),
+    # the Prevention of Damage to Public Property Act, 1984 (added 2026-10-17)
+    ("A state transport bus was burnt during the bandh and the police picked up my brother from the village.", "pdpp_act_1984", "a public bus burnt, with a bandh"),
+    ("The FIR says my husband set a railway coach on fire at the rail roko protest.", "pdpp_act_1984", "'set ... on fire' with the thing inside the phrase"),
+    ("During the farmers' agitation some people broke the windows of a government bus, and my uncle is named in the FIR.", "pdpp_act_1984", "windows of a government bus, agitation"),
+    ("Some boys vandalised the tehsil office after the verdict and the police have arrested my cousin.", "pdpp_act_1984", "a public office vandalised, no protest word needed"),
+    ("He is accused of throwing stones at a police station and a municipal office during the riot.", "pdpp_act_1984", "stones at a police station"),
+    ("Is damage to government property during a dharna a non-bailable offence?", "pdpp_act_1984", "damage to government property"),
+    ("Police booked thirty people for burning buses after the bandh call by the party.", "pdpp_act_1984", "a plain bus counts when there is a bandh"),
+    ("Several buses of the state transport corporation were stoned and one was set ablaze during the shutdown.", "pdpp_act_1984", "passive: buses were stoned"),
+    ("He was arrested for breaking the signal lights and barricades at the junction during the road blockade.", "pdpp_act_1984", "the public thing itself is the object"),
+    ("He faces a 3-year sentence for breaking the lights of a public bus.", "pdpp_act_1984", "lights of a public bus, no protest word needed"),
 ]
 for q, act, why in FOUND:
     check(act in w(q), f"word pass finds {act}: {why}  ({w(q)})")
@@ -92,12 +116,40 @@ NOT_FOUND = [
     ("What is terrorism and how do countries define it?", "uapa_1967", "a bare mention of terrorism, with no case, is not the Act"),
     ("The film is about terrorism and how it spreads", "uapa_1967", "the same"),
     ("The Enforcement Directorate has its headquarters in Delhi", "pmla_2002", "the name alone, with no cue word, is not the Act"),
+    # near-misses for the Muslim Women Act: other talaq, other divorces, threats
+    ("My husband sent me the first notice of talaq-e-hasan by registered post. Is the divorce complete after three months?", "muslim_women_act_2019", "talaq-e-hasan is not instantaneous"),
+    ("Is talaq-e-hasan valid in India after the 2017 judgment? My husband gave the first notice by letter.", "muslim_women_act_2019", "the same, with a letter"),
+    ("He said he will give me talaq if I speak to my parents on the phone again.", "muslim_women_act_2019", "a threat of talaq is not a pronouncement"),
+    ("My husband threatened to give me talaq if I did not bring a car. I recorded the call and want to complain.", "muslim_women_act_2019", "a threat again"),
+    ("My husband said talaq once during a fight and apologised the next day. Are we still married?", "muslim_women_act_2019", "one mention, nothing instant or delivered"),
+    ("I am a Muslim man. My wife left home and I want a divorce. I have called her three times but she does not pick up the phone.", "muslim_women_act_2019", "'three times' near divorce but not a pronouncement"),
+    ("My Christian husband divorced me by text message and I do not know what to do.", "muslim_women_act_2019", "no Muslim word, no talaq"),
+    ("A Muslim couple divorced through khula and the wife wants to return the mehr. Is that required?", "muslim_women_act_2019", "khula is the wife's divorce"),
+    ("Under the Muslim Women (Protection of Rights on Divorce) Act, 1986, can a divorced wife claim a lump sum from the husband?", "muslim_women_act_2019", "the 1986 Act is a different Act"),
+    ("Can a Muslim woman file a case under the domestic violence act after talaq?", "muslim_women_act_2019", "talaq with no pronouncement detail"),
+    # near-misses for the Public Property Act: private property, accidents, burn injuries, a place named only as where a complaint was made
+    ("A mob damaged my shop during the riot. Can I claim compensation from the government?", "pdpp_act_1984", "a private shop"),
+    ("My bus was damaged in a road accident and the insurer is refusing the claim.", "pdpp_act_1984", "an accident"),
+    ("A government bus hit my father's scooter and damaged it. Who will pay for the repair?", "pdpp_act_1984", "the bus is the one that caused the damage"),
+    ("My child suffered burn injuries and was admitted to a government hospital. Who pays for treatment?", "pdpp_act_1984", "a burn injury in a hospital is not arson of the hospital"),
+    ("Someone smashed my phone and I went to the police station to file a complaint.", "pdpp_act_1984", "a police station named only as the place of the complaint"),
+    ("He ransacked his wife's cupboard and was arrested after the family dispute reached the police station.", "pdpp_act_1984", "the same"),
+    ("The roof of our government school building was damaged by heavy rain. Who is responsible for the repairs?", "pdpp_act_1984", "weather, not mischief"),
+    ("I damaged a file belonging to a government office by mistake while it was with me. Can they file a case?", "pdpp_act_1984", "a file, not property, and no protest"),
+    ("The traffic police broke the glass of my car to remove it from the no-parking zone. Can I complain?", "pdpp_act_1984", "the police are the ones who broke it"),
+    ("A mob attacked my brother during the bandh and he was seriously injured. The accused are known. Which sections apply?", "pdpp_act_1984", "a mob and a bandh, but no public thing and no damage"),
+    ("I was injured in stone pelting during the riot. Can I get compensation from the state?", "pdpp_act_1984", "stone pelting, but nothing public was damaged"),
 ]
 for q, act, why in NOT_FOUND:
     got = w(q)
     check((got == [] if act is None else act not in got), f"word pass does NOT fire {act or 'anything'}: {why}  ({got})")
 
 check(AD.wide("", IDS) == [] and AD.wide(None, IDS) == [], "word pass: empty or missing question gives nothing")
+import time as _time
+_t = _time.time()
+for _long in ("talaq " * 4000, "the government bus damaged " * 2000, "set a government bus " * 2000, "alpha beta gamma delta " * 3000 + " bandh"):
+    AD.wide(_long, IDS)
+check(_time.time() - _t < 5.0, f"word pass: four 25,000-to-55,000-character inputs finish in under 5 seconds ({_time.time() - _t:.2f}s)")
 check(all(h["id"] in {"pc_act_1988"} for h in AD.wide("he paid a bribe to the clerk", {"pc_act_1988"})), "word pass returns only Acts the caller allows")
 check(AD.wide("he paid a bribe to the clerk", {"mv_act_1988"}) == [], "an Act the Directory cannot detect is never returned")
 check(all(h["how"] == "likely" for h in AD.wide("he paid a bribe", IDS)), "every word-pass match is 'likely', never 'named'")

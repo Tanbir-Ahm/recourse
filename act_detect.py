@@ -62,6 +62,69 @@ _OFFICIAL_WORK = r"(?:file|files|bill|bills|licen[cs]e|permit|tender|certificate
 # A word that makes a question about a PUBLIC servant (stricter than _ROLE: a bare "officer" or "clerk" can work in a private firm)
 _PUBLIC_ROLE = r"\b(?:public servants?|govern?ment (?:officer|official|servant|employee|staff|clerk|hospital|school|doctor|teacher|department|office)|govt\.? (?:officer|official|servant|employee|staff|clerk|hospital|school|office)|sarkari|police(?:man|men|woman)?|constable|sub-?inspector|inspector|tehsildar|patwari|talathi|revenue (?:officer|department)|municipal|municipality|corporation officer|panchayat|customs officer|excise officer|income[- ]tax officer|registrar|sub-?registrar|babu|vigilance|anti[- ]corruption)\b"
 
+# ---- words for the Muslim Women (Protection of Rights on Marriage) Act, 2019 and the Prevention of Damage to Public Property Act, 1984 (added 2026-10-17 on the owner's "Yes, build the Muslim Women and Public Property patterns") ----
+# Both are MINE, not the workbook's: Machine Spec v2 has no anchors for these two Acts. The ideas come from the "Layperson Trigger Additions" and "Revised Trigger Map" sheets, whose false-positive notes are why every
+# pattern below needs a second cue. First version scored 16/16 and 18/18 on its own question set and then 14/16, 13/17 and 3 false alarms of 27 on a harder one (research FOLLOW_UPS 2at); this is the tightened version.
+_TALAQ = r"\bth?ala{1,2}[qk]\w*"                      # talaq, talaaq, talak, thalaq, talaqnama ...
+_THRICE = r"(?:\b(?:three|3)\s+times\b|\bthrice\b|\b(?:teen|tin)\s+baar\b)"
+_INSTANT = (r"(?:\binstant\w*|\bimmediate\w*|\birrevocabl\w+|\bat\s+once\b|\bin\s+(?:a\s+)?(?:one|single)\s+(?:go|sitting|breath|stroke|sentence)\b|\b(?:one|single)\s+sitting\b|\bon\s+the\s+spot\b)")
+# written or electronic delivery. "phone" and "message" are left out on purpose: "if I speak to my parents on the phone" is a threat, not a pronouncement; a phone or video CALL is kept.
+_SENT_BY = (r"(?:\bwhatsapp\b|\bsms\b|\btext(?:\s+message)?\b|\be-?mail\b|\bletter\b|\bspeed\s+post\b|\bregistered\s+post\b|\bcourier\b|\bstamp\s+paper\b|\bvoice\s+(?:message|note)\b|\bvoicemail\b|\bvideo\s+call\b"
+            r"|\binstagram\b|\bfacebook\b|\btelegram\b|\bmessenger\b|\bover\s+(?:the\s+)?(?:phone|telephone)\b|\bphone\s+call\b)")
+_CRIMINAL = r"(?:\bFIR\b|\bpolice\b|\barrest\w*|\bjail\b|\bbail\b|\bimprison\w*|\bcriminal\b|\bpunish\w*|\boffence\b|\bthree\s+years\b|\bcognizable\b|\bcompoundable\b)"
+_MUSLIM = r"\b(?:muslim|islam\w*|shariat|sharia\w*|shariah|nikah\w*|qazi)\b"
+_DIV_CUE = (r"(?:\bwhatsapp\b|\bsms\b|\btext\s+message\b|\be-?mail\b|\bletter\b|\bspeed\s+post\b|\bstamp\s+paper\b|\bvoice\s+(?:message|note)\b|\bvideo\s+call\b|\bthrice\b|" + _INSTANT + r")")
+_DIV_SAID_THRICE = (r"\bdivorce\s+(?:you|her)\b.{0,30}\b(?:three|3)\s+times\b|\b(?:three|3)\s+times\b.{0,30}\bdivorce\s+you\b"
+                    r"|\bdivorc\w+\s+(?:me|her)\s+(?:by\s+saying\s+\S+\s+)?(?:\w+\s+){0,3}(?:three|3)\s+times\b")
+# a threat or a future tense is not a pronouncement ("he said he will give me talaq if I ..."); a sign that it WAS pronounced lifts the guard
+_TALAQ_THREAT = (r"\bth?ala{1,2}[qk]\w*\s+if\s+(?:i|you|she|he|we|they)\b|\b(?:will|would|going\s+to|gonna)\s+(?:give|say|pronounce|divorce|send)\b|\bthreat\w*|\bwarn\w*\s+(?:me|her|us)\b")
+_TALAQ_DONE = r"\b(?:thrice|three\s+times|teen\s+baar|bi?dd?at|triple|instant\w*|already|has\s+(?:given|pronounced|said)|have\s+(?:given|pronounced)|pronounced|gave\s+(?:me|her)|gave\s+talaq)\b"
+
+# one word of a sentence (a full stop or a question mark ends the stretch). Words that say the person went and REPORTED something are not allowed inside the stretch: "smashed my phone and went to the police station"
+# is a complaint made at a police station, not damage to it.
+_W = r"(?!(?:went|go|goes|going|gone|visited|reached|complain\w*|report\w*|lodg\w+|filed|registered|called|brought|taken|took)\b)[\w'’,-]+"
+_DMG_STRONG = (r"(?:\bset(?:ting|s)?\s+fire\b|\btorch\w*|\barson\w*|\bburn\w*|\bgutted\b|\bvandali[sz]\w*|\bransack\w*|\bsmash\w*|\bstoned\b|\bstone[- ]?pelt\w*|\bset(?:ting|s)?\s+ablaze\b"
+               r"|\b(?:threw|thrown|throwing|throw|throws|pelt\w*|hurl\w*)\s+(?:\w+\s+){0,2}?(?:stones?|bricks?|petrol\s+bombs?|bottles?)\b|\bpetrol\s+bombs?\b)")
+_DMG_BREAK = r"\b(?:break(?:ing|s)?|broke|broken)\s+(?:\w+\s+){0,3}?(?:windows?|windscreens?|windshields?|glass|doors?|gates?|furniture|signals?|lights?|barricades?)\b"
+_DMG_WEAK = r"(?:\bdamag\w+|\bdestr(?:oy\w*|uction|uctive)\b|\bwreck\w*|\bruin\w*)"
+_DMG_ANY = "(?:" + _DMG_STRONG + "|" + _DMG_BREAK + "|" + _DMG_WEAK + ")"
+_PUB_PROP = r"\b(?:public|government|govt\.?|state|railway|railways|municipal|panchayat)\s+propert(?:y|ies)\b"
+_PUB_THING = (r"(?:\bpublic\s+(?:building|buildings|transport|vehicle|vehicles|bus|buses|utility|utilities|asset|assets|toilets?|library|park)\b"
+              r"|\b(?:government|govt\.?|state)\s+(?:building|buildings|office|offices|vehicle|vehicles|bus|buses|school|schools|hospital|hospitals|college|colleges|premises|asset|assets|establishment|establishments|transport|jeeps?|guest\s+house)\b"
+              r"|\b(?:state\s+transport|roadways|road\s+transport)\b"
+              r"|(?-i:\b[A-Z]{0,4}RTC\b|\bDTC\b|\bBMTC\b)\s+(?:bus|buses)\b"
+              r"|\brailways?\s+(?:station|stations|track|tracks|coach|coaches|bogie|bogies|engine|engines|line|lines|signal|signals|gate|gates|train|trains|bus)\b|\btrain\s+coach(?:es)?\b"
+              r"|\bpolice\s+(?:station|stations|vehicle|vehicles|jeeps?|vans?|outposts?|post|chowki|barricades?)\b"
+              r"|\bmunicipal\s+(?:building|buildings|office|offices|bus|buses|vehicle|vehicles)\b"
+              r"|\bpanchayat\s+(?:office|offices|building|buildings|bhawan|bhavan)\b|\btehsil(?:dar'?s?)?\s+(?:office|offices|building)\b|\bcollector'?s?\s+office\b|\bcollectorate\b|\bpost\s+office\b"
+              r"|\bcourt\s+(?:building|buildings|premises|complex)\b|\bbus\s+(?:stand|stands|depot|station|shelter|stop)\b|\bmetro\s+(?:train|trains|station|stations|coach|coaches)\b"
+              r"|\btoll\s+(?:plaza|booth|gate)\b|\bstreet\s*lights?\b|\bsignal\s+lights?\b|\btraffic\s+(?:signals?|lights?)\b|\belectricity\s+(?:poles?|transformers?|substation|lines?)\b|\bration\s+shop\b)")
+_PUB_COND = r"\b(?:bus|buses|train|trains|tram|trams|metro|railway|railways)\b"      # public only in a riot or protest ("the bus was burnt during the bandh"); a plain "bus" could be private
+_MOB = (r"\b(?:protest\w*|riot\w*|bandh|bundh|hartal|shutdown|agitat\w+|demonstrat\w+|dharna|strikes?|striking|strikers?|mob|mobs|violen\w+|clash\w*|unrest|rasta[- ]?roko|rail[- ]?roko|chakka[- ]?jam"
+        r"|morcha|procession|rally|rallies|lathi[- ]?charge|curfew|unruly|crowd|crowds|rioters?|agitators?|blockade|andolan|block(?:ed|ing|s)?\s+(?:the\s+)?(?:road|roads|highway|highways|rail|railway|track|tracks|traffic))\b")
+_ACCIDENT = (r"\b(?:accident\w*|collision|collided|short[- ]?circuit\w*|skidd?ed|overturn\w*|crash\w*|caught\s+fire|fire\s+broke\s+out|gas\s+leak\w*|lightning|heavy\s+rain\w*|flood\w*|storm|earthquake|cyclone)\b")
+# a burn injury in a hospital is not arson of a hospital
+_BURN_INJURY = (r"\bburn(?:s|t)?\s+(?:injur\w+|victims?|patients?|wards?|units?|marks?|wounds?|scars?|centres?)\b|\b(?:suffered|sustained|got|received|has|have|had|with)\s+(?:\w+\s+){0,2}burns?\b"
+                r"|\b(?:first|second|third)[- ]degree\b|\bburn(?:s|ed|t)?\s+(?:his|her|my|their|our|the\s+child'?s?)\s+(?:hand|hands|skin|body|face|arm|arms|leg|legs|finger|fingers|foot|feet)\b")
+
+
+def _acts_on(verb, thing, n=5):
+    """verb ... thing: the thing is the OBJECT of the verb (within n words), or the SUBJECT of a passive ('the bus was burnt', 'the office got ransacked'). This is why a police station named only as where a
+    complaint was made ('smashed my phone and I went to the police station') is not read as damage to the police station."""
+    return ("(?:" + verb + r"\s+(?:" + _W + r"\s+){0," + str(n) + "}?" + thing
+            + "|" + thing + r"\s+(?:" + _W + r"\s+){0,3}?(?:was|were|got|gets|is|are|been|being)\s+(?:" + _W + r"\s+){0,2}?" + verb + ")")
+
+
+def _set_on_fire(thing):
+    """'set a railway coach on fire': the thing sits INSIDE the verb phrase, so near() (two separate matches) cannot see it."""
+    return r"\bset(?:ting|s)?\s+(?:[\w']+\s+){0,4}?(?:" + thing + r").{0,30}?\b(?:on\s+fire|ablaze|alight)\b"
+
+
+def _break_obj(thing):
+    """'breaking the signal lights': the object IS the public thing."""
+    return r"\b(?:break(?:ing|s)?|broke|broken)\s+(?:(?:the|a|an|all|some|several|many|two|three|their|its)\s+){0,2}(?:" + thing + ")"
+
+
 ACTS = {
     # ---- the five Acts whose text is on the shelf ----
     "pc_act_1988": {
@@ -148,6 +211,52 @@ ACTS = {
         # DEVIATION: the workbook's N2 also has a bare "rash (and negligent) driving"; rash driving is itself a BNS offence, so on its own it would put a Motor Vehicles Act notice on an ordinary BNS question
         "not_when": "",
     },
+    # ---- added 2026-10-17: two more Directory Acts that now have a word pass (the Child Marriage and Civil Rights Acts still have none: POCSO and the SC/ST Act overlap them too much) ----
+    "muslim_women_act_2019": {
+        "about": "instant triple talaq (talaq-e-biddat): pronouncing talaq three times at once, which the Act makes void and punishable, with the wife's subsistence allowance and custody of her minor children.",
+        "wide": [
+            r"\b(?:teen|three|3)\s+(?:baar\s+|times\s+)?th?ala{1,2}[qk]s?\b",                              # "teen talaq", "three talaq", "3 talaq"
+            _TALAQ + r"\W+(?:\w+\W+){0,2}?" + _TALAQ + r"\W+(?:\w+\W+){0,2}?" + _TALAQ,                    # "talaq, talaq, talaq"
+            near(_TALAQ, _THRICE, 40),                                                                         # "said talaq three times", "talaq thrice"
+            r"\btrip{1,2}le\s+th?ala{1,2}[qk]\b",                                                            # "triple talak" (the Directory holds only the exact spelling "triple talaq")
+            r"\bth?ala{1,2}[qk]\W{0,3}(?:(?:e|i|ul)\W{0,3})?bi?dd?at\b",                                     # talaq-e-biddat, talaq ul bidat ...
+            near(_TALAQ, _INSTANT, 60),                                                                        # "instant talaq", "talaq in one go", "talaq with immediate effect"
+            near(_TALAQ, _SENT_BY, 50),                                                                        # talaq by WhatsApp, SMS, letter, stamp paper, over the phone, video call
+            near(_TALAQ, _CRIMINAL, 60),                                                                       # talaq near FIR, police, arrest, jail, bail, punishment
+            near(_TALAQ, r"\bsubsistence\s+allowance\b", 100),                                                # the Act's own term (section 5)
+            near(r"\bmuslim\s+women(?:'s)?\s+(?:\([^)]{0,40}\)\s*)?act\b", _TALAQ + r"|\btriple\b|\b2019\b", 80),   # "the Muslim Women Act ... talaq"; the bare name alone is also the 1986 Act
+            near(near(r"\bdivorc\w+", _DIV_CUE, 70), _MUSLIM, 250),                                           # no "talaq" in the question: a Muslim husband divorced her by message, letter, thrice or on the spot
+            near(_DIV_SAID_THRICE, _MUSLIM, 250),                                                              # "I divorce you" said three times, a Muslim husband
+        ],
+        "not_when": "",
+        "soft_guards": [
+            # talaq-e-hasan and talaq-e-ahsan are not instantaneous, so the Act's definition (section 2(c)) does not reach them as written; the 1986 Act on divorce is a different Act.
+            {"when": r"\bth?ala{1,2}[qk]\W{0,3}(?:(?:e|i|ul)\W{0,3})?(?:hasan|ahsan|ahasan)\b|\bprotection\s+of\s+rights\s+on\s+divorce\b|\b1986\b",
+             "unless": r"\bbi?dd?at\b|\btriple\b|\binstant\w*|\bat\s+once\b|\bin\s+(?:a\s+)?(?:one|single)\s+(?:go|sitting|breath)\b|\b(?:one|single)\s+sitting\b|\bimmediate\w*|\birrevocabl\w+"},
+            # a threat or a future tense is not a pronouncement
+            {"when": _TALAQ_THREAT, "unless": _TALAQ_DONE},
+        ],
+    },
+    "pdpp_act_1984": {
+        "about": "damage to public property: a bus, train, government building or other public property damaged or burned in a protest, riot or bandh, and the special bail rule for it.",
+        "wide": [
+            _acts_on("(?:" + _DMG_ANY + "|" + r"\b(?:break(?:ing|s)?|broke|broken)\b" + ")", _PUB_PROP, 3),    # damage / burn / break + "public property", "government property", "railway property" ...
+            _PUB_PROP + r"\s+(?:damage|destruction|vandalism|arson)\b",                                       # "public property damage"
+            _acts_on("(?:" + _DMG_STRONG + "|" + _DMG_BREAK + ")", _PUB_THING),                                # burn / torch / vandalise / smash / stone / break the windows of a government office, police station, state bus ...
+            _set_on_fire(_PUB_THING),                                                                          # "set a railway coach on fire"
+            _break_obj(_PUB_THING),                                                                            # "breaking the signal lights"
+            near(_acts_on(_DMG_ANY, _PUB_THING), _MOB, 120),                                                   # any damage to such a thing, in a protest, riot, bandh or clash
+            near(_acts_on(_DMG_ANY, _PUB_COND, 3), _MOB, 120),                                                 # a plain "bus" or "train" counts as public only in a protest, riot, bandh or clash
+            near(_set_on_fire(_PUB_COND), _MOB, 120),                                                          # "a bus was set on fire during the bandh"
+        ],
+        "not_when": "",
+        "soft_guards": [
+            # an accident, a short circuit or the weather is not mischief; a protest, riot or mob in the same question lifts that
+            {"when": _ACCIDENT, "unless": _MOB},
+            # a burn injury is not arson
+            {"when": _BURN_INJURY, "unless": _MOB},
+        ],
+    },
 }
 
 # The rest of the Directory's Acts: no word pass of their own (nothing in the workbook was measured for them), but the AI pass may choose them, so each needs its one line. 'wide' empty = never matched by code.
@@ -173,8 +282,6 @@ _ABOUT = {
     "limitation_act_1963": "the time limit for bringing a case to court, and when a delay can be condoned.",
     "child_marriage_act_2006": "a child marriage (a girl under 18 or a boy under 21 married): making it voidable, stopping it by court injunction, and the punishment of those who arrange or conduct it.",
     "pcr_act_1955": "the practice of untouchability: refusing a person entry to a temple, well, shop, hospital or public place, or other social disabilities, because of 'untouchability' (a different Act from the SC/ST Atrocities Act).",
-    "pdpp_act_1984": "damage to public property: a bus, train, government building or other public property damaged or burned in a protest, riot or bandh, and the special bail rule for it.",
-    "muslim_women_act_2019": "instant triple talaq (talaq-e-biddat): pronouncing talaq three times at once, which the Act makes void and punishable, with the wife's subsistence allowance and custody of her minor children.",
 }
 for _id, _about in _ABOUT.items():
     ACTS.setdefault(_id, {"about": _about, "wide": [], "not_when": ""})
@@ -190,8 +297,8 @@ def _compiled():
             try:
                 out[act_id] = {"wide": [re.compile(p, FLAGS) for p in spec["wide"]],
                                "not_when": re.compile(spec["not_when"], FLAGS) if spec.get("not_when") else None,
-                               "soft_not_when": re.compile(spec["soft_not_when"], FLAGS) if spec.get("soft_not_when") else None,
-                               "lifted_by": re.compile(spec["lifted_by"], FLAGS) if spec.get("lifted_by") else None}
+                               "soft": ([(re.compile(spec["soft_not_when"], FLAGS), re.compile(spec["lifted_by"], FLAGS) if spec.get("lifted_by") else None)] if spec.get("soft_not_when") else [])
+                               + [(re.compile(g["when"], FLAGS), re.compile(g["unless"], FLAGS) if g.get("unless") else None) for g in spec.get("soft_guards") or []]}
             except re.error as exc:  # pragma: no cover -- a broken pattern must never break an answer
                 logger.warning("act_detect: pattern for %s did not compile (%s); that Act is skipped", act_id, exc)
         _COMPILED = out
@@ -209,7 +316,7 @@ def wide(question, ids=None):
                 continue
             if c["not_when"] and c["not_when"].search(question):
                 continue
-            if c["soft_not_when"] and c["soft_not_when"].search(question) and not (c["lifted_by"] and c["lifted_by"].search(question)):
+            if any(g.search(question) and not (u and u.search(question)) for g, u in c["soft"]):
                 continue
             for i, p in enumerate(c["wide"]):
                 if p.search(question):
