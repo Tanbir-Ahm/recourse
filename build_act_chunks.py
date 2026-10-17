@@ -23,6 +23,8 @@ The checks (any hard failure stops the Act; nothing is written)
   5. no HTML left over; the footnotes are kept (they carry the amendment history). Two tidy-ups are made and recorded: the heading that India Code repeats at the start of the body of an amended section
      ("[7. Offence ... .--Any public servant ...") is dropped, and the State or Union Territory amendments that India Code prints INSIDE a central section (under "STATE AMENDMENT") are moved to the field
      'state_amendments' and replaced in the text by a one-line note: they apply only in that State, and one of them was 84% of the text (and of the embedding) of PC Act s.17A.
+  Only the numbered sections are loaded. The Schedules (POCSO: the armed and security forces; PMLA: the scheduled offences; UAPA: four Schedules; SC/ST Act: the table of IPC offences) are NOT: India Code's SCHEDULE
+  records have an empty text field, their text exists only in the PDF, and the comparison ends where a Schedule begins. The Rules made under an Act are not loaded either.
   What the PDF check cannot show: that the text is the law today (India Code's PDF is a snapshot, its date is printed on its first page and recorded as 'pdf_as_on'; the database records are newer), or that
   India Code itself is right. The status stays 'machine_checked' until a person reads the sections (see the sheet for Mr. Advocate); the site words it "official text loaded <date>, not yet read by our reviewer".
 
