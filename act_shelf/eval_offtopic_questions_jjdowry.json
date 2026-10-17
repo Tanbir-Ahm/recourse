@@ -1,0 +1,38 @@
+{
+ "written": "2026-10-17",
+ "by": "Claude (AI), before any score was looked at",
+ "about": "Six questions that name one of the two new shelf Acts but ask for something it does not contain. Used only to see the best within-Act score when nothing is relevant, to check the floor on these Acts. No expected section.",
+ "questions": [
+  {
+   "id": "OT01",
+   "act_key": "dowry_prohibition_act_1961",
+   "q": "Does the Dowry Prohibition Act, 1961 decide how alimony and maintenance are calculated after divorce?"
+  },
+  {
+   "id": "OT02",
+   "act_key": "dowry_prohibition_act_1961",
+   "q": "What does the Dowry Prohibition Act say about registering a marriage?"
+  },
+  {
+   "id": "OT03",
+   "act_key": "dowry_prohibition_act_1961",
+   "q": "Does the Dowry Prohibition Act govern how a father's property is divided among his children?"
+  },
+  {
+   "id": "OT04",
+   "act_key": "jj_act_2015",
+   "q": "Does the Juvenile Justice Act, 2015 set the punishment for an adult who commits murder?"
+  },
+  {
+   "id": "OT05",
+   "act_key": "jj_act_2015",
+   "q": "What does the Juvenile Justice Act say about the registration of a private company?"
+  },
+  {
+   "id": "OT06",
+   "act_key": "jj_act_2015",
+   "q": "Does the Juvenile Justice Act decide custody of a child between two divorcing parents?"
+  }
+ ],
+ "questions_sha256": "01772ea6f936be7ddcfbdf152d6f231087410b714b7843db110217e0dc074edd"
+}
