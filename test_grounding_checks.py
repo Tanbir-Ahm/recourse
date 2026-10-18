@@ -155,5 +155,51 @@ check(G.check_quotes(_inv2, _m18, question=_q18) == ["a magistrate cannot order 
 _inv3 = 'As you asked about the magistrate, the Court said "the quick brown fox jumps over the lazy dog every single day" there.'
 check(G.check_quotes(_inv3, _m18, question=_q18) == ["the quick brown fox jumps over the lazy dog every single day"], "a quotation introduced as the question but sharing none of its words is still flagged")
 
+# --- 2026-10-18: a near-match quotation (not an exact copy) must agree with the material on the words that decide a legal meaning
+# Found by testing the 95% letter match: in a 44-word quotation "may not" -> "shall not" and a deleted "not" both passed.
+_MAT = ("The Court held that the right to a speedy trial is not a mere formality but flows from Article 21 of the Constitution, and the accused person may not be kept in custody indefinitely "
+        "without a trial beginning within a reasonable time after the charge sheet is filed. The offence is punishable with imprisonment for a term of three years and a fine, and the Magistrate "
+        "may grant bail only after hearing the woman, unless the Court records reasons in writing for refusing it.")
+_L = ("the right to a speedy trial is not a mere formality but flows from Article 21 of the Constitution and the accused person may not be kept in custody indefinitely "
+      "without a trial beginning within a reasonable time after the charge sheet is filed")
+_Q = lambda t: 'It held "%s" there.' % t  # noqa: E731
+check(G.check_quotes(_Q(_L), _MAT) == [], "(meaning words) an exact long quotation still passes")
+check(G.check_quotes(_Q(_L.upper().replace(" OF THE CONSTITUTION AND", ", OF THE CONSTITUTION, AND")), _MAT) == [], "(meaning words) capitals and commas still do not matter")
+check(G.check_quotes(_Q(_L.replace("may not", "shall not")), _MAT) != [], "(meaning words) 'may not' -> 'shall not' in a long quotation is flagged")
+check(G.check_quotes(_Q(_L.replace("is not a mere", "is a mere")), _MAT) != [], "(meaning words) a deleted 'not' in a long quotation is flagged")
+check(G.check_quotes(_Q(_L.replace("is not a mere", "is not not a mere")), _MAT) != [], "(meaning words) an added word of this kind is flagged too")
+check(G.check_quotes(_Q(_L.replace("may not", "may")), _MAT) != [], "(meaning words) 'may not' -> 'may' is flagged")
+check(G.check_quotes(_Q(_L.replace("Article 21", "Article 31")), _MAT) != [], "(meaning words) a changed number ('Article 21' -> 'Article 31') is flagged")
+_L2 = "the offence is punishable with imprisonment for a term of three years and a fine and the Magistrate may grant bail only after hearing the woman unless the Court records reasons in writing"
+check(G.check_quotes(_Q(_L2), _MAT) == [], "(meaning words) the second test quotation passes as an exact copy")
+check(G.check_quotes(_Q(_L2.replace("three years", "five years")), _MAT) != [], "(meaning words) 'three years' -> 'five years' is flagged")
+check(G.check_quotes(_Q(_L2.replace("years and a fine and the", "years or a fine and the")), _MAT) != [], "(meaning words) 'and' -> 'or' is flagged")
+check(G.check_quotes(_Q(_L2.replace("only after", "after")), _MAT) != [], "(meaning words) a dropped 'only' is flagged")
+check(G.check_quotes(_Q(_L2.replace("unless the Court", "if the Court")), _MAT) != [], "(meaning words) 'unless' -> 'if' is flagged")
+# differences that do NOT change the meaning still pass (the near-match is there for them)
+check(G.check_quotes(_Q(_L.replace("a mere formality", "mere formality")), _MAT) == [], "(harmless) a dropped article is not flagged")
+check(G.check_quotes(_Q(_L.replace("accused person", "accused-person")), _MAT) == [], "(harmless) a hyphen for a space is not flagged")
+check(G.check_quotes(_Q(_L.replace("kept in custody", "held in custody")), _MAT) == [], "(harmless, documented limit) a swapped ordinary word in a long quotation is not flagged")
+# edges: one extra or one missing word at the very start or end of the quotation must not be mistaken for a changed meaning word
+_MAT_E = "The Court held that " + _L + " and not otherwise, and no appeal lies."
+check(G.check_quotes(_Q(_L.replace("a mere formality", "mere formality")), _MAT_E) == [], "(edges) a harmless difference when the next word in the material is 'and'/'not': the one-word-wider window is not mistaken for a changed meaning word")
+check(G.check_quotes(_Q(_L.replace("a mere formality", "mere formality").replace("The", "the")), "No. " + _MAT_E) == [], "(edges) the same with a word in front of the quotation in the material")
+check(G.check_quotes(_Q(_L.replace("may not", "shall not")), _MAT_E) != [], "(edges) a real change is still flagged there")
+_short = "right to a speedy trial is a mere formality but flows from Article 21 of the Constitution"
+check(G.check_quotes(_Q(_short), _MAT) != [], "(short quotation) a missing 'not' in a short quotation is still flagged (as before)")
+check(G.check_quotes('The Court said "it is neither advisable, nor feasible, nor judicially forbidden to draw or prescribe an outer limit" for criminal proceedings.', MATERIAL) != [], "(meaning words) the older 'one changed word' test still flags")
+# the flagged text is reported the same way as before
+_bad = G.check_quotes(_Q(_L.replace("may not", "shall not")), _MAT)
+check(len(_bad) == 1 and _bad[0].startswith("the right to a speedy trial") and "shall not" in _bad[0], "(report) a flagged quotation is returned in its original wording, once")
+# speed: a long material and many near-match quotations
+import time as _t
+_big = (_MAT + " ") + " ".join("Filler sentence number %d about nothing in particular, with the words may and not and shall appearing now and then." % i for i in range(800))   # about 12,000 words, the size of our largest prompts
+_t0 = _t.time()
+_n = 0
+for _i in range(25):
+    _n += len(G.check_quotes(_Q(_L.replace("a reasonable time", "a reasonable time period")), _big))
+_dt = _t.time() - _t0
+check(_dt < 4.0, f"(speed) 25 near-match quotations against a 12,000-word material take {_dt:.1f} s (limit 4 s)")
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
