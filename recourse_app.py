@@ -1032,6 +1032,8 @@ def render_answer(result: dict):
                     st.markdown(f'- {link}{when}{para}<span class="r-src">{src}</span>', unsafe_allow_html=True)
                     if j.get("register_note"):
                         st.markdown(f'<div class="r-concord">{esc(j["register_note"])}</div>', unsafe_allow_html=True)
+                    if j.get("passage_note"):                     # PASSAGE_NOTES=on: whose voice this passage is in
+                        st.markdown(f'<p class="r-foot">{esc(j["passage_note"])}</p>', unsafe_allow_html=True)
                     if j.get("names_register_note"):
                         st.markdown(f'<div class="r-concord">This passage names a case on our register: {esc(j["names_register_note"])}</div>', unsafe_allow_html=True)
                     if j.get("excerpt"):

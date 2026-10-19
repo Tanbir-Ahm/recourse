@@ -743,6 +743,14 @@ def feed_block(question):
             year = r["date"][:4] if r.get("date") else None
             head = f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]"
             body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
+            voices = []
+            try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
+                import passage_notes
+                if passage_notes.enabled():
+                    voices = passage_notes.kinds(body, r.get("passage_type"))
+                    body += passage_notes.prompt_note(voices)
+            except Exception:  # noqa: BLE001
+                voices = []
             facts = ""
             try:
                 from register_hooks import prompt_lines_for_match
@@ -759,14 +767,20 @@ def feed_block(question):
             blocks.append(head + "\n" + body + facts)
             cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
                           "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
-                          "names_register_note": (" ".join(men["clauses"]) if men else None)})
+                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices) if voices else None)})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
         print("SCI_FEED fed %d case(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
         if named:
             print("SCI_FEED passages naming register cases: %s" % "; ".join(c["case_name"] for c, (r, _f) in zip(cases, chosen) if r["doc"] in named), flush=True)
-        _LOCAL.block = FEED_INSTRUCTION + "\n\n".join(blocks) + "\n"
+        extra = ""
+        try:
+            import passage_notes
+            extra = passage_notes.INSTRUCTION if passage_notes.enabled() else ""
+        except Exception:  # noqa: BLE001
+            extra = ""
+        _LOCAL.block = FEED_INSTRUCTION + extra + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
     except Exception as exc:  # noqa: BLE001
@@ -794,6 +808,16 @@ def attach(question, result, background=True):
                 result["sci_fed"] = True
             if cases or pilot:
                 result["response_text"] = label_fed_cases(result.get("response_text") or "", list(cases) + pilot)      # every wider-search or pilot case named in the answer is tagged as unverified, whatever the model wrote
+            try:                                                      # PASSAGE_NOTES=on: the answer calls a flagged passage "the Supreme Court" in so many words: a notice (shown with GROUNDING_CHECKS=warn or enforce), and a log line
+                import passage_notes
+                if passage_notes.enabled() and cases:
+                    flags = passage_notes.answer_notes(result.get("response_text") or "", cases, lambda t, n: _locate(t, n, [c.get("case_name") for c in cases if c.get("case_name") != n]))
+                    if flags:
+                        print("PASSAGE_NOTE_FLAG " + json.dumps({"cases": [f.split(":", 1)[0][:100] for f in flags]}), flush=True)
+                        import grounding_checks
+                        grounding_checks.add_notes(flags)
+            except Exception:  # noqa: BLE001
+                pass
             return result
         found = search(question)
         if not found:
