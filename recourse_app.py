@@ -882,6 +882,8 @@ def _render_section_notes(items):
     """SECTION_RULE: under the answer, for a section of a shelf Act that the person named and the answer does not stand on (section_rule.notes): one plain sentence, then the official text, written by code."""
     from act_shelf import loaded_label
     for it in items or []:
+        if not isinstance(it, dict):
+            continue
         try:
             st.markdown(f'<p class="r-conf">{esc(it.get("lead") or "")}</p>', unsafe_allow_html=True)
             for t in it.get("texts") or []:
