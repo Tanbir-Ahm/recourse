@@ -24,7 +24,7 @@ It is India Code's database text, which can differ from the printed Act in punct
 Never raises into an answer: every public function returns an empty result on bad input, a missing file or any failure.
 
 Public: mode(), enabled(), available(act_id), loaded_on(act_id), loaded_label(act_id), display_names(), name_patterns(), search(question, acts, current_message=None, embed_fn=None), held_state(matches, acts),
-        shelf_ids(matches), load(), named_sections(text, act_ids), other_numbers(text, act_ids).
+        shelf_ids(matches), load(), named_sections(text, act_ids), other_numbers(text, act_ids), implied_sections(text, act_ids), section_numbers_in(text).
 """
 import datetime
 import hashlib
@@ -314,9 +314,9 @@ def _names_between(text, lo, hi, alias_map, others):
     return out
 
 
-def _attributions(text, act_ids):
+def _attributions(text, act_ids, with_bare=False):
     """[(number, kind, act id)] for every section number in the text, with the name that stands next to it: kind 'act' (a shelf Act among act_ids; the third item is its id), 'other' (BNS, CrPC, another Act of the
-    Directory; the third item is None).  A number with no name next to it is left out.  A name stands next to a number when it follows it ('section 45 of the PMLA': it STARTS within WINDOW characters of the
+    Directory; the third item is None).  A number with no name next to it is left out (with_bare=True: it is reported as (number, None, None), see implied_sections).  A name stands next to a number when it follows it ('section 45 of the PMLA': it STARTS within WINDOW characters of the
     number and lies before the next section number) or, failing that, precedes it ('PMLA section 45': it ENDS within WINDOW characters before the number; a name an earlier number has already taken does not
     count).  A long official name ('section 5 of the Prevention of Damage to Public Property Act, 1984') therefore counts; it did not before 2026-10-17."""
     out = []
@@ -338,10 +338,13 @@ def _attributions(text, act_ids):
         before = sorted((n for n in _names_between(text, max(m.start() - WINDOW - NAME_ROOM, prev_end), m.start(), alias_map, others) if m.start() - n[1] <= WINDOW and n[:2] not in taken),
                         key=lambda n: -n[1])                                                                                                                                   # ends within WINDOW before it
         pick = after[0] if after else (before[0] if before else None)
+        nums = re.findall(r"\d{1,3}[a-z]{0,2}", re.sub(r"\([^)]*\)", " ", m.group(1)))
         if pick is None:
+            if with_bare:
+                out.extend((n.upper(), None, None) for n in nums)
             continue
         taken.add(pick[:2])
-        for n in re.findall(r"\d{1,3}[a-z]{0,2}", re.sub(r"\([^)]*\)", " ", m.group(1))):
+        for n in nums:
             out.append((n.upper(), pick[2], pick[3]))
     return out
 
@@ -367,6 +370,49 @@ def other_numbers(text, act_ids):
         return {n for n, kind, _ in _attributions(text, act_ids) if kind == "other"}
     except Exception:  # noqa: BLE001
         return set()
+
+
+def section_numbers_in(text):
+    """The section numbers (upper case, '17', '17A') that a text puts after the word 'section' / 's.' / 'ss.' / 'u/s', whatever Act it means: the numbers an ANSWER uses. A set; empty on any problem.
+    '17-A' and '17 A' (a capital letter) are read as 17A here, so that an answer which writes 17A that way is not taken for one that names section 17; the question side (named_sections) still reads '17 A' as 17."""
+    try:
+        out = set()
+        t = re.sub(r"(?<=\d)\s*[-\u2013]\s*(?=[A-Za-z](?![A-Za-z]))", "", text or "")
+        t = re.sub(r"(?<=\d) (?=[A-Z](?![A-Za-z]))", "", t)
+        for m in _SECREF.finditer(t.lower()):
+            out.update(n.upper() for n in re.findall(r"\d{1,3}[a-z]{0,2}", re.sub(r"\([^)]*\)", " ", m.group(1))))
+        return out
+    except Exception:  # noqa: BLE001
+        return set()
+
+
+def implied_sections(text, act_ids):
+    """{act id: [section numbers]}: the numbers of the text that have NO Act or code named next to them ('No section 17 order exists ...', said in a conversation about the Prevention of Corruption Act), taken
+    for the shelf Act of the question that has a section of that number.  named_sections leaves such a number out, so before 2026-10-19 it was tied to no Act: the Act's own section was found only by meaning, and
+    chat_assistant read the bare number as a BNS section and put BNS section 17 into the material (owner's staging test, turns 2 to 4 of the section 17 conversation).
+    Taken only when exactly ONE of the shelf Acts in act_ids has a section of that number (section 17 exists in the PMLA as well: with both Acts drawn it is not guessed), and not when the text also puts the same
+    number next to some name ('section 17 of the BNS and ... section 17': which is meant is not known).  {} when SECTION_RULE is off or on any problem."""
+    out = {}
+    try:
+        import section_rule
+        if not section_rule.enabled():
+            return out
+        ids = [a for a in act_ids if _state(a)]
+        if not ids:
+            return out
+        attrs = _attributions(text, ids, with_bare=True)
+        elsewhere = {n for n, kind, _ in attrs if kind is not None}
+        for n, kind, _ in attrs:
+            if kind is not None or n in elsewhere:
+                continue
+            owners = [a for a in ids if n in (_state(a) or {}).get("by_num", {})]
+            if len(owners) == 1:
+                bucket = out.setdefault(owners[0], [])
+                if n not in bucket:
+                    bucket.append(n)
+    except Exception:  # noqa: BLE001
+        return {}
+    return out
 
 
 # ----- the search -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -410,6 +456,7 @@ def search(question, acts, current_message=None, embed_fn=None):
         info["acts"] = ids
         text = (current_message or question or "").strip()
         named = named_sections(text, ids)
+        implied = implied_sections(text, ids)
         lowered = text.lower()
         qvec = None
         if all(shelf[a].get("whole") for a in ids):
@@ -431,6 +478,11 @@ def search(question, acts, current_message=None, embed_fn=None):
                     seen.add(n)
                     mine.append(_match(st, st["by_num"][n], "named", None))
                     rec["named"].append(n)
+            for n in implied.get(aid, []):                           # a bare number taken for this Act (implied_sections); the named ones come first and the two together stay within MAX_NAMED
+                if n not in seen and len(rec["named"]) + len(rec.setdefault("implied", [])) < MAX_NAMED:
+                    seen.add(n)
+                    mine.append(_match(st, st["by_num"][n], "implied", None))
+                    rec["implied"].append(n)
             pointed, tags = [], {}
             for p in st["pointers"]:
                 if any(rx.search(lowered) for rx in p["rx"]):
@@ -532,6 +584,13 @@ def held_state(matches, acts):
         if not enabled():
             return out
         used = set(shelf_ids(matches))
+        import section_rule
+        asked = {}                                                     # the sections the person named (or bare-named in a conversation about the Act): the prompt tells the model to stay on them
+        for m in (matches or []) if section_rule.enabled() else []:
+            if isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied") and m.get("act_key") and m.get("section_number"):
+                bucket = asked.setdefault(m["act_key"], [])
+                if str(m["section_number"]).upper() not in bucket:
+                    bucket.append(str(m["section_number"]).upper())
         for a in acts or []:
             aid = a.get("id") if isinstance(a, dict) else a
             st = _state(aid)
@@ -539,6 +598,8 @@ def held_state(matches, acts):
                 out[aid] = {"state": "used" if aid in used else "unused", "loaded_on": st["loaded_on"]}
                 if st.get("whole"):
                     out[aid]["whole"] = True                           # the Act is handed over in full (a very short Act): the notice and the prompt say so instead of "the sections our search found"
+                if asked.get(aid):
+                    out[aid]["named"] = asked[aid]
     except Exception:  # noqa: BLE001
         return {}
     return out

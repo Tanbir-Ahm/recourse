@@ -3868,7 +3868,8 @@ def _drop_sections_claimed_by_shelf(explicit, question, current_message):
         ids = [a["id"] for a in _acts_named(question)]
         if not ids:
             return explicit
-        mine = {n for v in act_shelf.named_sections(current_message, ids).values() for n in v} - act_shelf.other_numbers(current_message, ids)
+        claimed = list(act_shelf.named_sections(current_message, ids).values()) + list(act_shelf.implied_sections(current_message, ids).values())      # implied: a bare 'section 17' in a conversation about one shelf Act (SECTION_RULE)
+        mine = {n for v in claimed for n in v} - act_shelf.other_numbers(current_message, ids)
         if not mine:
             return explicit
         return [e for e in explicit if not (e.get("source") == "explicit_section_ref" and str(e.get("section_number") or "").upper() in mine)]
@@ -3901,6 +3902,23 @@ def _act_shelf_matches(question, current_message):
     except Exception as exc:  # noqa: BLE001
         logger.warning("_act_shelf_matches failed: %s", exc)
         return []
+
+
+def _attach_section_note(result):
+    """SECTION_RULE (default on; acts only with ACT_SHELF on): when the person NAMED a section of a shelf Act (retrieval 'named' or 'implied') and the answer does not stand on it, adds result['section_note'] =
+    [{'act','section','kind','lead','texts',...}] (section_rule.notes): kind 'not_mentioned' = the answer never uses the section's number, the official text is given; kind 'provisos' = the answer does not clearly
+    set out the section's provisos, they are given in the official words. Written by code from the shelf's text; judges nothing. One log line: SECTION_NOTE {...} (Act, section, kind; never the question). Never raises."""
+    try:
+        if not isinstance(result, dict) or result.get("state") not in ("single_match", "conflicting_matches"):
+            return result
+        import section_rule
+        items = section_rule.notes(result.get("response_text") or "", result.get("matches"))
+        if items:
+            result["section_note"] = items
+            print("SECTION_NOTE " + json.dumps({"sections": [f"{i['act']} s.{i['section']}: {i['kind']}" for i in items]}), flush=True)
+    except Exception as exc:  # noqa: BLE001 -- fail-open
+        logger.warning("_attach_section_note failed: %s", type(exc).__name__)
+    return result
 
 
 def _attach_act_notice(result, question=None):
@@ -4171,6 +4189,7 @@ def _answer_question_inner(question, inline_domains=frozenset()):
         result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
         result = _attach_question_register_notes(result, question=question)       # a refusal still tells the person that a case they named is on the register
         result = _attach_act_notice(result, question=question)                    # an Act the question names whose text is not in the library: one fixed notice (act_directory.py)
+        result = _attach_section_note(result)                                     # a section of a shelf Act that the person named and the answer does not stand on: its official text (section_rule.py)
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open

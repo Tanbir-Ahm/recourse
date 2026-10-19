@@ -549,7 +549,11 @@ def page(result):
 at, vals = page({"state": "single_match", "response_text": "Bail is restricted by Section 45 of the PMLA.", "matches": SHELF_MS, "situation_detected": False, "act_notice": NOTE})
 check(not at.exception and any("**PMLA Section 45**" in v for v in vals), f"page: 'Read the source' heads the section with the Act's name, not its code (exception={at.exception})")
 check(any(f'<p class="r-foot">Official text from India Code, loaded {LOADED_LABEL}; not yet read by our reviewer' in v and "the whole Act on India Code" in v and "https://indiacode.gov.in/act/" in v for v in vals), "page: a line under it says where the text is from, when it was loaded and that no reviewer has read it, with a link")
-check(any("shortened here" in v for v in vals), "page: a section longer than the excerpt says that it is shortened")
+check(not any("shortened here" in v for v in vals) and any("subject to the conditions enshrined under this section.]" in v for v in vals),
+      "page: a shelf section is shown whole (section 45 of the PMLA has 2,389 characters; until 2026-10-19 it was cut at 900 and the caption said so), so nothing is described as shortened")
+huge = dict(SHELF_MS[0], text="45. " + "A very long section of the Act. " * 700, section_number="999")
+at_, vals_ = page({"state": "single_match", "response_text": "Bail is restricted by Section 999 of the PMLA.", "matches": [huge], "situation_detected": False})
+check(not at_.exception and any("shortened here" in v for v in vals_), "page: a shelf section longer than the page limit (16,000 characters) is cut, says so and links to the whole Act")
 check(any("has loaded the official text of that Act from India Code" in v for v in vals) and not any("does not hold" in v for v in vals), "page: the notice is shown")
 ia = [i for i, v in enumerate(vals) if "Bail is restricted by Section 45 of the PMLA." in v]
 inn = [i for i, v in enumerate(vals) if "has loaded the official text of that Act from India Code" in v]

@@ -849,9 +849,19 @@ def _render_currency_caveat(m):
         pass
 
 
+SHELF_EXCERPT_CHARS = 16000      # a section of the Act shelf is shown whole (the longest, section 2 of the Juvenile Justice Act, has 15,359 characters). Until 2026-10-19 it was cut at 900 characters like a judgment, which hid the
+                                 # second proviso of section 17 of the Prevention of Corruption Act (the last 450 characters of a 1,354-character section); BNS and BNSS sections keep the 900
+
+
+def _statute_excerpt(m: dict) -> str:
+    """The text of a statute match as 'Read the source' shows it: a shelf section whole, any other statute cut at 900 characters."""
+    limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
+    return _clean_excerpt(m.get("text") or "")[:limit]
+
+
 def _shelf_caption_html(m: dict) -> str:
     """One small line under a statute heading in 'Read the source' for a section of the Act shelf (chat_assistant -> act_shelf.py): the text is India Code's, loaded on a date, not yet read by our reviewer;
-    the excerpt below is cut at 900 characters, so a longer section says so and links to the Act. '' for every other statute (BNS, BNSS, ...)."""
+    a section longer than SHELF_EXCERPT_CHARS says it is shortened and links to the Act. '' for every other statute (BNS, BNSS, ...)."""
     try:
         sh = m.get("shelf") if isinstance(m, dict) else None
         if not isinstance(sh, dict):
@@ -859,13 +869,32 @@ def _shelf_caption_html(m: dict) -> str:
         from act_shelf import loaded_label
         when = loaded_label(sh.get("loaded_on"))
         bits = ["Official text from India Code" + (f", loaded {esc(when)}" if when else "") + "; not yet read by our reviewer"]
-        if len(_clean_excerpt(m.get("text") or "")) > 900:
+        if len(_clean_excerpt(m.get("text") or "")) > SHELF_EXCERPT_CHARS:
             bits.append("shortened here")
         url = sh.get("source_url")
         link = f' &middot; <a href="{esc(url)}">the whole Act on India Code</a>' if url else ""
         return f'<p class="r-foot">{"; ".join(bits)}{link}</p>'
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _render_section_notes(items):
+    """SECTION_RULE: under the answer, for a section of a shelf Act that the person named and the answer does not stand on (section_rule.notes): one plain sentence, then the official text, written by code."""
+    from act_shelf import loaded_label
+    for it in items or []:
+        try:
+            st.markdown(f'<p class="r-conf">{esc(it.get("lead") or "")}</p>', unsafe_allow_html=True)
+            for t in it.get("texts") or []:
+                st.markdown(f'<div class="r-mono">{esc(t)}</div>', unsafe_allow_html=True)
+            when = loaded_label(it.get("loaded_on"))
+            bits = ["Official text from India Code" + (f", loaded {esc(when)}" if when else "") + "; not yet read by our reviewer"]
+            if it.get("cut"):
+                bits.append("shortened here; the whole section is under \u201cRead the source\u201d below")
+            url = it.get("source_url")
+            link = f' &middot; <a href="{esc(url)}">the whole Act on India Code</a>' if url else ""
+            st.markdown(f'<p class="r-foot">{"; ".join(bits)}{link}</p>', unsafe_allow_html=True)
+        except Exception:  # noqa: BLE001 -- a note that cannot be drawn is left out, never an error on the page
+            logging.getLogger("recourse_app").exception("section note render failed")
 
 
 def render_answer(result: dict):
@@ -901,6 +930,8 @@ def render_answer(result: dict):
                             + esc((m0.get("text") or "").strip()[:800]))
         if _has_act_note:        # owner's instruction 2026-10-17: this notice is never put BEFORE the answer; it stands directly under it (a refusal has no answer, so there it still follows its heading, see below)
             st.markdown(f'<p class="r-conf">{_act_note["html"]}</p>', unsafe_allow_html=True)          # already escaped by act_directory.notice
+        if isinstance(result.get("section_note"), list) and result["section_note"]:            # SECTION_RULE: a section the person named that the answer does not stand on (chat_assistant._attach_section_note)
+            _render_section_notes(result["section_note"])
 
         if result.get("audience") == "lawyer" and result.get("authorities"):
             try:
@@ -922,6 +953,13 @@ def render_answer(result: dict):
             # BNS 84 turning up next to an unrelated arrest question.
             if str(m.get("source") or "").startswith("curated"):
                 return True
+            if m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied"):     # the person asked about this section: it is listed whether or not the answer used its number (SECTION_RULE)
+                try:
+                    import section_rule
+                    if section_rule.enabled():
+                        return True
+                except Exception:  # noqa: BLE001
+                    pass
             sn = str(m.get("section_number") or "")
             return bool(sn) and (f"section {sn}".lower() in reply_lc
                                  or f"section {sn.split('(')[0]}".lower() in reply_lc)
@@ -960,7 +998,7 @@ def render_answer(result: dict):
                     _cap = _shelf_caption_html(m)
                     if _cap:                                  # an Act-shelf section: where the text comes from, and that no reviewer has read it
                         st.markdown(_cap, unsafe_allow_html=True)
-                    st.markdown(f'<div class="r-mono">{esc(_clean_excerpt(m.get("text") or "")[:900])}</div>',
+                    st.markdown(f'<div class="r-mono">{esc(_statute_excerpt(m))}</div>',
                                 unsafe_allow_html=True)
                 if judgments:
                     st.markdown('<div class="r-label" style="margin-top:1rem">Judgments</div>',

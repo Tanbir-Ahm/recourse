@@ -1,0 +1,157 @@
+"""
+section_rule.py -- the named-section rule (added 2026-10-19 after the owner's staging test of section 17 of the Prevention of Corruption Act).
+
+Four real failures, one cause: the person NAMED a section and the answer did not stay on it.
+  * "Can a disproportionate assets case under PC act be filed without section 17 approval?": the answer wrote about section 17A ("previous approval") instead of section 17.
+  * "I am asking about section 17, NOT section 17 A": the answer left out the second proviso of section 17, the one that matters (an offence under clause (b) of section 13(1) needs the order of an officer not below
+    a Superintendent of Police). The page also cut the section's text at 900 characters, and the second proviso is the last thing in it.
+  * Turns 3 and 4 of the same conversation ("... section 17 order ..."): a bare "section 17" with no Act name next to it was tied to no Act, so section 17 of the Act was found only by meaning, and BNS section 17 (an
+    unrelated provision) was put into the material as well (act_shelf.implied_sections fixes the first; chat_assistant._drop_sections_claimed_by_shelf the second).
+
+What this module holds (pure code, no model, no network):
+  * enabled(): SECTION_RULE=on|off, default ON. It acts only when ACT_SHELF is on and the question names (or, in a conversation about one shelf Act, bare-names) a section of a shelf Act, so with ACT_SHELF off,
+    which is the default, nothing changes.
+  * provisos(text): the provisos of a section's text, each on its own, from the official text.
+  * provisos_covered(answer, count): whether the answer refers to the section's provisos one by one ("the first proviso", "the second proviso", or "provisos").
+  * notes(answer, matches): the fixed notes written by code for the page, one per named section the answer does not stand on: kind 'not_mentioned' (the answer never uses the section's number: the section's official
+    text is given) or 'provisos' (the section has provisos and the answer does not clearly set them out: the provisos are given in the official words). They carry the official text only; they judge nothing.
+The prompt clause that tells the model to stay on the named section is in act_directory.py (_prompt_named), outside the Hard rules block. The limits are stated in FOLLOW_UPS item 2ay: the check for provisos looks for the words ("the first proviso", "a further proviso"; it cannot read meaning), so it can show the provisos although the answer did cover them in other words, and it cannot tell a wrong description of a proviso from a right one.
+"""
+import os
+import re
+
+MAX_NOTES = 2                 # sections noted under one answer
+NOT_MENTIONED_CHARS = 3500    # the official text given for a section the answer never mentions: cut at a line end beyond this
+PROVISO_CHARS = 2500          # the provisos given for one section: cut at a proviso end beyond this
+
+_NUMBER_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+
+
+def enabled():
+    """SECTION_RULE=on|off, default on. Off turns the whole rule off (implied section numbers, the prompt clause, the notes and the page's always-shown section)."""
+    return (os.environ.get("SECTION_RULE") or "on").strip().strip("\"'").strip().lower() not in ("off", "0", "false", "no")
+
+
+# ----- the provisos of a section -------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+_START = re.compile(r"^[\[(\s]*Provided\b(?:\s+(?:further|also))?\s+that\b", re.I)
+_END = re.compile(r"^(?:[\[(\s]*(?:Provided\b|Explanation\b|Illustrations?\b|Note\s*:)|\[Note\s*:|\(\d+[A-Za-z]{0,2}\)\s)", re.I)
+
+
+def _clean(text):
+    """A proviso without the bracket that only closes (or opens) an amended passage of the section: '... warrant:]' -> '... warrant:'. Brackets inside the text stay (they are India Code's own marks)."""
+    t = re.sub(r"\s+", " ", text).strip()
+    if t.endswith("]") and t.count("]") > t.count("["):
+        t = t[:-1].rstrip()
+    if t.startswith("[") and t.count("[") > t.count("]"):
+        t = t[1:].lstrip()
+    return t
+
+
+def provisos(text):
+    """The provisos of a section, in order, each as its own text: [str]. A proviso begins at a line that starts with 'Provided that' (or 'Provided further that', 'Provided also that') and runs to the next
+    such line, an Explanation, an Illustration, a note line or the next sub-section marker such as '(2)'. The shelf's text keeps every proviso on a line of its own (155 of 158 'Provided that' in the nine Acts
+    start a line; the other three are quoted words that another Act's section inserts)."""
+    out, cur = [], None
+    for line in (text or "").split("\n"):
+        s = line.strip()
+        if _START.match(s):
+            if cur:
+                out.append(cur)
+            cur = [s]
+        elif cur is not None and s:
+            if _END.match(s):
+                out.append(cur)
+                cur = None
+            else:
+                cur.append(s)
+    if cur:
+        out.append(cur)
+    return [p for p in (_clean(" ".join(c)) for c in out) if p]
+
+
+_PROVISO_WORD = re.compile(r"\bprovisos?\b|\bprovided\s+(?:further\s+|also\s+)?that\b", re.I)
+_PLURAL = re.compile(r"\bprovisos\b", re.I)
+_ORDINAL = (                                                       # how an answer refers to the 1st, 2nd and 3rd proviso of a section
+    re.compile(r"\b(?:first|1st|one|the|a|this)\s+proviso\b|\bprovided\s+that\b", re.I),
+    re.compile(r"\b(?:second|2nd|further|another|additional|other)\s+proviso\b|\bprovided\s+further\s+that\b", re.I),
+    re.compile(r"\b(?:third|3rd)\s+proviso\b", re.I),
+)
+
+
+def provisos_covered(answer, count):
+    """True when the answer refers to the section's provisos one by one. A section with no proviso is always covered; with one, the word 'proviso' (or 'provided that') is enough; with two or more, the answer must say
+    'provisos' in the plural or refer to the first, the second (and for a third) one: 'the first proviso', 'the second proviso', 'a further proviso'. The prompt asks the model to introduce each proviso that way
+    (act_directory._prompt_named), so an answer that follows it passes.  A rough test by words: it cannot tell a right description from a wrong one, it shows the provisos for an answer that covered them without
+    numbering them, and it cannot see an answer that numbers them and gets one wrong. Owner's four answers (2026-10-19): none passes (no 'first proviso' in any), which is right: none gave both provisos."""
+    if count <= 0:
+        return True
+    a = answer or ""
+    if _PLURAL.search(a):
+        return True
+    if count == 1:
+        return bool(_PROVISO_WORD.search(a))
+    return all(p.search(a) for p in _ORDINAL[:min(count, len(_ORDINAL))])
+
+
+# ----- the notes ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+def _cut_lines(text, limit):
+    """`text` cut at the last line end within `limit` characters; (text, True if it was cut)."""
+    if len(text) <= limit:
+        return text, False
+    head = text[:limit]
+    nl = head.rfind("\n")
+    return (head[:nl] if nl > limit // 2 else head).rstrip(), True
+
+
+def _words(n):
+    return _NUMBER_WORDS.get(n, str(n))
+
+
+def notes(answer, matches):
+    """The notes for the page: [{'act', 'section', 'kind': 'not_mentioned'|'provisos', 'lead', 'texts': [str], 'cut': bool, 'loaded_on', 'source_url'}], at most MAX_NOTES, for the shelf sections the person NAMED
+    (retrieval 'named', or 'implied': a bare number taken for the one shelf Act of the conversation).  [] when the rule is off, when the answer stands on every named section, and on any problem.
+    'not_mentioned': the answer never uses the section's number (section 17A is not section 17), so the section's official text is given.  'provisos': the answer uses the number, the section has provisos and the
+    answer does not clearly set them out (provisos_covered), so the provisos are given."""
+    out = []
+    try:
+        if not enabled() or not (answer or "").strip():
+            return out
+        import act_shelf
+        mentioned = act_shelf.section_numbers_in(answer)
+        seen = set()
+        for m in matches or []:
+            if not (isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied") and (m.get("text") or "").strip()):
+                continue
+            num = str(m.get("section_number") or "").upper()
+            key = (m.get("act"), num)
+            sh = m.get("shelf") if isinstance(m.get("shelf"), dict) else {}
+            if not num or key in seen or sh.get("omitted"):
+                continue
+            seen.add(key)
+            if len(out) >= MAX_NOTES:
+                break
+            act = m.get("act_display") or m.get("act") or "the Act"
+            base = {"act": act, "section": num, "loaded_on": sh.get("loaded_on"), "source_url": sh.get("source_url")}
+            if num not in mentioned:
+                body, cut = _cut_lines(m["text"].strip(), NOT_MENTIONED_CHARS)
+                out.append({**base, "kind": "not_mentioned", "texts": [body], "cut": cut,
+                            "lead": f"You asked about section {num} of the {act}. The answer above does not set that section out by its number, so here is its official text:"})
+                continue
+            ps = provisos(m["text"])
+            if ps and not provisos_covered(answer, len(ps)):
+                kept, size, cut = [], 0, False
+                for p in ps:
+                    if kept and size + len(p) > PROVISO_CHARS:
+                        cut = True
+                        break
+                    kept.append(p)
+                    size += len(p)
+                k = len(ps)
+                out.append({**base, "kind": "provisos", "texts": kept, "cut": cut,
+                            "lead": (f"Section {num} of the {act} has {_words(k)} proviso{'s' if k > 1 else ''} (an exception or condition added to the section's main rule). The answer above does not clearly set "
+                                     f"{'it' if k == 1 else 'them'} out, so {'it is' if k == 1 else 'they are'} given here in the official words:")})
+        return out
+    except Exception:  # noqa: BLE001
+        return []

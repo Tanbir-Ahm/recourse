@@ -300,6 +300,37 @@ def _prompt_unused(group):
             f"punishment, procedure or route of appeal of {it} from memory, say in one sentence that the material does not contain a provision of {it} on this point, and keep to what the material does show.\n")
 
 
+def _sections_phrase(nums):
+    nums = [str(n).upper() for n in nums][:3]
+    return ("section " + nums[0]) if len(nums) == 1 else ("sections " + ", ".join(nums[:-1]) + " and " + nums[-1])
+
+
+def _letter_example(nums):
+    """'17A for 17' for a plain number, '17 for 17A' for a lettered one: the example the clause gives of two different sections."""
+    n = str(nums[0]).upper()
+    base = n.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    return f"{n}A for {n}" if base == n else f"{base} for {n}"
+
+
+def _prompt_named(items):
+    """The block for a question that NAMES a section of an Act whose text is in the material (owner's staging test of 2026-10-19, section 17 of the Prevention of Corruption Act: the answer wrote about 17A when asked
+    about 17, and left out the second proviso of 17). items: [(act entry, [section numbers])] for the Acts of the question that have named sections.  It repeats the Hard rules' ground (only the material), it does not
+    replace them; a test asserts that the Hard rules block is untouched.  '' for none."""
+    items = [(a, n) for a, n in items if n]
+    if not items:
+        return ""
+    asked = " and ".join(f"{_sections_phrase(n)} of the {a['short']}" for a, n in items)
+    many = sum(len(n) for _, n in items) > 1
+    return ("\n\n## The section the person asked about\n"
+            f"The person's question is about {asked} ({'they are' if many else 'it is'} in the material above). Answer about THAT section, not about a different one:\n"
+            f"- Do not put another section in its place. A section whose number differs only by a letter (for example {_letter_example(items[0][1])}) is a different provision with its own words. If the material also holds "
+            "such a section, say in one sentence, in your own words, how it differs from the one asked about, and keep the two apart.\n"
+            "- Say what the section provides, using only its text in the material: its main rule and EVERY proviso and Explanation it has there, each in your own words, and introduce each proviso as the section's first, "
+            "second (and so on) proviso. Do not leave a proviso out because it seems to apply only to some cases: say which cases it applies to.\n"
+            "- If the person asks whether something is required or allowed, answer by what the section's own words require, and say which proviso changes the answer for which kind of case.\n"
+            "- If the material does not show the section's text, say so in one sentence instead of describing it.\n")
+
+
 def prompt_block(acts, held=None):
     """The blocks for the answer prompt when the question names an Act ('' otherwise). They repeat the Hard rules for this case; they do not replace them.  held (see notice): an Act whose shelf text reached the
     answer gets the block that says so and forbids going beyond the sections given; an Act the shelf holds but nothing of which reached the answer gets the block that says nothing close enough was found;
@@ -309,9 +340,10 @@ def prompt_block(acts, held=None):
             return ""
         used, unused, plain = _split_held(acts, held)
         used_full = [a for a in used if (held.get(a["id"]) or {}).get("whole")]
+        named = [(a, (held.get(a["id"]) or {}).get("named")) for a in used]               # the sections the person named (act_shelf.held_state), for the Acts whose text reached the answer
         used = [a for a in used if a not in used_full]
         return ((_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_used_whole(used_full) if used_full else "")
-                + (_prompt_unused(unused) if unused else ""))
+                + (_prompt_unused(unused) if unused else "") + _prompt_named(named))
     except Exception:  # noqa: BLE001
         return ""
 
