@@ -305,5 +305,75 @@ o_ = T.label_fed_cases(f"In *Rohit Tandon v. Enforcement Directorate* (2017) {L_
 check(o_ == f"In *Rohit Tandon v. Enforcement Directorate* (2017) {L_}, the Court said.", "an italic name with its label after it is unchanged")
 check(T.label_fed_cases("", cs_) == "" and T.label_fed_cases("text", []) == "text", "empty text and no cases: unchanged")
 
+# ---- labels, owner's staging test 2026-10-19 (PC Act, section 17): a case located by its SECOND party alone landed inside ANOTHER case's name
+# Real cause (reproduced offline): "Yunus Zia v. State of Karnataka & Anr" was fed in the same turn, and its second party "State of Karnataka" was found at the start of
+# "State of Karnataka v. T.N. Sudhakar Reddy"; "Nara Chandrababu Naidu v. State of Andhra Pradesh" matched "State of Madhya Pradesh" by the typo tolerance.
+import re
+FED3 = ["State of Karnataka v. T.N. Sudhakar Reddy", "State of Madhya Pradesh & Ors v. Shri Ram Singh", "Yashwant Sinha & Ors v. Central Bureau of Investigation Through Its Director & Anr",
+        "The State of Jammu & Kashmir and Others v. Dr. Saleem Ur Rehman", "Superintendent of Police, Karnataka …Appellants Lokayuktha and Anr v. B. Srinivas", "CBI v. R.R. Kishore",
+        "Nara Chandrababu Naidu v. State of Andhra Pradesh & Anr", "Yunus Zia v. State of Karnataka & Anr"]
+FED4 = ["State of Karnataka v. T.N. Sudhakar Reddy", "Superintendent of Police, Karnataka …Appellants Lokayuktha and Anr v. B. Srinivas", "State of Madhya Pradesh & Ors v. Shri Ram Singh",
+        "Nara Chandrababu Naidu v. State of Andhra Pradesh & Anr", "Yashwant Sinha & Ors v. Central Bureau of Investigation Through Its Director & Anr"]
+def _lab(txt, names):
+    return T.label_fed_cases(txt, [{"case_name": n} for n in names])
+def _inside(txt, names):
+    """True when a label starts inside the located name of any of the cases (the thing that must never happen)."""
+    for n in names:
+        sp = T._locate(txt, n, others=[x for x in names if x != n])
+        if sp and any(sp[0] < m.start() < sp[1] for m in re.finditer(re.escape(T.LABEL), txt)):
+            return True
+    return False
+raw_k = "The Supreme Court in State of Karnataka v. T.N. Sudhakar Reddy (2025) rejected the idea that the SP must first direct registration of an FIR."
+o_ = _lab(raw_k, FED3)
+check(o_ == "The Supreme Court in State of Karnataka v. T.N. Sudhakar Reddy (2025) " + T.LABEL + " rejected the idea that the SP must first direct registration of an FIR.", f"answer 3, Sudhakar Reddy: ONE label after the year, none inside the name, although Yunus Zia v. State of Karnataka was fed ({o_!r})")
+raw_m = "If the SP's authorisation was mechanical, State of Madhya Pradesh v. Shri Ram Singh (2000) noted that in an earlier case (Bhajan Lal) such an order was found non-compliant with Section 17."
+o_ = _lab(raw_m, FED3)
+check(o_ == "If the SP's authorisation was mechanical, State of Madhya Pradesh v. Shri Ram Singh (2000) " + T.LABEL + " noted that in an earlier case (Bhajan Lal) such an order was found non-compliant with Section 17.", f"answer 3, Ram Singh: one label after the year although Naidu v. State of Andhra Pradesh was fed ({o_!r})")
+raw_both = raw_k + " " + raw_m + " Later, T.N. Sudhakar Reddy (2025) treats that as sufficient."
+o_ = _lab(raw_both, FED3)
+check(o_.count(T.LABEL) == 2 and not _inside(o_, FED3), f"both cases in one answer: two labels, none inside a name ({o_.count(T.LABEL)})")
+check(_lab(o_, FED3) == o_, "labelling the result again changes nothing (idempotent)")
+# the answer exactly as the owner saw it (two labels per case, one inside the name) is repaired
+seen3 = ("The Supreme Court in State of Karnataka " + T.LABEL + " v. T.N. Sudhakar Reddy (2025) " + T.LABEL + " rejected the idea. If the SP was careless, State of Madhya Pradesh " + T.LABEL + " v. Shri Ram Singh (2000) " + T.LABEL + " noted that.")
+o_ = _lab(seen3, FED3)
+check(o_ == "The Supreme Court in State of Karnataka v. T.N. Sudhakar Reddy (2025) " + T.LABEL + " rejected the idea. If the SP was careless, State of Madhya Pradesh v. Shri Ram Singh (2000) " + T.LABEL + " noted that.", f"a text that already carries the mid-name labels is repaired to one label per case ({o_!r})")
+o_ = _lab("In State of Madhya Pradesh v. Shri Ram Singh (2000), the Supreme Court noted X. In State of Karnataka v. T.N. Sudhakar Reddy (2025), the passage describes Y.", FED4)
+check(o_.count(T.LABEL) == 2 and not _inside(o_, FED4), f"answer 4: two labels, none inside a name ({o_!r})")
+# a pilot (library) case whose SECOND party is "State of Madhya Pradesh" is in the list too
+o_ = _lab(raw_m, FED3 + ["Prabhu v State of Madhya Pradesh", "Sakharam v State of Madhya Pradesh"])
+check(o_.count(T.LABEL) == 1 and "Shri Ram Singh (2000) " + T.LABEL in o_, f"library cases with the same second party do not pull the label into the name ({o_!r})")
+# _locate itself
+check(T._locate(raw_k, "Yunus Zia v. State of Karnataka & Anr") is None, "a generic second party that is the START of another case's name does not locate a case")
+check(T._locate("In Yunus Zia v. State of Karnataka & Anr (2015) it was held.", "Yunus Zia v. State of Karnataka & Anr") is not None, "the case itself is still found by its full name")
+sp_ = T._locate("In Yonus Zeeya v. State of Karnataka (2015) it was held.", "Yunus Zia v. State of Karnataka & Anr")
+check(sp_ is not None and "In Yonus Zeeya v. State of Karnataka (2015) it was held."[sp_[0]:sp_[1]] == "State of Karnataka", "a generic second party that stands AFTER 'v.' still locates a case whose first party is misspelt (the old, intended use)")
+sp_ = T._locate("In Pqr v. Saleem Ur Rehman (2021) the Court said.", "Abc Xyz v. Saleem Ur Rehman")
+check(sp_ is not None, "a distinctive second party alone still locates a case")
+txt_n = "Nara Chandrababu Naidu v. State of Andhra Pradesh (2024) held X."
+check(T._locate(txt_n, "Other Person v. State of Andhra Pradesh", others=["Nara Chandrababu Naidu v. State of Andhra Pradesh & Anr"]) is None, "a weak match inside another case's full name is rejected")
+check(T._locate("State of Madhya Pradesh v. Shri Ram Singh (2000) said X.", "Nara Chandrababu Naidu v. State of Andhra Pradesh & Anr") is None, "State of Andhra Pradesh is not State of Madhya Pradesh (no typo tolerance for a generic party)")
+# the anchors module uses _locate with one argument
+check(T._locate("In Hussainara Khatoon (I) v. Home Secretary, State of Bihar (1979) the Court said.", "Hussainara Khatoon (I) v. Home Secretary, State of Bihar") is not None, "_locate with one argument still works")
+
+# the two paragraphs of the owner's answers 3 and 4 as the model wrote them (labels taken out), with the cases that were fed in those turns
+A3 = ("The Supreme Court in State of Karnataka v. T.N. Sudhakar Reddy (2025) rejected the idea that the SP must first direct registration of an FIR and only afterward issue the Section 17 investigation order -- it held that "
+      "Section 17's only requirement is that the SP authorise a competent subordinate officer to investigate. If the SP's authorisation was mechanical or showed no awareness of the allegations, "
+      "State of Madhya Pradesh v. Shri Ram Singh (2000) noted that in an earlier case (Bhajan Lal) such an order was found non-compliant with Section 17. If an SP did authorise investigation, even informally, "
+      "T.N. Sudhakar Reddy (2025) treats that as sufficient without a strict FIR-first sequence.")
+A4 = ("In State of Madhya Pradesh v. Shri Ram Singh (2000), the Supreme Court noted that in an earlier case (Bhajan Lal), the SP had authorised investigation \"mechanically and in a very casual manner,\" without complying "
+      "with Section 17. In State of Karnataka v. T.N. Sudhakar Reddy (2025), the passage describes a High Court's four-step procedure under which the SP only becomes competent after the FIR is registered.")
+o3 = _lab(A3, FED3 + ["Prabhu v State of Madhya Pradesh"])
+o4 = _lab(A4, FED4)
+check(o3.count(T.LABEL) == 2 and o3.index("T.N. Sudhakar Reddy (2025) " + T.LABEL) < o3.index("Shri Ram Singh (2000) " + T.LABEL) and "Karnataka " + T.LABEL not in o3 and "Pradesh " + T.LABEL not in o3, f"owner's answer 3, paragraph: exactly the two first mentions are labelled, after the year ({o3!r})")
+check(o4.count(T.LABEL) == 2 and "Shri Ram Singh (2000) " + T.LABEL in o4 and "T.N. Sudhakar Reddy (2025) " + T.LABEL in o4 and "Karnataka " + T.LABEL not in o4 and "Pradesh " + T.LABEL not in o4, f"owner's answer 4, paragraph: the same ({o4!r})")
+check(T.fed_names_in(o3) == [] , "fed_names_in outside feed mode stays empty")
+T.reset()
+T._LOCAL.cases = [{"case_name": n} for n in FED3]
+names_in = T.fed_names_in(A3)
+check("State of Karnataka" not in names_in and "State of Madhya Pradesh" not in names_in and any(n.startswith("State of Karnataka v. T.N. Sudhakar") for n in names_in), f"fed_names_in no longer reports a bare 'State of Karnataka' as the place where Yunus Zia v. State of Karnataka was found ({names_in!r})")
+loc_yz = T._locate(A3, "Yunus Zia v. State of Karnataka & Anr", others=[n for n in FED3 if not n.startswith("Yunus")])
+check(loc_yz is None, "Yunus Zia is not located in an answer that never names it")
+T.reset()
+
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

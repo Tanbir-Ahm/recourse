@@ -15,6 +15,7 @@ Cases on the Overruled Register carry a REGISTER FACT line the model must repeat
 answer. This goes further than the site's own pilot tier, which only lets a wider-pool case be mentioned descriptively. Use it to see what such answers look like, not as a way to publish them.
 Nothing here says a case is good law.
 """
+import functools
 import hashlib
 import json
 import logging
@@ -272,9 +273,16 @@ def _tidy_labels(text):
     return text
 
 
-def _locate(text, case_name):
-    """(start, end) of the first mention in `text` of a wider-search case: found by its full name, else by a distinctive party name (allowing a typo, and a dropped 'Dr.'), taking the ' v. second party'
-    and a trailing '& Another' with it. The end is the end of the name, before italics marks and brackets. None when the case is not mentioned."""
+_GENERIC_PARTY = re.compile(r"^(?:the\s+)?(?:state|union|central|govt|government|commissioner|collector|director|directorate|superintendent|inspector|bureau|enforcement|national|registrar|station|public|police|"
+                            r"cbi|home|ministry|secretary|chief|district|sessions|magistrate|bank|municipal|corporation|board|authority|committee|commission|tribunal|university|institute|company|assistant|"
+                            r"deputy|additional|joint|senior|principal|high\s+court|supreme\s+court)\b", re.I)         # a party that many cases share ('State of Karnataka', 'Union of India', 'CBI'): it cannot identify a case on its own
+_AFTER_V = re.compile(r"(?:\bv\.?|\bvs\.?|\bversus)\s*(?:the\s+)?$", re.I)                                        # the text just before a span ends with 'v.': the span stands as a SECOND party
+
+
+@functools.lru_cache(maxsize=512)
+def _locate_strong(text, case_name):
+    """(start, end) of the first mention of a case by its FULL name, else by a distinctive FIRST party (allowing a typo, and a dropped 'Dr.'), taking the ' v. second party' and a trailing '& Another' with it.
+    These two ways name the case itself; the weaker ways (a second party alone) are in _locate. None when neither finds it."""
     p1, p2 = _parties(case_name)
     span = None
     if p1 and p2:
@@ -298,13 +306,48 @@ def _locate(text, case_name):
                 m = re.match(_EXTRA, text[end:], re.I)
                 end += m.end() if m else 0
             span = (sp[0], end)
+    return span
+
+
+def _second_party_span(text, p2, avoid=()):
+    """(start, end) of the second party of a case standing ALONE in `text` (the first party was not found: it is misspelt, or the answer shortened it). Owner's staging test 2026-10-19: 'Yunus Zia v. State of
+    Karnataka' (fed in the same turn) was found at the start of 'State of Karnataka v. T.N. Sudhakar Reddy', and 'State of Andhra Pradesh' passed for 'State of Madhya Pradesh' by the typo tolerance, so the label
+    landed inside another case's name. Now: (1) a stretch that overlaps the name of another case (`avoid`) never counts; (2) a party that many cases share ('State of ...', 'Union of India', 'CBI') counts only
+    when it is spelt exactly and stands after 'v.' (as a second party); (3) a distinctive party may still be found with a typo."""
+    generic = bool(_GENERIC_PARTY.match(p2))
+    cands = [(m.start(), m.end()) for m in re.finditer(r"\b" + _words_re(p2) + r"\b", text, re.I)]
+    if not cands and not generic:
+        sp = _fuzzy_span(text, p2)
+        if sp:
+            cands.append(sp)
+    for a, b in cands:
+        if any(a < y and x < b for x, y in avoid):
+            continue
+        if generic and not _AFTER_V.search(text[max(0, a - 14):a]):
+            continue
+        return a, b
+    return None
+
+
+def _locate(text, case_name, others=None):
+    """(start, end) of the first mention in `text` of a wider-search case: found by its full name, else by a distinctive party name (allowing a typo, and a dropped 'Dr.'), taking the ' v. second party'
+    and a trailing '& Another' with it, else by its second party alone (see _second_party_span) or by a close spelling of the whole name. The end is the end of the name, before italics marks and brackets.
+    `others`: the names of the other cases that are looked for in the same text; a weak match is never taken from inside one of them. None when the case is not mentioned."""
+    p1, p2 = _parties(case_name)
+    span = _locate_strong(text, case_name)
     if span is None and p2 and len(p2) >= 8:
-        span = _fuzzy_span(text, p2)
+        avoid = [sp for sp in (_locate_strong(text, o) for o in (others or []) if o and o != case_name) if sp]
+        span = _second_party_span(text, p2, avoid)
     if span is None and p1 and p2:
-        span = _fuzzy_span(text, p1 + " v. " + p2, 0.9)
+        span = _fuzzy_span(text, re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I) + " v. " + p2, 0.9)
     if span is not None and text[span[1]:span[1] + 1] == "." and re.search(r"(?:\b[A-Za-z]\.){1,}[A-Za-z]$", text[:span[1]]):
         span = (span[0], span[1] + 1)                                    # 'State of M.P.': the closing full stop of the initials belongs to the name (the party names are stored without it)
     return span
+
+
+def _others(cases, c):
+    """The names of the cases in `cases` other than `c` (for _locate's `others`)."""
+    return [x.get("case_name") for x in cases or [] if isinstance(x, dict) and x is not c and x.get("case_name")]
 
 
 def _name_end(out, end, note_re):
@@ -331,7 +374,7 @@ def only_at_first_mentions(text, cases, label, note_re):
         out = text or ""
         keep = set()
         for c in cases or []:
-            span = _locate(out, c["case_name"])
+            span = _locate(out, c["case_name"], _others(cases, c))
             if span is None:
                 continue
             end = _name_end(out, span[1], note_re)
@@ -374,7 +417,7 @@ def _drop_midname_labels(text, cases, label):
         stripped = "".join(text[i] for i in keep)
         drop = set()
         for c in cases or []:
-            span = _locate(stripped, c.get("case_name") or "")
+            span = _locate(stripped, c.get("case_name") or "", _others(cases, c))
             if span is None:
                 continue
             end = _name_end(stripped, span[1], _NEVER)
@@ -409,7 +452,7 @@ def label_cases(text, cases, label, note_re, span_re, tidy=None):
             if not key or key in seen:
                 continue
             seen.add(key)
-            span = _locate(out, c["case_name"])
+            span = _locate(out, c["case_name"], _others(cases, c))
             if span is None:
                 continue
             end = _name_end(out, span[1], note_re)
@@ -441,11 +484,12 @@ def fed_names_in(text, extra=None):
     try:
         text = text or ""
         out, mentions = [], None
-        for c in list(getattr(_LOCAL, "cases", None) or []) + [e for e in (extra or []) if isinstance(e, dict)]:
+        every = list(getattr(_LOCAL, "cases", None) or []) + [e for e in (extra or []) if isinstance(e, dict)]
+        for c in every:
             if not c.get("case_name"):
                 continue
             out.append(c["case_name"])
-            span = _locate(text, c["case_name"])
+            span = _locate(text, c["case_name"], _others(every, c))
             if not span:
                 continue
             out.append(text[span[0]:span[1]])
