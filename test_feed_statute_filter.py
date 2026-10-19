@@ -100,6 +100,80 @@ tiny_ctx = T.make_statute_context([{"act": "X Act", "aliases": None, "sections":
 check(T._off_statute(ACT("Section 5 of the Act provides for the hearing of objections by the Collector."), tiny_ctx) is None, "a section of fewer than 12 content words is not used to judge a passage (explicit naming still is)")
 check(T._off_statute(ACT("Section 5 of the Land Acquisition Act, 1894 provides for the hearing of objections by the Collector."), tiny_ctx) is not None, "but a passage that ties the number to another named Act is still left out")
 
+# the Act's name as judgments write it: small words and brackets inside it, an acronym with no 'of', 'read with' chains, 'thereof', a repeat of the bare number.  Passages: the library's own judgments
+# (Pankaj Bansal, Prabir Purkayastha, Vihaan Kumar, L. Muruganantham, Sri Manjunath; found by running the filter over the 168 library passages that cite one of fifteen shelf sections; before this block 74 were left
+# out, now 94, and every one of the 94 was read: each is about another statute).
+def ctx_for(aid, code, num, actname):
+    r = S.search(f"What does section {num} of the {actname} say?", [{"id": aid}], embed_fn=like(code, num))
+    return T.make_statute_context(S.statute_context(r["matches"]))
+
+
+C19 = ctx_for("pc_act_1988", "PCACT", "19", "Prevention of Corruption Act")
+C13 = ctx_for("pc_act_1988", "PCACT", "13", "Prevention of Corruption Act")
+C45P = ctx_for("pmla_2002", "PMLA", "45", "Prevention of Money-laundering Act")
+CD3 = ctx_for("dowry_prohibition_act_1961", "DOWRY", "3", "Dowry Prohibition Act")
+NAMEDTESTS = [
+    ("Section 19 of the Prevention of Money Laundering Act, 2002 (for brevity)", "Prevention of Money Laundering Act, 2002"),
+    ("Sections 3 and 4 of the Prevention of Money Laundering Act, 2002(for short ‘PMLA’)", "Prevention of Money Laundering Act, 2002"),
+    ("Section 5 of the Narcotic Drugs and Psychotropic Substances Act, 1985", "Narcotic Drugs and Psychotropic Substances Act, 1985"),
+    ("Sections 13, 16, 17, 18, 22C of the Unlawful Activities(Prevention) Act,\n1967(for short “UAPA”)", "Unlawful Activities(Prevention) Act, 1967"),
+    ("Section 21 of the Protection of Children from Sexual Offences Act, 2012", "Protection of Children from Sexual Offences Act, 2012"),
+    ("Section 14 of the Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989", "Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989"),
+    ("Section 2 of the Right of Persons with Disabilities Act, 2016", "Right of Persons with Disabilities Act, 2016"),
+    ("Section 45 read with Section 40 of the RPwD Act, 2016, Rule 15", "RPwD Act, 2016"),
+    ("Section 482 Cr.P.C. is wide", "Cr.P.C."),
+    ("under Section 19(1) PMLA.” (emphasis added)", "PMLA"),
+    ("Section 17 of the Act of 1894 provides", "Act of 1894"),
+]
+for txt, want in NAMEDTESTS:
+    refs = T._section_refs(txt)
+    got = T._statute_named_after(txt, refs[0][2], None, start=refs[0][1])
+    check(got is not None and got.replace("\n", " ") == want, f"the statute named after {txt[:50]!r} is {want!r} (got {got!r})")
+for txt in ("Section 17 in Chapter IV of the Act provides", "Section 17 of the Act provides", "Section 17 under Part II of the Rules framed", "Section 17 read with Section 18 of the Act"):
+    refs = T._section_refs(txt)
+    check(T._statute_named_after(txt, refs[0][2], None, start=refs[0][1]) is None, f"no statute is named in {txt!r}: 'the Act', 'Chapter IV of the Act', 'the Rules framed' are not names")
+t_th = "were incorporated in the Prevention of Money Laundering Act, 2002 under Section 19 thereof and has been succinctly reiterated."
+r_th = T._section_refs(t_th)[0]
+check(T._statute_named_after(t_th, r_th[2], None, start=r_th[1]) == "Prevention of Money Laundering Act, 2002", "'... Act, 2002 under Section 19 thereof': the Act named just before")
+check(T._statute_named_after("the Prevention of Corruption Act, 1988 under Section 19 thereof", 54, C19[0]["aliases"], 1988, start=47) is None, "...but not when that Act is the target Act's own")
+# the library's own passages
+VIHAAN = ("10. As far as Article 22(1) is concerned, the legal position is well settled. In the case of Pankaj Bansal1, this Court dealt with Section 19 of the Prevention of Money Laundering Act, 2002 (for\n"
+          "short, ‘the PMLA’). Section 19 reads thus:\n“19. Power to arrest.—(1) If the Director, Deputy Director, Assistant Director or any other officer authorised in this behalf by the Central Government by general or\n"
+          "special order, has on the basis of material in his possession, reason to believe that any person has been guilty of an offence punishable under this Act, he may arrest such person.")
+C19P = ctx_for("pmla_2002", "PMLA", "19", "Prevention of Money-laundering Act")
+check(T._off_statute(VIHAAN, C19) is not None and T._off_statute(VIHAAN, C19P) is None, "Vihaan Kumar (section 19 of the PMLA): left out for the Prevention of Corruption Act's section 19, kept for the PMLA's own section 19")
+check("cites section 19 of Prevention of Money Laundering Act, 2002" in (T._off_statute(VIHAAN, C19) or ""), f"...by the explicit name, with the bare 'Section 19 reads thus' inheriting it ({T._off_statute(VIHAAN, C19)!r})")
+ONLY_A = T.make_statute_context([{"act": "X Act", "aliases": None, "sections": {"19": "Short title."}}])           # a section too short to be a yardstick: only an explicit name can leave a passage out
+near = "Section 19 of the Prevention of Money Laundering Act, 2002 is the power to arrest." + " The Court then turned to the facts of the arrest and the order of remand." * 20 + " Section 19 was not complied with."
+far = "Section 19 of the Prevention of Money Laundering Act, 2002 is the power to arrest." + " The Court then turned to the facts of the arrest and the order of remand." * 40 + " Section 19 was not complied with."
+def gap(txt):
+    r = [x for x in T._section_refs(txt) if x[0] == "19"]
+    return r[1][1] - r[0][2]
+
+
+check(gap(near) <= T.FILTER_ANAPHORA < gap(far), f"the two test passages straddle the window ({gap(near)} and {gap(far)} characters apart; the window is {T.FILTER_ANAPHORA})")
+check(T._off_statute(near, ONLY_A) is not None, "a bare repeat within the window of the last mention inherits the tie: the passage is left out")
+check(T._off_statute(far, ONLY_A) is None, "a bare repeat beyond the window does not: with an explicit name for only one of the two references the passage is not left out")
+slide = "Section 19 of the Prevention of Money Laundering Act, 2002 is the power to arrest." + " The Court then turned to the facts of the arrest and the order of remand." * 20 + " Section 19 was not complied with." + " The Court then turned to the facts of the arrest and the order of remand." * 20 + " Section 19 is mandatory."
+check(T._off_statute(slide, ONLY_A) is not None, "the window slides: a second bare repeat 1,500 characters after the first repeat still inherits")
+PRABIR13 = ("2. The appellant was arrested by the Special Cell, Lodhi Colony, New Delhi for the offences punishable under Sections 13, 16, 17, 18, 22C of the Unlawful Activities(Prevention) Act,\n"
+            "1967(for short “UAPA”) read with Section 120B IPC, and the Court examined the grounds of arrest at length in this appeal.")
+check("Unlawful Activities(Prevention) Act, 1967" in (T._off_statute(PRABIR13, C13) or ""), f"UAPA written with a bracket inside its name is recognised ({T._off_statute(PRABIR13, C13)!r})")
+RPWD = "The petitioner seeks directions to mandate full accessibility of prisons in Tamil Nadu as required under Section 45 read with Section 40 of the RPwD Act, 2016, Rule 15 of the Rights of Persons with Disabilities Rules, 2017."
+check("RPwD Act, 2016" in (T._off_statute(RPWD, C45P) or ""), f"'Section 45 read with Section 40 of the RPwD Act': both numbers are the RPwD Act's ({T._off_statute(RPWD, C45P)!r})")
+PMLA_ACR = "... and the statutory mandate under Section 19(1) PMLA.” (emphasis added) The Court also noted the safeguards that apply when a person is arrested."
+check("PMLA" in (T._off_statute(PMLA_ACR, C19) or ""), f"an acronym with no 'of' and a full stop after it ('Section 19(1) PMLA.') is recognised ({T._off_statute(PMLA_ACR, C19)!r})")
+OWN7 = "3 registered by the Anti-Corruption Bureau, Panchkula, Haryana, under Sections 7, 8, 11 and 13 of the Prevention of Corruption Act, 1988, read with Section 120B IPC for the offence of taking a bribe."
+check(T._off_statute(OWN7, C13) is None, "a passage that names the Act itself ('Sections 7, 8, 11 and 13 of the Prevention of Corruption Act, 1988') is kept")
+OWNDOWRY = "The petitioners are accused under Sections 498(A), 406, 504, 506 R/w Section 149 of Indian Penal Code and Sections 3 and 4 of Dowry Prohibition Act, and seek to quash the criminal proceedings."
+check(T._off_statute(OWNDOWRY, CD3) is None, "'Sections 3 and 4 of Dowry Prohibition Act' is the Dowry Act's own: kept")
+check(T._off_statute(OWNDOWRY, ctx_for("pmla_2002", "PMLA", "3", "Prevention of Money-laundering Act")) is not None, "...and left out for the PMLA's section 3")
+import time
+t0 = time.time()
+for adversarial in ("Section 17 of " + "of and the for " * 400 + "Act", "Section 17 of the " + "Alpha of " * 300 + "Act", "Section 17 " + "read with Section 18 " * 300 + "of the X Act", "Sections " + ", ".join(str(i) for i in range(1, 400)) + " of the Land Acquisition Act"):
+    T._off_statute(adversarial, CTXI)
+check(time.time() - t0 < 5, f"adversarial text (long runs of small words, 300 'read with' links, 400 section numbers) is handled in {time.time() - t0:.1f} s")
+
 # switch
 os.environ["FEED_STATUTE_FILTER"] = "off"
 check(T._filter_on() is False, "FEED_STATUTE_FILTER=off switches it off")

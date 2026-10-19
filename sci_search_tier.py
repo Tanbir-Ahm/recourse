@@ -525,14 +525,20 @@ def _fetch_case(name, question):
 # filter fails open. FEED_STATUTE_FILTER=off switches it off; with no statute context it does nothing at all.
 FILTER_MIN_PASSAGE = 150          # characters: a shorter passage is judged only by (A)
 FILTER_MIN_SECTION_WORDS = 12     # a section with fewer content words of its own cannot be used as the yardstick
+FILTER_ANAPHORA = 2000            # characters: a bare 'Section 19' this soon after the last mention of 'Section 19 of the X Act' is the X Act's
 _FILTER_STOP = frozenset("""about above after against also among another because been before being between both could does done during each either else even ever every from further have having here herein hereby however
 into itself just made make makes many more most much must neither never none only other otherwise over same shall should since some such than that their them then there thereof these they this those through under
 until upon very were what when where whether which while will with within without would your section sections subsection clause provided notwithstanding anything contained thereto thereby therein act acts code person
 persons court courts order orders state states government case cases""".split())
 _ACRONYMS = r"(?:Cr\.?\s?P\.?\s?C\.?|I\.?\s?P\.?\s?C\.?|C\.?\s?P\.?\s?C\.?|BNSS|BNS|BSA|NDPS(?:\s+Act)?|PMLA|UAPA|POCSO|IT\s+Act|NI\s+Act|PC\s+Act|P\.C\.\s+Act)"
-_NAMED_AFTER = re.compile(r"\s*,?\s*(?:of|under|in)\s+(?:the\s+)?(?:(?P<a>" + _ACRONYMS + r")(?![\w.])"
-                          r"|(?P<c>Code\s+of\s+(?:Criminal|Civil)\s+Procedure(?:\s*,?\s*(?:18|19|20)\d\d)?|Indian\s+Penal\s+Code|Penal\s+Code|Constitution(?:\s+of\s+India)?)"
-                          r"|(?P<n>(?:[A-Z][\w.&'’-]*\s+){1,7}?(?:Act|Sanhita|Adhiniyam|Ordinance|Rules|Regulations)\b(?:\s*,?\s*(?:18|19|20)\d\d)?))")
+_NAME_WORD = r"\(?[A-Z][\w.&'’()-]*"                                       # a capitalised word of a statute's name ('Land', 'Narcotic', '(Prevention', 'Atrocities)')
+_NAME_LINK = r"(?:(?:of|and|the|for|from|with|to|on|in)\s+)*"                # the small words inside a name ('Prevention of Money Laundering', 'Narcotic Drugs and Psychotropic Substances'); a name never ENDS in one, so 'Chapter IV of the Act' is not a statute
+_NAMED_AFTER = re.compile(r"\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?P<a>" + _ACRONYMS + r")(?!\w)(?!\.\w)"                          # an acronym needs no 'of': 'Section 482 Cr.P.C.', 'Section 19(1) PMLA.' (a full stop after it ends the sentence)
+                          r"|\s*,?\s*(?:of|under|in)\s+(?:the\s+)?(?:"
+                          r"(?P<c>Code\s+of\s+(?:Criminal|Civil)\s+Procedure(?:\s*,?\s*(?:18|19|20)\d\d)?|Indian\s+Penal\s+Code|Penal\s+Code|Constitution(?:\s+of\s+India)?)"
+                          r"|(?P<n>" + _NAME_WORD + r"(?:\s+" + _NAME_LINK + _NAME_WORD + r"){0,8}?\s+(?:Act|Sanhita|Adhiniyam|Ordinance|Rules|Regulations)\b(?:\s*,?\s*(?:18|19|20)\d\d)?)"
+                          r"|(?P<y>Act\s+of\s+(?:18|19|20)\d\d\b|(?:18|19|20)\d\d\s+Act\b))")
+_CHAIN = re.compile(r"\s*,?\s*(?:read\s+with|r/w|r\.w\.|along\s*with|together\s+with|and|or|&)\s+", re.I)       # 'Section 45 read with Section 40 of the X Act': both numbers are the X Act's
 
 
 def _year_alias(year):
@@ -589,15 +595,53 @@ def _section_refs(text):
     return out
 
 
-def _statute_named_after(text, end, aliases):
-    """The statute a section reference ending at `end` is tied to in so many words ('of the Land Acquisition Act, 1894', 'under the Code of Criminal Procedure', 'of the NDPS Act'), or None when none is named,
-    when only 'the Act' / 'the Code' is written, or when the name is one of the Act's own (`aliases`)."""
-    m = _NAMED_AFTER.match(text or "", end)
+_THEREOF = re.compile(r"\s*(?:thereof|therein|thereunder|of\s+(?:that|the\s+said|the\s+same)\s+(?:Act|Code))\b", re.I)
+_NAME_ANYWHERE = re.compile(r"(?P<n>" + _NAME_WORD + r"(?:\s+" + _NAME_LINK + _NAME_WORD + r"){0,8}?\s+(?:Act|Sanhita|Adhiniyam|Ordinance|Rules|Regulations)\b(?:\s*,?\s*(?:18|19|20)\d\d)?)|(?P<y>\bAct\s+of\s+(?:18|19|20)\d\d\b|\b(?:18|19|20)\d\d\s+Act\b)")
+
+
+def _statute_named_before(text, start, aliases=None, year=None):
+    """The statute named in the 200 characters before a section reference that ends 'thereof' ('... the Prevention of Money Laundering Act, 2002 under Section 19 thereof'): its last name there, or None (none
+    named, or it is the Act's own: `aliases`, or the bare short form of its `year`)."""
+    last = None
+    for m in _NAME_ANYWHERE.finditer(text[max(0, start - 200):start]):
+        last = m
+    if not last:
+        return None
+    name = re.sub(r"\s+", " ", last.group(0)).strip(" ,")
+    if aliases is not None and aliases.search(name):
+        return None
+    if year and last.group("y") and _year_alias(year).search(name):
+        return None
+    return name
+
+
+def _statute_named_after(text, end, aliases, year=None, start=None):
+    """The statute a section reference ending at `end` is tied to in so many words ('of the Land Acquisition Act, 1894', 'under the Code of Criminal Procedure', 'of the NDPS Act', 'of the Prevention of Money
+    Laundering Act, 2002', 'of the Act of 1894'), or None when none is named, when only 'the Act' / 'the Code' is written, or when the name is one of the Act's own (`aliases`; `year`: the Act's year, so that
+    'the Act of 1988' is the Prevention of Corruption Act's own).  Following section references joined by 'read with' / 'and' ('Section 45 read with Section 40 of the RPwD Act') are skipped: they share the name."""
+    text = text or ""
+    pos = end
+    try:
+        from act_shelf import _SECREF
+        for _ in range(3):
+            c = _CHAIN.match(text, pos)
+            r = _SECREF.match(text, c.end()) if c else None
+            if not r:
+                break
+            tail = re.match(r"\s*-\s*([A-Za-z])\b", text[r.end():])
+            pos = r.end() + (tail.end() if tail else 0)
+    except Exception:  # noqa: BLE001
+        pos = end
+    m = _NAMED_AFTER.match(text, pos)
     if not m:
+        if start is not None and _THEREOF.match(text, pos):                # 'under Section 19 thereof': the Act named just before
+            return _statute_named_before(text, start, aliases, year)
         return None
     name = re.sub(r"\s+", " ", m.group(0)).strip(" ,")
     name = re.sub(r"^(?:of|under|in)\s+(?:the\s+)?", "", name, flags=re.I)
     if aliases is not None and aliases.search(name):
+        return None
+    if year and m.group("y") and _year_alias(year).search(name):         # only the bare short form ('the Act of 1988'): a full name of the same year ('Motor Vehicles Act, 1988') is another statute
         return None
     return name
 
@@ -618,7 +662,16 @@ def _off_statute(text, ctx):
             return None
         if any(it["aliases"] is not None and it["aliases"].search(text) for it, _n, _w, _s in cited):
             return None                                                    # the passage names the Act itself
-        tied = [(it, num, _statute_named_after(text, e, it["aliases"])) for it, num, _w, spans in cited for _s, e in spans]
+        tied = []
+        for it, num, _w, spans in cited:
+            last = None                                                    # the last statute this number was tied to: 'Section 19 of the PMLA ... Section 19 reads thus' (a bare repeat within FILTER_ANAPHORA characters of the last mention)
+            for s_, e in sorted(spans):
+                name = _statute_named_after(text, e, it["aliases"], it.get("year"), start=s_)
+                if not name and last and s_ - last[1] <= FILTER_ANAPHORA:
+                    name = last[0]
+                if name:
+                    last = (name, e)                                       # the window slides: a bare repeat that inherited the tie carries it on
+                tied.append((it, num, name))
         if tied and all(t[2] for t in tied):                               # (A) every reference to the number is tied to some other statute
             return "cites section %s of %s" % (tied[0][1], tied[0][2][:70])
         if any(_year_alias(it.get("year")).search(text) for it, _n, _w, _s in cited if it.get("year")):
