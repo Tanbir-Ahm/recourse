@@ -374,10 +374,10 @@ def other_numbers(text, act_ids):
 
 def section_numbers_in(text):
     """The section numbers (upper case, '17', '17A') that a text puts after the word 'section' / 's.' / 'ss.' / 'u/s', whatever Act it means: the numbers an ANSWER uses. A set; empty on any problem.
-    '17-A' and '17 A' (a capital letter) are read as 17A here, so that an answer which writes 17A that way is not taken for one that names section 17; the question side (named_sections) still reads '17 A' as 17."""
+    '17-A' (no spaces) and '17 A' (a capital letter) are read as 17A here, so that an answer which writes 17A that way is not taken for one that names section 17; the question side (named_sections) still reads '17 A' as 17."""
     try:
         out = set()
-        t = re.sub(r"(?<=\d)\s*[-\u2013]\s*(?=[A-Za-z](?![A-Za-z]))", "", text or "")
+        t = re.sub(r"(?<=\d)[-\u2013](?=[A-Za-z](?![A-Za-z]))", "", text or "")
         t = re.sub(r"(?<=\d) (?=[A-Z](?![A-Za-z]))", "", t)
         for m in _SECREF.finditer(t.lower()):
             out.update(n.upper() for n in re.findall(r"\d{1,3}[a-z]{0,2}", re.sub(r"\([^)]*\)", " ", m.group(1))))

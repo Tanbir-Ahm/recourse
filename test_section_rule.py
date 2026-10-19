@@ -132,6 +132,7 @@ check(S.section_numbers_in("Section 17 of the Prevention of Corruption Act, 1988
 check(S.section_numbers_in("The rank of Superintendent applies, see clause 17 below.") == set(), "...a bare '17' that is not after the word section is not a section")
 check(S.section_numbers_in("Section 17-A, Section 17 A and section 17\u2013A all mean 17A.") == {"17A"}, "...'17-A', '17 A' and '17\u2013A' in an answer are 17A, not 17")
 check(S.section_numbers_in("Under Section 17 a police officer must act; Section 17 of the Act says so.") == {"17"}, "...but 'Section 17 a police officer' (lower-case article) is section 17")
+check(S.section_numbers_in("Section 17 \u2013 A police officer below the rank cannot investigate. Section 17 - Persons authorised.") == {"17"}, "...and a spaced dash before a sentence that starts with 'A' ('Section 17 \u2013 A police officer ...') is section 17, not 17A")
 
 # ---------------------------------------------------------------- a bare number is taken for the one shelf Act of the question
 PM = "pmla_2002"
