@@ -3889,6 +3889,11 @@ def _act_shelf_matches(question, current_message):
             return []
         res = act_shelf.search(question, acts, current_message=current_message)
         info = res.get("info") or {}
+        try:                                       # the wider search must not hand over a passage that cites the section the person named of ANOTHER statute (sci_search_tier._statute_filter)
+            import sci_search_tier
+            sci_search_tier.set_statute_context(act_shelf.statute_context(res.get("matches")))
+        except Exception:  # noqa: BLE001
+            pass
         if info.get("acts"):
             import hashlib
             print("ACT_SHELF " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], **info}), flush=True)

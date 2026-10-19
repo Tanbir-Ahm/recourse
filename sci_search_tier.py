@@ -145,6 +145,7 @@ _TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.
 def reset():
     """Forget what was fed to the model for the previous question (called at the start of answer_question)."""
     _LOCAL.question, _LOCAL.block, _LOCAL.cases = None, "", []
+    _LOCAL.statute_ctx = []
 
 
 def _cut(text, n):
@@ -516,6 +517,142 @@ def _fetch_case(name, question):
     return None
 
 
+# ---- the statute filter (owner's staging test 2026-10-19) ---------------------------------------------------------------------------------------------------------------------------------------------
+# The question was about section 17 of the Prevention of Corruption Act. The wider search ranks a passage that holds the section NUMBER higher, so "Sri Radhy Shyam v. State of U.P." (section 17 of the
+# land-acquisition law: urgency) was fed and listed under the answer. When the Act shelf found an Act AND the question names a section of it (chat_assistant publishes that with set_statute_context), a passage
+# that cites the SAME number is left out when it is plainly about another statute: (A) every reference to the number is tied, in so many words, to some other Act or Code; or (B) it never names the Act and has
+# almost nothing of the section's own words (the section's own text is the yardstick). A passage that names the Act, one that does not cite the number, and one too short or too ambiguous to judge are kept. The
+# filter fails open. FEED_STATUTE_FILTER=off switches it off; with no statute context it does nothing at all.
+FILTER_MIN_PASSAGE = 150          # characters: a shorter passage is judged only by (A)
+FILTER_MIN_SECTION_WORDS = 12     # a section with fewer content words of its own cannot be used as the yardstick
+_FILTER_STOP = frozenset("""about above after against also among another because been before being between both could does done during each either else even ever every from further have having here herein hereby however
+into itself just made make makes many more most much must neither never none only other otherwise over same shall should since some such than that their them then there thereof these they this those through under
+until upon very were what when where whether which while will with within without would your section sections subsection clause provided notwithstanding anything contained thereto thereby therein act acts code person
+persons court courts order orders state states government case cases""".split())
+_ACRONYMS = r"(?:Cr\.?\s?P\.?\s?C\.?|I\.?\s?P\.?\s?C\.?|C\.?\s?P\.?\s?C\.?|BNSS|BNS|BSA|NDPS(?:\s+Act)?|PMLA|UAPA|POCSO|IT\s+Act|NI\s+Act|PC\s+Act|P\.C\.\s+Act)"
+_NAMED_AFTER = re.compile(r"\s*,?\s*(?:of|under|in)\s+(?:the\s+)?(?:(?P<a>" + _ACRONYMS + r")(?![\w.])"
+                          r"|(?P<c>Code\s+of\s+(?:Criminal|Civil)\s+Procedure(?:\s*,?\s*(?:18|19|20)\d\d)?|Indian\s+Penal\s+Code|Penal\s+Code|Constitution(?:\s+of\s+India)?)"
+                          r"|(?P<n>(?:[A-Z][\w.&'’-]*\s+){1,7}?(?:Act|Sanhita|Adhiniyam|Ordinance|Rules|Regulations)\b(?:\s*,?\s*(?:18|19|20)\d\d)?))")
+
+
+def _year_alias(year):
+    """The ways a judgment shortens an Act's name to its year: 'the Act of 2002', 'Act, 2002', 'the 2002 Act'."""
+    y = re.escape(str(year))
+    return re.compile(r"\bAct\s*(?:of\s+|,\s*)" + y + r"\b|\b" + y + r"\s+Act\b", re.I)
+
+
+def _filter_on():
+    return _env("FEED_STATUTE_FILTER", "on").strip().lower() not in ("off", "0", "false", "no")
+
+
+def _stems(text):
+    """The content words of a text, each cut to its first six letters (so that 'investigate', 'investigation' and 'investigating' agree), without the common words of every statute."""
+    return {w[:6] for w in re.findall(r"[a-z]{4,}", (text or "").lower()) if w not in _FILTER_STOP}
+
+
+def make_statute_context(items):
+    """The statute context in the form the filter uses: [{'act', 'aliases' (a compiled regex of the Act's names, or None), 'sections': {number: text}, 'words': {number: content words}}] from
+    act_shelf.statute_context's items. [] for nothing usable."""
+    out = []
+    for it in items or []:
+        try:
+            secs = {str(n).upper(): t for n, t in (it.get("sections") or {}).items() if t}
+            if secs:
+                out.append({"act": it.get("act") or "", "aliases": it.get("aliases"), "year": it.get("year"), "sections": secs, "words": {n: _stems(t) for n, t in secs.items()}})
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def set_statute_context(items):
+    """Called by chat_assistant once the Act shelf has handed over a section the question named: the filter for THIS question's wider search. reset() forgets it."""
+    try:
+        _LOCAL.statute_ctx = make_statute_context(items)
+    except Exception:  # noqa: BLE001
+        _LOCAL.statute_ctx = []
+
+
+def _section_refs(text):
+    """[(number, start, end)] for every section number a text cites ('section 17', 'Sections 13 and 17(1)', 's. 45', 'Section 5-A' is 5A); end is where the reference stops, where the statute's name would follow."""
+    try:
+        from act_shelf import _SECREF
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for m in _SECREF.finditer(text or ""):
+        nums = re.findall(r"\d{1,3}[A-Za-z]{0,2}", re.sub(r"\([^)]*\)", " ", m.group(1)))
+        tail = re.match(r"\s*-\s*([A-Za-z])\b", text[m.end():])
+        for i, n in enumerate(nums):
+            if tail and i == len(nums) - 1 and not re.search(r"[A-Za-z]$", n):
+                n += tail.group(1)
+            out.append((n.upper(), m.start(), m.end() + (tail.end() if tail else 0)))
+    return out
+
+
+def _statute_named_after(text, end, aliases):
+    """The statute a section reference ending at `end` is tied to in so many words ('of the Land Acquisition Act, 1894', 'under the Code of Criminal Procedure', 'of the NDPS Act'), or None when none is named,
+    when only 'the Act' / 'the Code' is written, or when the name is one of the Act's own (`aliases`)."""
+    m = _NAMED_AFTER.match(text or "", end)
+    if not m:
+        return None
+    name = re.sub(r"\s+", " ", m.group(0)).strip(" ,")
+    name = re.sub(r"^(?:of|under|in)\s+(?:the\s+)?", "", name, flags=re.I)
+    if aliases is not None and aliases.search(name):
+        return None
+    return name
+
+
+def _off_statute(text, ctx):
+    """None to keep a wider-search passage; else a short reason why it is about another statute. See the comment above. `ctx` is make_statute_context's form. Never raises."""
+    try:
+        if not text or not ctx:
+            return None
+        refs = _section_refs(text)
+        cited = []
+        for item in ctx:
+            for num, words in item["words"].items():
+                spans = [(s, e) for n, s, e in refs if n == num]
+                if spans:
+                    cited.append((item, num, words, spans))
+        if not cited:
+            return None
+        if any(it["aliases"] is not None and it["aliases"].search(text) for it, _n, _w, _s in cited):
+            return None                                                    # the passage names the Act itself
+        tied = [(it, num, _statute_named_after(text, e, it["aliases"])) for it, num, _w, spans in cited for _s, e in spans]
+        if tied and all(t[2] for t in tied):                               # (A) every reference to the number is tied to some other statute
+            return "cites section %s of %s" % (tied[0][1], tied[0][2][:70])
+        if any(_year_alias(it.get("year")).search(text) for it, _n, _w, _s in cited if it.get("year")):
+            return None                                                    # 'the Act of 2002', 'the 2002 Act': a judgment's usual short name for the Act (it may also be another Act of that year: kept, not judged)
+        if len(text) < FILTER_MIN_PASSAGE:
+            return None
+        mine = _stems(text)
+        judged = []
+        for it, num, words, _spans in cited:                               # (B) the section's own words are the yardstick
+            if len(words) < FILTER_MIN_SECTION_WORDS:
+                return None
+            need = 3 if len(words) >= 25 else 2
+            shared = len(mine & words)
+            if shared >= need:
+                return None
+            judged.append((it, num, shared))
+        it, num, shared = judged[0]
+        return "cites section %s without naming %s and shares only %d word(s) with it" % (num, it["act"] or "the Act", shared)
+    except Exception:  # noqa: BLE001 -- fail open
+        return None
+
+
+def _statute_filter(results):
+    """(kept, dropped): `results` without the passages that are plainly about another statute; dropped is [(result, reason)]. Nothing is dropped without a statute context or with FEED_STATUTE_FILTER=off."""
+    ctx = getattr(_LOCAL, "statute_ctx", None) or []
+    if not ctx or not _filter_on():
+        return list(results), []
+    kept, dropped = [], []
+    for r in results:
+        why = _off_statute((r.get("text") or "") if isinstance(r, dict) else "", ctx)
+        (dropped.append((r, why)) if why else kept.append(r))
+    return kept, dropped
+
+
 MAX_NAMED_FETCHES = 2        # second searches per question for a controlling case that a passage points to (a flagged case's own corrector is fetched without this cap)
 NAMED_NOTE = "\n[Overruled Register -- not optional: this passage names a case on our register; if you mention that case at all, state this fact in the same sentence]\n"
 
@@ -545,6 +682,9 @@ def feed_block(question):
             print("SCI_FEED no passages: the search service gave no answer (down, slow, wrong address or token)", flush=True)
             return ""
         res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
+        res, left_out = _statute_filter(res)                              # a passage that cites the section the person named, of ANOTHER statute (owner's staging test 2026-10-19)
+        if left_out:
+            print("SCI_FEED_FILTER " + json.dumps({"dropped": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "why": why[:160]} for r, why in left_out]}), flush=True)
         flags = _flags(res)
         anchor_names = _anchor_case_names(question)
         by_doc = {}

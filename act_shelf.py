@@ -498,6 +498,32 @@ def shelf_ids(matches):
     return out
 
 
+def _act_year(m):
+    """The year in an Act's name ('... Act, 2002' gives 2002) from the match's display name or citation; None when there is none."""
+    for t in (m.get("act_display"), (_state(m.get("act_key") or "") or {}).get("name"), (_state(m.get("act_key") or "") or {}).get("citation")):
+        y = re.search(r"\b(1[89]\d\d|20\d\d)\b", t or "")
+        if y:
+            return int(y.group(1))
+    return None
+
+
+def statute_context(matches):
+    """For the wider search (sci_search_tier.set_statute_context): [{'act': display name, 'aliases': compiled regex of the Act's names or None, 'sections': {number: title + text}}] for the shelf sections the
+    question NAMED (retrieval 'named', or 'implied': a bare number taken for the one shelf Act of the conversation). A section found by meaning or by a pointer is not one the person asked about, so it is
+    left out. [] when there is none."""
+    out = {}
+    try:
+        patterns = name_patterns()
+        for m in matches or []:
+            if not (isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied") and m.get("text") and m.get("act")):
+                continue
+            item = out.setdefault(m["act"], {"act": m.get("act_display") or m["act"], "aliases": patterns.get(m["act"]), "year": _act_year(m), "sections": {}})
+            item["sections"][str(m.get("section_number")).upper()] = ((m.get("title") or "") + " " + m["text"]).strip()
+    except Exception:  # noqa: BLE001
+        return []
+    return list(out.values())
+
+
 def held_state(matches, acts):
     """For the notice and the prompt: {act id: {'state': 'used'|'unused', 'loaded_on': iso date}} for every Act of `acts` that has a working shelf.  'used' = text of that Act reached the answer;
     'unused' = the shelf holds the Act but nothing from it did (nothing close enough, or the question was not searched).  'whole': True is added for an Act that is handed over in full.  An Act with no working shelf is not in the result."""
