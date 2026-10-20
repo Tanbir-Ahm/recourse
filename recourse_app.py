@@ -888,6 +888,11 @@ def _render_section_notes(items):
             st.markdown(f'<p class="r-conf">{esc(it.get("lead") or "")}</p>', unsafe_allow_html=True)
             for t in it.get("texts") or []:
                 st.markdown(f'<div class="r-mono">{esc(t)}</div>', unsafe_allow_html=True)
+            for c in it.get("cites") or []:                          # SECTION_XREF: the section(s) this one refers to, whole and word for word
+                if isinstance(c, dict):
+                    st.markdown(f'<p class="r-conf">{esc(c.get("lead") or "")}</p>', unsafe_allow_html=True)
+                    for t in c.get("texts") or []:
+                        st.markdown(f'<div class="r-mono">{esc(t)}</div>', unsafe_allow_html=True)
             when = loaded_label(it.get("loaded_on"))
             bits = ["Official text from India Code" + (f", loaded {esc(when)}" if when else "") + "; not yet read by our reviewer"]
             if it.get("cut"):
@@ -955,7 +960,7 @@ def render_answer(result: dict):
             # BNS 84 turning up next to an unrelated arrest question.
             if str(m.get("source") or "").startswith("curated"):
                 return True
-            if m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied"):     # the person asked about this section: it is listed whether or not the answer used its number (SECTION_RULE)
+            if m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied", "cited"):     # the person asked about this section (or it is cited by one he asked about: SECTION_XREF): it is listed whether or not the answer used its number (SECTION_RULE)
                 try:
                     import section_rule
                     if section_rule.enabled():

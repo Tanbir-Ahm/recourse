@@ -108,13 +108,35 @@ def _words(n):
     return _NUMBER_WORDS.get(n, str(n))
 
 
+def _cites(m, matches, num, act, asked_seen):
+    """SECTION_XREF: the sections that the asked section `m` cites (act_shelf._add_cited put their numbers in m['cites'] and their text in `matches`), each as {'section','lead','texts','cut'}: the whole official text of
+    the cited section, under one plain sentence that makes no claim about what it means.  A cited section that is itself one the person asked about has its own note and is not repeated.  [] when none."""
+    out = []
+    try:
+        for cn in (m.get("cites") or [])[:2]:
+            cn = str(cn).upper()
+            if (m.get("act"), cn) in asked_seen:
+                continue
+            hit = next((x for x in matches or [] if isinstance(x, dict) and x.get("source") == "act_shelf" and x.get("act") == m.get("act") and str(x.get("section_number") or "").upper() == cn
+                        and (x.get("text") or "").strip()), None)
+            if hit is None:
+                continue
+            body, cut = _cut_lines(hit["text"].strip(), OFFICIAL_CHARS)
+            out.append({"section": cn, "texts": [body], "cut": cut,
+                        "lead": f"Section {num} of the {act} refers to section {cn} of the same Act. So that you can read what the reference points to, here is the official text of section {cn}, as loaded from India Code:"})
+    except Exception:  # noqa: BLE001
+        return []
+    return out
+
+
 def notes(answer, matches):
     """The official text of every section the person NAMED, for the page, under the answer (owner's choice of 2026-10-20: "show both side by side, always"):
     [{'act', 'section', 'kind': 'official'|'not_mentioned'|'provisos', 'lead', 'texts': [the section's whole official text], 'provisos': [str], 'cut': bool, 'loaded_on', 'source_url'}], at most MAX_NOTES, for the shelf
     sections with retrieval 'named', or 'implied' (a bare number taken for the one shelf Act of the conversation).  [] when the rule is off, when the answer is empty, and on any problem.
     The text is always the section as loaded from India Code, word for word, cut at a line end beyond OFFICIAL_CHARS (cut=True says so).  The kind only changes the sentence above it:
     'official' = the answer uses the section's number and refers to its provisos one by one (or it has none): the plain statement that this is the official wording the explanation rests on;
-    'not_mentioned' = the answer never uses the number (section 17A is not section 17); 'provisos' = the section has provisos and the answer does not clearly set them out (provisos_covered; `provisos` lists them)."""
+    'not_mentioned' = the answer never uses the number (section 17A is not section 17); 'provisos' = the section has provisos and the answer does not clearly set them out (provisos_covered; `provisos` lists them).
+    With SECTION_XREF on, an item also carries 'cites' = [{'section','lead','texts','cut'}]: the sections of the same Act that the asked section cites by number (act_shelf.cited_sections), whole and word for word."""
     out = []
     try:
         if not enabled() or not (answer or "").strip():
@@ -122,6 +144,8 @@ def notes(answer, matches):
         import act_shelf
         mentioned = act_shelf.section_numbers_in(answer)
         seen = set()
+        asked = {(x.get("act"), str(x.get("section_number") or "").upper()) for x in matches or []
+                 if isinstance(x, dict) and x.get("source") == "act_shelf" and x.get("retrieval") in ("named", "implied")}        # a cited section that was itself asked about has its own note
         for m in matches or []:
             if not (isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") in ("named", "implied") and (m.get("text") or "").strip()):
                 continue
@@ -145,6 +169,9 @@ def notes(answer, matches):
                                                    f"The answer above does not clearly set {'it' if k == 1 else 'them'} out, so here is the whole section in the official words:"))
             else:
                 item.update(kind="official", lead=f"The official text of section {num} of the {act}, which you asked about. The explanation above is a plain-language reading of this text; the wording below is the law as loaded from India Code:")
+            cites = _cites(m, matches, num, act, asked)
+            if cites:
+                item["cites"] = cites
             out.append(item)
         return out
     except Exception:  # noqa: BLE001

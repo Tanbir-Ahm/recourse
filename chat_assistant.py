@@ -2768,6 +2768,8 @@ def format_retrieved_text_for_prompt(matches):
             source = f"Section {label}"
 
         block = f"[{source}, Section/Para {label}]\n{m['text']}"
+        if m.get("retrieval") == "cited" and m.get("cited_by"):                       # SECTION_XREF: a section handed over because the section the person asked about refers to it
+            block = f"[{source}, Section/Para {label}]\n(Cited by section {m['cited_by']} of the same Act, the section the person asked about.)\n{m['text']}"
 
         if m.get("context_note"):
             block += "\n\n[Important legal context for this section]\n" + m["context_note"]
@@ -3916,7 +3918,7 @@ def _attach_section_note(result):
         items = section_rule.notes(result.get("response_text") or "", result.get("matches"))
         if items:
             result["section_note"] = items
-            print("SECTION_NOTE " + json.dumps({"sections": [f"{i['act']} s.{i['section']}: {i['kind']}" for i in items]}), flush=True)
+            print("SECTION_NOTE " + json.dumps({"sections": [f"{i['act']} s.{i['section']}: {i['kind']}" + (" +cites " + ",".join(c["section"] for c in i["cites"]) if i.get("cites") else "") for i in items]}), flush=True)
     except Exception as exc:  # noqa: BLE001 -- fail-open
         logger.warning("_attach_section_note failed: %s", type(exc).__name__)
     return result

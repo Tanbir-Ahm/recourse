@@ -24,7 +24,7 @@ It is India Code's database text, which can differ from the printed Act in punct
 Never raises into an answer: every public function returns an empty result on bad input, a missing file or any failure.
 
 Public: mode(), enabled(), available(act_id), loaded_on(act_id), loaded_label(act_id), display_names(), name_patterns(), search(question, acts, current_message=None, embed_fn=None), held_state(matches, acts),
-        shelf_ids(matches), load(), named_sections(text, act_ids), other_numbers(text, act_ids), implied_sections(text, act_ids), section_numbers_in(text).
+        shelf_ids(matches), load(), named_sections(text, act_ids), other_numbers(text, act_ids), implied_sections(text, act_ids), section_numbers_in(text), xref_enabled(), cited_sections(st, num).
 """
 import datetime
 import hashlib
@@ -44,6 +44,9 @@ FLOOR = 0.22                       # cosine under which a section is not handed 
 MAX_CHARS = 14000                  # characters of statute text handed over for one question (shared by the Acts; named and pointed sections always come); the first section of an Act is exempt. 18,000 and 14,000 handed the marked section over equally often on the test questions (28 of 29), 12,000 did not (27)
 MAX_NAMED = 3
 MAX_POINTED = 2
+MAX_CITED = 2                      # sections handed over because a section the person asked about cites them (SECTION_XREF), at most this many for one Act
+CITED_MAX_CHARS = 4000             # a cited section longer than this is not added (a section is never cut): the cited sections of the nine Acts are mostly short, 1,107 characters for section 13 of the PC Act
+MAX_FANOUT = 2                     # a section that cites MORE than this many other sections of its Act (a rule-making power, a list of offences, section 19 of the PC Act with its four) is not followed at all: all or none, so the page never shows two of four as if they were all
 WHOLE_ACT_MAX_CHARS = 6000         # a manifest entry may say "whole_act": true only for an Act this short (sections that are not omitted, in all); a longer Act with that flag is NOT held, so a slip in the manifest cannot hand over a long Act in full
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
 WINDOW = 45                        # characters either side of a section number in which the Act's name must START (after the number) or END (before it): 'section 45 of the PMLA', 'PMLA section 45'
@@ -415,6 +418,132 @@ def implied_sections(text, act_ids):
     return out
 
 
+# ----- sections that a named section cites (SECTION_XREF) ------------------------------------------------------------------------------------------------------------------------------------
+
+def xref_enabled():
+    """SECTION_XREF=on|off, default OFF (added 2026-10-20). On: a section the person asked about, and that cites another section of its own Act by number, brings that section too (cited_sections, _add_cited)."""
+    return (os.environ.get("SECTION_XREF") or "").strip().strip("\"'").strip().lower() == "on"
+
+
+# An enactment named in the words right after a reference: 'section 8 of the Code of Criminal Procedure, 1973', 'section 617 of the Companies Act, 1956', 'section 42 of that Code', 'section 195 and [Chapter XXVI] of the [Code]',
+# 'section 15 of the Act' (which Act is not known): the number is then NOT this Act's.  The words must follow the number at once ('of', 'in', 'under' + a capitalised name that runs on to Act, Code, ...): an Act named
+# later in the same sentence ('sections 7, 11, 13 and 15 ... save as otherwise provided in the Lokpal and Lokayuktas Act, 2013') does not make the reference another Act's.  'this Act' (lower-case 'this') and the Act's
+# own name are the exceptions.  Case-sensitive on purpose.
+_AFTER_REF = re.compile(r"^[\s,\]\)]*(?:(?:and|or)\s+)?(?:to\s+\d{1,3}[A-Za-z]{0,2}\s*(?:\([^)]*\)\s*)*)?(?:\[?(?:Chapter|sub-section|clause)\b[^,;]{0,30}?\s+)?(?:of|in|under|to)\s+(?:(?:the|that|said)\s+)*(?P<name>\[?[A-Z].{0,200})", re.S)
+_ENACTMENT_WORDS = {"Act", "Code", "Sanhita", "Adhiniyam", "Ordinance", "Constitution", "Rules", "Regulations"}
+_NAME_CONNECTORS = {"of", "and", "the", "for", "on", "to", "in", "&"}
+_ENACTMENT_ABBR = re.compile(r"^[\s,\]\)]*(?:(?:and|or)\s+)?(?:of|in|under|to)\s+(?:(?:the|that|said)\s+)*(?:Cr\.?\s?P\.?\s?C\.?|I\.?P\.?C\.?|BNSS?|BSA|NDPS|POCSO|PMLA|UAPA)(?![A-Za-z])")
+_NOTE_START = re.compile(r"\[\s*Note\s*:", re.I)
+_REF_WORD = re.compile(r"^sections?\b", re.I)
+_AMENDING = re.compile(r"\(\s*\d+\s+of\s+\d{4}\s*\)\s*,?\s*$|\b(?:Subs|Ins|Rep)\.\s*(?:by|w\.e\.f)", re.I)
+
+
+def _tied_elsewhere(tail, aid):
+    """True when the words right after a section reference (`tail`) name some OTHER enactment than the Act `aid`: the reference is then not to a section of this Act (see _AFTER_REF).  The name may contain small
+    words ('Persons with Disabilities (Equal Opportunities ...) Act, 1995'): the capitalised start is followed to the first Act/Code/... within 30 words, stopping at ';' or ':'."""
+    if _ENACTMENT_ABBR.match(tail) or re.match(r"\s*\(\s*\d+\s+of\s+\d{4}\s*\)", tail):         # 'section 153A (45 of 1860)': an enactment's number and year follow
+        return True
+    m = _AFTER_REF.match(tail)
+    if not m:
+        return False
+    name = m.group("name")
+    if any(p.match(name) for p in ((_state(aid) or {}).get("aliases") or [])):
+        return False                                                  # the Act's own name
+    prev = ""
+    for tok in name.split()[:30]:
+        w = tok.strip("[](),.;:")
+        if w in _ENACTMENT_WORDS and prev != "this":
+            return True
+        if tok.endswith((";", ":")) or w.lower() in ("section", "sections", "sub-section", "sub-sections"):
+            return False                                              # the name ended without naming an enactment ('of Police;'), or the next reference began
+        prev = w.lower()
+    return False
+
+
+_ENUM = re.compile(r"^\s*,?\s*(?:or|and)\b", re.I)
+
+
+def cited_sections(st, num):
+    """(cited, info): the numbers of the sections of the same Act that section `num` of the Act `st` cites by number in its own text ('... of section 13 shall not be investigated ...'), in order of first mention, and a
+    dict of what was left out and why.  A reference is left out when: it is not written 'section N' / 'sections N, M' (an amendment note's 's. 5'); it stands in India Code's own '[Note: ...]' paragraph or in an amending
+    Act's note ('... (3 of 2013), s. 5'); the words right after it name another enactment ('section 8 of the Code of Criminal Procedure, 1973'); it points at the section itself; the Act has no such section or it is omitted.
+    A section that cites more than MAX_FANOUT other sections is followed for none of them (info['fanout']).  ([], {}) on any problem."""
+    info = {}
+    try:
+        c = st["by_num"].get(str(num).upper())
+        text = (c or {}).get("text") or ""
+        if not text:
+            return [], info
+        note_at = _NOTE_START.search(text)
+        limit = note_at.start() if note_at else len(text)
+        out = []
+        refs = [m for m in _SECREF.finditer(text[:limit]) if _REF_WORD.match(m.group(0))]       # 's. 5', 'u/s 5' (an amendment note) are not read
+        other = [None] * len(refs)
+        for i in range(len(refs) - 1, -1, -1):
+            m = refs[i]
+            tail = text[m.end():m.end() + 160]
+            if _ENUM.match(tail) and i + 1 < len(refs) and refs[i + 1].start() - m.end() <= 200:
+                other[i] = other[i + 1]                                 # 'section 3, or ... section 17 of the Commissions ... Act': one name for the list
+            else:
+                other[i] = _tied_elsewhere(tail, st["key"])
+        for i, m in enumerate(refs):
+            word = _REF_WORD.match(m.group(0))
+            head = text[max(0, m.start() - 120):m.start()]
+            if _AMENDING.search(head) or re.match(r"\s*\(\s*w\.e\.f", text[m.end():m.end() + 40], re.I) or other[i]:
+                continue
+            g = m.group(1)
+            nums = re.findall(r"\d{1,3}[a-z]{0,2}", re.sub(r"\([^)]*\)", " ", g))
+            if word.group(0).lower() == "section":
+                nums = nums[:1]                                       # 'section 3 or 5 years' is one section; 'sections 7, 13 and 17' is three
+            for n in (x.upper() for x in nums):
+                t = st["by_num"].get(n)
+                if n == str(num).upper() or not t or t.get("omitted") or n in out:
+                    continue
+                out.append(n)
+        if len(out) > MAX_FANOUT:
+            info["fanout"] = len(out)
+            return [], info
+        return out, info
+    except Exception:  # noqa: BLE001
+        return [], {}
+
+
+def _add_cited(st, mine, rec):
+    """SECTION_XREF: after the sections the person asked about are chosen (rec['named'], rec['implied']), adds the sections they cite (cited_sections) to `mine` as retrieval 'cited' with 'cited_by' = the citing
+    section, at most MAX_CITED new ones, none longer than CITED_MAX_CHARS.  Every asked section's own match gets 'cites' = the cited numbers that are in the material (added now, or already there by meaning).
+    rec['cited'] lists what was added, rec['cite_skipped'] what was left out and why (for the ACT_SHELF log line).  Never raises."""
+    try:
+        have = {str(m["section_number"]).upper(): m for m in mine}
+        added = 0
+        for n in list(rec["named"]) + list(rec.get("implied") or []):
+            holder = have.get(n)
+            cites, info = cited_sections(st, n)
+            if info.get("fanout"):
+                rec.setdefault("cite_skipped", []).append({"by": n, "why": f"cites {info['fanout']} sections"})
+            shown = []
+            for cn in cites:
+                m = have.get(cn)
+                if m is None:
+                    c = st["by_num"][cn]
+                    if added >= MAX_CITED:
+                        rec.setdefault("cite_skipped", []).append({"s": cn, "by": n, "why": "cap"})
+                        continue
+                    if len(c.get("text") or "") > CITED_MAX_CHARS:
+                        rec.setdefault("cite_skipped", []).append({"s": cn, "by": n, "why": "too long"})
+                        continue
+                    m = _match(st, c, "cited", None)
+                    m["cited_by"] = n
+                    mine.append(m)
+                    have[cn] = m
+                    added += 1
+                    rec.setdefault("cited", []).append({"s": cn, "by": n})
+                shown.append(cn)
+            if holder is not None and shown:
+                holder["cites"] = shown
+    except Exception:  # noqa: BLE001 -- the cited sections are an addition: without them the material is what it was
+        pass
+
+
 # ----- the search -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def _embed_query(text):
@@ -532,6 +661,8 @@ def search(question, acts, current_message=None, embed_fn=None):
                     rec["meaning"].append({"s": str(c["section_number"]), "score": round(sc, 3)})
                     used += len(c["text"])
                     got += 1
+            if xref_enabled():
+                _add_cited(st, mine, rec)                              # SECTION_XREF: the sections that the named section cites
             info["per_act"][aid] = rec
             matches += mine
         info["chars"] = sum(len(m["text"]) for m in matches)
@@ -591,6 +722,10 @@ def held_state(matches, acts):
                 bucket = asked.setdefault(m["act_key"], [])
                 if str(m["section_number"]).upper() not in bucket:
                     bucket.append(str(m["section_number"]).upper())
+        cited = {}
+        for m in (matches or []) if section_rule.enabled() else []:
+            if isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") == "cited" and m.get("act_key") and m.get("section_number") and m.get("cited_by"):
+                cited.setdefault(m["act_key"], []).append({"by": str(m["cited_by"]).upper(), "section": str(m["section_number"]).upper()})
         for a in acts or []:
             aid = a.get("id") if isinstance(a, dict) else a
             st = _state(aid)
@@ -600,6 +735,8 @@ def held_state(matches, acts):
                     out[aid]["whole"] = True                           # the Act is handed over in full (a very short Act): the notice and the prompt say so instead of "the sections our search found"
                 if asked.get(aid):
                     out[aid]["named"] = asked[aid]
+                if cited.get(aid):
+                    out[aid]["cited"] = cited[aid]                      # SECTION_XREF: [{'by': '17', 'section': '13'}]: the prompt tells the model that the asked section refers to these
     except Exception:  # noqa: BLE001
         return {}
     return out

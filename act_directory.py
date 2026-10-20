@@ -312,7 +312,20 @@ def _letter_example(nums):
     return f"{n}A for {n}" if base == n else f"{base} for {n}"
 
 
-def _prompt_named(items):
+def _cited_clause(a, num_list, cited):
+    """SECTION_XREF: when the section the person asked about refers to another section of the same Act that is also in the material ('cited' = [{'by','section'}] from act_shelf.held_state), one more bullet:
+    say in one sentence what the cited section covers, from its text only.  '' when there is none."""
+    mine = [c for c in (cited or []) if str(c.get("by")).upper() in [str(n).upper() for n in num_list]]
+    if not mine:
+        return ""
+    by = sorted({str(c["by"]).upper() for c in mine})
+    secs = [str(c["section"]).upper() for c in mine]
+    return (f"- {_sections_phrase(by).capitalize()} refers to {_sections_phrase(secs)} of the same Act, which {'is' if len(secs) == 1 else 'are'} also in the material above (marked as cited by the section asked about). "
+            f"Where you explain the part of {_sections_phrase(by)} that makes the reference, say in one sentence, in your own words and from that text only, what the cited section covers, so that the person can see which kind of case the reference concerns. "
+            "Do not go beyond the words of the cited section; if they do not settle whether the person's situation falls under it, say so.\n")
+
+
+def _prompt_named(items, cited=None):
     """The block for a question that NAMES a section of an Act whose text is in the material (owner's staging test of 2026-10-19, section 17 of the Prevention of Corruption Act: the answer wrote about 17A when asked
     about 17, and left out the second proviso of 17). items: [(act entry, [section numbers])] for the Acts of the question that have named sections.  It repeats the Hard rules' ground (only the material), it does not
     replace them; a test asserts that the Hard rules block is untouched.  '' for none."""
@@ -328,7 +341,8 @@ def _prompt_named(items):
             "- Say what the section provides, using only its text in the material: its main rule and EVERY proviso and Explanation it has there, each in your own words, and introduce each proviso as the section's first, "
             "second (and so on) proviso. Do not leave a proviso out because it seems to apply only to some cases: say which cases it applies to.\n"
             "- If the person asks whether something is required or allowed, answer by what the section's own words require, and say which proviso changes the answer for which kind of case.\n"
-            "- If the material does not show the section's text, say so in one sentence instead of describing it.\n")
+            "- If the material does not show the section's text, say so in one sentence instead of describing it.\n"
+            + "".join(_cited_clause(a, n, (cited or {}).get(a["id"])) for a, n in items))
 
 
 def prompt_block(acts, held=None):
@@ -341,9 +355,10 @@ def prompt_block(acts, held=None):
         used, unused, plain = _split_held(acts, held)
         used_full = [a for a in used if (held.get(a["id"]) or {}).get("whole")]
         named = [(a, (held.get(a["id"]) or {}).get("named")) for a in used]               # the sections the person named (act_shelf.held_state), for the Acts whose text reached the answer
+        cited = {a["id"]: (held.get(a["id"]) or {}).get("cited") for a in used}            # SECTION_XREF: the sections those cite, also in the material
         used = [a for a in used if a not in used_full]
         return ((_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_used_whole(used_full) if used_full else "")
-                + (_prompt_unused(unused) if unused else "") + _prompt_named(named))
+                + (_prompt_unused(unused) if unused else "") + _prompt_named(named, cited))
     except Exception:  # noqa: BLE001
         return ""
 
