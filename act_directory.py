@@ -193,10 +193,9 @@ def _held_sentences(acts, kind, held):
     out = []
     used_full = [a for a in used if (held.get(a["id"]) or {}).get("whole")]          # a very short Act, handed to the answer in full
     used = [a for a in used if a not in used_full]
-    if used:
-        it, them, they = _ref(used, whole(used))
-        out.append(f"Recourse has loaded the official text of {it} from India Code ({_stamp(used, held)}). The answer below was written from the sections of {it} that our search found for this question; "
-                   f"{they} may contain other provisions that bear on your question.")
+    # Owner's instruction 2026-10-20: for an Act whose shelf text reached the answer, the notice no longer carries the sentences "Recourse has loaded the official text of that Act from India Code (...; not yet read
+    # by our reviewer). The answer below was written from the sections of that Act that our search found for this question; it may contain other provisions that bear on your question." (kind 'used', below),
+    # nor, for a question the topic bar was opened for, "Recourse has not checked this area in depth; please confirm what follows with a lawyer who handles this area before you rely on it." (end of this function).
     if used_full:
         it, them, they = _ref(used_full, whole(used_full))
         many_full = len(used_full) > 1
@@ -208,8 +207,6 @@ def _held_sentences(acts, kind, held):
     if plain:
         it, them, they = _ref(plain, whole(plain))
         out.append(f"Recourse does not hold the text of {it}, so the answer below does not rest on {them}." if kind != "refusal" else f"Recourse does not hold the text of {it}.")
-    if kind == "opened":
-        out.append("Recourse has not checked this area in depth; please confirm what follows with a lawyer who handles this area before you rely on it.")
     return out
 
 
@@ -217,7 +214,7 @@ def notice(acts, kind="answer", path=None, held=None):
     """The fixed notice for the Acts a question names, as plain text (WhatsApp) and as escaped HTML (the page): {'kind','acts':[ids],'text','html'}, or None.
     kind: 'opened' (the topic bar was opened for this question: carries the generic caution too), 'answer' (an ordinary answer that also names the Act), 'refusal' (the question was turned away).
     held (added 2026-10-16 with the Act shelf, act_shelf.held_state): {act id: {'state': 'used'|'unused', 'loaded_on': iso date}} for the Acts that have a working shelf.  None, or no Act of the question in it:
-    exactly the notice that existed before the shelf ('does not hold the text').  An Act whose shelf text reached the answer is described as loaded from India Code and not yet read by our reviewer."""
+    exactly the notice that existed before the shelf ('does not hold the text').  An Act whose shelf text reached the answer: since 2026-10-20 (owner's instruction) a long Act gets no sentence about it here (only the subject line and the link); a very short Act handed over whole is still described as loaded from India Code and not yet read by our reviewer."""
     try:
         if not acts or kind not in KINDS:
             return None

@@ -267,24 +267,26 @@ check(AD.notice(PM, "answer", held={}) == plain and AD.notice(PM, "answer", held
 HU = {"pmla_2002": {"state": "used", "loaded_on": "2026-10-16"}}
 HN = {"pmla_2002": {"state": "unused", "loaded_on": "2026-10-16"}}
 n = AD.notice(PM, "answer", held=HU)
-check("Recourse has loaded the official text of that Act from India Code (loaded 16 October 2026; not yet read by our reviewer). The answer below was written from the sections of that Act that our search found for this question; it may contain other provisions that bear on your question."
-      in n["text"] and "does not hold" not in n["text"] and n["held"] == {"pmla_2002": "used"}, "used (answer): says the text is loaded, from India Code, with the date, not yet read by our reviewer")
-check("does not hold" not in n["text"] and "Official text on India Code: Prevention of Money-laundering Act, 2002 (PMLA): https://indiacode.gov.in/items/" in n["text"] and "not yet read by our reviewer" in n["html"] and '<a href="https://indiacode.gov.in/items/' in n["html"],
-      "used: no 'does not hold', the link is still there, the page text says it too")
+check(n["text"].startswith("This question also names the Prevention of Money-laundering Act, 2002 (PMLA). Official text on India Code: Prevention of Money-laundering Act, 2002 (PMLA): https://indiacode.gov.in/items/")
+      and "Recourse has loaded" not in n["text"] and "The answer below was written from the sections" not in n["text"] and "may contain other provisions" not in n["text"] and "does not hold" not in n["text"] and n["held"] == {"pmla_2002": "used"},
+      "used (answer): owner's instruction 2026-10-20: only the subject line and the link; no 'loaded ... not yet read by our reviewer' sentence, no 'answer below was written from the sections' sentence")
+check("does not hold" not in n["text"] and "Official text on India Code: Prevention of Money-laundering Act, 2002 (PMLA): https://indiacode.gov.in/items/" in n["text"] and "not yet read by our reviewer" not in n["html"] and '<a href="https://indiacode.gov.in/items/' in n["html"],
+      "used: no 'does not hold', the link is still there (as a link on the page), nothing about the reviewer")
 n = AD.notice(PM, "answer", held=HN)
 check("Recourse has loaded the official text of that Act, but the answer below does not rest on it." in n["text"] and "does not hold" not in n["text"], "unused (answer): loaded, but the answer does not rest on it")
 n = AD.notice(PM, "refusal", held=HN)
 check("loaded" not in n["text"] and "does not hold" not in n["text"] and n["text"].startswith("This question names the Prevention of Money-laundering Act, 2002 (PMLA). Official text"), "unused (refusal): no claim either way, the link only")
 n = AD.notice(PM, "opened", held=HU)
-check(n["text"].count("Recourse has not checked this area in depth") == 1 and "loaded the official text of that Act from India Code" in n["text"] and "please confirm what follows with a lawyer" in n["text"], "used (opened): the caution once, with the loaded sentence")
+check("has not checked this area in depth" not in n["text"] and "loaded the official text" not in n["text"] and "please confirm what follows with a lawyer" not in n["text"] and n["text"].startswith("This question names the Prevention of Money-laundering Act, 2002 (PMLA). Official text on India Code:"),
+      "used (opened): owner's instruction 2026-10-20: neither the loaded sentence nor the 'not checked in depth; confirm with a lawyer' caution")
 n = AD.notice(PM, "opened", held=HN)
-check(n["text"].count("has not checked this area in depth") == 1 and "has loaded the official text" in n["text"], "unused (opened)")
+check("has not checked this area in depth" not in n["text"] and "Recourse has loaded the official text of that Act, but the answer below does not rest on it." in n["text"], "unused (opened): the 'loaded, but the answer does not rest on it' sentence stays; the caution is gone")
 MIX = AD.detect("My son is accused under the POCSO Act and the Juvenile Justice Act.")
 check([a["id"] for a in MIX] == ["pocso_act_2012", "jj_act_2015"], f"two Acts found ({[a['id'] for a in MIX]})")
 HM = {"pocso_act_2012": {"state": "used", "loaded_on": "2026-10-16"}}
 n = AD.notice(MIX, "opened", held=HM)
-check("Recourse has loaded the official text of the Protection of Children from Sexual Offences Act, 2012 (POCSO) from India Code" in n["text"] and "Recourse does not hold the text of the Juvenile Justice (Care and Protection of Children) Act, 2015"
-      in n["text"] and n["text"].count("has not checked this area in depth") == 1 and n["held"] == {"pocso_act_2012": "used"}, "one Act held and one not: each is described, by name, and the caution comes once")
+check("Recourse has loaded the official text of the Protection of Children" not in n["text"] and "Recourse does not hold the text of the Juvenile Justice (Care and Protection of Children) Act, 2015"
+      in n["text"] and "has not checked this area in depth" not in n["text"] and n["held"] == {"pocso_act_2012": "used"}, "one Act held and one not: the held Act gets no sentence, the Act that is not held still says so by name, no caution")
 PB = AD.prompt_block(PM)
 check(PB == AD.prompt_block(PM, held=None) == AD.prompt_block(PM, held={}) and "## Acts named in the question that are not in the material" in PB and "The text of that Act is not in the material above" in PB, "prompt_block with no held Act: the block that existed before, word for word")
 pb = AD.prompt_block(PM, held=HU)
@@ -350,7 +352,7 @@ check("## Hard rules (never break)" in p and "Use ONLY the legal information giv
 check("[Amendment notes printed with this section on India Code" in p and "Subs. by Act 20 of 2005, s. 7" in p and "w.e.f. 19-4-2018" in p, "the amendment notes India Code prints with a section go with it (who changed it, from when)")
 check(res["response_text"].startswith("Bail is restricted by twin conditions under Section 45 of the PMLA."), "a good answer comes out unchanged")
 n = res["act_notice"]
-check(n["kind"] == "answer" and n["held"] == {"pmla_2002": "used"} and "has loaded the official text" in n["text"] and "does not hold" not in n["text"], f"the notice says the text was loaded and used ({n['text'][:120]})")
+check(n["kind"] == "answer" and n["held"] == {"pmla_2002": "used"} and "has loaded the official text" not in n["text"] and "does not hold" not in n["text"], f"the notice no longer has the loaded sentence and does not say 'does not hold' ({n['text'][:120]})")
 lines = [l for l in out.splitlines() if l.startswith("ACT_SHELF ")]
 lj = json.loads(lines[0][len("ACT_SHELF "):]) if lines else {}
 check(len(lines) == 1 and lj["acts"] == ["pmla_2002"] and lj["per_act"]["pmla_2002"]["named"] == ["45"] and len(lj["q"]) == 12 and Q_PM not in lines[0] and "twin" not in lines[0], "one ACT_SHELF log line: a hash of the question, the Act and the sections; never the question or the text")
@@ -412,7 +414,7 @@ check(res["state"] == "no_match" and res["act_notice"]["held"] == {"pmla_2002": 
 Q_OPEN = "My nephew was arrested under the POCSO Act. What happens at the trial?"
 res, out = ask(Q_OPEN, like("POCSO", "35"), "The trial must be completed within a year under Section 35 of the POCSO Act.", category=("adjacent_uncovered", "A special law.", None), gate="open")
 p = sent["prompt"]
-check(res["state"] == "single_match" and res["act_notice"]["kind"] == "opened" and res["act_notice"]["held"] == {"pocso_act_2012": "used"} and res["act_notice"]["text"].count("has not checked this area in depth") == 1, "topic bar open: the notice is of kind 'opened', says the text is loaded, carries the caution once")
+check(res["state"] == "single_match" and res["act_notice"]["kind"] == "opened" and res["act_notice"]["held"] == {"pocso_act_2012": "used"} and res["act_notice"]["text"].count("has not checked this area in depth") == 0, "topic bar open: the notice is of kind 'opened' and carries no caution sentence (owner's instruction 2026-10-20)")
 check("## Scope note -- this question is outside the criminal-procedure library" in p and "(for example TADA, the Prevention of Corruption Act, UAPA, or a civil, tax or company law)" in p and "(for example TADA, the Prevention of Corruption Act, POCSO, UAPA" not in p,
       "the scope note's examples of Acts that are not in the material no longer list POCSO when POCSO's text is in the material")
 check(CA._open_topic_block("x") == "" and CA._OPEN_TOPIC_BLOCK.count("(for example TADA, the Prevention of Corruption Act, POCSO, UAPA, or a civil, tax or company law)") == 1, "the scope note itself is unchanged")
@@ -484,7 +486,7 @@ with contextlib.redirect_stdout(buf):
     S._embed_query = boom
 check(got and got[0]["section_number"] == "50", "...and gets the shelf's sections")
 n = AD.notice(AD.detect(LK), "answer", held=HU)
-check(n["text"].startswith("This question looks like it is about the Prevention of Money-laundering Act, 2002 (PMLA). Recourse has loaded") and " also " not in n["text"].split(".")[0], "...and the notice keeps its 'looks like it is about' wording, without a stray 'also' (staging 2026-10-17)")
+check(n["text"].startswith("This question looks like it is about the Prevention of Money-laundering Act, 2002 (PMLA). Official text on India Code") and " also " not in n["text"].split(".")[0], "...and the notice keeps its 'looks like it is about' wording, without a stray 'also' (staging 2026-10-17)")
 
 # the 'payer' pointer (owner's staging test 2026-10-17: the tehsildar answer never told the family who paid that giving is itself an offence, section 8, with a seven-day report for a person compelled)
 def payer(q):
@@ -554,14 +556,14 @@ check(not any("shortened here" in v for v in vals) and any("subject to the condi
 huge = dict(SHELF_MS[0], text="45. " + "A very long section of the Act. " * 700, section_number="999")
 at_, vals_ = page({"state": "single_match", "response_text": "Bail is restricted by Section 999 of the PMLA.", "matches": [huge], "situation_detected": False})
 check(not at_.exception and any("shortened here" in v for v in vals_), "page: a shelf section longer than the page limit (16,000 characters) is cut, says so and links to the whole Act")
-check(any("has loaded the official text of that Act from India Code" in v for v in vals) and not any("does not hold" in v for v in vals), "page: the notice is shown")
+check(any("This question also names the Prevention of Money-laundering Act, 2002 (PMLA)." in v for v in vals) and not any("does not hold" in v or "has loaded the official text of that Act from India Code" in v for v in vals), "page: the notice is shown (subject line and link only)")
 ia = [i for i, v in enumerate(vals) if "Bail is restricted by Section 45 of the PMLA." in v]
-inn = [i for i, v in enumerate(vals) if "has loaded the official text of that Act from India Code" in v]
+inn = [i for i, v in enumerate(vals) if "This question also names the Prevention of Money-laundering Act, 2002 (PMLA)." in v]
 check(ia and inn and inn[0] > ia[0], f"page: the notice stands UNDER the answer, never before it (owner's instruction 2026-10-17; answer at {ia[:1]}, notice at {inn[:1]})")
 at, vals = page({"state": "single_match", "response_text": "Bail is restricted by Section 3 of the Act.", "matches": [{"type": "statute", "act": "BNSS", "section_number": "3", "text": "3. Definitions.", "source": "semantic", "all_variants": {}}], "situation_detected": False})
 check(not at.exception and any("**BNSS Section 3**" in v for v in vals) and not any("Official text from India Code" in v for v in vals), "page: a BNSS section is headed and shown as before, with no shelf caption")
 msgs = WF.format_answer_for_whatsapp({"state": "single_match", "response_text": "Short answer.", "act_notice": NOTE, "matches": SHELF_MS})
-check(msgs[0] == NOTE["text"] and "not yet read by our reviewer" in msgs[0], "WhatsApp: the notice is the first message")
+check(msgs[0] == NOTE["text"] and "Official text on India Code" in msgs[0] and "not yet read by our reviewer" not in msgs[0], "WhatsApp: the notice is the first message")
 check(AP._shelf_act_name("PCACT") == "Prevention of Corruption Act, 1988" and AP._shelf_act_name("SCSTACT") == "SC/ST Act" and AP._shelf_act_name("BNS") is None, "PDF: the heading uses the Act's name for a shelf Act and nothing for any other code")
 import fitz
 pc_ms = S.search("q", [{"id": "pc_act_1988"}], embed_fn=like("PCACT", "19"))["matches"]

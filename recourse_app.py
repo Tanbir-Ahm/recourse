@@ -878,6 +878,73 @@ def _shelf_caption_html(m: dict) -> str:
         return ""
 
 
+_COPY_EMPH = _re_lbl.compile(r"(?<![\w*])(\*{1,2})(?=\S)(.+?)(?<=\S)\1(?![\w*])")
+
+
+def _plain_for_copy(md):
+    """The answer as plain text for the Copy button: '#' heading marks, '**bold**' and '*italic*' markers are taken off (they would show as stray asterisks in an email, Word or WhatsApp); words, bullets, numbers and
+    line breaks are kept exactly. Never raises."""
+    try:
+        t = _re_lbl.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", md or "")
+        for _ in range(2):
+            t = _COPY_EMPH.sub(lambda m: m.group(2), t)
+        return t.strip()
+    except Exception:  # noqa: BLE001
+        return (md or "").strip()
+
+
+def _render_copy_button(text):
+    """A 'Copy' button under a response (owner's instruction 2026-10-20): copies `text` to the clipboard, the label turns to 'Copied' for two seconds. Streamlit strips <script> from markdown, so, like the page's
+    other small scripts (_inject_ga, _scroll_into_view), it is a component iframe; it takes the page's text colour and font from the parent document when it can. navigator.clipboard is tried first, then a hidden
+    textarea with document.execCommand('copy') (older browsers, or an iframe that may not write to the clipboard). Never raises: a button that cannot be drawn is simply left out."""
+    try:
+        import json as _json
+        import streamlit.components.v1 as _c
+        t = (text or "").strip()
+        if not t:
+            return
+        payload = _json.dumps(t).replace("</", "<\\/")
+        _c.html(
+            """<style>
+html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;line-height:1;color:inherit;background:transparent;border:1px solid currentColor;border-radius:8px;padding:7px 11px;cursor:pointer;opacity:.62}
+button:hover{opacity:1}
+button:focus-visible{outline:2px solid currentColor;outline-offset:2px;opacity:1}
+svg{width:14px;height:14px;flex:none}
+</style>
+<button id="b" type="button" aria-label="Copy this response to the clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><span id="t" role="status">Copy</span></button>
+<script>
+(function () {
+  var TEXT = """ + payload + """;
+  var b = document.getElementById("b"), t = document.getElementById("t");
+  try {
+    var cs = window.parent.getComputedStyle(window.parent.document.body);
+    document.body.style.color = cs.color; document.body.style.fontFamily = cs.fontFamily;
+  } catch (e) {}
+  function fallback() {
+    var ok = false, ta = document.createElement("textarea");
+    ta.value = TEXT; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  function done(ok) {
+    t.textContent = ok ? "Copied" : "Could not copy";
+    setTimeout(function () { t.textContent = "Copy"; }, 2000);
+  }
+  b.addEventListener("click", function () {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(TEXT).then(function () { done(true); }, function () { done(fallback()); });
+    } else { done(fallback()); }
+  });
+})();
+</script>""",
+            height=40)
+    except Exception:  # noqa: BLE001
+        logging.getLogger("recourse_app").exception("copy button render failed")
+
+
 def _render_section_notes(items):
     """SECTION_RULE: under the answer, for every section of a shelf Act that the person named (section_rule.notes; owner's choice of 2026-10-20: always, not only when the answer falls short): one plain sentence, then the section's whole official text, written by code."""
     from act_shelf import loaded_label
@@ -931,10 +998,13 @@ def render_answer(result: dict):
             st.markdown('<span class="r-ansmark"></span>', unsafe_allow_html=True)
             if reply:
                 st.markdown(_promote_answer_labels(reply, result.get("audience") or ""))
+                _copy_text = _plain_for_copy(reply)
             else:
                 m0 = (result.get("matches") or [{}])[0]
                 st.markdown("Here is what the law says on this:\n\n> "
                             + esc((m0.get("text") or "").strip()[:800]))
+                _copy_text = "Here is what the law says on this:\n\n" + (m0.get("text") or "").strip()[:800]
+        _render_copy_button(_copy_text)          # owner's instruction 2026-10-20: a Copy button under every response
         if _has_act_note:        # owner's instruction 2026-10-17: this notice is never put BEFORE the answer; it stands directly under it (a refusal has no answer, so there it still follows its heading, see below)
             st.markdown(f'<p class="r-conf">{_act_note["html"]}</p>', unsafe_allow_html=True)          # already escaped by act_directory.notice
         if isinstance(result.get("section_note"), list) and result["section_note"]:            # SECTION_RULE: a section the person named that the answer does not stand on (chat_assistant._attach_section_note)
