@@ -266,24 +266,30 @@ check(len(n1) == 1 and n1[0]["kind"] == "not_mentioned" and n1[0]["section"] == 
       f"answer 1 (about 17A, never says 'section 17'): the note gives section 17 whole ({[(n['kind'], n['section']) for n in n1]})")
 check("does not set that section out by its number" in n1[0]["lead"] and "Provided further that an offence referred to in" in n1[0]["texts"][0] and n1[0]["cut"] is False and n1[0]["source_url"], "...with its official words, second proviso included, a link and nothing cut")
 n2 = R.notes(ANS2, MS1)
-check(len(n2) == 1 and n2[0]["kind"] == "provisos" and len(n2[0]["texts"]) == 2 and "Superintendent of Police." in n2[0]["texts"][1], f"answer 2 (no second proviso): the note gives both provisos ({[(n['kind'], len(n['texts'])) for n in n2]})")
-check("has two provisos" in n2[0]["lead"] and "does not clearly set them out" in n2[0]["lead"], f"...in plain words ({n2[0]['lead']})")
+check(len(n2) == 1 and n2[0]["kind"] == "provisos" and len(n2[0]["provisos"]) == 2 and "Superintendent of Police." in n2[0]["provisos"][1] and n2[0]["texts"] == [SH["acts"][PC]["by_num"]["17"]["text"].strip()],
+      f"answer 2 (no second proviso): the note gives the whole section, and lists its two provisos ({[(n['kind'], len(n['provisos'])) for n in n2]})")
+check("has two provisos" in n2[0]["lead"] and "does not clearly set them out" in n2[0]["lead"] and "the whole section" in n2[0]["lead"], f"...in plain words ({n2[0]['lead']})")
 n3 = R.notes(ANS3, MS1)
 check(len(n3) == 1 and n3[0]["kind"] == "provisos", "answer 3 (a 'further proviso', never the first): the note gives the provisos")
 n4 = R.notes(ANS4, MS4)
 check(len(n4) == 1 and n4[0]["kind"] == "provisos" and n4[0]["section"] == "17", "answer 4 (the second proviso only): the note gives the provisos")
 GOOD = ("Section 17 of the Prevention of Corruption Act, 1988 has a main rule and two provisos. The first proviso lets the State Government authorise an Inspector of Police to investigate without a Magistrate's order. "
         "The second proviso says that an offence under clause (b) of section 13(1), which is the disproportionate assets offence, cannot be investigated without the order of an officer not below the rank of Superintendent of Police. Section 17A is a different provision.")
-check(R.notes(GOOD, MS1) == [], "an answer that names section 17 and sets out its first and second provisos: no note")
-check(R.notes("Section 17 has provisos that matter for a disproportionate assets case.", MS1) == [], "'provisos' in the plural: no note (the test counts words, it does not read meaning)")
+ng = R.notes(GOOD, MS1)
+check(len(ng) == 1 and ng[0]["kind"] == "official" and ng[0]["texts"] == [SH["acts"][PC]["by_num"]["17"]["text"].strip()] and "plain-language reading of this text" in ng[0]["lead"],
+      "an answer that names section 17 and sets out its first and second provisos: the official text is STILL given, with the plain sentence that the explanation is a reading of it (owner's choice of 2026-10-20)")
+check([n["kind"] for n in R.notes("Section 17 has provisos that matter for a disproportionate assets case.", MS1)] == ["official"], "'provisos' in the plural: kind 'official' (the test counts words, it does not read meaning)")
 n13 = R.notes("Section 17A is about approval. Section 19 is about sanction.", S.search("Is section 13 of the PC Act the right section?", ACTS, embed_fn=like("PCACT", "13"))["matches"])
 check(len(n13) == 1 and n13[0]["section"] == "13" and n13[0]["kind"] == "not_mentioned", "a named section the answer never mentions is noted whatever its length")
-check(R.notes("Section 13 makes it criminal misconduct.", S.search("Is section 13 of the PC Act the right section?", ACTS, embed_fn=like("PCACT", "13"))["matches"]) == [], "section 13 has no proviso: when the answer names it, no note")
+n13b = R.notes("Section 13 makes it criminal misconduct.", S.search("Is section 13 of the PC Act the right section?", ACTS, embed_fn=like("PCACT", "13"))["matches"])
+check(len(n13b) == 1 and n13b[0]["kind"] == "official" and n13b[0]["provisos"] == [] and "Explanation 1" in n13b[0]["texts"][0], "section 13 has no proviso and the answer names it: its whole official text (Explanations included) is given, kind 'official'")
 mm = [m for m in MS1 if m["retrieval"] == "meaning"]
 check(R.notes("Nothing about any section.", mm) == [], "sections found by meaning are never noted: the person did not ask about them")
 n19 = R.notes("Nothing.", S.search("What does section 19 of the PC Act say?", ACTS, embed_fn=like("PCACT", "19"))["matches"])
-check(n19 and n19[0]["cut"] is True and len(n19[0]["texts"][0]) <= R.NOT_MENTIONED_CHARS and n19[0]["texts"][0] == SH["acts"][PC]["by_num"]["19"]["text"].strip()[:len(n19[0]["texts"][0])],
-      f"a long section (5,206 characters) is cut at a line end and says so ({len(n19[0]['texts'][0]) if n19 else None})")
+check(n19 and n19[0]["cut"] is False and n19[0]["texts"][0] == SH["acts"][PC]["by_num"]["19"]["text"].strip(), f"a long section (5,206 characters) is given whole ({len(n19[0]['texts'][0]) if n19 else None})")
+jj2 = SH["acts"]["jj_act_2015"]["by_num"]["2"]
+njj = R.notes("Nothing.", [dict(S._match(SH["acts"]["jj_act_2015"], jj2, "named", None))])
+check(njj and njj[0]["cut"] is True and len(njj[0]["texts"][0]) <= R.OFFICIAL_CHARS and njj[0]["texts"][0] == jj2["text"].strip()[:len(njj[0]["texts"][0])], f"the longest section (15,359 characters) is cut at a line end and says so ({len(njj[0]['texts'][0]) if njj else None})")
 three = S.search("I was told sections 7, 13 and 17 apply to me.", ACTS, embed_fn=like("PCACT", "8"))["matches"]
 check(len(R.notes("Nothing.", three)) == R.MAX_NOTES == 2, "three named sections that the answer ignores: two notes, not three")
 om = [dict(m, shelf=dict(m["shelf"], omitted=True)) for m in MS1 if m["retrieval"] == "named"]
@@ -337,11 +343,11 @@ check("[Prevention of Corruption Act, 1988 Section 17, Section/Para 17]" in p an
 check("## The section the person asked about" in p and "The person's question is about section 17 of the Prevention of Corruption Act, 1988" in p, "the prompt carries the clause")
 check("## Hard rules (never break)" in p and "Use ONLY the legal information given below" in p and p.index("## Hard rules (never break)") < p.index("## The section the person asked about"), "the Hard rules block is still in the prompt, unchanged, and comes before the clause")
 sn = res.get("section_note")
-check(isinstance(sn, list) and len(sn) == 1 and sn[0]["kind"] == "provisos", f"the owner's answer 4 comes out with the note for the provisos ({[(n['kind'], n['section']) for n in sn or []]})")
+check(isinstance(sn, list) and len(sn) == 1 and sn[0]["kind"] == "provisos", f"the owner's answer 4 comes out with the whole section and the sentence about the provisos ({[(n['kind'], n['section']) for n in sn or []]})")
 lines = [l for l in out.splitlines() if l.startswith("SECTION_NOTE ")]
 check(len(lines) == 1 and json.loads(lines[0][len("SECTION_NOTE "):]) == {"sections": ["Prevention of Corruption Act, 1988 s.17: provisos"]} and "Superintendent" not in lines[0], "one SECTION_NOTE log line: Act, section, kind; never text")
 res, out = ask(Q4e, like("PCACT", "17A"), GOOD)
-check(res["state"] == "single_match" and "section_note" not in res and "SECTION_NOTE" not in out, "an answer that sets out both provisos: no note, no log line")
+check(res["state"] == "single_match" and [n["kind"] for n in res.get("section_note") or []] == ["official"] and "SECTION_NOTE" in out, "an answer that sets out both provisos: the official text all the same, kind 'official'")
 os.environ["SECTION_RULE"] = "off"
 res, out = ask(Q4e, like("PCACT", "17A"), ANS4)
 p = sent.get("prompt", "")

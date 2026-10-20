@@ -879,7 +879,7 @@ def _shelf_caption_html(m: dict) -> str:
 
 
 def _render_section_notes(items):
-    """SECTION_RULE: under the answer, for a section of a shelf Act that the person named and the answer does not stand on (section_rule.notes): one plain sentence, then the official text, written by code."""
+    """SECTION_RULE: under the answer, for every section of a shelf Act that the person named (section_rule.notes; owner's choice of 2026-10-20: always, not only when the answer falls short): one plain sentence, then the section's whole official text, written by code."""
     from act_shelf import loaded_label
     for it in items or []:
         if not isinstance(it, dict):

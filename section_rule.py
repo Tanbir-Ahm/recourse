@@ -13,16 +13,15 @@ What this module holds (pure code, no model, no network):
     which is the default, nothing changes.
   * provisos(text): the provisos of a section's text, each on its own, from the official text.
   * provisos_covered(answer, count): whether the answer refers to the section's provisos one by one ("the first proviso", "the second proviso", or "provisos").
-  * notes(answer, matches): the fixed notes written by code for the page, one per named section the answer does not stand on: kind 'not_mentioned' (the answer never uses the section's number: the section's official
-    text is given) or 'provisos' (the section has provisos and the answer does not clearly set them out: the provisos are given in the official words). They carry the official text only; they judge nothing.
+  * notes(answer, matches): under the answer, the whole official text of every section the person named (owner's choice of 2026-10-20: show the explanation and the official wording side by side, always); only the
+    sentence above it changes when the answer never uses the number ('not_mentioned') or does not refer to the provisos one by one ('provisos'). It carries the official text only; it judges nothing.
 The prompt clause that tells the model to stay on the named section is in act_directory.py (_prompt_named), outside the Hard rules block. The limits are stated in FOLLOW_UPS item 2ay: the check for provisos looks for the words ("the first proviso", "a further proviso"; it cannot read meaning), so it can show the provisos although the answer did cover them in other words, and it cannot tell a wrong description of a proviso from a right one.
 """
 import os
 import re
 
 MAX_NOTES = 2                 # sections noted under one answer
-NOT_MENTIONED_CHARS = 3500    # the official text given for a section the answer never mentions: cut at a line end beyond this
-PROVISO_CHARS = 2500          # the provisos given for one section: cut at a proviso end beyond this
+OFFICIAL_CHARS = 8000         # the official text given under the answer for a named section: cut at a line end beyond this (all but the longest sections of the nine Acts are under it)
 
 _NUMBER_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
 
@@ -110,10 +109,12 @@ def _words(n):
 
 
 def notes(answer, matches):
-    """The notes for the page: [{'act', 'section', 'kind': 'not_mentioned'|'provisos', 'lead', 'texts': [str], 'cut': bool, 'loaded_on', 'source_url'}], at most MAX_NOTES, for the shelf sections the person NAMED
-    (retrieval 'named', or 'implied': a bare number taken for the one shelf Act of the conversation).  [] when the rule is off, when the answer stands on every named section, and on any problem.
-    'not_mentioned': the answer never uses the section's number (section 17A is not section 17), so the section's official text is given.  'provisos': the answer uses the number, the section has provisos and the
-    answer does not clearly set them out (provisos_covered), so the provisos are given."""
+    """The official text of every section the person NAMED, for the page, under the answer (owner's choice of 2026-10-20: "show both side by side, always"):
+    [{'act', 'section', 'kind': 'official'|'not_mentioned'|'provisos', 'lead', 'texts': [the section's whole official text], 'provisos': [str], 'cut': bool, 'loaded_on', 'source_url'}], at most MAX_NOTES, for the shelf
+    sections with retrieval 'named', or 'implied' (a bare number taken for the one shelf Act of the conversation).  [] when the rule is off, when the answer is empty, and on any problem.
+    The text is always the section as loaded from India Code, word for word, cut at a line end beyond OFFICIAL_CHARS (cut=True says so).  The kind only changes the sentence above it:
+    'official' = the answer uses the section's number and refers to its provisos one by one (or it has none): the plain statement that this is the official wording the explanation rests on;
+    'not_mentioned' = the answer never uses the number (section 17A is not section 17); 'provisos' = the section has provisos and the answer does not clearly set them out (provisos_covered; `provisos` lists them)."""
     out = []
     try:
         if not enabled() or not (answer or "").strip():
@@ -133,25 +134,18 @@ def notes(answer, matches):
             if len(out) >= MAX_NOTES:
                 break
             act = m.get("act_display") or m.get("act") or "the Act"
-            base = {"act": act, "section": num, "loaded_on": sh.get("loaded_on"), "source_url": sh.get("source_url")}
-            if num not in mentioned:
-                body, cut = _cut_lines(m["text"].strip(), NOT_MENTIONED_CHARS)
-                out.append({**base, "kind": "not_mentioned", "texts": [body], "cut": cut,
-                            "lead": f"You asked about section {num} of the {act}. The answer above does not set that section out by its number, so here is its official text:"})
-                continue
+            body, cut = _cut_lines(m["text"].strip(), OFFICIAL_CHARS)
             ps = provisos(m["text"])
-            if ps and not provisos_covered(answer, len(ps)):
-                kept, size, cut = [], 0, False
-                for p in ps:
-                    if kept and size + len(p) > PROVISO_CHARS:
-                        cut = True
-                        break
-                    kept.append(p)
-                    size += len(p)
+            item = {"act": act, "section": num, "loaded_on": sh.get("loaded_on"), "source_url": sh.get("source_url"), "texts": [body], "cut": cut, "provisos": ps}
+            if num not in mentioned:
+                item.update(kind="not_mentioned", lead=f"You asked about section {num} of the {act}. The answer above does not set that section out by its number, so here is its official text:")
+            elif ps and not provisos_covered(answer, len(ps)):
                 k = len(ps)
-                out.append({**base, "kind": "provisos", "texts": kept, "cut": cut,
-                            "lead": (f"Section {num} of the {act} has {_words(k)} proviso{'s' if k > 1 else ''} (an exception or condition added to the section's main rule). The answer above does not clearly set "
-                                     f"{'it' if k == 1 else 'them'} out, so {'it is' if k == 1 else 'they are'} given here in the official words:")})
+                item.update(kind="provisos", lead=(f"Section {num} of the {act} has {_words(k)} proviso{'s' if k > 1 else ''} (an exception or condition added to the section's main rule), at the end of the text below. "
+                                                   f"The answer above does not clearly set {'it' if k == 1 else 'them'} out, so here is the whole section in the official words:"))
+            else:
+                item.update(kind="official", lead=f"The official text of section {num} of the {act}, which you asked about. The explanation above is a plain-language reading of this text; the wording below is the law as loaded from India Code:")
+            out.append(item)
         return out
     except Exception:  # noqa: BLE001
         return []

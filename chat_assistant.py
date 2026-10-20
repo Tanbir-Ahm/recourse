@@ -3905,9 +3905,10 @@ def _act_shelf_matches(question, current_message):
 
 
 def _attach_section_note(result):
-    """SECTION_RULE (default on; acts only with ACT_SHELF on): when the person NAMED a section of a shelf Act (retrieval 'named' or 'implied') and the answer does not stand on it, adds result['section_note'] =
-    [{'act','section','kind','lead','texts',...}] (section_rule.notes): kind 'not_mentioned' = the answer never uses the section's number, the official text is given; kind 'provisos' = the answer does not clearly
-    set out the section's provisos, they are given in the official words. Written by code from the shelf's text; judges nothing. One log line: SECTION_NOTE {...} (Act, section, kind; never the question). Never raises."""
+    """SECTION_RULE (default on; acts only with ACT_SHELF on): for every section of a shelf Act that the person NAMED (retrieval 'named' or 'implied'), adds result['section_note'] = [{'act','section','kind','lead',
+    'texts' (the section's whole official text),...}] (section_rule.notes), shown under the answer: the explanation and the official wording side by side, always (owner, 2026-10-20). kind 'official' = the answer
+    uses the number and refers to the provisos; 'not_mentioned' = it never uses the number; 'provisos' = it does not clearly set the provisos out; only the sentence above the text differs. Written by code from the
+    shelf's text; judges nothing. One log line: SECTION_NOTE {...} (Act, section, kind; never the question). Never raises."""
     try:
         if not isinstance(result, dict) or result.get("state") not in ("single_match", "conflicting_matches"):
             return result
