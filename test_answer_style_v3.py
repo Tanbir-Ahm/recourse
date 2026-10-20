@@ -64,6 +64,18 @@ for must in ("The first sentence answers the question itself", "ONE short senten
              "**What you can do right now**", "**What you can do now**", "Put nothing after the steps", "at most 45 characters", "ONLY bold text", "italics", "about 250 words", "about 350 words", "about 400 words",
              "Never go over 450 words", "Never talk down", "never \"you must\"", "No reassurance", "Never write a report citation", "Never say that a case \"is good law\""):
     check(must in V3, f"layman v3 carries: {must}")
+# owner's instruction 2026-10-20: the weighing part has two forms, so a general question is not answered with "For you / Against you"
+i3 = V3.index("3. The part that weighs the answer."); i4 = V3.index("4. A heading, then 2-4 numbered steps.")
+part3 = V3[i3:i4]
+check(i3 < i4 and "(a) The person describes their own situation" in part3 and "(b) The person asks what the law says, how something works" in part3, "layman v3 step 3: form (a) for the person's own situation, form (b) for a general question")
+a_form = part3[part3.index("(a)"):part3.index("(b)")]
+b_form = part3[part3.index("(b)"):]
+check("**How this cuts for and against you**" in a_form and "*For you:*" in a_form and "*Against you:*" in a_form and "What I can't tell from here:" in a_form, "form (a) is exactly what it was: the heading, For you, Against you, 'What I can't tell from here:'")
+check('do NOT use the words "For you" or "Against you"' in b_form and "no longer than 45 characters" in b_form and "**When does the answer change?**" in b_form and "**What to keep in mind**" in b_form and "3-5 short bullet points" in b_form
+      and 'ONE line that starts "What the material does not show:"' in b_form and "never turn a factor into a prediction" in b_form and "attribute what a court said to the court" in b_form, "form (b): no For you / Against you, a heading of at most 45 characters that fits the question, 3-5 bullets of conditions, exceptions and what courts weighed, still attributed and never a prediction, a closing line for what the material does not show")
+check("If you cannot tell which form fits, use (b)." in part3 and all(len(h) <= 45 for h in ("When does the answer change?", "What to keep in mind")), "when in doubt (b); the example headings fit the page's 45-character limit for a heading")
+check("*For you:*" not in V1 and "*For you:*" not in V2 and "For you" not in V3L and "How this cuts" not in V3L, "v1, v2 and the lawyer's note never had the For/Against pair (they are untouched)")
+check(V3.count("**How this cuts for and against you**") == 1 and "Keep the same four parts at every level" in V3, "the Adviser still has four parts")
 # lawyer spec B1-B5
 for must in ("**Bottom line**", "ONLY summary", "**Facts assumed**", "proposition or a question", "**Application to the facts**", "For the client | Against the client", "**Grounds that can be urged**",
              "**Gaps and checks**", "exactly **Bottom line**, with no title or headline", "never stop before it", "Do NOT write a table of authorities", "at most 90 characters", "35 words or fewer", "\"held\", \"observed\", \"directed\", \"reiterated\"", "\"decisive\"", "capitalised NOT",

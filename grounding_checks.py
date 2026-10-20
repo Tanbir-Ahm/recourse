@@ -4,7 +4,8 @@
      A case that is not there came from the model's memory, which the prompt forbids. Each one is also looked up in the site's list of Supreme Court judgments (case_lookup) so the notice can say
      "real but not among our sources" or "not found in our list". The model may mention a case that a passage itself names (a passage that quotes Ramachandra Rao makes Ramachandra Rao part of the material).
   2. Quote check: words in quotation marks (five words or more) must appear in the material, apart from small differences of spacing, punctuation and case. "..." and [bracketed] insertions split a quotation
-     into pieces and each piece is checked.
+     into pieces and each piece is checked. A piece that is not an exact copy may still pass as a near match (95% of the letters), but only if it agrees with the material on every word that decides a legal
+     meaning: not/no/never, may/shall/must, unless/except/only, and/or, all/any/every, and every number (see _FLIP; added 2026-10-18, because one such word is under 5% of the letters of a long quotation).
 
 GROUNDING_CHECKS = off | log | warn | enforce.  log (the default) only prints a GROUNDING_CHECK line to the application log: nothing the user sees changes. warn adds a plain notice under the answer.
 enforce also asks the model once more with the problem named, and withholds the answer when a case that cannot be found anywhere is still in it. Nothing here ever says a case is good law; a notice only withdraws trust.
@@ -222,16 +223,60 @@ def _fragments(quote):
     return [f.strip(" ,.;:") for f in _SPLIT.split(quote) if len(norm(f).split()) >= QUOTE_MIN_WORDS]
 
 
+# Words that decide a legal meaning (added 2026-10-18). A quotation that is only a NEAR match of the material (95% of the letters) is accepted only if it agrees with the matched stretch on every one of them:
+# without this, "may not" -> "shall not" or a deleted "not" in a 44-word quotation passed, because one word is under 5% of the letters. Words, not letters, decide here.
+_FLIP = frozenset("""not no nor never neither none nothing nobody cannot without
+    may shall must can could should might will would
+    unless except save only provided excluding including
+    all any every each either both some
+    and or""".split())
+_NUMBER_WORDS = frozenset("""one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety
+    hundred thousand lakh lakhs crore crores half twice first second third fourth fifth sixth seventh eighth ninth tenth""".split())
+
+
+_SPARE = 2                                              # words of the material compared on each side of the matched stretch (words of it that stick out at the edge are ignored)
+
+
+def _is_flip(tok):
+    return tok in _FLIP or tok in _NUMBER_WORDS or tok.isdigit()
+
+
+def _flip_conflict(fw, win):
+    """True when the quotation's words `fw` and the stretch of the material `win` (both normalised word lists) differ in a word that decides the meaning (see _FLIP; numbers count): a word one has and the other
+    lacks, or one in place of another. Words of the material that stick out at the very start or end of `win` are only the window being wider than the quotation, so they are not counted."""
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, fw, win, autojunk=False).get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "insert" and (j1 == 0 or j2 == len(win)):
+            continue
+        if any(_is_flip(t) for t in fw[i1:i2]) or any(_is_flip(t) for t in win[j1:j2]):
+            return True
+    return False
+
+
 def _fuzzy_in(frag_norm, material_norm, threshold=0.95):
+    """True when some stretch of the material, as long as the quotation, is at least `threshold` the same letter for letter AND agrees with it on every meaning-critical word (_flip_conflict). Accepts nothing the
+    letter test alone would refuse; it only refuses near matches that differ in such a word. It stops at the first stretch that passes both tests. The cheap upper bounds (real_quick_ratio, quick_ratio) skip a
+    stretch without changing the answer."""
     words, mw = frag_norm.split(), material_norm.split()
     n = len(words)
     if n == 0 or len(mw) < n:
         return False
     first = words[0]
+    head = difflib.SequenceMatcher(None)
+    head.set_seq2(first)
+    near_first = {first: True}                          # does this word look like the quotation's first word (ratio 0.8)? asked once per distinct word
     for i, w in enumerate(mw[: len(mw) - n + 1]):
-        if w != first and difflib.SequenceMatcher(None, w, first).ratio() < 0.8:
+        ok = near_first.get(w)
+        if ok is None:
+            head.set_seq1(w)
+            ok = near_first[w] = not (head.real_quick_ratio() < 0.8 or head.quick_ratio() < 0.8 or head.ratio() < 0.8)
+        if not ok:
             continue
-        if difflib.SequenceMatcher(None, " ".join(mw[i:i + n]), frag_norm).ratio() >= threshold:
+        sm = difflib.SequenceMatcher(None, " ".join(mw[i:i + n]), frag_norm)
+        if sm.real_quick_ratio() < threshold or sm.quick_ratio() < threshold or sm.ratio() < threshold:
+            continue
+        if not _flip_conflict(words, mw[max(0, i - _SPARE): i + n + _SPARE]):          # a little room each side: a quotation that drops or adds a word covers one more or one fewer word of material
             return True
     return False
 

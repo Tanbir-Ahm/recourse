@@ -71,6 +71,8 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", 
         seen.add(j["case_name"])
         st = status_fn(j["case_name"], _year_of(j), _one(j.get("citation"))) or {}
         note = j.get("register_note") or SHORT_STATUS.get(st.get("source")) or st.get("note")
+        if j.get("passage_note"):                                   # PASSAGE_NOTES=on: whose voice the passage we read is in
+            note = ((note + " ") if note else "") + "Reading note: " + j["passage_note"]
         wider.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": _paras([j]), "bench": j.get(bench_key), "tier": TIER_WIDER,
                       "status": note, "status_source": "register" if j.get("register_note") else st.get("source"), "link": j.get("link"),
                       "link_kind": j.get("link_kind")})

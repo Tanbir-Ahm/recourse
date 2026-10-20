@@ -1,0 +1,880 @@
+{
+  "schema": 1,
+  "about": "The Act shelf (STATUTE_COVERAGE_PLAN.md step 2): Acts whose full text is loaded from India Code by build_act_chunks.py, checked against India Code's own PDF. 'corrections' are exact replacements of slips in India Code's database, each shown to be what the PDF reads; 'accepted' are spelling variants that are not slips. Nothing here says the text has been read by a person.",
+  "acts": [
+    {
+      "key": "pc_act_1988",
+      "code": "PCACT",
+      "name": "The Prevention of Corruption Act, 1988",
+      "short": "Prevention of Corruption Act, 1988",
+      "display": "Prevention of Corruption Act, 1988",
+      "answer_names": [
+        "P.C. Act",
+        "PC Act, 1988",
+        "Prevention of Corruption Act",
+        "Prevention of Corruption (Amendment) Act, 2018"
+      ],
+      "citation": "Act No. 49 of 1988",
+      "india_code": {
+        "uuid": "5b300920-4878-4e39-8d87-fa87d4953f09",
+        "handle": "123456789/496166",
+        "act_id": "AC_CEN_26_36_00001_198849_1517807318890"
+      },
+      "pointers": [
+        {
+          "tag": "payer",
+          "phrases": [
+            "paid a bribe",
+            "gave a bribe",
+            "giving a bribe",
+            "paying a bribe",
+            "bribe i paid",
+            "bribe we paid",
+            "forced to pay",
+            "compelled to pay",
+            "made me pay",
+            "made us pay"
+          ],
+          "patterns": [
+            "\\b(?:took|taken|taking|extorted|collected|received|accepted)\\b.{0,60}\\bfrom\\s+(?:us|me|my\\s+(?:father|mother|brother|sister|husband|wife|son|daughter|family|parents|uncle|aunt|friend|neighbou?r))\\b",
+            "\\b(?:i|we)\\b\\s+(?:\\w+\\s+){0,2}(?:paid|pay|gave|give|handed|offered)\\b.{0,80}\\b(?:rs\\.?\\s*\\d|rupees|₹|money|cash|bribe|commission|amount|lakh|thousand)\\b",
+            "\\b(?:paid|gave|handed|offered)\\s+(?:\\w+\\s+){0,2}(?:to\\s+)?(?:the\\s+|a\\s+)?(?:officer|official|clerk|tehsildar|constable|inspector|public\\s+servant|peon|babu|patwari|sub-?registrar)\\b"
+          ],
+          "sections": [
+            "8"
+          ],
+          "why": "Section 8 makes GIVING an undue advantage to a public servant an offence; its provisos exempt a person who was compelled to give it only if he reports the matter to the law enforcement authority or investigating agency within seven days of giving it. A question in which the person paid or was made to pay never uses the words 'section 8', and a search by meaning ranks the offence of TAKING (s.7) first (staging 2026-10-17: the tehsildar answer said nothing about the payer's own position)."
+        }
+      ],
+      "corrections": [
+        {
+          "section": "28",
+          "from": "any otherlaw for",
+          "to": "any other law for",
+          "why": "India Code's PDF of the Act reads 'other law'; the database lost the space"
+        },
+        {
+          "section": "29",
+          "from": "subsection (1) of section 11",
+          "to": "sub-section (1) of section 11",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "fifth",
+          "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 35,
+      "pdf_as_on": "21st May, 2025",
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "23",
+          "pdf_starts": "24 statement by bribe giver not to subject him to prosecution omitted by the prevention of corruption",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (section 24, omitted by Act 16 of 2018)"
+        },
+        {
+          "section": "30",
+          "pdf_starts": "31 omission of certain sections of act 45 of 1860",
+          "why": "the PDF prints the stub of the omitted section 31, then India Code's appended 'Statement of Objects and Reasons' of the 1987 Bill, which is not part of the Act"
+        }
+      ]
+    },
+    {
+      "key": "pocso_act_2012",
+      "code": "POCSO",
+      "name": "The Protection of Children from Sexual Offences Act, 2012",
+      "short": "Protection of Children from Sexual Offences Act, 2012 (POCSO)",
+      "display": "POCSO Act",
+      "answer_names": [
+        "POCSO",
+        "POCSO Act",
+        "POCSO Act, 2012",
+        "Protection of Children from Sexual Offences (POCSO) Act"
+      ],
+      "citation": "Act No. 32 of 2012",
+      "india_code": {
+        "uuid": "60dad1b9-bbf1-4310-8fa1-62643beab7a6",
+        "handle": "123456789/496004",
+        "act_id": "AC_CEN_13_14_00005_201232_1517807323686"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "9",
+          "from": "a childs mental",
+          "to": "a child's mental",
+          "why": "India Code's PDF of the Act reads 'child's'; the database lost the apostrophe"
+        },
+        {
+          "section": "19",
+          "from": "under subsection (2) in a simple",
+          "to": "under sub-section (2) in a simple",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        },
+        {
+          "section": "28",
+          "from": "referred to in subsection (1)]",
+          "to": "referred to in sub-section (1)]",
+          "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+        },
+        {
+          "section": "45",
+          "from": "(1) of section44.",
+          "to": "(1) of section 44.",
+          "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+        },
+        {
+          "section": "9",
+          "from": "naked in public, is said to commit aggravated sexual assault.\n[(v) whoever persuades",
+          "to": "naked in public;\n[(v) whoever persuades",
+          "why": "in the PDF clause (u) ends 'naked in public;' and the words 'is said to commit aggravated sexual assault' come once, after the LAST clause (v); the database put them after (u) and left (v) without them (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "9",
+          "from": "attains early sexual maturity.]",
+          "to": "attains early sexual maturity,]\nis said to commit aggravated sexual assault.",
+          "why": "the other half of the same correction: the PDF ends section 9 '... attains early sexual maturity,] is said to commit aggravated sexual assault.' (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "42",
+          "field": "title",
+          "from": "Alternative punishment.",
+          "to": "Alternate punishment.",
+          "why": "the heading of the PDF's running text and of the database's own body read 'Alternate punishment'; the database title says 'Alternative' (strict comparison, 2026-10-17)"
+        }
+      ],
+      "accepted": [],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 47,
+      "pdf_as_on": "1st July, 2026",
+      "text_status": "machine_checked",
+      "ordered_accepted": []
+    },
+    {
+      "key": "uapa_1967",
+      "code": "UAPA",
+      "name": "The Unlawful Activities (Prevention) Act, 1967",
+      "short": "Unlawful Activities (Prevention) Act, 1967 (UAPA)",
+      "display": "UAPA",
+      "answer_names": [
+        "UAPA",
+        "UA(P)A",
+        "UA(P) Act",
+        "UAP Act",
+        "Unlawful Activities (Prevention) Act"
+      ],
+      "citation": "Act No. 37 of 1967",
+      "india_code": {
+        "uuid": "fa986084-35d9-4391-a7e1-9561c880d8bb",
+        "handle": "123456789/496521",
+        "act_id": "AC_CEN_5_23_00001_196737_1517807318055"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "25",
+          "from": "(d) bankers drafts;",
+          "to": "(d) banker's drafts;",
+          "why": "India Code's PDF of the Act reads 'banker's drafts'; the database lost the apostrophe"
+        },
+        {
+          "section": "2",
+          "from": "((d) court means",
+          "to": "(d) court means",
+          "why": "India Code's database has a stray opening bracket; the printed Act (PDF) reads '(d) “court” means'. The quotation marks around the defined terms of section 2 are also missing in the database; they are not restored (the words are identical)."
+        },
+        {
+          "section": "43",
+          "field": "title",
+          "from": "Officers competent to investigate offence under Chapters IV and VI.",
+          "to": "Officers competent to investigate offences under Chapters IV and VI.",
+          "why": "the heading of the PDF's running text reads 'offences'; the database title (and the PDF's arrangement of sections) say 'offence' (strict comparison, 2026-10-17)"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "2",
+          "word": "3912",
+          "why": "a footnote the database has and the PDF (as on 22 Aug 2025) does not: 'Vide notification No. S.O. 3912(E), dated 30th October, 2019, this Act is made applicable to the Union territories of Jammu and Kashmir and of Ladakh'"
+        },
+        {
+          "section": "2",
+          "word": "ladakh",
+          "why": "the same footnote"
+        },
+        {
+          "section": "2",
+          "word": "vide",
+          "why": "the same footnote"
+        },
+        {
+          "section": "7",
+          "word": "gazetted",
+          "why": "the PDF reads 'gazette officer', a slip in the PDF; 'gazetted officer' is the standard wording and the database's"
+        },
+        {
+          "section": "7",
+          "word": "whereunder",
+          "why": "the PDF reads 'where under' (two words); 'whereunder' is the standard word and the database's"
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 67,
+      "pdf_as_on": "22nd August, 2025",
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "1",
+          "loaded": "37 of 1967",
+          "pdf": "",
+          "why": "India Code's database adds the Act's number '(37 of 1967)' after the short title; the printed PDF does not have it. The number is correct; nothing is changed"
+        },
+        {
+          "section": "7",
+          "loaded": "gazetted",
+          "pdf": "gazette",
+          "count": 2,
+          "why": "twice, 'any gazetted officer of the Government': the PDF's text reads 'gazette officer', the database 'gazetted officer'. The database reading is the ordinary expression; whether the print itself says 'gazette' is not known to us. Not changed"
+        },
+        {
+          "section": "16",
+          "pdf_starts": "16a punishment for making demands of radioactive substances",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (section 16A, omitted by Act 3 of 2013)"
+        },
+        {
+          "section": "25",
+          "loaded": "traveller's cheques",
+          "pdf": "traveller scheques",
+          "why": "the PDF's text layer has lost the apostrophe and the space ('traveller scheques'); the database reads \"traveller's cheques\", which is right. Not changed"
+        },
+        {
+          "section": "53",
+          "pdf_starts": "see sections 2 1 m 35 36 and 38",
+          "why": "what follows the last section in the PDF is the First Schedule (the list of terrorist organisations) and the other Schedules. The Schedules are NOT loaded on the shelf (only the numbered sections are)"
+        }
+      ]
+    },
+    {
+      "key": "pmla_2002",
+      "code": "PMLA",
+      "name": "The Prevention of Money-laundering Act, 2002",
+      "short": "Prevention of Money-laundering Act, 2002 (PMLA)",
+      "display": "PMLA",
+      "answer_names": [
+        "PMLA",
+        "PML Act",
+        "Money Laundering Act",
+        "Money-laundering Act",
+        "Prevention of Money Laundering Act"
+      ],
+      "citation": "Act No. 15 of 2003",
+      "india_code": {
+        "uuid": "3babfe62-c9c8-49b3-8247-052834d2dfa4",
+        "handle": "123456789/496293",
+        "act_id": "AC_CEN_2_2_00035_200315_1517807326550"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "1",
+          "from": "Prevention of Moneylaundering Act",
+          "to": "Prevention of Money-laundering Act",
+          "why": "India Code's PDF of the Act reads 'Money-laundering' (the Act's own name); the database lost the hyphen"
+        },
+        {
+          "section": "2",
+          "from": "Prevention of Moneylaundering (Amendment) Act",
+          "to": "Prevention of Money-laundering (Amendment) Act",
+          "why": "India Code's PDF of the Act reads 'Money-laundering'; the database lost the hyphen"
+        },
+        {
+          "section": "8",
+          "from": "moneylaundering",
+          "to": "money-laundering",
+          "count": 2,
+          "why": "India Code's PDF of the Act reads 'money-laundering'; the database lost the hyphen (both places in the section)"
+        },
+        {
+          "section": "18",
+          "from": "or Magistrates Court",
+          "to": "or Magistrate's Court",
+          "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+        },
+        {
+          "section": "18",
+          "from": "the Magistrates Court",
+          "to": "the Magistrate's Court",
+          "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+        },
+        {
+          "section": "23",
+          "from": "such interconnected transactions",
+          "to": "such inter-connected transactions",
+          "why": "India Code's PDF of the Act reads 'inter-connected'; the database lost the hyphen"
+        },
+        {
+          "section": "72A",
+          "from": "inter-agency coordination for",
+          "to": "inter-agency co-ordination for",
+          "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+        },
+        {
+          "section": "9",
+          "from": "property or or lease-hold",
+          "to": "property or lease-hold",
+          "why": "the database doubles the word 'or'; the PDF reads 'any encumbrance on the property or lease-hold interest' (found by the strict two-way comparison of 2026-10-17)"
+        },
+        {
+          "section": "22",
+          "from": "that persons handwriting",
+          "to": "that person's handwriting",
+          "why": "the database lost the apostrophe; the PDF reads \"that person's handwriting\" (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "25",
+          "from": "section 12 of of the",
+          "to": "section 12 of the",
+          "why": "the database doubles the word 'of'; the PDF reads 'sub-section (1) of section 12 of the Smugglers and Foreign Exchange Manipulators' (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "44",
+          "from": "committed to it for trial];\n[(c) if the court which has taken cognizance",
+          "to": "committed to it for trial];\n[Provided that after conclusion of investigation, if no offence of money-laundering is made out requiring filing of such complaint, the said authority shall submit a closure report before the Special Court; or]\n[(c) if the court which has taken cognizance",
+          "why": "the database LOST this proviso (its own footnote 4, 'Ins. by s. 21, ibid. (w.e.f. 15-2-2013)', refers to it, but the text has no proviso); the PDF prints it between clause (b) and clause (c) of section 44(1). Wording copied from the PDF (strict comparison, 2026-10-17)"
+        },
+        {
+          "section": "37",
+          "field": "title",
+          "from": "Power of Chairperson to transfer cases.",
+          "to": "Power of Chairman to transfer cases.",
+          "why": "the heading of the PDF's running text reads 'Power of [Chairman] to transfer cases' (footnote 1: 'Subs. by Act 28 of 2016, s. 232, for \"Chairperson\"'); the database body already reads '[Chairman]' but its title kept the old word, and so does the PDF's own arrangement of sections (not updated). The running text wins (strict comparison, 2026-10-17)"
+        }
+      ],
+      "accepted": [],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 81,
+      "pdf_as_on": "27th July, 2025",
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "26",
+          "pdf_starts": "27 compositions etc of appellate tribunal omitted by the finance act",
+          "why": "India Code's PDF prints the omitted section's stub here (number, its old heading, 'Omitted by ...'); the database keeps it as its own omitted record, which is not loaded as text, so it is not part of this section. (sections 27 to 34 are the omitted stubs of Chapter VI)"
+        }
+      ]
+    },
+    {
+      "key": "sc_st_act_1989",
+      "code": "SCSTACT",
+      "name": "The Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989",
+      "short": "Scheduled Castes and the Scheduled Tribes (Prevention of Atrocities) Act, 1989 (SC/ST Act)",
+      "display": "SC/ST Act",
+      "answer_names": [
+        "SC/ST Act",
+        "SC/ST (PoA) Act",
+        "SC/ST PoA Act",
+        "SC ST Act",
+        "SCST Act",
+        "S.C./S.T. Act",
+        "Atrocities Act",
+        "Prevention of Atrocities Act",
+        "SC/ST (Prevention of Atrocities) Act"
+      ],
+      "citation": "Act No. 33 of 1989",
+      "india_code": {
+        "uuid": "f9c8fb04-363a-4779-b628-0d9f9bb997e0",
+        "handle": "123456789/496156",
+        "act_id": "AC_CEN_25_35_00002_198933_1517807322896"
+      },
+      "pointers": [
+        {
+          "phrases": [
+            "anticipatory bail",
+            "pre-arrest bail",
+            "bail before arrest",
+            "section 438",
+            "s. 438"
+          ],
+          "sections": [
+            "18",
+            "18A"
+          ],
+          "why": "Section 18 and section 18A(2) bar section 438 of the Code of Criminal Procedure (anticipatory bail) for an accusation under this Act. Neither uses the words 'anticipatory bail', so a search by meaning can miss them (act_shelf/EVAL_NOTES.md: the gold question put section 18 ninth of 26)."
+        }
+      ],
+      "corrections": [
+        {
+          "section": "2",
+          "from": "relations that onewould maintain",
+          "to": "relations that one would maintain",
+          "why": "India Code's PDF of the Act reads 'one would'; the database lost the space"
+        },
+        {
+          "section": "2",
+          "from": "any personacting in his",
+          "to": "any person acting in his",
+          "why": "India Code's PDF of the Act reads 'person acting'; the database lost the space"
+        },
+        {
+          "section": "3",
+          "from": "as a deva dasi or",
+          "to": "as a devadasi or",
+          "why": "India Code's PDF of the Act reads 'devadasi'"
+        },
+        {
+          "section": "3",
+          "from": "the recipients consent",
+          "to": "the recipient's consent",
+          "why": "India Code's PDF of the Act reads 'recipient's'; the database lost the apostrophe"
+        },
+        {
+          "section": "3",
+          "from": "belongs to suchmember,",
+          "to": "belongs to such member,",
+          "why": "India Code's PDF of the Act reads 'such member'; the database lost the space"
+        },
+        {
+          "section": "14A",
+          "from": "Ins. by Act1 of 2016",
+          "to": "Ins. by Act 1 of 2016",
+          "why": "India Code's PDF of the Act reads 'Act 1 of 2016'; the database lost the space",
+          "field": "footnotes"
+        },
+        {
+          "section": "15A",
+          "from": "the NonGovernment Organisations",
+          "to": "the Non-Government Organisations",
+          "why": "India Code's PDF of the Act reads 'Non-Government Organisations'; the database lost the hyphen"
+        },
+        {
+          "section": "18A",
+          "from": "a) preliminary enquiry",
+          "to": "(a) preliminary enquiry",
+          "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
+        },
+        {
+          "section": "15A",
+          "from": "the victims age",
+          "to": "the victim's age",
+          "why": "the database lost the apostrophe; the PDF reads \"the victim's age or gender\" (strict comparison, 2026-10-17)"
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "fifth",
+          "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 26,
+      "pdf_as_on": "21st September, 2025",
+      "text_status": "machine_checked",
+      "ordered_accepted": [
+        {
+          "section": "23",
+          "pdf_starts": "see section 3 2 va section under the indian penal code",
+          "why": "what follows the last section in the PDF is the Schedule (the list of IPC offences that section 3(2)(va) refers to). The Schedule is NOT loaded on the shelf (only the numbered sections are)"
+        }
+      ]
+    },
+    {
+      "key": "muslim_women_act_2019",
+      "code": "MWACT",
+      "name": "The Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "short": "Muslim Women (Protection of Rights on Marriage) Act, 2019",
+      "display": "Muslim Women Act, 2019",
+      "answer_names": [
+        "Muslim Women (Protection of Rights on Marriage) Act",
+        "Muslim Women Act, 2019",
+        "Triple Talaq Act"
+      ],
+      "citation": "Act No. 20 of 2019",
+      "india_code": {
+        "uuid": "1f82ee21-741f-4a57-94ef-b26040d515b9",
+        "handle": "123456789/496444",
+        "act_id": "AC_CEN_3_20_00069_201920_1565334896444"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "7",
+          "from": "upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced with the permission of the Magistrate",
+          "to": "upon whom talaq is pronounced with the permission of the Magistrate",
+          "why": "India Code's database has copied the end of clause (a) into clause (b): 'or any person related to her by blood or marriage; is pronounced'. The PDF's clause (b) (printed page 3, read on the rendered page as well as in its text layer) says compounding is 'at the instance of the married Muslim woman upon whom talaq is pronounced with the permission of the Magistrate': at the woman's instance only. As the database has it, a reader would think a relative may compound the offence. The PDF prints no comma after 'pronounced' and none is added."
+        },
+        {
+          "section": "7",
+          "from": "after hearing the married Muslim woman upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced, is satisfied",
+          "to": "after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied",
+          "why": "the same splice in clause (c). The PDF's clause (c) reads 'after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied that there are reasonable grounds for granting bail': the Magistrate hears the woman, not her relatives."
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "made",
+          "why": "a footnote. The database words it 'this Act is made applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh'; the PDF's footnote reads 'Now applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh by the Notification of Government of India ... S.O. 3912 (E), dated 30th October, 2019 (w.e.f. 31-10-2019)'. The same notification and the same meaning in different words; not part of the Act's own text."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "7",
+          "loaded": "",
+          "pdf": "now applicable to the union territory of jammu and kashmir and the union territory of ladakh by the notification of government of india m o home affairs vide no s o 3912 e dated 30th october 2019 w e f 31 10 2019 4",
+          "why": "the PDF's footnote to section 1 (the notification S.O. 3912 (E)) is printed at the foot of page 3, where clause (b) of section 7 ends, and the page's running text carries it into the middle of section 7, between clauses (b) and (c). It is a footnote to section 1, not part of section 7 (checked on the rendered page)."
+        },
+        {
+          "section": "8",
+          "pdf_starts": "5 the supreme court in the matter of shayara bano vs union of india and others and other connected matters",
+          "why": "after the last section the PDF prints India Code's appended 'Statement of Objects and Reasons' of the Bill (it starts with the Supreme Court's judgment in Shayara Bano v. Union of India). It is not part of the Act and is not loaded."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 8,
+      "pdf_as_on": "1st July,2026",
+      "text_status": "machine_checked",
+      "whole_act": true
+    },
+    {
+      "key": "pdpp_act_1984",
+      "code": "PDPP",
+      "name": "The Prevention of Damage to Public Property Act, 1984",
+      "short": "Prevention of Damage to Public Property Act, 1984",
+      "display": "Prevention of Damage to Public Property Act, 1984",
+      "answer_names": [
+        "PDPP Act",
+        "PDPP Act, 1984",
+        "Damage to Public Property Act"
+      ],
+      "citation": "Act No. 3 of 1984",
+      "india_code": {
+        "uuid": "86c729f1-a26f-4e61-bd0f-6af03ae667ac",
+        "handle": "123456789/496532",
+        "act_id": "AC_CEN_5_23_00018_198403_1517807325229"
+      },
+      "pointers": [],
+      "corrections": [],
+      "accepted": [
+        {
+          "section": "4",
+          "word": "rigrous",
+          "why": "a spelling slip. India Code's database reads 'rigrous imprisonment', its PDF reads 'regorous imprisonment' (a different slip), and both spell the same word 'rigorous' in section 3(2). Left as India Code's database has it: the PDF cannot confirm either spelling, and the meaning is not in doubt."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "4",
+          "loaded": "rigrous",
+          "pdf": "regorous",
+          "why": "the same slip, seen by the in-order comparison: the database's 'rigrous' against the PDF's 'regorous'. Both are misspellings of 'rigorous' (section 3(2) of the same PDF spells it correctly). Not changed."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 7,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked",
+      "whole_act": true
+    },
+    {
+      "key": "dowry_prohibition_act_1961",
+      "code": "DOWRY",
+      "name": "The Dowry Prohibition Act, 1961",
+      "short": "Dowry Prohibition Act, 1961",
+      "display": "Dowry Prohibition Act, 1961",
+      "answer_names": [
+        "Dowry Prohibition Act",
+        "Dowry Act"
+      ],
+      "citation": "Act No. 28 of 1961",
+      "india_code": {
+        "uuid": "8dc8e1b4-7147-45ea-9e82-5911aa3816d4",
+        "handle": "123456789/496002",
+        "act_id": "AC_CEN_13_14_00003_196128_1517807322681"
+      },
+      "pointers": [],
+      "corrections": [],
+      "accepted": [
+        {
+          "section": "6",
+          "word": "therefor",
+          "why": "The PDF prints “therefor” immediately followed by an amendment bracket with no space (“specified therefor[or as required by sub-section (3),]”), so “therefor” is not a separate word in the PDF's word list although it is present in the PDF; the database spaces it. “therefor” (= for that) is the correct legal word, not a misspelling of “therefore”."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "2",
+          "pdf_starts": "haryana for section 2 3 and 4 of the dowry prohibition act 1961",
+          "why": "The PDF appends the Haryana State amendments to the Dowry Prohibition Act after the central text; India Code's database (the central Act) does not carry them, and we do not load State amendments. The PDF's extra text here is the Haryana amendment of sections 2 to 4; it applies only in Haryana and is not part of the central Act."
+        },
+        {
+          "section": "6",
+          "pdf_starts": "haryana amendment of section 6 of parliament act 28 of 1961",
+          "why": "The PDF's Haryana State amendment of section 6; not part of the central Act and not loaded (State amendments are not on the shelf)."
+        },
+        {
+          "section": "7",
+          "pdf_starts": "haryana substitution of section 7 of parliament act 28 of 1961",
+          "why": "The PDF's Haryana State amendment (substitution) of section 7; not part of the central Act and not loaded (State amendments are not on the shelf)."
+        }
+      ],
+      "toc_absent": [
+        "8A"
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 13,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "jj_act_2015",
+      "code": "JJACT",
+      "name": "The Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "short": "Juvenile Justice (Care and Protection of Children) Act, 2015",
+      "display": "Juvenile Justice Act, 2015",
+      "answer_names": [
+        "Juvenile Justice Act",
+        "JJ Act",
+        "Juvenile Justice (Care and Protection of Children) Act, 2015"
+      ],
+      "citation": "Act No. 2 of 2016",
+      "india_code": {
+        "uuid": "bfa75673-9ac9-4ce8-b5cf-836472c94203",
+        "handle": "123456789/496000",
+        "act_id": "AC_CEN_13_14_000010_201602_1517807328168"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "2",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "2",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "2",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "3",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "8",
+          "from": "childs",
+          "to": "child's",
+          "count": 2,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "8",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "11",
+          "from": "childs",
+          "to": "child's",
+          "count": 2,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "20",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "23",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "28",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "31",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "35",
+          "from": "childrens",
+          "to": "children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "36",
+          "from": "childrens",
+          "to": "children's",
+          "count": 3,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+        },
+        {
+          "section": "46",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "52",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "69",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "70",
+          "from": "noncompliance",
+          "to": "non-compliance",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “non-compliance”."
+        },
+        {
+          "section": "76",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "93",
+          "from": "Childrens",
+          "to": "Children's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+        },
+        {
+          "section": "95",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "97",
+          "from": "nongovernmental",
+          "to": "non-governmental",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “non-governmental”."
+        },
+        {
+          "section": "99",
+          "from": "childs",
+          "to": "child's",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+        },
+        {
+          "section": "107",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "110",
+          "from": "subsection",
+          "to": "sub-section",
+          "count": 1,
+          "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+        },
+        {
+          "section": "2",
+          "from": "a [has been or is being or is likely to be] for carrying out",
+          "to": "a [child care institution], for carrying out",
+          "count": 1,
+          "why": "India Code's database corrupted the definition of “Child Welfare Officer” (clause 17): the amendment-inserted defined term in the brackets was overwritten by a fragment (“has been or is being or is likely to be”) copied from clause (viii) of the definition of “child in need of care and protection”. The PDF's clause (17) reads “an officer attached to a [child care institution], for carrying out the directions”. Corrected against the PDF."
+        },
+        {
+          "section": "2",
+          "field": "footnotes",
+          "from": "Childrens Home",
+          "to": "Children's Home",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in this amendment footnote; the PDF reads “Children's Home”."
+        },
+        {
+          "section": "9",
+          "from": "the persons claim",
+          "to": "the person's claim",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's claim”."
+        },
+        {
+          "section": "11",
+          "from": "such persons charge",
+          "to": "such person's charge",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “such person's charge”."
+        },
+        {
+          "section": "12",
+          "from": "the persons release",
+          "to": "the person's release",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's release”."
+        },
+        {
+          "section": "44",
+          "from": "the parents homes once the parent's are determined",
+          "to": "the parent's homes once the parents are determined",
+          "count": 1,
+          "why": "India Code's database put the possessive apostrophe on the wrong word: it reads “the parents homes once the parent's are determined”. The PDF reads “the parent's homes once the parents are determined” (the home belongs to the parent; the parents are determined). Corrected against the PDF."
+        }
+      ],
+      "accepted": [],
+      "ordered_accepted": [
+        {
+          "section": "61",
+          "loaded": "procedure for disposal of adoption proceedings",
+          "pdf": "",
+          "why": "India Code's database prints the section heading a second time, inside an amendment bracket, at the start of the body (“61. Procedure for disposal of adoption proceedings\\n[Procedure for disposal of adoption proceedings].---(1)...”). The heading already stands as the section's title line, and the PDF prints it once. Left as the database has it; the repeat is harmless and changes no words of the provision."
+        }
+      ],
+      "loaded_on": "2026-10-17",
+      "sections_loaded": 112,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
+    }
+  ]
+}

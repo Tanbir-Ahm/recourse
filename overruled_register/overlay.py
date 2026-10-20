@@ -144,6 +144,12 @@ def case_mentions(text):
     return out
 
 
+def _norm_name(name):
+    """A case name as lower-case words only ('State through Superintendent of Police, CBI/SIT v. Nalini' -> 'state through superintendent of police cbi sit v nalini'), so that a name the finder cut short
+    at its left end can be compared with the full name it came from."""
+    return " ".join(re.findall(r"[a-z0-9]+", (name or "").lower()))
+
+
 def audit_answer(reg, overlay, text, exclude_names=(), question=None):
     """What the site adds to a finished answer. register_notes: the register guard's sentences (firm or 'reported ... not yet confirmed'); card_notes: one per case the answer names that has a warning or
     caution card and is not already a register case; not_checked: the cases the answer names that are on neither list (the fixed sentence is built from these names). A case is left out of not_checked
@@ -152,6 +158,16 @@ def audit_answer(reg, overlay, text, exclude_names=(), question=None):
     from . import register_guard as G
     res = {"register_notes": [], "card_notes": [], "quiet": [], "not_checked": [], "review": [], "possible": []}
     skip = {R.party_sigs(n) for n in (exclude_names or ()) if n}
+    skip_names = [_norm_name(n) for n in (exclude_names or ()) if n]
+
+    def _is_skipped(name):
+        """A name already spoken for: the same two party signatures, or a name the finder cut short at its left end (it reads 'State through Superintendent of Police, CBI/SIT v. Nalini and Others'
+        as 'SIT v. Nalini and Others', 2026-10-16, production) that ends a skipped full name. A cut-short name needs at least two uncommon words, so 'Ram v. State' never rides on a longer name."""
+        sig = R.party_sigs(name)
+        if sig in skip:
+            return True
+        c = _norm_name(name)
+        return bool(c) and R.indexable(*sig) and any(k.endswith(" " + c) for k in skip_names)
     try:
         g = G.guard_answer(reg, text or "")
         res["register_notes"], res["review"] = g["notes"], g["review"]
@@ -166,8 +182,10 @@ def audit_answer(reg, overlay, text, exclude_names=(), question=None):
             row = reg.by_id.get(f.get("row_id")) if reg is not None else None
             if row:
                 skip.add(R.party_sigs(row["overruling"]["name"]))
+                skip_names.append(_norm_name(row["overruling"]["name"]))
                 for x in reg.same_decision_rows(row):
                     skip.add(R.party_sigs(x["overruling"]["name"]))
+                    skip_names.append(_norm_name(x["overruling"]["name"]))
     except Exception:
         covered = []
     seen = set()
@@ -183,14 +201,14 @@ def audit_answer(reg, overlay, text, exclude_names=(), question=None):
             continue
         entry = overlay.lookup(m["name"], m["year"], None if cit is None else _key_text(cit)) if overlay else None
         if entry is None:
-            if R.party_sigs(m["name"]) in skip:
+            if _is_skipped(m["name"]):
                 continue
             res["not_checked"].append(m["name"][:90])
         elif entry["kind"] in ("warning", "caution"):
             res["card_notes"].append({"case": entry["name"], "kind": entry["kind"], "note": entry["note"], "evidence": entry.get("evidence")})
         elif entry["kind"] == "quiet":
             res["quiet"].append({"case": entry["name"], "note": entry["note"]})
-        elif R.party_sigs(m["name"]) not in skip:
+        elif not _is_skipped(m["name"]):
             res["not_checked"].append(m["name"][:90])
     res["not_checked_sentence"] = NOT_CHECKED_LIST.format(names="; ".join(res["not_checked"])) if res["not_checked"] else None
     return res

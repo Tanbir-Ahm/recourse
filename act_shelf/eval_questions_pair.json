@@ -1,0 +1,287 @@
+{
+ "written": "2026-10-17",
+ "by": "Claude (AI) before any retrieval number for these two Acts existed (the text was loaded and embedded first; no question was run against it)",
+ "about": "24 questions, 12 per Act, written from the two Acts' own sections: the Muslim Women (Protection of Rights on Marriage) Act, 2019 (8 sections) and the Prevention of Damage to Public Property Act, 1984 (7). AI-marked, NOT a lawyer's list: 'expected' = the section(s) Claude judges answer the question; 'also_ok' = other sections that would be a reasonable first look. 'hard' = Claude expected retrieval to struggle (a guess made before the run). PD12 is hard on purpose: section 6 of the Public Property Act is a 'Saving' section, which the shelf never ranks by meaning (housekeeping rule), so it is reached only when a question names it by number. Never edit a question after a run to improve a score; a mistake in the key is corrected only with a note in 'corrections_log'.",
+ "corrections_log": [],
+ "questions": [
+  {
+   "id": "MW01",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "My husband said talaq three times on WhatsApp and left. Is that divorce valid under the new law?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "hard": false
+  },
+  {
+   "id": "MW02",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "How many years in jail can a Muslim husband get for pronouncing instant talaq?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW03",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "After instant talaq my husband refuses to give me or my children any money. What can I claim?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "MW04",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "Who gets the children after the husband says talaq, the mother or the father?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW05",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "My husband emailed me the word talaq. He says an email does not count. Does it?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "hard": false
+  },
+  {
+   "id": "MW06",
+   "act_key": "muslim_women_act_2019",
+   "kind": "layman",
+   "q": "My husband said talaq in 2018, before this law was passed. Can he still be punished?",
+   "expected": [
+    "1"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "hard": true
+  },
+  {
+   "id": "MW07",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "Is an offence under the Muslim Women (Protection of Rights on Marriage) Act cognizable, and who may give the information to the police?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW08",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "Can the accused in a triple talaq case be released on bail without the Magistrate hearing the wife?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW09",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "At whose instance can an offence under the Act be compounded, and with whose permission?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW10",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "How does the Act define talaq, and does the definition cover talaq-e-hasan?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "MW11",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "Which Magistrate decides the amount of subsistence allowance under the Act?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "hard": false
+  },
+  {
+   "id": "MW12",
+   "act_key": "muslim_women_act_2019",
+   "kind": "lawyer",
+   "q": "Does the Act extend to the Union territories of Jammu and Kashmir and Ladakh?",
+   "expected": [
+    "1"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD01",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "What is the punishment for burning a government bus during a protest?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PD02",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "My son has been arrested for damaging a government building in a riot. How many years can he get?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "hard": false
+  },
+  {
+   "id": "PD03",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "Will bail be easy for a person arrested for breaking public property in a bandh?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD04",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "Does damaging the property of a state-owned company count as damaging public property?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD05",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "Is a municipal corporation's property also covered by this law on damaging public property?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD06",
+   "act_key": "pdpp_act_1984",
+   "kind": "layman",
+   "q": "Can the judge give less than six months for damaging a water supply installation?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD07",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "Is a company in which the Government holds shares 'public property' for the purposes of the Act?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD08",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "What is the minimum sentence for mischief by fire or explosive substance causing damage to public property, and can the court go below it?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD09",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "Under the Act, must the prosecution be heard before an accused or convicted person in custody is released on bail?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD10",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "What does 'mischief' mean in this Act?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "PD11",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "Is damage to a railway or a power station treated as a graver offence under the Act than damage to an ordinary government office?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "2"
+   ],
+   "hard": true
+  },
+  {
+   "id": "PD12",
+   "act_key": "pdpp_act_1984",
+   "kind": "lawyer",
+   "q": "Does the Act stop the police from also registering cases under other laws for the same act of destruction?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "hard": true
+  }
+ ],
+ "questions_sha256": "7083910d223182da3b06a2abd4ec2dbd496705f46e766deb70e30b7d2b378e89"
+}

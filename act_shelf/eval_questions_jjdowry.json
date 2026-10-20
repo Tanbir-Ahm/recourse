@@ -1,0 +1,385 @@
+{
+ "written": "2026-10-17",
+ "by": "Claude (AI), before any retrieval number for these two Acts existed (the text was loaded and machine-checked first; no question was run against it)",
+ "about": "32 questions (12 for the Dowry Prohibition Act, 1961 and 20 for the Juvenile Justice (Care and Protection of Children) Act, 2015), written from the two Acts' own sections. AI-marked, NOT a lawyer's list: 'expected' = the section(s) Claude judges answer the question; 'also_ok' = other sections that would be a reasonable first look. 'hard' = Claude expected retrieval to struggle (a guess made before the run). Never edit a question after a run to improve a score; a mistake in the key is corrected only with a note in 'corrections_log'.",
+ "corrections_log": [],
+ "questions": [
+  {
+   "id": "D01",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "My in-laws are demanding a car and cash from my family before the wedding. Is that illegal?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "2",
+    "3"
+   ],
+   "hard": false
+  },
+  {
+   "id": "D02",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "My husband's family took gold and a large sum as dowry at our marriage. What is the punishment for taking it?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "hard": false
+  },
+  {
+   "id": "D03",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "What is the minimum sentence of imprisonment for giving or taking dowry under the Act?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D04",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "How is “dowry” defined under the Dowry Prohibition Act?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D05",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "A newspaper carried an advertisement offering a share in property in return for marrying a man. Is that an offence?",
+   "expected": [
+    "4A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D06",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "Is an agreement to give or take dowry enforceable in law?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D07",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "My parents gave jewellery and money at my wedding. Who does that property legally belong to?",
+   "expected": [
+    "6"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D08",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "Which court may take cognizance of an offence under the Dowry Prohibition Act, and is there a time limit?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D09",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "Are offences under the Dowry Prohibition Act cognizable, bailable and compoundable?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D10",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "lawyer",
+   "q": "On whom does the burden of proof lie in a prosecution for taking or demanding dowry?",
+   "expected": [
+    "8A"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "D11",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "Is there a government officer whose job is to deal with dowry complaints?",
+   "expected": [
+    "8B"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "D12",
+   "act_key": "dowry_prohibition_act_1961",
+   "kind": "layman",
+   "q": "I gave dowry because my in-laws pressured me. Can I be punished for giving it, not just them?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "hard": true
+  },
+  {
+   "id": "J01",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "My 16-year-old son is accused of a serious crime. Can he be tried as an adult?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [
+    "14",
+    "18"
+   ],
+   "hard": true
+  },
+  {
+   "id": "J02",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What is the procedure for a preliminary assessment into a heinous offence by the Board?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J03",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "The police have caught my child, who is accused of an offence. Can he get bail?",
+   "expected": [
+    "12"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J04",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What are the powers, functions and responsibilities of the Juvenile Justice Board?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "4"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J05",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "A child was found begging on the street. What does this law do about it?",
+   "expected": [
+    "76"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J06",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What is the punishment for cruelty to a child under the Juvenile Justice Act?",
+   "expected": [
+    "75"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J07",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "We want to adopt a child from a children's home in India. What is the process?",
+   "expected": [
+    "58"
+   ],
+   "also_ok": [
+    "56",
+    "57"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J08",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "Who is eligible to be a prospective adoptive parent under the Act?",
+   "expected": [
+    "57"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J09",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "A child has no parents and needs care. Who decides what happens to the child?",
+   "expected": [
+    "27"
+   ],
+   "also_ok": [
+    "29",
+    "30"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J10",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What are the functions and responsibilities of the Child Welfare Committee?",
+   "expected": [
+    "30"
+   ],
+   "also_ok": [
+    "29"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J11",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "Can a newspaper print the name and photo of a child who is involved in a case?",
+   "expected": [
+    "74"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J12",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What is the punishment for giving a child intoxicating liquor or a narcotic drug?",
+   "expected": [
+    "77"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J13",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "A man used a child to carry and sell drugs. What offence is that under this Act?",
+   "expected": [
+    "78"
+   ],
+   "also_ok": [
+    "77"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J14",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "Where does an appeal against an order of the Board or the Committee lie?",
+   "expected": [
+    "101"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J15",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "A warden beat my child at a children's home. Is that an offence?",
+   "expected": [
+    "82"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "J16",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What are the general principles to be followed in the administration of this Act?",
+   "expected": [
+    "3"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J17",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "Up to what age is a person treated as a child under this law?",
+   "expected": [
+    "2"
+   ],
+   "also_ok": [
+    "1"
+   ],
+   "hard": false
+  },
+  {
+   "id": "J18",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "How is the age of a child determined when it is in doubt?",
+   "expected": [
+    "94"
+   ],
+   "also_ok": [],
+   "hard": true
+  },
+  {
+   "id": "J19",
+   "act_key": "jj_act_2015",
+   "kind": "layman",
+   "q": "Someone kidnapped a child. What does the Juvenile Justice Act say about it?",
+   "expected": [
+    "84"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "J20",
+   "act_key": "jj_act_2015",
+   "kind": "lawyer",
+   "q": "What is the punishment for the sale or procurement of a child for any purpose?",
+   "expected": [
+    "81"
+   ],
+   "also_ok": [],
+   "hard": false
+  }
+ ],
+ "questions_sha256": "f48a03ad8b3dbb8d3e238700ba2985c414cb8d6dfdb745123eb987b4f3446af7"
+}

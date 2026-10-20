@@ -1,0 +1,961 @@
+{
+ "written": "2026-10-17",
+ "reports": {
+  "pc_act_1988": {
+   "key": "pc_act_1988",
+   "act_id": "AC_CEN_26_36_00001_198849_1517807318890",
+   "loaded_on": "2026-10-17",
+   "sections": 35,
+   "omitted_sections": [
+    "24",
+    "31"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:49:28.754086Z",
+    "max": "2026-07-10T22:49:32.010087Z"
+   },
+   "pdf": {
+    "name": "a1988-49.pdf",
+    "sha256": "7696d19f33678c31a805f8acb05ac115f73229a0c75b0c0ca134dc34f3effca7",
+    "pages": 20,
+    "as_on": "21st May, 2025",
+    "toc": {
+     "toc_entries": 35,
+     "loaded": 35,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 13,
+    "state_amendments_set_aside": [
+     "17A"
+    ]
+   },
+   "corrections": [
+    {
+     "section": "28",
+     "from": "any otherlaw for",
+     "to": "any other law for",
+     "why": "India Code's PDF of the Act reads 'other law'; the database lost the space"
+    },
+    {
+     "section": "29",
+     "from": "subsection (1) of section 11",
+     "to": "sub-section (1) of section 11",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "fifth",
+     "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 33,
+    "words_compared": 8921,
+    "bare_numbers_ignored": 0,
+    "differences": 2,
+    "accepted_in_manifest": 2,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.893,
+    "below_0.90": {
+     "1": 0.893
+    }
+   }
+  },
+  "pocso_act_2012": {
+   "key": "pocso_act_2012",
+   "act_id": "AC_CEN_13_14_00005_201232_1517807323686",
+   "loaded_on": "2026-10-17",
+   "sections": 47,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:58:15.978428Z",
+    "max": "2026-07-10T21:58:20.262514Z"
+   },
+   "pdf": {
+    "name": "A2012-32.pdf",
+    "sha256": "5a173cc87d51624663dceb588d20a468ef49505be4fa131609d5867ac7dab021",
+    "pages": 20,
+    "as_on": "1st July, 2026",
+    "toc": {
+     "toc_entries": 47,
+     "loaded": 47,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 5,
+    "state_amendments_set_aside": [
+     "42"
+    ]
+   },
+   "corrections": [
+    {
+     "section": "9",
+     "from": "a childs mental",
+     "to": "a child's mental",
+     "why": "India Code's PDF of the Act reads 'child's'; the database lost the apostrophe"
+    },
+    {
+     "section": "19",
+     "from": "under subsection (2) in a simple",
+     "to": "under sub-section (2) in a simple",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    },
+    {
+     "section": "28",
+     "from": "referred to in subsection (1)]",
+     "to": "referred to in sub-section (1)]",
+     "why": "India Code's PDF of the Act reads 'sub-section'; the database lost the hyphen"
+    },
+    {
+     "section": "45",
+     "from": "(1) of section44.",
+     "to": "(1) of section 44.",
+     "why": "India Code's PDF of the Act reads 'section 44'; the database lost the space"
+    },
+    {
+     "section": "9",
+     "from": "naked in public, is said to commit aggravated sexual assault.\n[(v) whoever persuades",
+     "to": "naked in public;\n[(v) whoever persuades",
+     "why": "in the PDF clause (u) ends 'naked in public;' and the words 'is said to commit aggravated sexual assault' come once, after the LAST clause (v); the database put them after (u) and left (v) without them (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "9",
+     "from": "attains early sexual maturity.]",
+     "to": "attains early sexual maturity,]\nis said to commit aggravated sexual assault.",
+     "why": "the other half of the same correction: the PDF ends section 9 '... attains early sexual maturity,] is said to commit aggravated sexual assault.' (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "42",
+     "field": "title",
+     "from": "Alternative punishment.",
+     "to": "Alternate punishment.",
+     "why": "the heading of the PDF's running text and of the database's own body read 'Alternate punishment'; the database title says 'Alternative' (strict comparison, 2026-10-17)"
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 47,
+    "words_compared": 7946,
+    "bare_numbers_ignored": 6,
+    "differences": 0,
+    "accepted_in_manifest": 0,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.746,
+    "below_0.90": {
+     "1": 0.829,
+     "42": 0.746
+    }
+   }
+  },
+  "uapa_1967": {
+   "key": "uapa_1967",
+   "act_id": "AC_CEN_5_23_00001_196737_1517807318055",
+   "loaded_on": "2026-10-17",
+   "sections": 67,
+   "omitted_sections": [
+    "16A"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:18:58.024727Z",
+    "max": "2026-07-10T23:14:36.656364Z"
+   },
+   "pdf": {
+    "name": "a1967-37.pdf",
+    "sha256": "aaa7f3bc761ec6254d2571717cc13a4b045fa002edcd4f3ce59017b2fbe8e40c",
+    "pages": 35,
+    "as_on": "22nd August, 2025",
+    "toc": {
+     "toc_entries": 67,
+     "loaded": 67,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 25,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "25",
+     "from": "(d) bankers drafts;",
+     "to": "(d) banker's drafts;",
+     "why": "India Code's PDF of the Act reads 'banker's drafts'; the database lost the apostrophe"
+    },
+    {
+     "section": "2",
+     "from": "((d) court means",
+     "to": "(d) court means",
+     "why": "India Code's database has a stray opening bracket; the printed Act (PDF) reads '(d) “court” means'. The quotation marks around the defined terms of section 2 are also missing in the database; they are not restored (the words are identical)."
+    },
+    {
+     "section": "43",
+     "field": "title",
+     "from": "Officers competent to investigate offence under Chapters IV and VI.",
+     "to": "Officers competent to investigate offences under Chapters IV and VI.",
+     "why": "the heading of the PDF's running text reads 'offences'; the database title (and the PDF's arrangement of sections) say 'offence' (strict comparison, 2026-10-17)"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "2",
+     "word": "3912",
+     "why": "a footnote the database has and the PDF (as on 22 Aug 2025) does not: 'Vide notification No. S.O. 3912(E), dated 30th October, 2019, this Act is made applicable to the Union territories of Jammu and Kashmir and of Ladakh'"
+    },
+    {
+     "section": "2",
+     "word": "ladakh",
+     "why": "the same footnote"
+    },
+    {
+     "section": "2",
+     "word": "vide",
+     "why": "the same footnote"
+    },
+    {
+     "section": "7",
+     "word": "gazetted",
+     "why": "the PDF reads 'gazette officer', a slip in the PDF; 'gazetted officer' is the standard wording and the database's"
+    },
+    {
+     "section": "7",
+     "word": "whereunder",
+     "why": "the PDF reads 'where under' (two words); 'whereunder' is the standard word and the database's"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 66,
+    "words_compared": 12391,
+    "bare_numbers_ignored": 0,
+    "differences": 6,
+    "accepted_in_manifest": 6,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.917,
+    "below_0.90": {}
+   }
+  },
+  "pmla_2002": {
+   "key": "pmla_2002",
+   "act_id": "AC_CEN_2_2_00035_200315_1517807326550",
+   "loaded_on": "2026-10-17",
+   "sections": 81,
+   "omitted_sections": [
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:15:50.166838Z",
+    "max": "2026-07-10T22:59:37.939644Z"
+   },
+   "pdf": {
+    "name": "A2003-15.pdf",
+    "sha256": "7c346efc01050956cf2014b8967348c26fb6d6c947f6721cd33c6a7b993560ea",
+    "pages": 51,
+    "as_on": "27th July, 2025",
+    "toc": {
+     "toc_entries": 81,
+     "loaded": 81,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 14,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "1",
+     "from": "Prevention of Moneylaundering Act",
+     "to": "Prevention of Money-laundering Act",
+     "why": "India Code's PDF of the Act reads 'Money-laundering' (the Act's own name); the database lost the hyphen"
+    },
+    {
+     "section": "2",
+     "from": "Prevention of Moneylaundering (Amendment) Act",
+     "to": "Prevention of Money-laundering (Amendment) Act",
+     "why": "India Code's PDF of the Act reads 'Money-laundering'; the database lost the hyphen"
+    },
+    {
+     "section": "8",
+     "from": "moneylaundering",
+     "to": "money-laundering",
+     "count": 2,
+     "why": "India Code's PDF of the Act reads 'money-laundering'; the database lost the hyphen (both places in the section)"
+    },
+    {
+     "section": "18",
+     "from": "or Magistrates Court",
+     "to": "or Magistrate's Court",
+     "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+    },
+    {
+     "section": "18",
+     "from": "the Magistrates Court",
+     "to": "the Magistrate's Court",
+     "why": "India Code's PDF of the Act reads 'Magistrate's Court'; the database lost the apostrophe"
+    },
+    {
+     "section": "23",
+     "from": "such interconnected transactions",
+     "to": "such inter-connected transactions",
+     "why": "India Code's PDF of the Act reads 'inter-connected'; the database lost the hyphen"
+    },
+    {
+     "section": "72A",
+     "from": "inter-agency coordination for",
+     "to": "inter-agency co-ordination for",
+     "why": "India Code's PDF of the Act reads 'co-ordination' (as in the Committee's own name); the database lost the hyphen"
+    },
+    {
+     "section": "9",
+     "from": "property or or lease-hold",
+     "to": "property or lease-hold",
+     "why": "the database doubles the word 'or'; the PDF reads 'any encumbrance on the property or lease-hold interest' (found by the strict two-way comparison of 2026-10-17)"
+    },
+    {
+     "section": "22",
+     "from": "that persons handwriting",
+     "to": "that person's handwriting",
+     "why": "the database lost the apostrophe; the PDF reads \"that person's handwriting\" (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "25",
+     "from": "section 12 of of the",
+     "to": "section 12 of the",
+     "why": "the database doubles the word 'of'; the PDF reads 'sub-section (1) of section 12 of the Smugglers and Foreign Exchange Manipulators' (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "44",
+     "from": "committed to it for trial];\n[(c) if the court which has taken cognizance",
+     "to": "committed to it for trial];\n[Provided that after conclusion of investigation, if no offence of money-laundering is made out requiring filing of such complaint, the said authority shall submit a closure report before the Special Court; or]\n[(c) if the court which has taken cognizance",
+     "why": "the database LOST this proviso (its own footnote 4, 'Ins. by s. 21, ibid. (w.e.f. 15-2-2013)', refers to it, but the text has no proviso); the PDF prints it between clause (b) and clause (c) of section 44(1). Wording copied from the PDF (strict comparison, 2026-10-17)"
+    },
+    {
+     "section": "37",
+     "field": "title",
+     "from": "Power of Chairperson to transfer cases.",
+     "to": "Power of Chairman to transfer cases.",
+     "why": "the heading of the PDF's running text reads 'Power of [Chairman] to transfer cases' (footnote 1: 'Subs. by Act 28 of 2016, s. 232, for \"Chairperson\"'); the database body already reads '[Chairman]' but its title kept the old word, and so does the PDF's own arrangement of sections (not updated). The running text wins (strict comparison, 2026-10-17)"
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 73,
+    "words_compared": 18369,
+    "bare_numbers_ignored": 3,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.927,
+    "below_0.90": {}
+   }
+  },
+  "sc_st_act_1989": {
+   "key": "sc_st_act_1989",
+   "act_id": "AC_CEN_25_35_00002_198933_1517807322896",
+   "loaded_on": "2026-10-17",
+   "sections": 26,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:57:37.860034Z",
+    "max": "2026-07-10T22:57:33.577591Z"
+   },
+   "pdf": {
+    "name": "a1989-33.pdf",
+    "sha256": "ee5a4fc8c8f5afbd0c514a7ed87ed050ba635edf54f7b5b8ad3f48ac6ec90ea4",
+    "pages": 20,
+    "as_on": "21st September, 2025",
+    "toc": {
+     "toc_entries": 26,
+     "loaded": 26,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 6,
+    "state_amendments_set_aside": [
+     "14"
+    ]
+   },
+   "corrections": [
+    {
+     "section": "2",
+     "from": "relations that onewould maintain",
+     "to": "relations that one would maintain",
+     "why": "India Code's PDF of the Act reads 'one would'; the database lost the space"
+    },
+    {
+     "section": "2",
+     "from": "any personacting in his",
+     "to": "any person acting in his",
+     "why": "India Code's PDF of the Act reads 'person acting'; the database lost the space"
+    },
+    {
+     "section": "3",
+     "from": "as a deva dasi or",
+     "to": "as a devadasi or",
+     "why": "India Code's PDF of the Act reads 'devadasi'"
+    },
+    {
+     "section": "3",
+     "from": "the recipients consent",
+     "to": "the recipient's consent",
+     "why": "India Code's PDF of the Act reads 'recipient's'; the database lost the apostrophe"
+    },
+    {
+     "section": "3",
+     "from": "belongs to suchmember,",
+     "to": "belongs to such member,",
+     "why": "India Code's PDF of the Act reads 'such member'; the database lost the space"
+    },
+    {
+     "section": "14A",
+     "from": "Ins. by Act1 of 2016",
+     "to": "Ins. by Act 1 of 2016",
+     "why": "India Code's PDF of the Act reads 'Act 1 of 2016'; the database lost the space",
+     "field": "footnotes"
+    },
+    {
+     "section": "15A",
+     "from": "the NonGovernment Organisations",
+     "to": "the Non-Government Organisations",
+     "why": "India Code's PDF of the Act reads 'Non-Government Organisations'; the database lost the hyphen"
+    },
+    {
+     "section": "18A",
+     "from": "a) preliminary enquiry",
+     "to": "(a) preliminary enquiry",
+     "why": "India Code's database lost the opening bracket of clause (a); the PDF reads '(a) preliminary enquiry shall not be required'."
+    },
+    {
+     "section": "15A",
+     "from": "the victims age",
+     "to": "the victim's age",
+     "why": "the database lost the apostrophe; the PDF reads \"the victim's age or gender\" (strict comparison, 2026-10-17)"
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "fifth",
+     "why": "a footnote: the database spells out 'the Fifth Schedule', the PDF abbreviates it 'Sch. V'"
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 26,
+    "words_compared": 7129,
+    "bare_numbers_ignored": 0,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.841,
+    "below_0.90": {
+     "1": 0.841
+    }
+   }
+  },
+  "muslim_women_act_2019": {
+   "key": "muslim_women_act_2019",
+   "act_id": "AC_CEN_3_20_00069_201920_1565334896444",
+   "loaded_on": "2026-10-17",
+   "sections": 8,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:57:37.370515Z",
+    "max": "2026-07-10T22:58:56.918513Z"
+   },
+   "pdf": {
+    "name": "A2019-20.pdf",
+    "sha256": "47cc04f72de7ac74c22c83c9902858fd6d79340ceeb3ddac85b277e689c25aab",
+    "pages": 5,
+    "as_on": "1st July,2026",
+    "toc": {
+     "toc_entries": 8,
+     "loaded": 8,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 0,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "7",
+     "from": "upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced with the permission of the Magistrate",
+     "to": "upon whom talaq is pronounced with the permission of the Magistrate",
+     "why": "India Code's database has copied the end of clause (a) into clause (b): 'or any person related to her by blood or marriage; is pronounced'. The PDF's clause (b) (printed page 3, read on the rendered page as well as in its text layer) says compounding is 'at the instance of the married Muslim woman upon whom talaq is pronounced with the permission of the Magistrate': at the woman's instance only. As the database has it, a reader would think a relative may compound the offence. The PDF prints no comma after 'pronounced' and none is added."
+    },
+    {
+     "section": "7",
+     "from": "after hearing the married Muslim woman upon whom talaq is pronounced or any person related to her by blood or marriage; is pronounced, is satisfied",
+     "to": "after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied",
+     "why": "the same splice in clause (c). The PDF's clause (c) reads 'after hearing the married Muslim woman upon whom talaq is pronounced, is satisfied that there are reasonable grounds for granting bail': the Magistrate hears the woman, not her relatives."
+    }
+   ],
+   "accepted": [
+    {
+     "section": "1",
+     "word": "made",
+     "why": "a footnote. The database words it 'this Act is made applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh'; the PDF's footnote reads 'Now applicable to the Union territory of Jammu and Kashmir and the Union territory of Ladakh by the Notification of Government of India ... S.O. 3912 (E), dated 30th October, 2019 (w.e.f. 31-10-2019)'. The same notification and the same meaning in different words; not part of the Act's own text."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 8,
+    "words_compared": 563,
+    "bare_numbers_ignored": 0,
+    "differences": 2,
+    "accepted_in_manifest": 2,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.98,
+    "below_0.90": {}
+   }
+  },
+  "pdpp_act_1984": {
+   "key": "pdpp_act_1984",
+   "act_id": "AC_CEN_5_23_00018_198403_1517807325229",
+   "loaded_on": "2026-10-17",
+   "sections": 7,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:38:42.460941Z",
+    "max": "2026-07-10T22:38:42.829699Z"
+   },
+   "pdf": {
+    "name": "a1984-03.pdf",
+    "sha256": "0d5e550f84721abcb3d2cfcf5c1872821c17131d904f2df5e6c7fd016fc2def6",
+    "pages": 3,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 7,
+     "loaded": 7,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 0,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [],
+   "accepted": [
+    {
+     "section": "4",
+     "word": "rigrous",
+     "why": "a spelling slip. India Code's database reads 'rigrous imprisonment', its PDF reads 'regorous imprisonment' (a different slip), and both spell the same word 'rigorous' in section 3(2). Left as India Code's database has it: the PDF cannot confirm either spelling, and the meaning is not in doubt."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 7,
+    "words_compared": 649,
+    "bare_numbers_ignored": 0,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.919,
+    "below_0.90": {}
+   }
+  },
+  "dowry_prohibition_act_1961": {
+   "key": "dowry_prohibition_act_1961",
+   "act_id": "AC_CEN_13_14_00003_196128_1517807322681",
+   "loaded_on": "2026-10-17",
+   "sections": 13,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T22:21:09.295747Z",
+    "max": "2026-07-10T22:26:02.669024Z"
+   },
+   "pdf": {
+    "name": "a1961-28.pdf",
+    "sha256": "d29bf14c8e7cffe5914086e1ce832b34467150caa2c66aee0fd107deba764dea",
+    "pages": 6,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 12,
+     "loaded": 13,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [
+      "8A"
+     ],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 6,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [],
+   "accepted": [
+    {
+     "section": "6",
+     "word": "therefor",
+     "why": "The PDF prints “therefor” immediately followed by an amendment bracket with no space (“specified therefor[or as required by sub-section (3),]”), so “therefor” is not a separate word in the PDF's word list although it is present in the PDF; the database spaces it. “therefor” (= for that) is the correct legal word, not a misspelling of “therefore”."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 13,
+    "words_compared": 2095,
+    "bare_numbers_ignored": 0,
+    "differences": 3,
+    "accepted_in_manifest": 3,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.784,
+    "below_0.90": {
+     "1": 0.784
+    }
+   }
+  },
+  "jj_act_2015": {
+   "key": "jj_act_2015",
+   "act_id": "AC_CEN_13_14_000010_201602_1517807328168",
+   "loaded_on": "2026-10-17",
+   "sections": 112,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T21:58:04.245711Z",
+    "max": "2026-07-10T21:58:13.950600Z"
+   },
+   "pdf": {
+    "name": "a2016-2.pdf",
+    "sha256": "d21c39b496757d19d873207dfbed3729128ca34c0daff199cb808ea32b49a322",
+    "pages": 48,
+    "as_on": null,
+    "toc": {
+     "toc_entries": 112,
+     "loaded": 112,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 1,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "2",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "2",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "2",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "3",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "8",
+     "from": "childs",
+     "to": "child's",
+     "count": 2,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "8",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "11",
+     "from": "childs",
+     "to": "child's",
+     "count": 2,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "20",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "23",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "28",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "31",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "35",
+     "from": "childrens",
+     "to": "children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "36",
+     "from": "childrens",
+     "to": "children's",
+     "count": 3,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “children's”."
+    },
+    {
+     "section": "46",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "52",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "69",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "70",
+     "from": "noncompliance",
+     "to": "non-compliance",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “non-compliance”."
+    },
+    {
+     "section": "76",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "93",
+     "from": "Childrens",
+     "to": "Children's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the defined terms “Children's Court” and “Children's Home”; the PDF has it."
+    },
+    {
+     "section": "95",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "97",
+     "from": "nongovernmental",
+     "to": "non-governmental",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “non-governmental”."
+    },
+    {
+     "section": "99",
+     "from": "childs",
+     "to": "child's",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “child's”."
+    },
+    {
+     "section": "107",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "110",
+     "from": "subsection",
+     "to": "sub-section",
+     "count": 1,
+     "why": "India Code's database drops the hyphen; the PDF reads “sub-section”."
+    },
+    {
+     "section": "2",
+     "from": "a [has been or is being or is likely to be] for carrying out",
+     "to": "a [child care institution], for carrying out",
+     "count": 1,
+     "why": "India Code's database corrupted the definition of “Child Welfare Officer” (clause 17): the amendment-inserted defined term in the brackets was overwritten by a fragment (“has been or is being or is likely to be”) copied from clause (viii) of the definition of “child in need of care and protection”. The PDF's clause (17) reads “an officer attached to a [child care institution], for carrying out the directions”. Corrected against the PDF."
+    },
+    {
+     "section": "2",
+     "field": "footnotes",
+     "from": "Childrens Home",
+     "to": "Children's Home",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in this amendment footnote; the PDF reads “Children's Home”."
+    },
+    {
+     "section": "9",
+     "from": "the persons claim",
+     "to": "the person's claim",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's claim”."
+    },
+    {
+     "section": "11",
+     "from": "such persons charge",
+     "to": "such person's charge",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “such person's charge”."
+    },
+    {
+     "section": "12",
+     "from": "the persons release",
+     "to": "the person's release",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe; the PDF reads “the person's release”."
+    },
+    {
+     "section": "44",
+     "from": "the parents homes once the parent's are determined",
+     "to": "the parent's homes once the parents are determined",
+     "count": 1,
+     "why": "India Code's database put the possessive apostrophe on the wrong word: it reads “the parents homes once the parent's are determined”. The PDF reads “the parent's homes once the parents are determined” (the home belongs to the parent; the parents are determined). Corrected against the PDF."
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 112,
+    "words_compared": 25886,
+    "bare_numbers_ignored": 15,
+    "differences": 1,
+    "accepted_in_manifest": 1,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.942,
+    "below_0.90": {}
+   }
+  }
+ }
+}

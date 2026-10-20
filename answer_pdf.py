@@ -53,6 +53,15 @@ _ACT_TOKENS = [
     ("NIACT", re.compile(r"\bNI Act\b|Negotiable Instruments Act", re.I)),
 ]
 _ACT_SHORT = {"BNS": "BNS", "BNSS": "BNSS", "ITACT": "IT Act", "NIACT": "NI Act"}
+def _shelf_act_name(code):
+    """An Act-shelf Act's name for the PDF heading ('PMLA', 'SC/ST Act', ...; act_shelf manifest); None for any other code."""
+    try:
+        import act_shelf
+        return act_shelf.display_names().get(code)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 _ACT_LONG = {"BNS": "Bharatiya Nyaya Sanhita, 2023", "BNSS": "Bharatiya Nagarik Suraksha Sanhita, 2023",
              "ITACT": "Information Technology Act, 2000", "NIACT": "Negotiable Instruments Act, 1881"}
 
@@ -389,7 +398,7 @@ def build_answer_pdf(records: list, plain: bool = False) -> bytes:
         return out
 
     def statute_flowables(s, used_in=None):
-        head = f"Section {s['section_number']} of the {_ACT_SHORT.get(s['act'], s['act'])}"
+        head = f"Section {s['section_number']} of the {_ACT_SHORT.get(s['act']) or _shelf_act_name(s['act']) or s['act']}"
         out = [P(head + (f" — {_ACT_LONG[s['act']]}" if s["act"] in _ACT_LONG else ""), "h3")]
         if used_in:
             out.append(P(used_in, "small"))

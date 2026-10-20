@@ -525,7 +525,10 @@ _V3_SHAPE = """## Voice and shape (the Adviser)
 You write like a calm, informed adviser talking to "you": plain English, a technical term only when it is needed and explained in the same sentence. Write the answer in this order.
 1. OPENING, with no heading. The first sentence answers the question itself and states the main condition, using the person's own facts (the number of years, the stage they are at, who is involved). The shape: a direct answer (yes, no, probably, not yet, or only if ...) plus the one condition that decides it, in words that fit THIS question; never reuse a stock opener, and do not begin with "Not automatically". Never open with a heading, a definition or "The law provides". If the person is in a hard moment, add ONE short sentence using their facts to acknowledge it (never a stock phrase such as "I understand this is difficult", never invented sympathy).
 2. A heading, then what the law says. State the rule, give one sentence on WHY it works that way, and say what a court actually did or said (attributed to the court, from the excerpt below). One or two short paragraphs.
-3. The heading **How this cuts for and against you**, then two groups, each introduced by an italic line: *For you:* and *Against you:*, with 2-3 short bullet points each. These are factors a court weighs. They are never a verdict on this person's case and never a prediction of the outcome. Where the answer turns on facts, write it as "if ...; if ...". Then ONE line that starts "What I can't tell from here:" and names the facts that would change the answer.
+3. The part that weighs the answer. Choose ONE of two forms, by what the person asked.
+   (a) The person describes their own situation, or that of someone close to them (an arrest, an FIR, a notice, a dispute they are in), including a "what if" about their own case: use the heading **How this cuts for and against you**, then two groups, each introduced by an italic line: *For you:* and *Against you:*, with 2-3 short bullet points each. These are factors a court weighs. They are never a verdict on this person's case and never a prediction of the outcome. Where the answer turns on facts, write it as "if ...; if ...". Then ONE line that starts "What I can't tell from here:" and names the facts that would change the answer.
+   (b) The person asks what the law says, how something works, what a term or a section means, or what the punishment or procedure is, and gives no facts of their own case: do NOT use the words "For you" or "Against you", and do not write as if the person were a party to a case. Use a heading that fits the question and is no longer than 45 characters, such as **When does the answer change?** or **What to keep in mind**, then 3-5 short bullet points: the conditions, exceptions, limits and common mix-ups that decide how the rule works in practice, and what the courts have weighed, each tied to a provision or a case in the material. Keep the same care as in (a): attribute what a court said to the court, and never turn a factor into a prediction. If the material leaves part of the question uncovered, end with ONE line that starts "What the material does not show:" and names what is missing.
+   If you cannot tell which form fits, use (b).
 4. A heading, then 2-4 numbered steps. Use exactly **What you can do right now** when the question describes something that HAS ALREADY HAPPENED or is still happening to the person or someone close to them (an arrest, a search, an FIR, a frozen account, a trial that is running). Use exactly **What you can do now** for a general question. Each step starts with a verb (Ask, Raise, Bring, Keep, Write down, Check), says what the person can ask for, raise or bring (never "you must", never an order to do a legal act), and gives half a sentence of purpose. The first step is the most immediate one. Mention uploading a document only if the person has one. Put nothing after the steps: no closing line.
 
 Headings: a bold line on its own, at most 45 characters, followed by a blank line, written as what the person wants to know (for example **What does the law say about delay?**). Headings are the ONLY bold text in the answer. Write case names in italics with single asterisks, for example *Arnesh Kumar v. State of Bihar*. Do not use "#" headings, tables or emoji.
@@ -830,6 +833,38 @@ def _section_act_map(matches) -> dict:
 _OLD_LAW_WORDS = r"(?:former|old|earlier|erstwhile|repealed|previous|original)"
 _ACT_NAME_AFTER = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?(?:" + _OLD_LAW_WORDS + r"\s+)?(?:BNSS|BNS|IPC|CrPC|Cr\.?\s?P\.?\s?C\.?|Code|Act|Sanhita|Constitution|Evidence|Adhiniyam|Rules?)\b", re.IGNORECASE)
 _ACT_DISPLAY_FOR_REPAIR = {"NIACT": "NI Act", "ITACT": "IT Act"}
+
+
+def _shelf_display(code):
+    """The display name of an Act-shelf Act ('PMLA', 'SC/ST Act', 'Prevention of Corruption Act, 1988', ...: act_shelf manifest) for the label, the repaired citation and the retry instruction; None for any other code."""
+    try:
+        import act_shelf
+        return act_shelf.display_names().get(code)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+_SHELF_AFTER_PREFIX = re.compile(r"(?:\s*\(\w+\))*\s*,?\s*(?:(?:of|under|in)\s+(?:the\s+)?)?", re.IGNORECASE)
+
+
+def _shelf_act_named_after(tail):
+    """True when the text right after a section number names an Act-shelf Act ('of the PMLA', 'under the SC/ST Act', 'of the Prevention of Corruption Act, 1988'): _ACT_NAME_AFTER only knows the BNS/BNSS family,
+    so without this a number given to the PMLA could be completed with the name of another Act whose same-numbered section was the one retrieved ('Section 19 of the Prevention of Corruption Act, 1988 of the PMLA')."""
+    try:
+        import act_shelf
+        rest = tail[_SHELF_AFTER_PREFIX.match(tail).end():]
+        return any(p.match(rest) for p in act_shelf.name_patterns().values())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _shelf_name_pattern(code):
+    """The compiled pattern of the names an answer may use for an Act-shelf Act (its Act Directory aliases and display name); None for any other code."""
+    try:
+        import act_shelf
+        return act_shelf.name_patterns().get(code)
+    except Exception:  # noqa: BLE001
+        return None
 # A mention of the OLD law ("Section 482 of the former Code", "Section 309 of the CrPC", "Section 309 (now Section 346 of the BNSS)", "the former Section 309"): not a BNS/BNSS mention, so it is neither
 # checked for a missing Act, nor given one, nor corrected (added 2026-10-15: "of the former Code" was not recognised and could be repaired into "of the BNSS of the former Code").
 _OLD_LAW_AFTER = re.compile(
@@ -872,11 +907,11 @@ def _add_missing_acts(response_text: str, missing: list, section_act_map: dict) 
         if not act:
             continue
         for m in re.finditer(r"\bSection\s+" + re.escape(num) + r"(?![0-9A-Za-z])(?:\s*\(\w+\))*", text, re.IGNORECASE):
-            if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]):
+            if _ACT_NAME_AFTER.match(text[m.end():m.end() + 45]) or _shelf_act_named_after(text[m.end():m.end() + 80]):
                 continue                                    # this mention names an Act already; look for another mention
             if _is_old_law_mention(text, m.start(), m.end()):
                 continue                                    # an old-law mention: not ours to complete
-            text = text[:m.end()] + " of the " + _ACT_DISPLAY_FOR_REPAIR.get(act, act) + text[m.end():]
+            text = text[:m.end()] + " of the " + (_ACT_DISPLAY_FOR_REPAIR.get(act) or _shelf_display(act) or act) + text[m.end():]
             break
     return text
 
@@ -968,7 +1003,7 @@ def _find_sections_missing_act(response_text: str, section_act_map: dict, acts_a
         # variant(s) are checked here instead of assuming the code itself
         # is the name.
         acts = sorted((acts_all or {}).get(num) or {act})          # a number retrieved under both the BNS and the BNSS is satisfied by either name
-        if not any((_ACT_NAME_CHECK_PATTERNS.get(a) or re.compile(rf"\b{re.escape(a)}\b", re.IGNORECASE)).search(response_text or "") for a in acts):
+        if not any((_ACT_NAME_CHECK_PATTERNS.get(a) or _shelf_name_pattern(a) or re.compile(rf"\b{re.escape(a)}\b", re.IGNORECASE)).search(response_text or "") for a in acts):
             missing.append(num)
     return missing
 
@@ -1877,7 +1912,16 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         except Exception:  # pragma: no cover -- fail-open
             pass
         try:                                       # SCOPE_GATE=open: a question the topic bar would have turned away gets a short scope note (_open_topic_block); "" otherwise
-            retrieved_text = retrieved_text + _open_topic_block(question)
+            retrieved_text = retrieved_text + _open_topic_block(question, matches)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
+        try:                                       # Act Directory: a question that names an Act whose text is not in the library gets one short block saying so (act_directory.prompt_block); "" otherwise
+            import act_directory
+            retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question), held=_shelf_held(matches, question))
+        except Exception:  # pragma: no cover -- fail-open
+            pass
+        try:                                       # the person PAID (or was made to pay) a public servant: section 8 of the Prevention of Corruption Act is in the material; say what it says about the payer (_payer_block); "" otherwise
+            retrieved_text = retrieved_text + _payer_block(matches)
         except Exception:  # pragma: no cover -- fail-open
             pass
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
@@ -1971,7 +2015,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             if missing_act:
                 retry_prompt += _MISSING_ACT_RETRY_INSTRUCTION.format(
                     sections=", ".join(missing_act), first_section=missing_act[0],
-                    first_act=section_act_map[missing_act[0]],
+                    first_act=_shelf_display(section_act_map[missing_act[0]]) or section_act_map[missing_act[0]],
                 )
             if missing_companion:
                 retry_prompt += _MISSING_COMPANION_RETRY_INSTRUCTION.format(sections=", ".join(missing_companion))
@@ -2721,15 +2765,21 @@ def format_retrieved_text_for_prompt(matches):
         if m.get("case_name"):
             source = m["case_name"]
         elif m.get("act"):
-            act_display = _ACT_DISPLAY_NAME.get(m["act"], m["act"])
+            act_display = m.get("act_display") or _ACT_DISPLAY_NAME.get(m["act"], m["act"])      # act_display: an Act-shelf section carries the Act's name, not its internal code
             source = f"{act_display} Section {label}"
         else:
             source = f"Section {label}"
 
         block = f"[{source}, Section/Para {label}]\n{m['text']}"
+        if m.get("retrieval") == "cited" and m.get("cited_by"):                       # SECTION_XREF: a section handed over because the section the person asked about refers to it
+            block = f"[{source}, Section/Para {label}]\n(Cited by section {m['cited_by']} of the same Act, the section the person asked about.)\n{m['text']}"
 
         if m.get("context_note"):
             block += "\n\n[Important legal context for this section]\n" + m["context_note"]
+
+        _sh = m.get("shelf") if isinstance(m.get("shelf"), dict) else None
+        if _sh and (_sh.get("footnotes") or "").strip():              # Act shelf: the amendment notes India Code prints with the section (who changed it, from when)
+            block += "\n\n[Amendment notes printed with this section on India Code; they are not tied to particular words]\n" + _sh["footnotes"].strip()
 
         # PROJECT 2 (citation_currency.py): judgment matches (identified by
         # case_name) get a currency check the same way statute matches get
@@ -3470,7 +3520,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # embedded chunk and returned no_match -- a plainly answerable
     # question producing an empty answer. Merged into statute_overrides
     # so it flows through the same combine-and-fallback logic below.
-    explicit = _explicit_section_matches(current_message)
+    explicit = _drop_sections_claimed_by_shelf(_explicit_section_matches(current_message), question, current_message)
     if explicit:
         seen = {(o.get("act"), o.get("section_number")) for o in statute_overrides}
         statute_overrides = statute_overrides + [
@@ -3515,8 +3565,12 @@ def _answer_question_core(question, inline_domains=frozenset()):
     from judgment_doctrine_map import get_judgment_doctrine_override
     judgment_overrides = get_judgment_doctrine_override(current_message)
 
+    # Act shelf (act_shelf.py; ACT_SHELF=on, default off): the full text of a few Acts that are not in the library, when the Act Directory finds one of them in the question. They join the overrides:
+    # a shelf Act named in the question reaches the answer regardless of what the library's own search finds. [] when the switch is off, so nothing here changes then.
+    shelf_overrides = _act_shelf_matches(question, current_message)
+
     # everything curated that must reach the answer regardless of ranking
-    overrides = statute_overrides + judgment_overrides
+    overrides = statute_overrides + judgment_overrides + shelf_overrides
 
     # Search on the CURRENT message first, falling back to the full
     # history-included question only if that narrow search finds nothing
@@ -3738,6 +3792,165 @@ def _attach_question_register_notes(result, question=None):
     return result
 
 
+import threading
+
+_ACTS_CACHE = threading.local()                  # per thread (a Streamlit session or a WhatsApp request): the Acts found for the question being answered, so the ACT_DETECT passes run once, not six times
+
+
+def _acts_named(question):
+    """The Acts of the Act Directory (act_directory.py) that the QUESTION names or clearly describes: [{'id','short','how'}], [] when none, when ACT_DIRECTORY=off, or on any failure.
+
+    With ACT_DETECT set (act_detect.py, added 2026-10-17; off by default, so nothing changes until the owner sets it) a SECOND pass is added for a question that names no Act but plainly describes one
+    ("my son ... a clerk in a government office ... taking money from a contractor"): everyday wording and the Acts' own vocabulary by regular expression, and, with ACT_DETECT=ai, one short Haiku call
+    when that finds nothing. Those matches carry how='likely', so the page says "looks like it is about the X Act", exactly as a Directory phrase match already does. The result is remembered for this
+    question because six places call this function and the AI pass must run at most once."""
+    try:
+        import act_directory
+        found = act_directory.detect(question)
+    except Exception:  # noqa: BLE001 -- fail-open
+        return []
+    try:
+        import act_detect
+        if not act_detect.enabled() or act_directory.mode() == "off":
+            return found
+        cached = getattr(_ACTS_CACHE, "value", None)
+        if isinstance(cached, tuple) and cached[0] == question:
+            return cached[1]
+        entries = [{"id": e["id"], "short": e["short"]} for e in act_directory.load()["acts"] if e.get("detect") is not False]
+        hits, rec = act_detect.more(question, found, entries)
+        by_id = {e["id"]: e for e in entries}
+        acts = (found + [{"id": h["id"], "short": by_id[h["id"]]["short"], "how": h["how"]} for h in hits if h["id"] in by_id])[:act_directory.MAX_ACTS]
+        if rec.get("pass") not in (None, "none"):
+            import hashlib
+            print("ACT_DETECT " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "named": [a["id"] for a in found], **rec}), flush=True)
+        _ACTS_CACHE.value = (question, acts)
+        return acts
+    except Exception as exc:  # noqa: BLE001 -- fail-open
+        logger.warning("act_detect pass failed: %s", type(exc).__name__)
+        return found
+
+
+def _payer_block(matches):
+    """A prompt section for a question in which the person PAID, or was made to pay, money to a public servant (owner's staging test 2026-10-17: the answer treated a family who had paid Rs 10,000 as pure victims
+    and never mentioned that giving is itself an offence under section 8 of the Prevention of Corruption Act, which exempts a person who was compelled only if he reports within seven days). It fires only when the
+    Act shelf handed over section 8 because of the shelf's 'payer' pointer (act_shelf/manifest.json), so the section's own text, with its provisos, is in the material. '' otherwise. It asks the model to say what the
+    section says, not to decide whether this person was compelled or has committed an offence."""
+    try:
+        hit = [m for m in (matches or []) if isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("pointer_tag") == "payer" and str(m.get("section_number")).upper() == "8"]
+        if not hit:
+            return ""
+        return ("\n\n## The person appears to have paid, or been made to pay, money to a public servant\n"
+                "Section 8 of the Prevention of Corruption Act, 1988 is in the material above because the question describes a payment. In your OPENING paragraph or in the \"right now\" part, say plainly and in your own words, "
+                "using ONLY what that section's text shows: (1) that giving an undue advantage to a public servant can itself be an offence under section 8; (2) that the section's provisos say it does not apply where a person "
+                "is compelled to give it, but that the person so compelled must report the matter to the law enforcement authority or investigating agency within seven days of giving it. Do not say whether this person "
+                "was compelled, and do not say that this person has or has not committed an offence: the facts are not known to you. Tell them to speak to a lawyer at once, because the seven days run from the day of the payment, "
+                "and include reporting promptly as one of the things they can do. Do not suggest that they pay anything further or confront the public servant.\n")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _shelf_held(matches, question):
+    """Act shelf: {Directory id: {'state': 'used'|'unused', 'loaded_on'}} for the Acts the question names that have a working shelf (act_shelf.held_state); None when ACT_SHELF is off or none applies."""
+    try:
+        import act_shelf
+        if not act_shelf.enabled():
+            return None
+        return act_shelf.held_state(matches, _acts_named(question)) or None
+    except Exception:  # noqa: BLE001 -- fail-open
+        return None
+
+
+def _drop_sections_claimed_by_shelf(explicit, question, current_message):
+    """Act shelf: '_explicit_section_matches' reads 'section 45 of the PMLA' as BNS section 45 (a number with no BNS/BNSS/IT Act name after it defaults to the BNS). When ACT_SHELF is on and the
+    question names a shelf Act next to that number, the number is the shelf Act's: the BNS match is dropped, unless the question also puts that number next to some other name ('section 3 of POCSO and
+    section 3 of the BNS'). With ACT_SHELF off, or a question that names no shelf Act, nothing is dropped."""
+    try:
+        if not explicit:
+            return explicit
+        import act_shelf
+        if not act_shelf.enabled():
+            return explicit
+        ids = [a["id"] for a in _acts_named(question)]
+        if not ids:
+            return explicit
+        claimed = list(act_shelf.named_sections(current_message, ids).values()) + list(act_shelf.implied_sections(current_message, ids).values())      # implied: a bare 'section 17' in a conversation about one shelf Act (SECTION_RULE)
+        mine = {n for v in claimed for n in v} - act_shelf.other_numbers(current_message, ids)
+        if not mine:
+            return explicit
+        return [e for e in explicit if not (e.get("source") == "explicit_section_ref" and str(e.get("section_number") or "").upper() in mine)]
+    except Exception:  # noqa: BLE001 -- fail-open
+        return explicit
+
+
+def _act_shelf_matches(question, current_message):
+    """Act shelf (act_shelf.py, ACT_SHELF=on, default off): when the Act Directory finds an Act with a shelf in the question, the sections of that Act that bear on it, as statute matches (source 'act_shelf') that
+    join the curated overrides. [] when the switch is off, when the question names no such Act, and on any failure. One log line per question that drew a shelf Act: ACT_SHELF {...} (a hash of the question, the
+    Acts, the sections and scores; never the question or the text)."""
+    try:
+        import act_shelf
+        if not act_shelf.enabled():
+            return []
+        acts = _acts_named(question)
+        if not acts:
+            return []
+        res = act_shelf.search(question, acts, current_message=current_message)
+        info = res.get("info") or {}
+        try:                                       # the wider search must not hand over a passage that cites the section the person named of ANOTHER statute (sci_search_tier._statute_filter)
+            import sci_search_tier
+            sci_search_tier.set_statute_context(act_shelf.statute_context(res.get("matches")))
+        except Exception:  # noqa: BLE001
+            pass
+        if info.get("acts"):
+            import hashlib
+            print("ACT_SHELF " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], **info}), flush=True)
+        return res.get("matches") or []
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_act_shelf_matches failed: %s", exc)
+        return []
+
+
+def _attach_section_note(result):
+    """SECTION_RULE (default on; acts only with ACT_SHELF on): for every section of a shelf Act that the person NAMED (retrieval 'named' or 'implied'), adds result['section_note'] = [{'act','section','kind','lead',
+    'texts' (the section's whole official text),...}] (section_rule.notes), shown under the answer: the explanation and the official wording side by side, always (owner, 2026-10-20). kind 'official' = the answer
+    uses the number and refers to the provisos; 'not_mentioned' = it never uses the number; 'provisos' = it does not clearly set the provisos out; only the sentence above the text differs. Written by code from the
+    shelf's text; judges nothing. One log line: SECTION_NOTE {...} (Act, section, kind; never the question). Never raises."""
+    try:
+        if not isinstance(result, dict) or result.get("state") not in ("single_match", "conflicting_matches"):
+            return result
+        import section_rule
+        items = section_rule.notes(result.get("response_text") or "", result.get("matches"))
+        if items:
+            result["section_note"] = items
+            print("SECTION_NOTE " + json.dumps({"sections": [f"{i['act']} s.{i['section']}: {i['kind']}" + (" +cites " + ",".join(c["section"] for c in i["cites"]) if i.get("cites") else "") for i in items]}), flush=True)
+    except Exception as exc:  # noqa: BLE001 -- fail-open
+        logger.warning("_attach_section_note failed: %s", type(exc).__name__)
+    return result
+
+
+def _attach_act_notice(result, question=None):
+    """Act Directory (2026-10-16): when the person's question names (or clearly describes) an Act whose text Recourse does not hold, adds result['act_notice'] = {'kind','acts','text','html'}, one fixed notice written
+    by code. kind 'opened' = the topic bar was opened for this question (the notice replaces the generic outside-scope notice, so only one shows); 'answer' = an ordinary answer that also names such an Act;
+    'refusal' = a question turned away. Other states ('unrelated', 'budget_paused', errors) get nothing. Never raises; ACT_DIRECTORY=off adds nothing."""
+    try:
+        state = result.get("state") if isinstance(result, dict) else None
+        if not question or (state not in _LINK_STATES and state not in _REFUSAL_NOTE_STATES):
+            return result
+        acts = _acts_named(question)
+        if not acts:
+            return result
+        import act_directory
+        if state in _LINK_STATES:
+            kind = "opened" if _open_topic_info(question) else "answer"
+        else:
+            kind = "refusal"
+        note = act_directory.notice(acts, kind, held=_shelf_held(result.get("matches"), question))
+        if note:
+            result["act_notice"] = note
+    except Exception as exc:  # fail-open
+        logger.warning("_attach_act_notice failed: %s", exc)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # SCOPE_GATE (ADDED 2026-10-16, owner's instruction: "the site should accept all topics now").  on (default: today's behaviour) | open.
 #
@@ -3757,7 +3970,11 @@ _OPEN_TOPIC_BLOCK = ("\n\n## Scope note -- this question is outside the criminal
                      "The person's question is about a legal subject our library may not cover (a special law, or a civil, family, tax, service or company matter). Do not refuse it for that reason and do not say it is "
                      "outside what you can discuss. Answer it the way you answer any other question: only from the legal information given in this prompt (the rules above still apply in full, including never adding a "
                      "section number, case holding, punishment or Act name that is not in the material). Where the material does not cover a point, say so plainly in one sentence (\"I don't have information on ...\") "
-                     "and say which kind of lawyer or forum handles it, instead of filling the gap from memory.\n")
+                     "and say which kind of lawyer or forum handles it, instead of filling the gap from memory. "
+                     "If the matter is governed by an Act or code other than the ones in the material (for example TADA, the Prevention of Corruption Act, POCSO, UAPA, or a civil, tax or company law), "
+                     "do not present a BNS or BNSS section as the governing provision, the offence, the procedure or the route of appeal for it unless the material itself shows that the section applies to that matter. "
+                     "A BNS or BNSS section that is only loosely related (for example a general appeal provision) is not a substitute for the statute that actually governs: say that the governing statute is not in "
+                     "the material and that the forum and the route of appeal come from that statute.\n")
 
 
 import threading as _threading
@@ -3782,9 +3999,25 @@ def _open_topic_info(question):
     return info if info and info.get("question") == question else None
 
 
-def _open_topic_block(question):
-    """The scope note for a question the topic bar would have turned away ('' for every other question, and whenever SCOPE_GATE is not 'open')."""
-    return _OPEN_TOPIC_BLOCK if _scope_gate_open() and _open_topic_info(question) else ""
+_OPEN_TOPIC_EXAMPLES = "(for example TADA, the Prevention of Corruption Act, POCSO, UAPA, or a civil, tax or company law)"
+_OPEN_TOPIC_NAMES = (("TADA", None), ("the Prevention of Corruption Act", "pc_act_1988"), ("POCSO", "pocso_act_2012"), ("UAPA", "uapa_1967"))
+
+
+def _open_topic_block(question, matches=None):
+    """The scope note for a question the topic bar would have turned away ('' for every other question, and whenever SCOPE_GATE is not 'open').  When the Act shelf put an Act's text into the material
+    (matches), that Act leaves the note's list of examples of Acts that are NOT in the material; with no shelf text the note is exactly _OPEN_TOPIC_BLOCK."""
+    if not (_scope_gate_open() and _open_topic_info(question)):
+        return ""
+    block = _OPEN_TOPIC_BLOCK
+    try:
+        import act_shelf
+        held = set(act_shelf.shelf_ids(matches))
+        if held and _OPEN_TOPIC_EXAMPLES in block:
+            left = [n for n, aid in _OPEN_TOPIC_NAMES if aid not in held]
+            block = block.replace(_OPEN_TOPIC_EXAMPLES, "(for example " + "".join(f"{n}, " for n in left) + "or a civil, tax or company law)")
+    except Exception:  # noqa: BLE001
+        pass
+    return block
 
 
 def _answer_from_wider_search_only(question):
@@ -3854,7 +4087,7 @@ def _finish_open_topic(question, result):
         except Exception:  # noqa: BLE001
             pass
         print("SCOPE_OPEN " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "reasoning": info.get("reasoning", "")[:160], "state": result.get("state"),
-                                          "wider_only": bool(info.get("wider_only")), "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
+                                          "wider_only": bool(info.get("wider_only")), "act": [a["id"] for a in _acts_named(question)], "library": _library_summary(result.get("matches")), "wider": wider}), flush=True)
     except Exception as exc:  # noqa: BLE001
         logger.warning("_finish_open_topic failed: %s", exc)
     return result
@@ -3961,6 +4194,8 @@ def _answer_question_inner(question, inline_domains=frozenset()):
     try:
         result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
         result = _attach_question_register_notes(result, question=question)       # a refusal still tells the person that a case they named is on the register
+        result = _attach_act_notice(result, question=question)                    # an Act the question names whose text is not in the library: one fixed notice (act_directory.py)
+        result = _attach_section_note(result)                                     # a section of a shelf Act that the person named and the answer does not stand on: its official text (section_rule.py)
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open
