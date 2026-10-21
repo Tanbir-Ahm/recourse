@@ -112,3 +112,22 @@ def anon_est_cost_inr():
         return max(0.0, float(_env("ANON_EST_COST_INR")))
     except ValueError:
         return 10.0
+
+
+def rate_limit_per_minute():
+    """Requests per minute one address may make to the /api routes (health excepted), 0 = no limit. Default 120."""
+    return _int("API_RATE_LIMIT_PER_MINUTE", 120, 0, 100000)
+
+
+def auth_rate_per_minute():
+    """Requests per minute one address may make to the sign-in routes, 0 = no limit. Default 20."""
+    return _int("API_AUTH_RATE_PER_MINUTE", 20, 0, 100000)
+
+
+def purge_on():
+    """The hourly retention purge runs unless API_PURGE=off."""
+    return _env("API_PURGE").lower() not in ("0", "off", "false", "no")
+
+
+def purge_interval_seconds():
+    return _int("API_PURGE_INTERVAL_SECONDS", 3600, 60, 86400)

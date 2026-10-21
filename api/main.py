@@ -11,6 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import ask as _ask
+from . import config
+from .cors import CORSMiddleware
+from .ratelimit import RateLimitMiddleware
 from .routers import anon as _anon_router
 from .routers import auth as _auth_router
 from .routers import chats as _chats_router
@@ -21,6 +24,19 @@ ROLE = "api"
 
 def _flag(name):
     return (os.environ.get(name) or "").strip().strip("\"'").lower() in ("1", "on", "true", "yes")
+
+
+async def _purge_loop():
+    """Keeps the retention promises (api/purge.py): once at the start, then every API_PURGE_INTERVAL_SECONDS. Does nothing without a database; a failure is logged by type only and tried again next time."""
+    from .db import session
+    while True:
+        if session.configured():
+            try:
+                from . import purge
+                await asyncio.to_thread(purge.run)
+            except Exception as exc:  # noqa: BLE001
+                print(f"api: purge failed ({type(exc).__name__})")
+        await asyncio.sleep(config.purge_interval_seconds())
 
 
 @asynccontextmanager
@@ -38,10 +54,18 @@ async def lifespan(_app):
             print("api: database schema is up to date")
         else:
             print("api: API_RUN_MIGRATIONS is on but DATABASE_URL is not set; skipping")
-    yield
+    task = asyncio.create_task(_purge_loop()) if config.purge_on() else None
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
 
 
 app = FastAPI(title="Recourse API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(CORSMiddleware)           # added last = outermost: a refused request still carries the CORS headers a browser needs to read it
 
 app.include_router(_ask.router)
 app.include_router(_auth_router.router)
