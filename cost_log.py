@@ -55,6 +55,12 @@ def _qhash(question):
 
 def begin(question):
     _LOCAL.calls, _LOCAL.q = [], _qhash(question)
+    _LOCAL.last = None
+
+
+def last_question():
+    """The COST_QUESTION record of the question this thread finished last (None if none, or if one has begun since). The API service reads the cost of the answer it just produced from here."""
+    return getattr(_LOCAL, "last", None)
 
 
 def _record(rec):
@@ -119,6 +125,7 @@ def finish(style="", audience="", switches=None):
         rec["spent_today_inr"] = round(spent_today_inr(), 4)
         print("COST_QUESTION " + json.dumps(rec), flush=True)
         _LOCAL.calls = None
+        _LOCAL.last = rec
         return rec
     except Exception:  # noqa: BLE001
         return None

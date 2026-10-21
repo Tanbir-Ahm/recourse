@@ -1893,6 +1893,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
     omission check) never trigger this -- an answer that is merely
     incomplete is still shown, only one that is actively wrong or
     unverifiable is discarded."""
+    _progress("write")                          # live steps (progress.py): a no-op unless the API service is listening
     if client is None:
         return None
     try:
@@ -3447,6 +3448,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # failure this avoids.
     category, reasoning, redirect_domain = classify_scope(question)
     current_message = _extract_current_message(question)
+    _progress("scope", category=category or "unavailable")
 
     if category is None:
         return {"state": "classifier_unavailable"}
@@ -3568,6 +3570,8 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # Act shelf (act_shelf.py; ACT_SHELF=on, default off): the full text of a few Acts that are not in the library, when the Act Directory finds one of them in the question. They join the overrides:
     # a shelf Act named in the question reaches the answer regardless of what the library's own search finds. [] when the switch is off, so nothing here changes then.
     shelf_overrides = _act_shelf_matches(question, current_message)
+    _progress_acts(question)
+    _progress_sections(shelf_overrides)
 
     # everything curated that must reach the answer regardless of ranking
     overrides = statute_overrides + judgment_overrides + shelf_overrides
@@ -3578,6 +3582,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # confirmed real failure (old conversation topics crowding out a
     # brand-new one) this fixes.
     result = _find_relevant_sections_for_turn(current_message, question)
+    _progress_library(result)
 
     if result["state"] == "unavailable":
         # Even if retrieval is unavailable, a curated override may
@@ -4093,6 +4098,68 @@ def _finish_open_topic(question, result):
     return result
 
 
+def _progress(step, **detail):
+    """Live steps (progress.py). Never raises; a no-op unless a listener is set for this thread (the API service sets one; the page and the WhatsApp bot do not)."""
+    try:
+        import progress
+        progress.emit(step, **detail)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _progress_on():
+    try:
+        import progress
+        return progress.active()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _progress_acts(question):
+    """Step 'acts': the Acts the Act Directory finds in the question. Computed only when someone is listening; _acts_named is remembered per question under ACT_DETECT, so this adds no model call."""
+    if not _progress_on():
+        return
+    try:
+        _progress("acts", names=[a.get("short") or a.get("id") for a in _acts_named(question)])
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _progress_sections(shelf_matches):
+    """Step 'sections': the shelf sections that reached the material ('PCACT s.17'), and how many of them are sections cited by the one the person asked about."""
+    if not _progress_on():
+        return
+    try:
+        ms = [m for m in (shelf_matches or []) if isinstance(m, dict) and m.get("source") == "act_shelf"]
+        if not ms:
+            return                                     # a step that did not happen is not reported
+        _progress("sections", items=[f"{m.get('act')} s.{m.get('section_number')}" for m in ms], cited=sum(1 for m in ms if m.get("retrieval") == "cited"))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _progress_library(result):
+    """Step 'library': how many library statute passages and judgment passages the first search found."""
+    if not _progress_on():
+        return
+    try:
+        ms = [m for m in ((result or {}).get("matches") or []) + ((result or {}).get("judgment_matches") or []) if isinstance(m, dict)]
+        _progress("library", statutes=sum(1 for m in ms if m.get("type") == "statute"), judgments=sum(1 for m in ms if m.get("type") == "judgment"))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _progress_wider(result):
+    """Step 'wider': only when the wider search contributed (SCI_SEARCH_MODE); how many wider-search judgments are listed."""
+    if not _progress_on():
+        return
+    try:
+        if isinstance(result, dict) and (result.get("sci_fed") or result.get("sci_related_judgments")):
+            _progress("wider", fed=bool(result.get("sci_fed")), judgments=len(result.get("sci_related_judgments") or []))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def answer_question(question, inline_domains=frozenset(), audience=None, channel=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
@@ -4124,6 +4191,8 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
                 notes = grounding_checks.pop_notes()
                 if notes:
                     result["grounding_notes"] = notes
+            if isinstance(result, dict) and result.get("state") in _LINK_STATES:
+                _progress("checks", notes=len(result.get("grounding_notes") or []), mode=grounding_checks.mode())
         except Exception as exc:  # noqa: BLE001
             logger.warning("grounding notes failed: %s", exc)
         try:
@@ -4194,11 +4263,13 @@ def _answer_question_inner(question, inline_domains=frozenset()):
     try:
         result = _attach_register_notes(_attach_cited_judgment_links(result), question=question)
         result = _attach_question_register_notes(result, question=question)       # a refusal still tells the person that a case they named is on the register
+        _progress("register", notes=len((result or {}).get("register_notes") or []), possible=len((result or {}).get("register_possible") or []))
         result = _attach_act_notice(result, question=question)                    # an Act the question names whose text is not in the library: one fixed notice (act_directory.py)
         result = _attach_section_note(result)                                     # a section of a shelf Act that the person named and the answer does not stand on: its official text (section_rule.py)
         try:
             import sci_search_tier
             result = sci_search_tier.attach(question, result)     # off by default (SCI_SEARCH_MODE); fail-open
+            _progress_wider(result)
         except Exception:  # pragma: no cover
             pass
         try:

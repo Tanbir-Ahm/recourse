@@ -27,7 +27,7 @@ check(r.status_code == 200 and r.json().get("role") == "api" == ROLE, f"/api/hea
 check(set(r.json()) == {"role", "commit", "db"}, "the health body carries exactly role, commit, db (no secrets, no engine data)")
 os.environ["RAILWAY_GIT_COMMIT_SHA"] = "0123456789abcdef0123"
 check(c.get("/api/health").json()["commit"] == "0123456789ab", "commit is Railway's build sha cut to 12 characters")
-check(c.get("/").status_code == 404, "no route outside /api (nothing else is exposed yet)")
+check(c.get("/").status_code == 404 and c.get("/api/other").status_code == 404, "no route outside the two that exist")
 check(c.post("/api/health").status_code == 405, "health is GET only")
 
 cfg = json.load(open(os.path.join(HERE, "api", "railway.api.json"), encoding="utf-8"))["deploy"]
@@ -39,6 +39,14 @@ check(cfg.get("numReplicas") == 1, "one replica (the daily-budget file has an in
 root = json.load(open(os.path.join(HERE, "railway.json"), encoding="utf-8"))["deploy"]
 check("streamlit run recourse_app.py" in root["startCommand"] and root["healthcheckPath"] == "/_stcore/health", "the root railway.json is still the website's (this work must not change it)")
 check("streamlit run recourse_app.py" in open(os.path.join(HERE, "Procfile"), encoding="utf-8").read(), "the Procfile is still the website's")
+
+
+# the committed OpenAPI file (the front end's contract) is what the app produces today
+sys.path.insert(0, os.path.join(HERE, "api"))
+import export_openapi
+check(open(os.path.join(HERE, "api", "openapi.json"), encoding="utf-8").read() == export_openapi.render(), "api/openapi.json is up to date (run: python api/export_openapi.py)")
+paths = json.load(open(os.path.join(HERE, "api", "openapi.json"), encoding="utf-8"))["paths"]
+check(sorted(paths) == ["/api/ask", "/api/health"] and list(paths["/api/ask"]) == ["post"], f"the contract lists exactly the routes that exist ({sorted(paths)})")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)
