@@ -1,0 +1,15 @@
+{
+  "_note": "PROVISIONAL numbers. The owner decided (D7, 2026-10-20) that the free-tier limits are set at step A5 from real use; these exist so the quota code can be built and tested. 'anonymous' is not a plan any user holds: it carries the limits of the three-question trial without sign-in (D4). Change a number here and run `python -m api.db.migrate`: a new entitlement VERSION is added, the old one is kept as history. No prices here: they live with the payment provider (Phase C).",
+  "plans": [
+    {"code": "anonymous", "name": "Without signing in", "sort": 0, "entitlements": [
+      {"feature": "answer_layman", "period": "day", "limit": 3},
+      {"feature": "answer_lawyer", "period": "day", "limit": 0}
+    ]},
+    {"code": "free", "name": "Free", "sort": 1, "entitlements": [
+      {"feature": "answer_layman", "period": "day", "limit": 10},
+      {"feature": "answer_lawyer", "period": "day", "limit": 3},
+      {"feature": "chat_history_days", "period": "none", "limit": null},
+      {"feature": "notes_max", "period": "none", "limit": 100}
+    ]}
+  ]
+}

@@ -221,9 +221,9 @@ check(steps.describe("scope", {"category": "banana"})["label"] == "Checked the t
 check(steps.describe("library", {"statutes": "x", "judgments": True}) ["detail"] == {"statutes": 0, "judgments": 0}, "junk counts become 0")
 
 # ---------------------------------------------------------------- health never imports the engine
-code = "import sys; import api.main as m; from fastapi.testclient import TestClient; r = TestClient(m.app).get('/api/health'); print(r.json()['role'], 'chat_assistant' in sys.modules, 'streamlit' in sys.modules)"
+code = "import sys; import api.main as m; from fastapi.testclient import TestClient; r = TestClient(m.app).get('/api/health'); print(r.json()['role'], 'chat_assistant' in sys.modules, 'streamlit' in sys.modules, 'sqlalchemy' in sys.modules)"
 out = subprocess.run([sys.executable, "-c", code], cwd=HERE, capture_output=True, text=True, timeout=120).stdout.strip()
-check(out == "api False False", f"/api/health answers without importing the engine or Streamlit ({out!r})")
+check(out == "api False False False", f"/api/health answers without importing the engine, Streamlit or the database library ({out!r})")
 
 
 # ---------------------------------------------------------------- the command-line helper, against a real server process

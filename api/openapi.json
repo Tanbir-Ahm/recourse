@@ -143,7 +143,7 @@
     },
     "/api/health": {
       "get": {
-        "description": "Liveness and identity. No authentication. 'role' must be 'api'; 'commit' is Railway's build commit when present; 'db' is filled in when the database is added.",
+        "description": "Liveness and identity. No authentication. 'role' must be 'api'; 'commit' is Railway's build commit when present; 'db' is 'not_configured' without DATABASE_URL, else 'ok' or 'down' (a down database does not fail the health check: the service still answers; the value is for the monitor).",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
