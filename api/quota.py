@@ -6,7 +6,7 @@ The anonymous trial has its own counters: one per device (the per-person cap) an
 """
 import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from . import config
@@ -104,14 +104,17 @@ def _anon_limit(db):
 
 
 def anon_spent_today(db, now=None):
+    """Rupees the trial has spent since IST midnight. A question still running (cost not yet known) counts at ANON_EST_COST_INR, so a burst of simultaneous questions cannot all pass the budget check before any of them has been paid for."""
     start, _ = window("day", _now(now))
-    return float(db.execute(select(func.coalesce(func.sum(M.AnonQuestion.cost_inr), 0)).where(M.AnonQuestion.created_at >= start)).scalar() or 0)
+    est = config.anon_est_cost_inr()
+    return float(db.execute(select(func.coalesce(func.sum(func.coalesce(M.AnonQuestion.cost_inr, est)), 0)).where(M.AnonQuestion.created_at >= start)).scalar() or 0)
 
 
 def _bump(db, kind, key, day, limit):
     t = M.AnonCounter.__table__
     stmt = pg_insert(t).values(kind=kind, key=key, day=day, count=1).on_conflict_do_update(index_elements=[t.c.kind, t.c.key, t.c.day], set_={"count": t.c.count + 1}, where=t.c.count < limit).returning(t.c.count)
-    return db.execute(stmt).first() is not None
+    row = db.execute(stmt).first()
+    return row[0] if row is not None else None
 
 
 def anon_reserve(db, device_id, ip_hash, now=None):
@@ -124,13 +127,14 @@ def anon_reserve(db, device_id, ip_hash, now=None):
         return False, {"reason": "trial_closed"}
     if anon_spent_today(db, now) >= budget:
         return False, {"reason": "trial_budget_spent"}
-    if not _bump(db, "device", device_id, day, limit):
+    used = _bump(db, "device", device_id, day, limit)
+    if used is None:
         db.rollback()
         return False, {"reason": "device_limit", "limit": limit}
-    if not _bump(db, "ip", ip_hash, day, ip_limit):
+    if _bump(db, "ip", ip_hash, day, ip_limit) is None:
         db.rollback()
         return False, {"reason": "ip_limit", "limit": ip_limit}
-    return True, {"limit": limit, "day": day.isoformat()}
+    return True, {"limit": limit, "used": used, "day": day.isoformat()}
 
 
 def anon_release(db, device_id, ip_hash, now=None):
@@ -139,3 +143,30 @@ def anon_release(db, device_id, ip_hash, now=None):
     t = M.AnonCounter.__table__
     for kind, key in (("device", device_id), ("ip", ip_hash)):
         db.execute(update(t).where(t.c.kind == kind, t.c.key == key, t.c.day == day, t.c.count > 0).values(count=t.c.count - 1))
+
+
+ANON_KEEP_DAYS = 90        # owner's decision D4
+
+
+def anon_start(db, device_id, ip_hash, question, audience="layman", now=None):
+    """The whole beginning of a trial question in ONE transaction: a Postgres lock so that the budget check and the new row are one step (simultaneous questions queue here for a few milliseconds), the caps, and the stored question
+    (cost not yet known, so it counts at the estimate). -> (True, info with 'id', 'used', 'limit') or (False, info). The caller commits on True."""
+    now = _now(now)
+    db.execute(text("select pg_advisory_xact_lock(hashtext('recourse-anon-budget'))"))
+    ok, info = anon_reserve(db, device_id, ip_hash, now)
+    if not ok:
+        return False, info
+    row = M.AnonQuestion(device_id=device_id, question=question, audience=audience, created_at=now, expires_at=now + datetime.timedelta(days=ANON_KEEP_DAYS))
+    db.add(row)
+    db.flush()
+    return True, {**info, "id": row.id}
+
+
+def anon_finish(db, question_id, device_id, ip_hash, cost_inr, state, counted, now=None):
+    """After the engine: the real cost and the state go on the stored question; a refusal or a failure (counted=False) gives the two units back and costs nothing."""
+    row = db.get(M.AnonQuestion, question_id)
+    if row is not None:
+        row.cost_inr = cost_inr if counted else 0
+        row.result_state = state
+    if not counted:
+        anon_release(db, device_id, ip_hash, now)

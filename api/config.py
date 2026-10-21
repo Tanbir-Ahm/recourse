@@ -104,3 +104,11 @@ def anon_ip_daily_limit():
     """The most anonymous-trial questions one scrambled IP address may ask in an IST day: a flood guard, not the per-person cap (that is the device cap, three a day, from the 'anonymous' plan). Many people can share one address (mobile carriers), so
     this is much larger than three. Default 20."""
     return _int("ANON_IP_DAILY_LIMIT", 20, 1, 100000)
+
+
+def anon_est_cost_inr():
+    """What a trial question that is still running counts as against the trial's daily budget until its real cost is known (rupees; default 10, about the measured cost of a full answer)."""
+    try:
+        return max(0.0, float(_env("ANON_EST_COST_INR")))
+    except ValueError:
+        return 10.0

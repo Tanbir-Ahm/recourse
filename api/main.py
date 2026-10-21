@@ -11,8 +11,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import ask as _ask
+from .routers import anon as _anon_router
 from .routers import auth as _auth_router
+from .routers import chats as _chats_router
 from .routers import me as _me_router
+from .routers import notes as _notes_router
 
 ROLE = "api"
 
@@ -43,6 +46,9 @@ app = FastAPI(title="Recourse API", version="0.1.0", lifespan=lifespan)
 app.include_router(_ask.router)
 app.include_router(_auth_router.router)
 app.include_router(_me_router.router)
+app.include_router(_chats_router.router)
+app.include_router(_anon_router.router)
+app.include_router(_notes_router.router)
 
 
 @app.get("/api/health")

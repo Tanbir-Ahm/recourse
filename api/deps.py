@@ -80,3 +80,10 @@ def verify_google(id_token):
         return google.verify_id_token(id_token, config.google_client_id())
     except AuthError as exc:
         _fail(exc)
+
+
+def ready_user(principal: Principal = Depends(current_user), db=Depends(get_db)) -> Principal:
+    """A signed-in person who has accepted every current document and declared being 18 or older (owner's D6): what every route that spends money or keeps text needs."""
+    if not consent.status(db, principal.user)["ready"]:
+        raise HTTPException(status_code=403, detail="consent_required")
+    return principal

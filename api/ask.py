@@ -43,6 +43,11 @@ def _ev(name, data):
 
 def _start(question, audience, loop, q):
     """Submit the question to a worker; its live steps and its end are put on q (thread-safe)."""
+    _start_job(lambda on_step: engine_adapter.work(question, audience, on_step), loop, q)
+
+
+def _start_job(job, loop, q):
+    """Run job(on_step) in an engine worker thread (it may save things to the database before it returns); its live steps and its end are put on q (thread-safe). Raises engine_adapter.EngineBusy when the service is full."""
     def put(item):
         try:
             loop.call_soon_threadsafe(q.put_nowait, item)
@@ -54,7 +59,7 @@ def _start(question, audience, loop, q):
         if d is not None:
             put(("step", {"id": step, **d}))
 
-    fut = engine_adapter.get_runner().submit(engine_adapter.work, question, audience, on_step)
+    fut = engine_adapter.get_runner().submit(job, on_step)
 
     def done(f):
         try:
@@ -91,9 +96,14 @@ async def _sse(q, rid, loop, timeout):
             return
 
 
+EXTRA_KEYS = ("chat_id", "message_id", "saved", "usage", "trial", "turn", "replayed")      # what a saving route adds to the engine's reply
+
+
 def _payload(out):
     res = out.get("result") if isinstance(out, dict) else None
-    return {"result": res, "text": (res or {}).get("response_text") if isinstance(res, dict) else None, "cost_inr": out.get("cost_inr"), "elapsed_ms": out.get("elapsed_ms")}
+    body = {"result": res, "text": (res or {}).get("response_text") if isinstance(res, dict) else None, "cost_inr": out.get("cost_inr"), "elapsed_ms": out.get("elapsed_ms")}
+    body.update({k: out[k] for k in EXTRA_KEYS if k in out})
+    return body
 
 
 @router.post("/api/ask", summary="Ask one question", description="Send 'Accept: text/event-stream' for the live steps (events start, step, result, error, done); otherwise one JSON reply with the same result. Header X-API-Key is required.")
@@ -110,6 +120,11 @@ async def ask(body: AskBody, request: Request, _=Depends(require_key)):
         _start(question, body.audience, loop, q)
     except engine_adapter.EngineBusy:
         raise HTTPException(status_code=429, detail="busy, try again shortly", headers={"Retry-After": "5"})
+    return await deliver(request, q, loop, rid)
+
+
+async def deliver(request, q, loop, rid):
+    """The reply for a question already started: server-sent events when the caller asked for them, else one JSON reply (shared by every route that asks)."""
     timeout = config.ask_timeout_seconds()
     if "text/event-stream" in (request.headers.get("accept") or ""):
         return StreamingResponse(_sse(q, rid, loop, timeout), media_type="text/event-stream",
