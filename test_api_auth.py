@@ -13,7 +13,7 @@ import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS"):
+for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"):
     os.environ.pop(_v, None)
 
 import jwt
@@ -183,6 +183,9 @@ try:
     check(c.get("/api/me").status_code == 503 and c.post("/api/auth/logout").status_code == 503, "...and so does every signed-in route")
     check(counts() == {"users": 0, "identities": 0, "sessions": 0}, "...and nothing was created")
     os.environ["ACCOUNTS_OPEN"] = "on"
+    r = c.post("/api/auth/google", json={"id_token": gtoken()})
+    check(r.status_code == 503 and r.json()["detail"] == "legal text is not final", f"accounts open but the privacy notice and terms are still placeholders: 503 (gate G1) ({r.json()})")
+    os.environ["ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"] = "on"
     r = c.post("/api/auth/google", json={"id_token": gtoken()})
     check(r.status_code == 503 and r.json()["detail"] == "google_sign_in_off", "accounts open but no GOOGLE_CLIENT_ID: Google sign-in is off")
     os.environ["GOOGLE_CLIENT_ID"] = CLIENT

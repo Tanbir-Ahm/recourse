@@ -9,7 +9,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 
-from . import config
+from . import config, consent
 from .auth import google, sessions, streamlit_token, users
 from .auth.errors import AuthError
 from .db import models as M
@@ -42,6 +42,8 @@ def _fail(exc):
 def require_accounts_open():
     if not config.accounts_open():
         raise HTTPException(status_code=503, detail="accounts are not open yet")
+    if not consent.legal_ready() and not config.allow_placeholder_legal():
+        raise HTTPException(status_code=503, detail="legal text is not final")        # gate G1: no accounts on placeholder text
 
 
 def current_user(request: Request, db=Depends(get_db)) -> Principal:

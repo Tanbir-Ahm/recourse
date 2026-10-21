@@ -1,0 +1,9 @@
+{
+  "_note": "The versions of the documents a person must accept (WEBSITE_DESIGN 8 and 9; gate G1). 'placeholder': true means the text is NOT the lawyer's: while any required document is a placeholder the service refuses to open accounts (ACCOUNTS_OPEN) unless ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL=on is set, which exists only for staging tests. To go live: the lawyer's text replaces the file, 'version' changes, 'placeholder' becomes false, in one reviewed change. A person who accepted an older version is asked again.",
+  "required": ["privacy", "terms"],
+  "documents": {
+    "privacy": {"version": "PLACEHOLDER-0", "file": "privacy.md", "placeholder": true},
+    "terms": {"version": "PLACEHOLDER-0", "file": "terms.md", "placeholder": true},
+    "data_use": {"version": "PLACEHOLDER-0", "file": "data_use.md", "placeholder": true}
+  }
+}

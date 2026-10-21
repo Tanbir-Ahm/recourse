@@ -93,3 +93,8 @@ def anon_budget_inr():
         return max(0.0, float(_env("ANON_DAILY_BUDGET_INR")))
     except ValueError:
         return 0.0
+
+
+def allow_placeholder_legal():
+    """ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL=on lets accounts open while the privacy notice and terms are still placeholders. FOR STAGING TESTS ONLY: real people must not be asked to accept placeholder text (gate G1)."""
+    return _flag("ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL")

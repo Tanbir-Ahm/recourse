@@ -1,0 +1,1 @@
+PLACEHOLDER. THIS IS NOT LEGAL TEXT. Optional consent (not required to use the service): allow questions and answers, with the email and name removed, to be read by the reviewer to check and improve the answers. The lawyer decides whether this needs a separate consent and its wording.
