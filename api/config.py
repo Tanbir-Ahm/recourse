@@ -98,3 +98,9 @@ def anon_budget_inr():
 def allow_placeholder_legal():
     """ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL=on lets accounts open while the privacy notice and terms are still placeholders. FOR STAGING TESTS ONLY: real people must not be asked to accept placeholder text (gate G1)."""
     return _flag("ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL")
+
+
+def anon_ip_daily_limit():
+    """The most anonymous-trial questions one scrambled IP address may ask in an IST day: a flood guard, not the per-person cap (that is the device cap, three a day, from the 'anonymous' plan). Many people can share one address (mobile carriers), so
+    this is much larger than three. Default 20."""
+    return _int("ANON_IP_DAILY_LIMIT", 20, 1, 100000)
