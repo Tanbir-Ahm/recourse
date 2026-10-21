@@ -11,6 +11,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from . import ask as _ask
+from .routers import auth as _auth_router
+from .routers import me as _me_router
 
 ROLE = "api"
 
@@ -39,6 +41,8 @@ async def lifespan(_app):
 app = FastAPI(title="Recourse API", version="0.1.0", lifespan=lifespan)
 
 app.include_router(_ask.router)
+app.include_router(_auth_router.router)
+app.include_router(_me_router.router)
 
 
 @app.get("/api/health")
