@@ -1,6 +1,6 @@
 """
 api/ratelimit.py -- a flood guard per caller address (step A3.5). Plain ASGI. Counts requests per scrambled address in a sliding minute, in memory only (nothing is stored; the service runs as ONE replica, WEBSITE_DESIGN 9): API_RATE_LIMIT_PER_MINUTE
-(default 120; 0 turns it off) for every /api route except /api/health, and API_AUTH_RATE_PER_MINUTE (default 20) for sign-in. A request that carries a Bearer token is NOT counted here: the Streamlit service makes every visitor's call from its own
+(default 120; 0 turns it off) for every /api route except /api/health, API_AUTH_RATE_PER_MINUTE (default 20) for sign-in and API_ANON_RATE_PER_MINUTE (default 6) for the free trial. A request that carries a Bearer token is NOT counted here: the Streamlit service makes every visitor's call from its own
 address, and a made-up token fails its signature check anyway; the per-person allowance (quota.py) is what limits signed-in people. Over the limit: 429 with Retry-After.
 This is a blunt guard against floods and password-guessing style hammering, not a fairness mechanism: many people can share one mobile address.
 """
@@ -26,6 +26,8 @@ def _limit_for(path):
         return None
     if path.startswith("/api/auth/"):
         return "auth", config.auth_rate_per_minute()
+    if path.startswith("/api/anon/"):
+        return "anon", config.anon_rate_per_minute()
     return "all", config.rate_limit_per_minute()
 
 

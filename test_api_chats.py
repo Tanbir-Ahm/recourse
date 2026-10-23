@@ -73,6 +73,10 @@ try:
                     self.gate.wait(10)
                 if self.mode == "refuse":
                     return {"state": "no_match", "response_text": "Not enough to go on yet."}
+                if self.mode == "refuse_paid":         # a refusal that still cost money (the topic check is a model call)
+                    import types
+                    cost_log.note_anthropic("scope", "test-model", types.SimpleNamespace(input_tokens=50000, output_tokens=0))
+                    return {"state": "adjacent_uncovered", "reasoning": "outside the library"}
                 return {"state": "single_match", "response_text": f"ANSWER-{FakeEngine.n}: the law says something about {question[-30:]}", "matches": []}
             finally:
                 cost_log.finish(style="v1", audience=audience or "")
@@ -318,6 +322,8 @@ try:
     check(ac.post("/api/anon/ask", json={"question": "Can my employer fire me without notice?"}).status_code == 503, "...and closed without IP_HASH_SECRET")
     os.environ["IP_HASH_SECRET"] = "i" * 40
     os.environ["ANON_IP_DAILY_LIMIT"] = "6"
+    os.environ["API_ANON_RATE_PER_MINUTE"] = "0"                 # the per-minute guard has its own test (test_api_hardening.py)
+    os.environ["PRICES_JSON"] = '{"test-model": [1.0, 1.0]}'      # 50,000 input tokens = $0.05, about Rs 4.8
 
     def anon(client, q="Can my employer fire me without notice?", ip="203.0.113.7", **kw):
         return client.post("/api/anon/ask", json={"question": q}, headers={"X-Forwarded-For": ip, **kw})
@@ -356,6 +362,16 @@ try:
     check(r.status_code == 500, "an engine failure is a fixed 500")
     ENG.mode = "ok"
     check([anon(d5, ip="198.51.100.11").json()["trial"]["used"] for _ in range(3)] == [1, 2, 3], "...and used none either: all three are still available")
+    # a refused question gives the person their unit back but its cost stays on the row, so the trial's budget sees it
+    ENG.mode = "refuse_paid"
+    d6 = TestClient(app)
+    r = anon(d6, ip="198.51.100.13")
+    with DBS.session() as s:
+        row = s.execute(select(M.AnonQuestion).where(M.AnonQuestion.result_state == "adjacent_uncovered")).scalars().one()
+        spent = Q.anon_spent_today(s)
+        check(r.status_code == 200 and r.json()["trial"]["used"] == 0 and r.json()["result"]["state"] == "adjacent_uncovered" and r.json()["text"] is None, "a topic-bar refusal: no text (the front end words it), none of the three used")
+        check(float(row.cost_inr) > 4 and spent >= float(row.cost_inr), f"...but its real cost (Rs {float(row.cost_inr):.2f}) is on the stored row and counted in the trial's spending")
+    ENG.mode = "ok"
     os.environ["CORS_ALLOW_ORIGINS"] = "https://app.recourse.test"
     r = ac2.post("/api/anon/ask", json={"question": "Can my employer fire me?"}, headers={"X-Forwarded-For": "198.51.100.12", "Origin": "https://evil.example"})
     check(r.status_code == 403 and r.json()["detail"] == "origin", "a browser page from another origin cannot use someone's device allowance (403)")

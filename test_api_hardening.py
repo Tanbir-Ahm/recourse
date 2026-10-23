@@ -71,6 +71,11 @@ r = c.get("/api/legal/privacy", headers={"X-Forwarded-For": "203.0.113.1", "Orig
 check(r.status_code == 429 and r.headers.get("access-control-allow-origin") == "https://app.recourse.test", "a refused request still carries the CORS header, so the front end can read the 429")
 ac = [c.post("/api/auth/google", json={"id_token": "x"}, headers={"X-Forwarded-For": "203.0.113.50"}).status_code for _ in range(5)]
 check(ac[:3].count(429) == 0 and ac[3:] == [429, 429], f"sign-in has its own, smaller limit ({ac})")
+os.environ["API_ANON_RATE_PER_MINUTE"] = "3"
+an = [c.post("/api/anon/ask", json={"question": "Can I be fired?"}, headers={"X-Forwarded-For": "203.0.113.60"}).status_code for _ in range(5)]
+check(an[:3].count(429) == 0 and an[3:] == [429, 429], f"the free trial has its own small per-minute limit, because every trial question costs money ({an})")
+os.environ.pop("API_ANON_RATE_PER_MINUTE")
+check(config.anon_rate_per_minute() == 6, "default: 6 a minute for the trial")
 os.environ["API_RATE_LIMIT_PER_MINUTE"] = "0"
 check(all(get("203.0.113.1").status_code == 200 for _ in range(20)), "0 turns the guard off")
 os.environ["API_RATE_LIMIT_PER_MINUTE"] = "5"

@@ -131,3 +131,8 @@ def purge_on():
 
 def purge_interval_seconds():
     return _int("API_PURGE_INTERVAL_SECONDS", 3600, 60, 86400)
+
+
+def anon_rate_per_minute():
+    """Requests per minute one address may make to the free-trial route (default 6; 0 = no limit). Stricter than the general limit because every trial question, even a refused one, costs real money."""
+    return _int("API_ANON_RATE_PER_MINUTE", 6, 0, 100000)

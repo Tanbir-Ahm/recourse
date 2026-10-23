@@ -5,7 +5,7 @@ An unknown step id gets no line and is not shown: the panel never invents a step
 
 _SCOPE = {
     "in_scope": "Checked the topic of the question: it is within what Recourse covers",
-    "adjacent_uncovered": "Checked the topic of the question: a subject outside the library, answered from the wider material",
+    "adjacent_uncovered": "Checked the topic of the question: a subject outside the library",
     "covered_elsewhere_in_tool": "Checked the topic of the question: it belongs to another part of the tool",
     "unrelated": "Checked the topic of the question: it does not look like a legal question",
     "unavailable": "Could not check the topic of the question",

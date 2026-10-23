@@ -163,10 +163,11 @@ def anon_start(db, device_id, ip_hash, question, audience="layman", now=None):
 
 
 def anon_finish(db, question_id, device_id, ip_hash, cost_inr, state, counted, now=None):
-    """After the engine: the real cost and the state go on the stored question; a refusal or a failure (counted=False) gives the two units back and costs nothing."""
+    """After the engine: the real cost and the state go on the stored question; a refusal or a failure (counted=False) gives the two units back to the PERSON, but the money the model call cost stays on the row, so the trial's daily
+    budget sees every rupee spent, refused questions included (found on staging 2026-10-23: a topic-bar refusal cost Rs 0.43 and had been recorded as 0)."""
     row = db.get(M.AnonQuestion, question_id)
     if row is not None:
-        row.cost_inr = cost_inr if counted else 0
+        row.cost_inr = cost_inr or 0
         row.result_state = state
     if not counted:
         anon_release(db, device_id, ip_hash, now)
