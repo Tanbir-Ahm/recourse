@@ -4,8 +4,9 @@ test_search_service.py -- search_service.py, the engine of the website's search 
 1. reading the query: citations, numbers, sections (lists, old codes, a bare number next to an Act's name), Acts, words, nothing to search; the word variants and the match rule;
 2. the library text: the chunk's extra matter (next chapter's heading, Schedules, Gazette block) is cut off and said so, nothing inside a section is touched; the known gaps of Recourse's own copy;
 3. named sections: the section and nothing else; IPC / CrPC numbers through the table of corresponding sections; sections that do not exist say so;
-4. a bare number; 5. citations (SCC, SCR, neutral, AIR) with no junk sections and no false SQL matches; 6. words: every result holds the words; the cases, the register verdict, the mentions;
-7. meaning (a stored vector as the query vector): used, shared with the shelf, off when asked, failures become notes;
+4. a bare number; 5. citations (SCC, SCR, neutral, AIR) with no junk sections and no false SQL matches; 6. words: every result holds the words (or their stems); the cases, the register verdict, the mentions;
+6b. round 2 of the section search (2026-10-23): one stemmed index over the library's and the shelf's sections, the chunk's extra matter kept out of it, the cache key, a failed read not kept;
+7. meaning (a stored vector as the query vector): used, shared with the shelf, off when asked, failures become notes; across the shelf's Acts (floor, cap per Act), scoped to a named Act;
 8. the Act shelf (ACT_SHELF=on): named sections, bare "POCSO 19", missing numbers, an Act Recourse does not hold, searches scoped to a named Act; off by default;
 9. the wider search with a stand-in service; 10. odd input, failures inside, JSON, no query text in the logs, threads, scope().
 Run: python -X utf8 test_search_service.py
@@ -28,6 +29,7 @@ import numpy as np
 
 import retrieval
 import search_service as S
+import search_stem as ST
 import semantic_retrieval as SR
 
 FAILURES = []
@@ -50,6 +52,12 @@ def keys(res):
 
 def words(text):
     return set(S._tok(text))
+
+
+def stem_cover(terms, text):
+    """How many of the query words the text holds, each in any form the stemmer counts as the same word."""
+    have = {ST.stem(w) for w in words(text)}
+    return len({ST.stem(t) for t in terms} & have)
 
 
 # ======================================================================================================================
@@ -280,13 +288,13 @@ check(all({"dowry"} & words(p["text"]) or {"dowries"} & words(p["text"]) for p i
 r = run("bail conditions")
 need = 2
 check(r["provisions"] and all(len(({"bail", "bails", "bailed", "bailing"} & words(p["text"])) | ({"condition", "conditions", "conditioned"} & words(p["text"]))) >= 1 for p in r["provisions"]), "bail conditions: every section shown holds the words")
-check(all(S._covered([S._variants("bail"), S._variants("conditions")], words(p["text"])) == 2 for p in r["provisions"]), "bail conditions: both words (in any usual spelling) in each section")
+check(all(stem_cover(["bail", "conditions"], p["text"]) == 2 for p in r["provisions"]), "bail conditions: both words (in any usual form) in each section")
 check(("BNSS", "482") in keys(r) and ("BNSS", "480") in keys(r), "bail conditions: BNSS 482 and 480 among the sections")
 check(all(p["how"] in ("words", "both") for p in r["provisions"]) and not r["meaning_used"], "words only when meaning is off")
 check(all(len(p["text"]) <= S.TEXT_CAP_FOUND for p in r["provisions"]), "a section found by words is cut at the shorter cap")
 r = run("arrest grounds information accused custody remand magistrate")
 seven = ("arrest", "grounds", "information", "accused", "custody", "remand", "magistrate")
-check(r["provisions"] and all(S._covered([S._variants(w) for w in seven], words(p["text"])) >= S._need(7) for p in r["provisions"]), "a seven-word query: every section holds at least 5 of the words")
+check(r["provisions"] and all(stem_cover(seven, p["text"]) >= S._need(7) for p in r["provisions"]), "a seven-word query: every section holds at least 5 of the words (in any usual form)")
 check(run("zzzqqq")["provisions"] == [] and run("zzzqqq")["hint"], "words that match nothing: a hint")
 r = run("arnesh kumar")
 check(r["cases"] and r["cases"][0]["title"] == "Arnesh Kumar v State of Bihar" and r["cases"][0]["how"] == "name", "arnesh kumar: the library case first, found by name")
@@ -329,6 +337,44 @@ r = run("Hindu Marriage Act section 13")
 check(r["provisions"] == [] and r["cases"] == [] and r["mentions"] == [] and len(r["acts"]) == 1, "section 13 of an Act not held: the Act's card only (not BNS 13)")
 r = run("section 17 PC Act")
 check(r["provisions"] == [] and r["acts"] and not r["acts"][0]["held"], "section 17 PC Act with the shelf off: the Act is not held, no BNS 17 in its place")
+
+# ======================================================================================================================
+# 6b. words, round 2: the stems, and one index over every section
+# ======================================================================================================================
+os.environ.pop("ACT_SHELF", None)
+r = run("punishment for murder")
+p103 = next((p for p in r["provisions"] if (p["act"], p["section"]) == ("BNS", "103")), None)
+check(keys(r)[:1] == [("BNS", "103")] and p103 is not None, "punishment for murder: BNS 103 first")
+check("punishment" not in words(p103["text"]) and "punished" in words(p103["text"]), "... though the section says 'punished', not 'punishment' (the words are matched by their stems)")
+r = run("abetting suicide")
+check(keys(r)[:1] == [("BNS", "108")], "abetting suicide: BNS 108 first ('abetment of suicide' in the Act)")
+r = run("arrested without warrant")
+check(r["provisions"] and all(stem_cover(["arrested", "without", "warrant"], p["text"]) >= 2 for p in r["provisions"]) and ("BNSS", "35") in keys(run("arrest police without warrant cognizable")), "arrested without warrant: sections that hold the words in their usual forms; BNSS 35 comes for the longer query")
+ix = S._section_index({})
+d531 = next(d for d in ix["docs"] if (d["act"], d["section"]) == ("BNSS", "531"))
+check(len(d531["text"]) < 5000 and "SCHEDULE" not in d531["text"].upper() and len(retrieval._load_statute_chunks("BNSS")["531"]["text"]) > 50000, "BNSS 531 is indexed without the Schedules that Recourse's chunk runs together with it (they would match nearly every query)")
+check(all(d["held"] == "library" for d in ix["docs"]) and {d["act"] for d in ix["docs"]} == {"BNS", "BNSS", "ITACT", "NIACT"} and len(ix["docs"]) > 900, "the shelf off: the index holds the library's four Acts only")
+check(S._section_index({}) is ix, "the index is built once")
+os.environ["ACT_SHELF"] = "on"
+a1, a2 = S._section_index(S._shelf_state()), S._section_index(S._shelf_state())
+check(a1 is a2 and a1 is not ix and any(d["held"] == "shelf" for d in a1["docs"]), "the shelf on: one index with the shelf's sections, built once although the shelf dict is rebuilt for every search")
+check({d["act"] for d in a1["docs"]} >= {"BNS", "PCACT", "POCSO"} and len(a1["docs"]) > len(ix["docs"]) + 300, "... library and shelf sections in the one index")
+os.environ.pop("ACT_SHELF")
+check(S._section_index(S._shelf_state()) is not a1 and not any(d["held"] == "shelf" for d in S._section_index(S._shelf_state())["docs"]), "the shelf switched off again: the index is rebuilt without the shelf's sections")
+real_load = retrieval._load_statute_chunks
+retrieval._load_statute_chunks = lambda code: (_ for _ in ()).throw(RuntimeError("disk"))
+S._CACHE.pop("section_ix", None)
+check(S._section_index({}) is None and run("bail")["provisions"] == [], "the library cannot be read and the shelf is off: nothing to search, no crash")
+retrieval._load_statute_chunks = real_load
+check(S._section_index({}) is not None and len(S._section_index({})["docs"]) > 900 and run("bail")["provisions"], "a failed read of the library is not kept: the next search has the full index")
+r = run("bail")
+check(all("bail" in {ST.stem(w) for w in words(p["text"])} for p in r["provisions"]), "bail: every section holds the word (by stem)")
+check(S.word_provisions([], None, {}, 5) == [] and S.word_provisions(["bail"], None, {}, 0) == [], "no words or no room: nothing")
+real_mo = S._meaning_order
+S._meaning_order = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("meaning list broke"))
+r_ = S.word_provisions(["bail"], [0.1] * 1024, {}, 5)
+S._meaning_order = real_mo
+check(r_ and all(p["how"] == "words" for p in r_), "the meaning part failing inside the provisions search: the word matches still come")
 
 # ======================================================================================================================
 # 7. meaning (a stored corpus vector stands in for the query vector)
@@ -434,7 +480,7 @@ check(all(p["act"] == "POCSO" for p in r["provisions"]), "pocso bail: only POCSO
 r = run("juvenile justice board")
 check(any(p["act"] == SH["jj_act_2015"]["code"] for p in r["provisions"]) and any(p["act"] in ("BNS", "BNSS") for p in r["provisions"]) and all(p["held"] in ("library", "shelf") for p in r["provisions"]), "no Act named: library and shelf sections together")
 firsts = [p["held"] for p in r["provisions"][:4]]
-check("library" in firsts and "shelf" in firsts, "library and shelf results alternate")
+check("library" in firsts and "shelf" in firsts, "library and shelf sections stand in one ranking (both among the first four)")
 os.environ["SECTION_XREF"] = "on"
 r = run("section 17 PC Act")
 check(keys(r)[0] == ("PCACT", "17") and all(p["how"] in ("named", "cited") for p in r["provisions"]), "SECTION_XREF=on: the sections that section 17 cites follow it")
@@ -443,6 +489,40 @@ calls.clear()
 os.environ["SEARCH_MEANING"] = "on"
 r = S.search("Prevention of Corruption Act bribe taken by clerk", embed_fn=counting("statute:BNS:318"))
 check(len(calls) == 1 and r["meaning_used"], "an Act plus words: one query vector for the corpus and the shelf together")
+# meaning across the Acts on the shelf (round 2): a stored section vector stands in for the query vector, and no word of the query matches anything
+os.environ["SEARCH_MEANING"] = "on"
+
+
+def shelf_vec(aid, number):
+    st_ = SH[aid]
+    j = next(i for i, c in enumerate(st_["ranked"]) if str(c["section_number"]) == number)
+    return [float(x) for x in st_["matrix"][j]]
+
+
+v = shelf_vec("muslim_women_act_2019", "3")
+r = S.search("zzzqqq", embed_fn=lambda t: v)
+check(r["meaning_used"] and keys(r)[:1] == [("MWACT", "3")] and r["provisions"][0]["how"] == "meaning" and r["provisions"][0]["held"] == "shelf", "meaning across the Acts: a query close to a section of an Act that was not named finds that section first")
+rv = np.random.default_rng(3).normal(size=1024)
+rv = [float(x) for x in rv / np.linalg.norm(rv)]
+r = S.search("zzzqqq", embed_fn=lambda t: rv)
+check(r["meaning_used"] and r["provisions"] == [], "a query vector close to nothing: no section by meaning (the floors)")
+jj = SH["jj_act_2015"]
+mean = jj["matrix"].mean(axis=0)
+mean = [float(x) for x in mean / np.linalg.norm(mean)]
+r = S.search("zzzqqq", embed_fn=lambda t: mean)
+n_jj = sum(1 for p in r["provisions"] if p["act"] == jj["code"])
+check(0 < n_jj <= S.SHELF_MEANING_PER_ACT, f"no Act fills the list by meaning: at most {S.SHELF_MEANING_PER_ACT} sections of one Act ({n_jj} here)")
+v = shelf_vec("pocso_act_2012", "7")
+r = S.search("POCSO zzzqqq", embed_fn=lambda t: v)
+check(r["provisions"] and all(p["act"] == "POCSO" for p in r["provisions"]) and ("POCSO", "7") in keys(r)[:3], "naming the Act: only its sections, the closest by meaning first (never a section of the BNS or BNSS)")
+v = shelf_vec("pc_act_1988", "7")
+r = S.search("bribe", embed_fn=lambda t: v)
+p7 = next(p for p in r["provisions"] if (p["act"], p["section"]) == ("PCACT", "7"))
+check(p7["how"] == "both" and ("PCACT", "7") in keys(r)[:2] and keys(r).index(("PCACT", "7")) < next(i for i, p in enumerate(r["provisions"]) if p["how"] == "meaning"), "a section that holds the word and is close in meaning is labelled 'both' and comes before the ones found by meaning alone")
+check(all(isinstance(p["score"], float) and p["score"] > 0 for p in r["provisions"]), "every section carries its score")
+# the library's own statute records still reach the list by meaning when no Act is named
+r = S.search("zzzqqq", embed_fn=vec("statute:BNSS:482"))
+check(keys(r)[:1] == [("BNSS", "482")] and r["provisions"][0]["how"] == "meaning", "a library section close in meaning is found with the shelf on as well")
 os.environ["SEARCH_MEANING"] = "off"
 os.environ.pop("ACT_SHELF")
 r = run("POCSO 19")

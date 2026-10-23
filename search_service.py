@@ -36,6 +36,8 @@ import urllib.parse
 
 import numpy as np
 
+import search_stem
+
 logger = logging.getLogger("search_service")
 
 MAX_QUERY_CHARS = 300
@@ -49,6 +51,10 @@ MAX_WIDER = 8
 TEXT_CAP_ASKED = 16000           # a section the person asked for by number (the page's own cap, answer_view.SHELF_EXCERPT_CHARS)
 TEXT_CAP_FOUND = 6000            # a section found by words or meaning
 EXCERPT_CAP = 700
+SHELF_MEANING_FLOOR = 0.50       # cosine under which a section of an Act the person did NOT name is not offered by meaning (scores are higher inside one Act than across the library; the library's own floor is 0.34)
+SHELF_MEANING_PER_ACT = 3        # no Act offers more than this many by meaning, so that one Act cannot fill the list
+LIBRARY_MEANING_TOP = 40         # statute records of the library offered by meaning, before the lists are fused
+RRF_K = 60                       # reciprocal-rank fusion: a section scores 1 / (RRF_K + rank) in every list that holds it
 MODES = ("library", "wider")
 INTENTS = ("empty", "nothing", "citation", "number", "section", "act", "words")
 
@@ -470,20 +476,43 @@ def _bm25_rank(ix, term_sets, need, k=10):
     return out
 
 
-def _shelf_index(shelf):
-    """BM25 over the shelf's sections (title and text), cached until the shelf is reloaded."""
-    key = id(shelf)
+def _section_docs(shelf):
+    """-> (docs, complete). Every section the words search reads, as {'act','section','held','aid','c','title','text'}: Recourse's stored BNS / BNSS / IT Act / NI Act sections (the chunk's extra matter cut
+    off, as the cards show the section: the Schedules that BNSS 531 is run together with would otherwise match nearly every query) and the sections of the Acts on the shelf. complete is False when the library could
+    not be read (the index is then used but not kept)."""
+    docs, complete = [], True
+    try:
+        import retrieval
+        for code in ("BNS", "BNSS", "ITACT", "NIACT"):
+            for number, c in (retrieval._load_statute_chunks(code) or {}).items():
+                if not str(number)[:1].isdigit() or not isinstance(c.get("text"), str):
+                    continue
+                docs.append({"act": code, "section": str(number).upper(), "held": "library", "aid": None, "c": None, "title": str(c.get("title") or "").strip(), "text": _tidy_library_text(c["text"])[0]})
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("library sections could not be read for the index: %s", type(exc).__name__)
+        complete = False
+    for aid, st in (shelf or {}).items():
+        for c in st["ranked"]:
+            docs.append({"act": st["code"], "section": str(c["section_number"]).upper(), "held": "shelf", "aid": aid, "c": c, "title": (c.get("title") or "").strip(), "text": c.get("text") or ""})
+    return docs, complete
+
+
+def _section_index(shelf):
+    """The word index of the provisions search, cached until the shelf is reloaded: BM25 over the STEMS of every section's words (title and text). -> {'docs', 'body', 'pos'} or None when there is nothing to search.
+    pos: (shelf id or library code, section number) -> index into docs. (A second list over only the opening of each section was tried on 2026-10-23 and removed: it did not help; RESULTS.md.)"""
+    key = tuple(sorted((k, id(v)) for k, v in (shelf or {}).items()))
     with _LOCK:
-        hit = _CACHE.get("shelf_ix")
+        hit = _CACHE.get("section_ix")
         if hit and hit[0] == key:
-            return hit[1]
-        docs, refs = [], []
-        for aid, st in shelf.items():
-            for c in st["ranked"]:
-                docs.append(_tok((c.get("title") or "") + " " + (c.get("text") or "")))
-                refs.append((aid, c))
-        built = {"ix": _bm25(docs), "refs": refs} if docs else None
-        _CACHE["shelf_ix"] = (key, built)
+            return hit[2]
+        docs, complete = _section_docs(shelf)
+        built = None
+        if docs:
+            built = {"docs": docs,
+                     "body": _bm25([search_stem.stems(_tok(d["title"] + " " + d["text"])) for d in docs]),
+                     "pos": {(d["aid"] or d["act"], d["section"]): i for i, d in enumerate(docs)}}
+        if complete:
+            _CACHE["section_ix"] = (key, shelf, built)      # the shelf is kept in the entry so that the ids in the key stay those of live objects
         return built
 
 
@@ -634,51 +663,109 @@ def act_provisions(parsed, shelf, embed_fn, notes):
     return out[:MAX_PROVISIONS]
 
 
-def word_provisions(terms, lex, sem, shelf, limit, only_acts=None):
-    """Sections that hold the query's words (BM25; at least _need(n) of the n words, each spelled any usual way) and sections close in meaning (cosine over the statute threshold), fused by rank. Library and shelf
-    results alternate so that neither crowds out the other. only_acts (Directory ids): the person named these Acts, so only their sections are searched (never the BNS or BNSS). -> [cards]"""
+def _statute_rows(corpus):
+    """Row numbers, in the corpus matrix, of the records that are sections of BNS / BNSS / the IT Act / the NI Act (cached for the loaded corpus)."""
+    with _LOCK:
+        hit = _CACHE.get("statute_rows")
+        if hit and hit[0] is corpus:
+            return hit[1]
+        rows = np.array([i for i, r in enumerate(corpus["records"]) if _is_section_record(r)], dtype=int)
+        _CACHE["statute_rows"] = (corpus, rows)
+        return rows
+
+
+def _meaning_order(qv, ix, shelf, scoped):
+    """Indexes into ix['docs'] of the sections close in meaning to the query vector, best cosine first: the library's statute records over the statute threshold (the best LIBRARY_MEANING_TOP) and, from each Act on the
+    shelf, its best SHELF_MEANING_PER_ACT over SHELF_MEANING_FLOOR. For an Act the person named (scoped) the Act's own floor applies (act_shelf.FLOOR) and five of its sections come, and no library section."""
+    found = []
+    if not scoped:
+        import semantic_retrieval as SR
+        corpus = SR._load_corpus_embeddings()
+        if corpus is not None:
+            rows = _statute_rows(corpus)
+            if len(rows):
+                sc = (corpus["matrix"] @ qv)[rows]
+                floor = _statute_threshold()
+                for j in np.argsort(-sc)[:LIBRARY_MEANING_TOP]:
+                    if sc[j] < floor:
+                        break
+                    r = corpus["records"][int(rows[j])]
+                    i = ix["pos"].get((r.get("act"), str(r.get("section_number")).upper()))
+                    if i is not None:
+                        found.append((float(sc[j]), i))
+    try:
+        import act_shelf
+        floor, per_act = (act_shelf.FLOOR, 5) if scoped else (SHELF_MEANING_FLOOR, SHELF_MEANING_PER_ACT)
+    except Exception:  # noqa: BLE001
+        floor, per_act = SHELF_MEANING_FLOOR, SHELF_MEANING_PER_ACT
+    for aid, st in (shelf or {}).items():
+        if scoped and aid not in scoped:
+            continue
+        sc, taken = st["matrix"] @ qv, 0
+        for j in np.argsort(-sc, kind="stable"):
+            if sc[j] < floor or taken >= per_act:
+                break
+            c = st["ranked"][int(j)]
+            if _housekeeping(c):
+                continue
+            i = ix["pos"].get((aid, str(c["section_number"]).upper()))
+            if i is not None:
+                found.append((float(sc[j]), i))
+                taken += 1
+    found.sort(key=lambda t: -t[0])
+    return [i for _, i in found]
+
+
+def word_provisions(terms, qv, shelf, limit, only_acts=None):
+    """Sections for the query's words, one ranking over Recourse's stored BNS / BNSS / IT Act / NI Act sections and the Act shelf's sections, two lists fused by rank (reciprocal-rank fusion): sections that hold the
+    words (BM25 over the words cut to their stems, so that 'punishment' finds 'punished'; at least _need(n) of the n words) and sections close in meaning (qv, the query's vector; None when meaning search is off).
+    only_acts (Directory ids): the person named these Acts, so only their sections are searched, never the BNS or BNSS. -> [cards]"""
     if not terms or limit <= 0:
         return []
-    term_sets = [_variants(t) for t in terms]
-    need = _need(len(terms))
-    lib = []
-    lexical = [r for r in (lex or []) if _is_section_record(r) and _covered(term_sets, set(_tok(r.get("text")))) >= need]
-    semantic = [r for r in (sem or []) if _is_section_record(r) and (r.get("score") or 0) >= _statute_threshold()]
-    if only_acts:
-        lexical, semantic = [], []
-    fused, rec = {}, {}
-    for rank, r in enumerate(lexical):
-        fused[r["chunk_id"]] = fused.get(r["chunk_id"], 0.0) + 1.0 / (60 + rank + 1)
-        rec[r["chunk_id"]] = [r, True, False]
-    for rank, r in enumerate(semantic):
-        fused[r["chunk_id"]] = fused.get(r["chunk_id"], 0.0) + 1.0 / (60 + rank + 1)
-        e = rec.setdefault(r["chunk_id"], [r, False, False])
-        e[2] = True
-    for cid, _ in sorted(fused.items(), key=lambda kv: -kv[1]):
-        r, by_words, by_meaning = rec[cid]
-        card = _library_statute(r["act"], r["section_number"], "both" if by_words and by_meaning else "words" if by_words else "meaning", round(fused[cid], 5), cap=TEXT_CAP_FOUND)
-        if card is not None:
-            lib.append(card)
-        if len(lib) >= limit:
-            break
-    sh = []
-    ix = _shelf_index(shelf) if shelf else None
-    if ix:
-        for i, s in _bm25_rank(ix["ix"], term_sets, need, k=len(ix["refs"]) if only_acts else limit + 4):
-            aid, c = ix["refs"][i]
-            if _housekeeping(c) or (only_acts and aid not in only_acts):
-                continue
-            m = _match_dict(shelf[aid], c, "words", None)
-            if m:
-                sh.append(_shelf_provision(m, "words", TEXT_CAP_FOUND))
-            if len(sh) >= limit:
-                break
+    ix = _section_index(shelf)
+    if not ix:
+        return []
+    stems = list(dict.fromkeys(search_stem.stem(t) for t in terms))
+    term_sets, need, docs = [{s} for s in stems], _need(len(stems)), ix["docs"]
+    scoped = set(only_acts) if only_acts else None
+    k = len(docs) if scoped else max(60, 6 * limit)
+
+    def keep(i):
+        d = docs[i]
+        return (scoped is None or d["aid"] in scoped) and not (d["held"] == "shelf" and _housekeeping(d["c"]))
+
+    fused, kinds = {}, {}
+
+    def add(order, kind):
+        n = 0
+        for i in order:
+            if keep(i):
+                fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + n + 1)
+                kinds.setdefault(i, set()).add(kind)
+                n += 1
+
+    add([i for i, _ in _bm25_rank(ix["body"], term_sets, need, k)], "words")
+    if qv is not None:
+        try:
+            order = _meaning_order(qv, ix, shelf, scoped)
+        except Exception as exc:  # noqa: BLE001 -- the words still answer
+            logger.warning("meaning order failed: %s", type(exc).__name__)
+            order = []
+        add(order, "meaning")
     out = []
-    for pair in zip(*(lib, sh)) if lib and sh else ():
-        out.extend(pair)
-    n = min(len(lib), len(sh))
-    out.extend(lib[n:] + sh[n:])
-    return out[:limit]
+    for i, f in sorted(fused.items(), key=lambda kv: -kv[1]):
+        d, ks = docs[i], kinds[i]
+        how = "both" if len(ks) == 2 else "words" if "words" in ks else "meaning"
+        if d["held"] == "library":
+            card = _library_statute(d["act"], d["section"], how, round(f, 5), cap=TEXT_CAP_FOUND)
+        else:
+            m = _match_dict(shelf[d["aid"]], d["c"], how, f)
+            card = _shelf_provision(m, how, TEXT_CAP_FOUND) if m else None
+        if card is not None:
+            out.append(card)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def _no_embed(text):
@@ -1058,9 +1145,7 @@ def warm():
     try:
         _section_regexes()
         library_cases()
-        shelf = _shelf_state()
-        if shelf:
-            _shelf_index(shelf)
+        _section_index(_shelf_state())
     except Exception:  # noqa: BLE001
         pass
 
@@ -1159,10 +1244,11 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
         # the words stage (sections that hold the words, passages that hold them) and, when it is on, the query's meaning vector, once, for the corpus and for the shelf
         qv, sem, lex = None, None, []
         if intent == "words" or (intent in ("section", "act") and terms):
-            def lexical():
-                import semantic_retrieval as SR
-                return SR.lexical_search(" ".join(sorted({v for t in terms for v in _variants(t)})), top_k=400) or []
-            lex = _guard(notes, "Part of the library could not be searched just now.", lexical, default=[])
+            if intent == "words":                           # the passages of the library's judgments; the provisions have their own stemmed index
+                def lexical():
+                    import semantic_retrieval as SR
+                    return SR.lexical_search(" ".join(sorted({v for t in terms for v in _variants(t)})), top_k=400) or []
+                lex = _guard(notes, "Part of the library could not be searched just now.", lexical, default=[])
             if _meaning_on(meaning):
                 def vector():
                     v = np.array((embed_fn or _embed_query)(parsed["q"]), dtype=float)
@@ -1183,20 +1269,20 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
             res["provisions"] = _guard(notes, PART_DOWN, named_provisions, parsed, shelf, notes, shelf_embed, default=[])
             if terms:
                 have = {(p["act"], p["section"].upper()) for p in res["provisions"]}
-                more = _guard(notes, PART_DOWN, word_provisions, terms, lex, sem, shelf, MAX_EXTRA_WITH_SECTION + len(have), only_acts=scoped or None, default=[])
+                more = _guard(notes, PART_DOWN, word_provisions, terms, qv, shelf, MAX_EXTRA_WITH_SECTION + len(have), only_acts=scoped or None, default=[])
                 res["provisions"] += [p for p in more if (p["act"], p["section"].upper()) not in have][:MAX_EXTRA_WITH_SECTION]
         elif intent == "act":
             res["provisions"] = _guard(notes, PART_DOWN, act_provisions, parsed, shelf, shelf_embed, notes, default=[])
         else:
             if scoped:                                      # the person named an Act: its own sections (the shelf's search by meaning and pointers first, then its sections that hold the words), never the BNS or BNSS
-                found = _guard(notes, PART_DOWN, act_provisions, parsed, shelf, shelf_embed, notes, default=[]) + _guard(notes, PART_DOWN, word_provisions, terms, lex, sem, shelf, MAX_PROVISIONS, only_acts=scoped, default=[])
+                found = _guard(notes, PART_DOWN, act_provisions, parsed, shelf, shelf_embed, notes, default=[]) + _guard(notes, PART_DOWN, word_provisions, terms, qv, shelf, MAX_PROVISIONS, only_acts=scoped, default=[])
                 seen = set()
                 for p in found:
                     if (p["act"], p["section"].upper()) not in seen:
                         seen.add((p["act"], p["section"].upper()))
                         res["provisions"].append(p)
             else:
-                res["provisions"] = _guard(notes, PART_DOWN, word_provisions, terms, lex, sem, shelf, MAX_PROVISIONS, default=[])
+                res["provisions"] = _guard(notes, PART_DOWN, word_provisions, terms, qv, shelf, MAX_PROVISIONS, default=[])
             res["cases"], res["mentions"] = _guard(notes, "The case list could not be searched just now.", case_cards, parsed, lex=lex, sem=sem, notes=notes, default=([], []))
         res["provisions"] = res["provisions"][:MAX_PROVISIONS]
         if any(p["act"] in ("BNS", "BNSS") for p in res["provisions"]):
