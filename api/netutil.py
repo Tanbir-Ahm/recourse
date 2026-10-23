@@ -2,6 +2,7 @@
 api/netutil.py -- the caller's address, scrambled (step A3). The service sits behind Railway's proxy. MEASURED on staging-api 2026-10-23 (FOLLOW_UPS 2bz): Railway's edge REPLACES a caller's own X-Forwarded-For with "<visitor>, <an edge address that changes>" and sets
 X-Real-IP to the visitor, so the default rule (the entry `trusted_proxy_hops` places from the RIGHT) saw a different "address" on every request; on Railway set CLIENT_IP_HEADER=x-real-ip. Elsewhere, with no setting, only the entry added by OUR proxy is trusted (a caller may add anything to the left). Addresses are never stored or counted as they are: ip_hash() is an HMAC with IP_HASH_SECRET, so a copy of the database cannot be turned back into addresses. Without the secret there is no hash (None) and the
 things that need one (the anonymous trial) refuse.
+The new front end's server (WEBSITE_DESIGN 17) is the one exception to "the platform's header decides": with FRONTEND_PROXY_SECRET set, a request that proves it knows the secret may carry the visitor's address in X-Visitor-IP.
 """
 import hashlib
 import hmac
@@ -26,6 +27,13 @@ def _valid(value):
 
 def client_ip(request):
     """The visitor's address (never raw to a database; see ip_hash). By CLIENT_IP_HEADER when it names a header and that header holds a valid address; otherwise the entry `trusted_proxy_hops` places from the RIGHT of X-Forwarded-For; otherwise the connection's own."""
+    shared = config.frontend_proxy_secret()
+    if shared:                         # the new front end's server vouches for the visitor's address with a shared secret (constant-time comparison)
+        sent = request.headers.get("x-frontend-secret") or ""
+        if sent and hmac.compare_digest(sent.encode("utf-8"), shared.encode("utf-8")):
+            got = _valid(request.headers.get("x-visitor-ip"))
+            if got:
+                return got
     mode = config.client_ip_header()
     if mode == "x-real-ip":
         got = _valid(request.headers.get("x-real-ip"))

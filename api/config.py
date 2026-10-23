@@ -153,3 +153,10 @@ def client_ip_header():
     FOLLOW_UPS 2bz) the edge replaces a caller's own X-Forwarded-For, puts the visitor first and an edge address last, and sets X-Real-IP to the visitor. A value that is not a valid address is ignored (the default rule is used)."""
     v = _env("CLIENT_IP_HEADER").lower()
     return v if v in ("x-real-ip", "xff-first") else ""
+
+
+def frontend_proxy_secret():
+    """Shared secret of the new front end's own server (WEBSITE_DESIGN 17). That server stands between the visitor's browser and this API, so the platform's edge sees the front end's address, not the visitor's. A request that carries this secret in
+    X-Frontend-Secret may name the visitor's address in X-Visitor-IP, and then that address is used for the per-address limits. Unset or shorter than 32 characters: the headers are ignored (the platform's own address header is used)."""
+    v = _env("FRONTEND_PROXY_SECRET")
+    return v if len(v) >= 32 else ""

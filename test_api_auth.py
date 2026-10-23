@@ -13,7 +13,7 @@ import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "CLIENT_IP_HEADER", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"):
+for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "CLIENT_IP_HEADER", "FRONTEND_PROXY_SECRET", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"):
     os.environ.pop(_v, None)
 
 import jwt
@@ -127,8 +127,8 @@ check(ST.REPLAY is not None and sys.getsizeof(ST.REPLAY) > 0, "the process-wide 
 
 # ---------------------------------------------------------------- addresses
 class Req:
-    def __init__(self, xff=None, host="10.0.0.9", real=None):
-        self.headers = {k: v for k, v in (("x-forwarded-for", xff), ("x-real-ip", real)) if v}
+    def __init__(self, xff=None, host="10.0.0.9", real=None, secret=None, visitor=None):
+        self.headers = {k: v for k, v in (("x-forwarded-for", xff), ("x-real-ip", real), ("x-frontend-secret", secret), ("x-visitor-ip", visitor)) if v}
         self.client = types.SimpleNamespace(host=host)
 
 
@@ -154,6 +154,17 @@ check(netutil.client_ip(Req("garbage, 2.2.2.2")) == "2.2.2.2", "...a first entry
 os.environ["CLIENT_IP_HEADER"] = "banana"
 check(netutil.client_ip(R1) == "152.233.15.120", "an unknown value of CLIENT_IP_HEADER means the default rule")
 os.environ.pop("CLIENT_IP_HEADER")
+# the new front end's server vouches for the visitor's address
+FES = "f" * 40
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret=FES, visitor="7.7.7.7")) == "2.2.2.2", "no FRONTEND_PROXY_SECRET set: X-Visitor-IP is ignored (anyone could send it)")
+os.environ["FRONTEND_PROXY_SECRET"] = FES
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret=FES, visitor="7.7.7.7")) == "7.7.7.7", "with the secret set and sent: the visitor address the front end names is used")
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret="x" * 40, visitor="7.7.7.7")) == "2.2.2.2" and netutil.client_ip(Req("1.1.1.1, 2.2.2.2", visitor="7.7.7.7")) == "2.2.2.2", "a wrong or missing secret: X-Visitor-IP is ignored")
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret=FES, visitor="not-an-ip")) == "2.2.2.2" and netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret=FES)) == "2.2.2.2", "the right secret but no valid visitor address: the ordinary rule")
+check(netutil.client_ip(Req(secret=FES, visitor="2001:db8:1:2:aaaa:bbbb:cccc:dddd")) == "2001:db8:1:2::", "an IPv6 visitor from the front end is grouped by /64 as well")
+os.environ["FRONTEND_PROXY_SECRET"] = "short"
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", secret="short", visitor="7.7.7.7")) == "2.2.2.2", "a secret under 32 characters counts as unset")
+os.environ.pop("FRONTEND_PROXY_SECRET")
 check(netutil.ip_hash("1.2.3.4") is None, "no IP_HASH_SECRET: no hash (the features that need one refuse)")
 os.environ["IP_HASH_SECRET"] = "k" * 40
 h1, h2 = netutil.ip_hash("1.2.3.4"), netutil.ip_hash("1.2.3.5")
