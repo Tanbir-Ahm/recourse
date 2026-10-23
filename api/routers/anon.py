@@ -20,7 +20,7 @@ router = APIRouter()
 DEVICE_COOKIE = "rc_device"
 DEVICE_RE = re.compile(r"^[0-9a-f]{32}$")
 DEVICE_COOKIE_SECONDS = 90 * 86400
-_STATUS = {"trial_closed": 503, "trial_budget_spent": 429, "device_limit": 429, "ip_limit": 429}
+_STATUS = {"trial_closed": 503, "trial_budget_spent": 429, "device_limit": 429, "ip_limit": 429, "refusal_limit": 429}
 
 
 class AnonAsk(BaseModel):

@@ -50,6 +50,17 @@ def used_in_window(db, user_id, feature, start, end=None):
     return db.execute(q).scalar()
 
 
+ANSWER_KINDS = tuple(FEATURE_FOR_AUDIENCE.values())
+ANSWER_STATES = ("single_match", "conflicting_matches")
+
+
+def refusals_today(db, user_id, now=None):
+    """How many questions this person sent in the current IST day that were turned away (the unit was given back but the model's cost was recorded). A failure of ours (no cost recorded) is not counted against the person."""
+    start, end = window("day", _now(now))
+    return db.execute(select(func.count()).select_from(M.UsageEvent).where(M.UsageEvent.user_id == user_id, M.UsageEvent.kind.in_(ANSWER_KINDS), M.UsageEvent.counted.is_(False),
+                                                                          M.UsageEvent.cost_inr.is_not(None), M.UsageEvent.at >= start, M.UsageEvent.at < end)).scalar()
+
+
 def reserve(db, user, feature, now=None):
     """-> (True, event_id, info) or (False, None, info). A plan with no such entitlement has none of the feature (fail closed). The caller must COMMIT to keep the unit and release the lock."""
     now = _now(now)
@@ -64,6 +75,10 @@ def reserve(db, user, feature, now=None):
     if limit is not None and used >= limit:
         info["reason"] = "limit_reached"
         return False, None, info
+    cap = config.refusal_daily_limit()
+    refused = refusals_today(db, user.id, now)
+    if refused >= cap:
+        return False, None, {**info, "reason": "too_many_refusals", "refusals": refused, "refusal_limit": cap}
     ev = M.UsageEvent(user_id=user.id, kind=feature, counted=True, plan_id_at_time=user.plan_id, at=now)
     db.add(ev)
     db.flush()
@@ -153,6 +168,12 @@ def anon_start(db, device_id, ip_hash, question, audience="layman", now=None):
     (cost not yet known, so it counts at the estimate). -> (True, info with 'id', 'used', 'limit') or (False, info). The caller commits on True."""
     now = _now(now)
     db.execute(text("select pg_advisory_xact_lock(hashtext('recourse-anon-budget'))"))
+    start, end = window("day", now)
+    refused = db.execute(select(func.count()).select_from(M.AnonQuestion).where(M.AnonQuestion.device_id == device_id, M.AnonQuestion.created_at >= start, M.AnonQuestion.created_at < end,
+                                                                               M.AnonQuestion.result_state.is_not(None),
+                                                                               M.AnonQuestion.result_state.notin_(ANSWER_STATES + ("failed", "busy")))).scalar()
+    if refused >= config.anon_refusal_daily_limit():
+        return False, {"reason": "refusal_limit", "limit": config.anon_refusal_daily_limit()}
     ok, info = anon_reserve(db, device_id, ip_hash, now)
     if not ok:
         return False, info

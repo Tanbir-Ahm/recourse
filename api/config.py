@@ -136,3 +136,13 @@ def purge_interval_seconds():
 def anon_rate_per_minute():
     """Requests per minute one address may make to the free-trial route (default 6; 0 = no limit). Stricter than the general limit because every trial question, even a refused one, costs real money."""
     return _int("API_ANON_RATE_PER_MINUTE", 6, 0, 100000)
+
+
+def refusal_daily_limit():
+    """How many refused questions (turned away by the topic bar, "not enough to go on", and so on: free of the daily allowance but each costs the model's topic check, about Rs 0.4) one signed-in person may send in an IST day. Default 20."""
+    return _int("REFUSAL_DAILY_LIMIT", 20, 1, 100000)
+
+
+def anon_refusal_daily_limit():
+    """The same for one free-trial device in an IST day. Default 10."""
+    return _int("ANON_REFUSAL_DAILY_LIMIT", 10, 1, 100000)

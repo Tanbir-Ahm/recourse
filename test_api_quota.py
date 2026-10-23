@@ -33,6 +33,7 @@ if pg is None:
 try:
     from sqlalchemy import func, select, text
 
+    from api import config
     from api import quota as Q
     from api.db import migrate as MIG
     from api.db import models as M
@@ -220,6 +221,62 @@ try:
     check(ok is False and info["reason"] == "trial_closed", "no budget set: the trial is closed (fails closed)")
     os.environ["ANON_DAILY_BUDGET_INR"] = "banana"
     check(anon("dev-c", "ip-c")[0] is False, "a budget that is not a number counts as none")
+    os.environ["ANON_DAILY_BUDGET_INR"] = "50"
+    # ---- refusals are free of the allowance but not unlimited
+    os.environ["REFUSAL_DAILY_LIMIT"] = "3"
+    ur = new_user()
+    def refuse(uid_, cost=0.43, now=None):
+        with DBS.session() as db:
+            u = db.get(M.User, uid_)
+            ok, ev, info = Q.reserve(db, u, "answer_layman", now or NOW)
+            if ok:
+                Q.settle(db, ev, cost, None)
+                Q.release(db, ev)
+            db.commit()
+            return ok, info
+    res = [refuse(ur)[0] for _ in range(5)]
+    ok, info = refuse(ur)
+    check(res == [True, True, True, False, False] and ok is False and info["reason"] == "too_many_refusals" and info["refusal_limit"] == 3 and info["refusals"] == 3, f"a person's refused questions stop at the daily refusal limit ({res}, {info.get('reason')})")
+    with DBS.session() as db:
+        check(Q.refusals_today(db, ur, NOW) == 3 and Q.used_in_window(db, ur, "answer_layman", *Q.window("day", NOW)) == 0, "...they cost no allowance (0 answers used), only 3 refusals counted")
+    check(refuse(ur, now=at(2026, 10, 21, 18, 31))[0] is True, "...and the next IST day starts fresh")
+    uf = new_user()
+    for _ in range(4):
+        with DBS.session() as db:
+            u = db.get(M.User, uf)
+            ok, ev, info = Q.reserve(db, u, "answer_layman", NOW)
+            Q.release(db, ev)                      # an engine failure: released with no cost recorded
+            db.commit()
+    check(refuse(uf)[0] is True, "failures of ours (no cost recorded) are not counted against the person")
+    other = new_user()
+    check(refuse(other)[0] is True, "another person is not affected")
+    uc = new_user()
+    for _ in range(3):
+        refuse(uc)
+    with DBS.session() as db:
+        ch = M.Chat(user_id=uc)
+        db.add(ch)
+        db.flush()
+        db.execute(text("delete from chats where user_id = :u"), {"u": uc})
+        db.commit()
+    check(refuse(uc)[0] is False, "deleting chats does not reset the refusal count")
+    os.environ.pop("REFUSAL_DAILY_LIMIT")
+    check(config.refusal_daily_limit() == 20 and config.anon_refusal_daily_limit() == 10, "defaults: 20 a day for a person, 10 for a trial device")
+    os.environ["ANON_REFUSAL_DAILY_LIMIT"] = "2"
+    os.environ["ANON_DAILY_BUDGET_INR"] = "5000"                 # the budget is spent for this day by the earlier tests; these tests are about the refusal limit
+    def anon_try(dev, state, now=None):
+        with DBS.session() as db:
+            ok, info = Q.anon_start(db, dev, "ip-" + dev, "q", now=now or NOW)
+            if ok:
+                Q.anon_finish(db, info["id"], dev, "ip-" + dev, 0.4, state, state in Q.ANSWER_STATES, now or NOW)
+            db.commit()
+            return ok, info
+    seq = [anon_try("dev-ref", "adjacent_uncovered")[0], anon_try("dev-ref", "no_match")[0]]
+    ok, info = anon_try("dev-ref", "adjacent_uncovered")
+    check(seq == [True, True] and ok is False and info["reason"] == "refusal_limit" and info["limit"] == 2, f"a trial device's refused questions stop at the refusal limit ({seq}, {info.get('reason')})")
+    check(anon_try("dev-ref", "adjacent_uncovered", now=at(2026, 10, 21, 18, 31))[0] is True and anon_try("dev-fail", "failed")[0] is True and anon_try("dev-fail", "failed")[0] is True and anon_try("dev-fail", "failed")[0] is True,
+          "...the next IST day starts fresh; failures ('failed') are not refusals")
+    os.environ.pop("ANON_REFUSAL_DAILY_LIMIT")
     os.environ["ANON_DAILY_BUDGET_INR"] = "50"
     with DBS.session() as db:
         anon_plan = db.execute(select(M.Plan.id).where(M.Plan.code == "anonymous")).scalar_one()

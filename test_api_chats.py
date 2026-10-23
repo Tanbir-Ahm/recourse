@@ -188,6 +188,21 @@ try:
     r = ask(A, chat, "A question that makes the engine fail.", key="key-boom-00001")
     check(r.status_code == 200 and r.json()["saved"] is True, "the same key works again after a failure (the key was released)")
 
+    # ------------------------------------------------------------ refused questions are limited too
+    os.environ["REFUSAL_DAILY_LIMIT"] = "2"
+    os.environ["PRICES_JSON"] = '{"test-model": [1.0, 1.0]}'
+    CAROL = H("c-sub", "carol@example.com")
+    c.get("/api/me", headers=CAROL())
+    make_ready(CAROL)
+    cc2 = c.post("/api/chats", json={}, headers=CAROL()).json()["id"]
+    ENG.mode = "refuse_paid"
+    codes = [ask(CAROL, cc2, f"A question outside the library number {i}?").status_code for i in range(4)]
+    r = ask(CAROL, cc2, "One more outside the library?")
+    check(codes == [200, 200, 429, 429] and r.json()["detail"] == "too_many_refusals" and r.json()["usage"]["refusal_limit"] == 2, f"a person's refused questions stop at the daily refusal limit: 429 too_many_refusals ({codes})")
+    check(counted("carol@example.com") == 0, "...they used none of the daily allowance")
+    ENG.mode = "ok"
+    os.environ.pop("REFUSAL_DAILY_LIMIT")
+
     # ------------------------------------------------------------ a caller who leaves loses nothing
     cc = c.post("/api/chats", json={}, headers=A()).json()["id"]
     with DBS.session() as s:
@@ -371,6 +386,14 @@ try:
         spent = Q.anon_spent_today(s)
         check(r.status_code == 200 and r.json()["trial"]["used"] == 0 and r.json()["result"]["state"] == "adjacent_uncovered" and r.json()["text"] is None, "a topic-bar refusal: no text (the front end words it), none of the three used")
         check(float(row.cost_inr) > 4 and spent >= float(row.cost_inr), f"...but its real cost (Rs {float(row.cost_inr):.2f}) is on the stored row and counted in the trial's spending")
+    ENG.mode = "ok"
+    os.environ["ANON_REFUSAL_DAILY_LIMIT"] = "1"
+    ENG.mode = "refuse_paid"
+    d7 = TestClient(app)
+    c1 = anon(d7, ip="198.51.100.14").status_code
+    r2 = anon(d7, ip="198.51.100.14")
+    check(c1 == 200 and r2.status_code == 429 and r2.json()["detail"] == "refusal_limit", "a trial device's refused questions stop at the refusal limit: 429 refusal_limit")
+    os.environ.pop("ANON_REFUSAL_DAILY_LIMIT")
     ENG.mode = "ok"
     os.environ["CORS_ALLOW_ORIGINS"] = "https://app.recourse.test"
     r = ac2.post("/api/anon/ask", json={"question": "Can my employer fire me?"}, headers={"X-Forwarded-For": "198.51.100.12", "Origin": "https://evil.example"})
