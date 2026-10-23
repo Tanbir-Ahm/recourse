@@ -8,7 +8,7 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 
 from . import ask as _ask
 from . import config
@@ -73,6 +73,18 @@ app.include_router(_me_router.router)
 app.include_router(_chats_router.router)
 app.include_router(_anon_router.router)
 app.include_router(_notes_router.router)
+
+
+@app.get("/api/debug/headers", include_in_schema=False)
+def debug_headers(request: Request):
+    """STAGING DIAGNOSTIC for the client-address question (FOLLOW_UPS 2bz): with API_DEBUG_HEADERS=on it shows which address headers the platform's proxy passed on, so TRUSTED_PROXY_HOPS can be set from evidence. It returns only the caller's OWN
+    request's address headers and never an Authorization header or a cookie. Off (404) unless the variable is on; never set it on production."""
+    if not _flag("API_DEBUG_HEADERS"):
+        raise HTTPException(status_code=404, detail="not found")
+    from . import netutil
+    h = request.headers
+    return {"x_forwarded_for": h.get("x-forwarded-for"), "x_real_ip": h.get("x-real-ip"), "forwarded": h.get("forwarded"), "cf_connecting_ip": h.get("cf-connecting-ip"), "peer": getattr(request.client, "host", None),
+            "trusted_proxy_hops": config.trusted_proxy_hops(), "address_the_service_would_use": netutil.client_ip(request)}
 
 
 @app.get("/api/health")

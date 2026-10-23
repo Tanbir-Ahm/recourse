@@ -90,6 +90,15 @@ ratelimit.reset()
 os.environ.pop("API_RATE_LIMIT_PER_MINUTE"), os.environ.pop("API_AUTH_RATE_PER_MINUTE")
 check(config.rate_limit_per_minute() == 120 and config.auth_rate_per_minute() == 20 and config.purge_on() is True and config.purge_interval_seconds() == 3600, "defaults: 120 and 20 a minute, purge on, hourly")
 
+# ------------------------------------------------------------ the staging diagnostic for the client address
+check(c.get("/api/debug/headers").status_code == 404, "the address diagnostic is off (404) unless API_DEBUG_HEADERS is on")
+os.environ["API_DEBUG_HEADERS"] = "on"
+r = c.get("/api/debug/headers", headers={"X-Forwarded-For": "198.51.100.5, 203.0.113.9", "X-Real-IP": "203.0.113.9", "Authorization": "Bearer secret-token", "Cookie": "rc_session=abc"})
+check(r.status_code == 200 and r.json()["x_forwarded_for"] == "198.51.100.5, 203.0.113.9" and r.json()["x_real_ip"] == "203.0.113.9" and r.json()["address_the_service_would_use"] == "203.0.113.9" and r.json()["trusted_proxy_hops"] == 1, f"on: it shows the address headers and the address the service would use ({r.json()})")
+check("secret-token" not in r.text and "rc_session" not in r.text, "...and never an Authorization header or a cookie")
+os.environ.pop("API_DEBUG_HEADERS")
+check("/api/debug/headers" not in open(os.path.join(HERE, "api", "openapi.json"), encoding="utf-8").read(), "the diagnostic is not in the public contract")
+
 # ------------------------------------------------------------ the purge loop
 import api.main as main_mod
 import api.purge as purge_mod
