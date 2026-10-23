@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+import answer_view
 import refusal_text
 
 from . import config, engine_adapter, steps
@@ -106,6 +107,7 @@ def _payload(out):
     body = {"result": res, "text": (res or {}).get("response_text") if isinstance(res, dict) else None, "cost_inr": out.get("cost_inr"), "elapsed_ms": out.get("elapsed_ms")}
     body.update({k: out[k] for k in EXTRA_KEYS if k in out})
     body["notice"] = refusal_text.notice(res)       # the words for a non-answer (None for an answer), the same words the Streamlit page shows
+    body["view"] = answer_view.build(res)           # the page's presentation data, built once here so no front end repeats the page's rules (None if it cannot be built)
     return body
 
 
