@@ -13,7 +13,7 @@ import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"):
+for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "CLIENT_IP_HEADER", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL"):
     os.environ.pop(_v, None)
 
 import jwt
@@ -127,8 +127,8 @@ check(ST.REPLAY is not None and sys.getsizeof(ST.REPLAY) > 0, "the process-wide 
 
 # ---------------------------------------------------------------- addresses
 class Req:
-    def __init__(self, xff=None, host="10.0.0.9"):
-        self.headers = {"x-forwarded-for": xff} if xff else {}
+    def __init__(self, xff=None, host="10.0.0.9", real=None):
+        self.headers = {k: v for k, v in (("x-forwarded-for", xff), ("x-real-ip", real)) if v}
         self.client = types.SimpleNamespace(host=host)
 
 
@@ -140,6 +140,20 @@ os.environ["TRUSTED_PROXY_HOPS"] = "0"
 check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2")) == "10.0.0.9", "no trusted proxy: the connection's own address")
 os.environ.pop("TRUSTED_PROXY_HOPS")
 check(netutil.client_ip(Req()) == "10.0.0.9", "no header: the connection's own address")
+# what Railway's edge was measured to send on 2026-10-23 (FOLLOW_UPS 2bz): the visitor first, an edge address last, X-Real-IP = the visitor
+R1, R2 = Req("49.37.108.90, 152.233.15.120", real="49.37.108.90"), Req("49.37.108.90, 152.233.15.77", real="49.37.108.90")
+check(netutil.client_ip(R1) != netutil.client_ip(R2), "the default (last entry) rule sees a DIFFERENT address on each request on Railway: the bug found on staging")
+os.environ["CLIENT_IP_HEADER"] = "x-real-ip"
+check(netutil.client_ip(R1) == netutil.client_ip(R2) == "49.37.108.90", "CLIENT_IP_HEADER=x-real-ip: the visitor, the same on every request")
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2")) == "2.2.2.2", "...and with no X-Real-IP it falls back to the default rule")
+check(netutil.client_ip(Req("1.1.1.1, 2.2.2.2", real="not-an-address")) == "2.2.2.2" and netutil.client_ip(Req("1.1.1.1, 2.2.2.2", real="9" * 100)) == "2.2.2.2", "...a header that is not an address is ignored")
+check(netutil.client_ip(Req(real="2001:db8:1:2:aaaa:bbbb:cccc:dddd")) == "2001:db8:1:2::" and netutil.client_ip(Req(real="2001:db8:1:2:1:2:3:4")) == "2001:db8:1:2::", "an IPv6 visitor is grouped by its /64 (the lower half changes on one connection)")
+os.environ["CLIENT_IP_HEADER"] = "xff-first"
+check(netutil.client_ip(R1) == netutil.client_ip(R2) == "49.37.108.90", "CLIENT_IP_HEADER=xff-first: the first entry, the same on every request")
+check(netutil.client_ip(Req("garbage, 2.2.2.2")) == "2.2.2.2", "...a first entry that is not an address is ignored")
+os.environ["CLIENT_IP_HEADER"] = "banana"
+check(netutil.client_ip(R1) == "152.233.15.120", "an unknown value of CLIENT_IP_HEADER means the default rule")
+os.environ.pop("CLIENT_IP_HEADER")
 check(netutil.ip_hash("1.2.3.4") is None, "no IP_HASH_SECRET: no hash (the features that need one refuse)")
 os.environ["IP_HASH_SECRET"] = "k" * 40
 h1, h2 = netutil.ip_hash("1.2.3.4"), netutil.ip_hash("1.2.3.5")

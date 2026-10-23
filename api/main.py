@@ -84,7 +84,7 @@ def debug_headers(request: Request):
     from . import netutil
     h = request.headers
     return {"x_forwarded_for": h.get("x-forwarded-for"), "x_real_ip": h.get("x-real-ip"), "forwarded": h.get("forwarded"), "cf_connecting_ip": h.get("cf-connecting-ip"), "peer": getattr(request.client, "host", None),
-            "trusted_proxy_hops": config.trusted_proxy_hops(), "address_the_service_would_use": netutil.client_ip(request)}
+            "trusted_proxy_hops": config.trusted_proxy_hops(), "client_ip_header": config.client_ip_header() or "(default: hops rule)", "address_the_service_would_use": netutil.client_ip(request)}
 
 
 @app.get("/api/health")

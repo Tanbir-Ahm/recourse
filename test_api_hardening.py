@@ -14,7 +14,7 @@ import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-for _v in ("DATABASE_URL", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "API_RATE_LIMIT_PER_MINUTE", "API_AUTH_RATE_PER_MINUTE", "IP_HASH_SECRET", "API_PURGE", "API_PURGE_INTERVAL_SECONDS", "ACCOUNTS_OPEN"):
+for _v in ("DATABASE_URL", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "CLIENT_IP_HEADER", "API_RATE_LIMIT_PER_MINUTE", "API_AUTH_RATE_PER_MINUTE", "IP_HASH_SECRET", "API_PURGE", "API_PURGE_INTERVAL_SECONDS", "ACCOUNTS_OPEN"):
     os.environ.pop(_v, None)
 
 FAILURES = []
@@ -71,6 +71,15 @@ r = c.get("/api/legal/privacy", headers={"X-Forwarded-For": "203.0.113.1", "Orig
 check(r.status_code == 429 and r.headers.get("access-control-allow-origin") == "https://app.recourse.test", "a refused request still carries the CORS header, so the front end can read the 429")
 ac = [c.post("/api/auth/google", json={"id_token": "x"}, headers={"X-Forwarded-For": "203.0.113.50"}).status_code for _ in range(5)]
 check(ac[:3].count(429) == 0 and ac[3:] == [429, 429], f"sign-in has its own, smaller limit ({ac})")
+# the Railway case: the visitor is constant but the edge address at the end of X-Forwarded-For changes on every request
+os.environ["CLIENT_IP_HEADER"] = "x-real-ip"
+rr = [c.get("/api/legal/privacy", headers={"X-Forwarded-For": f"49.37.108.90, 152.233.15.{i}", "X-Real-IP": "49.37.108.90"}).status_code for i in range(7)]
+check(rr == [200] * 5 + [429] * 2, f"with CLIENT_IP_HEADER=x-real-ip the flood guard holds even though the edge address changes on every request ({rr})")
+os.environ.pop("CLIENT_IP_HEADER")
+ratelimit.reset()
+rr0 = [c.get("/api/legal/privacy", headers={"X-Forwarded-For": f"49.37.108.90, 152.233.15.{i}", "X-Real-IP": "49.37.108.90"}).status_code for i in range(7)]
+check(rr0 == [200] * 7, "...and with the default rule the same traffic is never limited (the staging bug, kept as a test of why the setting exists)")
+ratelimit.reset()
 os.environ["API_ANON_RATE_PER_MINUTE"] = "3"
 an = [c.post("/api/anon/ask", json={"question": "Can I be fired?"}, headers={"X-Forwarded-For": "203.0.113.60"}).status_code for _ in range(5)]
 check(an[:3].count(429) == 0 and an[3:] == [429, 429], f"the free trial has its own small per-minute limit, because every trial question costs money ({an})")

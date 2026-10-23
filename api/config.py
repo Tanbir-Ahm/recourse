@@ -146,3 +146,10 @@ def refusal_daily_limit():
 def anon_refusal_daily_limit():
     """The same for one free-trial device in an IST day. Default 10."""
     return _int("ANON_REFUSAL_DAILY_LIMIT", 10, 1, 100000)
+
+
+def client_ip_header():
+    """Which header holds the visitor's address: 'x-real-ip', 'xff-first' (the first entry of X-Forwarded-For) or '' (the default: the TRUSTED_PROXY_HOPS rule on X-Forwarded-For). Set it from evidence for the platform in front of the service: on Railway (measured 2026-10-23,
+    FOLLOW_UPS 2bz) the edge replaces a caller's own X-Forwarded-For, puts the visitor first and an edge address last, and sets X-Real-IP to the visitor. A value that is not a valid address is ignored (the default rule is used)."""
+    v = _env("CLIENT_IP_HEADER").lower()
+    return v if v in ("x-real-ip", "xff-first") else ""
