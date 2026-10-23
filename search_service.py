@@ -927,7 +927,9 @@ def case_cards(parsed, lex=None, sem=None, notes=None):
         for cid, _ in sorted(hits.items(), key=lambda kv: -kv[1]):
             r = rec[cid]
             name = r.get("case_name")
-            card = by_name.get(name) or next((m for m in mentions if m["title"] == name), None)
+            if name in by_name:                          # the case itself was asked for: the paragraphs that hold its own name are its heading, not what the person looked for
+                continue
+            card = next((m for m in mentions if m["title"] == name), None)
             if card is None:
                 c = by_lib.get(name)
                 if c is None or len(mentions) >= MAX_MENTIONS:
@@ -1199,8 +1201,6 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
         res["provisions"] = res["provisions"][:MAX_PROVISIONS]
         if any(p["act"] in ("BNS", "BNSS") for p in res["provisions"]):
             notes.append(BNS_COMPARED_NOTE)
-        if any(p.get("mapped_from") or p.get("corresponds_to") for p in res["provisions"]):
-            notes.append(TABLE_NOTE)
         for a in res["acts"]:
             if not a["held"]:
                 notes.append(f"Recourse does not hold the text of the {a['short']}, so no section of it is shown. The official text is linked below.")

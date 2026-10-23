@@ -184,7 +184,7 @@ check(r["intent"] == "section" and len(r["provisions"]) == 1 and keys(r) == [("B
 check(p["text"] == S._tidy_library_text(bnss["187"]["text"])[0] and not p["cut"] and p["how"] == "named" and p["held"] == "library", "BNSS 187: the stored text, word for word")
 check(r["cases"] == [] and r["mentions"] == [], "BNSS 187: no cases and no passages")
 check(any(c["act"] == "CrPC" and c["section"] == "167" for c in p["corresponds_to"]), "BNSS 187 corresponds to CrPC 167 in the table")
-check(S.BNS_COMPARED_NOTE in r["notes"] and S.TABLE_NOTE in r["notes"], "the comparison with India Code and the table's caveat are in the notes")
+check(S.BNS_COMPARED_NOTE in r["notes"] and S.TABLE_NOTE not in r["notes"], "the comparison with India Code is in the notes; the table's caveat is on the cards, not repeated as a note")
 check(p["caption"].startswith(S.LIBRARY_CAPTION) and "Act No. 46 of 2023" in p["caption"], "the caption says it is Recourse's stored copy")
 
 r = run("IPC 420")
@@ -290,6 +290,7 @@ check(r["provisions"] and all(S._covered([S._variants(w) for w in seven], words(
 check(run("zzzqqq")["provisions"] == [] and run("zzzqqq")["hint"], "words that match nothing: a hint")
 r = run("arnesh kumar")
 check(r["cases"] and r["cases"][0]["title"] == "Arnesh Kumar v State of Bihar" and r["cases"][0]["how"] == "name", "arnesh kumar: the library case first, found by name")
+check(r["cases"][0]["passages"] == [], "a case found by name carries no passages of its own (they only repeat its name and its list of equivalent citations)")
 names_c = {c["title"] for c in r["cases"]}
 names_m = {c["title"] for c in r["mentions"]}
 check(not (names_c & names_m), "a case is either in 'cases' or in 'mentions', never both")

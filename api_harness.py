@@ -26,7 +26,7 @@ class E:
                 raise RuntimeError("secret failure")
             if "REFUSE" in question:
                 return {"state": "adjacent_uncovered", "reasoning": "An employment dispute."}
-            if "RICH" in question:        # an answer with sources and notes, for the front end's screens
+            if "RICH" in question.rsplit("Now the person says:", 1)[-1]:        # an answer with sources and notes, for the front end's screens (a follow-up reaches the engine folded into the earlier questions: only the newest words decide)
                 return {"state": "single_match", "audience": audience, "response_text": "**Your situation**\nYou were arrested.\n\n**What the law says**\nUnder **Section 35** of the BNSS arrest is limited. In *Arnesh Kumar v. State of Bihar* (2014) the Supreme Court said arrest is not routine.\n\n**What you can do**\n1. Ask for the grounds of arrest.\n2. Call a lawyer.",
                         "matches": [{"case_name": "Arnesh Kumar v. State of Bihar", "citation": "(2014) 8 SCC 273", "paragraph_number": "7_a", "text": "Arrest is not to be made routinely.", "source": "curated"},
                                     {"section_number": "35", "act": "BNSS", "act_display": "BNSS", "text": "Arrest without warrant, with notice of appearance.", "source": "curated_statute"}],
