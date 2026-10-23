@@ -39,6 +39,19 @@ def login_config():
     return {"auth": {"redirect_uri": site + "/oauth2callback", "cookie_secret": cookie, "client_id": cid, "client_secret": csec, "server_metadata_url": _env("SITE_OIDC_METADATA_URL") or GOOGLE_METADATA}}
 
 
+def login_config_problems():
+    """Which login settings are missing or unusable, as a list of NAMES and reasons (never a value). For the deploy log, so a half-set-up site says what to fix."""
+    out = []
+    for name in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "STREAMLIT_COOKIE_SECRET", "SITE_URL"):
+        if not _env(name):
+            out.append(f"{name} is not set")
+    if _env("STREAMLIT_COOKIE_SECRET") and len(_env("STREAMLIT_COOKIE_SECRET")) < 32:
+        out.append("STREAMLIT_COOKIE_SECRET is shorter than 32 characters")
+    if _env("SITE_URL") and not _env("SITE_URL").startswith("http"):
+        out.append("SITE_URL must start with https://")
+    return out
+
+
 def ensure_login_config():
     """True when Streamlit's login is configured. If the environment holds the settings and no [auth] block exists yet, hands them to Streamlit in memory (st.secrets.merge_programmatic_secrets): nothing is written to disk, so no secret ever sits in a file."""
     try:
@@ -48,6 +61,7 @@ def ensure_login_config():
         pass
     cfg = login_config()
     if cfg is None:
+        logger.warning("sign-in is not configured: %s", "; ".join(login_config_problems()) or "unknown reason")
         return False
     try:
         st.secrets.merge_programmatic_secrets(cfg)

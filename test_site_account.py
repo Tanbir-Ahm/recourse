@@ -213,6 +213,10 @@ check(cfg["redirect_uri"] == "https://staging.example.test/oauth2callback" and c
       "the login configuration holds the redirect address, the client, the cookie secret and Google's discovery address")
 os.environ["STREAMLIT_COOKIE_SECRET"] = "short"
 check(SA2.login_config() is None, "a cookie secret under 32 characters: no configuration (fails closed)")
+check(SA2.login_config_problems() == ["STREAMLIT_COOKIE_SECRET is shorter than 32 characters"], f"the log names the problem without any value ({SA2.login_config_problems()})")
+os.environ.pop("GOOGLE_CLIENT_SECRET")
+probs = SA2.login_config_problems()
+check("GOOGLE_CLIENT_SECRET is not set" in probs and not any("short" in p or "cid.apps" in p for p in probs), "a missing setting is named, and no value appears in the message")
 os.environ["STREAMLIT_COOKIE_SECRET"] = "c" * 40
 os.environ["SITE_URL"] = "staging.example.test"
 check(SA2.login_config() is None, "a SITE_URL without http: no configuration")
