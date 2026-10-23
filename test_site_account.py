@@ -211,12 +211,12 @@ os.environ.update({"GOOGLE_CLIENT_ID": "cid.apps.googleusercontent.com", "GOOGLE
 cfg = SA2.login_config()["auth"]
 check(cfg["redirect_uri"] == "https://staging.example.test/oauth2callback" and cfg["client_id"] == "cid.apps.googleusercontent.com" and cfg["client_secret"] == 'sec"ret' and cfg["cookie_secret"] == "c" * 40 and cfg["server_metadata_url"] == "https://accounts.google.com/.well-known/openid-configuration",
       "the login configuration holds the redirect address, the client, the cookie secret and Google's discovery address")
-os.environ["STREAMLIT_COOKIE_SECRET"] = "short"
+os.environ["STREAMLIT_COOKIE_SECRET"] = "Qz7vSecretValue"
 check(SA2.login_config() is None, "a cookie secret under 32 characters: no configuration (fails closed)")
-check(SA2.login_config_problems() == ["STREAMLIT_COOKIE_SECRET is shorter than 32 characters"], f"the log names the problem without any value ({SA2.login_config_problems()})")
+check(SA2.login_config_problems() == ["STREAMLIT_COOKIE_SECRET is shorter than 32 characters"] and "Qz7vSecretValue" not in " ".join(SA2.login_config_problems()), f"the log names the problem without any value ({SA2.login_config_problems()})")
 os.environ.pop("GOOGLE_CLIENT_SECRET")
-probs = SA2.login_config_problems()
-check("GOOGLE_CLIENT_SECRET is not set" in probs and not any("short" in p or "cid.apps" in p for p in probs), "a missing setting is named, and no value appears in the message")
+probs = " ".join(SA2.login_config_problems())
+check("GOOGLE_CLIENT_SECRET is not set" in probs and "Qz7vSecretValue" not in probs and "cid.apps.googleusercontent.com" not in probs, "a missing setting is named, and no value appears in the message")
 os.environ["STREAMLIT_COOKIE_SECRET"] = "c" * 40
 os.environ["SITE_URL"] = "staging.example.test"
 check(SA2.login_config() is None, "a SITE_URL without http: no configuration")
