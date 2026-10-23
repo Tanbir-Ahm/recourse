@@ -417,6 +417,30 @@ S._embed_query = lambda text: (asked_default.append(text) or vec("statute:BNSS:4
 r = S.search("pre arrest protection from police")
 check(asked_default == ["pre arrest protection from police"] and r["meaning_used"] and ("BNSS", "482") in keys(r), "meaning on and no embedder given: the Voyage embedder is the default (stood in for here)")
 S._embed_query = real_embed
+# the real embedder, with the Voyage client stood in for: a short timeout (a person is waiting), one retry, the cost noted under its own label
+import types as _types
+seen_kw, noted = {}, []
+
+
+class _FakeClient:
+    def __init__(self, **kw):
+        seen_kw.update(kw)
+
+    def embed(self, texts, **kw):
+        seen_kw["embed_kw"] = kw
+        return _types.SimpleNamespace(embeddings=[[0.0] * 1024], total_tokens=7)
+
+
+import cost_log
+real_voyage_mod, real_note, real_key = sys.modules.get("voyageai"), cost_log.note_voyage, SR._resolve_voyage_api_key
+sys.modules["voyageai"] = _types.SimpleNamespace(Client=_FakeClient)
+cost_log.note_voyage = lambda label, model, tokens: noted.append((label, model, tokens))
+SR._resolve_voyage_api_key = lambda: "k"
+vec_ = S._embed_query("bail conditions")
+sys.modules["voyageai"] = real_voyage_mod if real_voyage_mod is not None else sys.modules.pop("voyageai")
+cost_log.note_voyage, SR._resolve_voyage_api_key = real_note, real_key
+check(len(vec_) == 1024 and seen_kw.get("timeout") == S.EMBED_TIMEOUT == 8 and seen_kw.get("max_retries") == 1 and seen_kw["embed_kw"].get("input_type") == "query", "the query embedding: voyage-law-2, input type 'query', a short timeout and one retry")
+check(noted == [("search_page_query_embed", SR.MODEL, 7)], "its cost is noted under the search page's own label, with no text")
 r = S.search("pre arrest protection from police", embed_fn=lambda t: (_ for _ in ()).throw(RuntimeError("voyage down")))
 check(not r["meaning_used"] and any("Meaning search was not available" in n for n in r["notes"]) and r["provisions"], "a failing embedder: a note, and the word matches still come")
 r = S.search("pre arrest protection from police", embed_fn=lambda t: [0.1, 0.2])

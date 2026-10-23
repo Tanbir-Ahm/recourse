@@ -54,6 +54,7 @@ EXCERPT_CAP = 700
 SHELF_MEANING_FLOOR = 0.50       # cosine under which a section of an Act the person did NOT name is not offered by meaning (scores are higher inside one Act than across the library; the library's own floor is 0.34)
 SHELF_MEANING_PER_ACT = 3        # no Act offers more than this many by meaning, so that one Act cannot fill the list
 LIBRARY_MEANING_TOP = 40         # statute records of the library offered by meaning, before the lists are fused
+EMBED_TIMEOUT = 8                # seconds the query embedding may take (a normal call takes well under one); with its one retry a Voyage outage costs the person at most about 16 seconds, then the words answer alone
 RRF_K = 60                       # reciprocal-rank fusion: a section scores 1 / (RRF_K + rank) in every list that holds it
 MODES = ("library", "wider")
 INTENTS = ("empty", "nothing", "citation", "number", "section", "act", "words")
@@ -1160,7 +1161,7 @@ def _embed_query(text):
     """The query as a voyage-law-2 vector (the model the corpus and the Act shelf were embedded with); the cost is logged under its own label."""
     import voyageai
     import semantic_retrieval as SR
-    resp = voyageai.Client(api_key=SR._resolve_voyage_api_key(), max_retries=1, timeout=15).embed([text], model=SR.MODEL, input_type="query")
+    resp = voyageai.Client(api_key=SR._resolve_voyage_api_key(), max_retries=1, timeout=EMBED_TIMEOUT).embed([text], model=SR.MODEL, input_type="query")      # a person is waiting: after about two timeouts the words answer alone
     try:
         import cost_log
         cost_log.note_voyage("search_page_query_embed", SR.MODEL, getattr(resp, "total_tokens", 0))
