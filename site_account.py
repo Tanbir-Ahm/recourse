@@ -177,15 +177,20 @@ def topbar(person, acct):
     cols[2].button("Sign out", key="acct_signout", on_click=st.logout, use_container_width=True)
     with st.expander("My data and account"):
         st.markdown("You can download everything Recourse holds about you, or delete your account and all of it now. Deleting cannot be undone.")
-        try:
-            import json
-            data = json.dumps(site_client.export_my_data(person), ensure_ascii=False, indent=2) if st.session_state.get("_want_export") else None
-        except site_client.ApiError:
-            data = None
+        data = st.session_state.get("_export_json")
+        if data is None and st.session_state.get("_want_export"):
+            try:
+                import json
+                data = json.dumps(site_client.export_my_data(person), ensure_ascii=False, indent=2)
+                st.session_state["_export_json"] = data         # fetched once, not on every rerun
+            except site_client.ApiError:
+                st.error("Could not prepare your data just now. Please try again.")
+                st.session_state.pop("_want_export", None)
         if data is None:
             st.button("Prepare my data file", key="acct_export_prep", on_click=lambda: st.session_state.__setitem__("_want_export", True))
         else:
-            st.download_button("Download my data (JSON)", data, file_name="recourse-my-data.json", mime="application/json", key="acct_export_dl")
+            st.download_button("Download my data (JSON)", data, file_name="recourse-my-data.json", mime="application/json", key="acct_export_dl",
+                               on_click=lambda: [st.session_state.pop(k, None) for k in ("_export_json", "_want_export")])
         word = st.text_input("To delete your account and everything in it, type DELETE", key="acct_delete_word")
         if st.button("Delete my account now", key="acct_delete", disabled=(word != "DELETE")):
             try:

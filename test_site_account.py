@@ -77,7 +77,7 @@ SC.confirm_age = lambda person: CALLS.append(("age",)) or STATE.update(age=True)
 SC.new_chat = fake_new_chat
 SC.ask = fake_ask
 SC.feedback = lambda person, mid, kind, comment=None: CALLS.append(("feedback", mid, kind, comment)) or {"status": "new"}
-SC.export_my_data = lambda person: {"account": {"email": person["email"]}}
+SC.export_my_data = lambda person: CALLS.append(("export",)) or {"account": {"email": person["email"]}}
 SC.delete_account = lambda person: CALLS.append(("delete",)) or {"deleted": True}
 SA.current_user = lambda: STATE["person"]
 SA.ensure_login_config = lambda: True
@@ -190,6 +190,11 @@ check(has(at, "Recourse can't help with this one") and has(at, "An employment di
 
 # ------------------------------------------------------------ my data
 reset()
+at = page(**ON)
+[b for b in at.button if b.key == "acct_export_prep"][0].click().run()
+at.text_input(key="acct_delete_word").set_value("typing").run()
+at.text_input(key="acct_delete_word").set_value("typing more").run()
+check(sum(1 for c in CALLS if c[0] == "export") == 1 and [d for d in at.get("download_button")], "my data: the file is prepared once (not again on every rerun) and a download button appears")
 at = page(**ON)
 at.text_input(key="acct_delete_word").set_value("delete").run()
 check([b for b in at.button if b.key == "acct_delete"][0].disabled, "delete stays disabled until DELETE is typed (exactly)")
