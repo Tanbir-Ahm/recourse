@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from .. import consent, netutil
+from .. import consent, netutil, quota
 from ..db import models as M
 from ..deps import Principal, current_user, get_db
 from .auth import clear_session_cookies
@@ -33,7 +33,8 @@ def _iso(v):
 def me(principal: Principal = Depends(current_user), db=Depends(get_db)):
     st = consent.status(db, principal.user)
     return {"user": user_view(db, principal.user), "via": principal.via, "consent": {"missing": st["missing"], "age_confirmed": st["age_confirmed"], "ready": st["ready"],
-                                                                                 "legal_text_is_placeholder": st["legal_text_is_placeholder"]}}
+                                                                                 "legal_text_is_placeholder": st["legal_text_is_placeholder"]},
+            "usage": quota.usage_view(db, principal.user)}
 
 
 @router.get("/api/legal/{document}", summary="The current text of a document the person must accept")

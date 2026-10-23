@@ -28,6 +28,7 @@ import streamlit as st
 
 import answer_style
 import refusal_text
+import site_client
 
 # chat_assistant pulls in the Anthropic SDK + the 38 MB embeddings + main
 # (~8-15s on a cold container). recourse_upload -> main is similarly heavy.
@@ -569,8 +570,15 @@ def _reset_answer():
         st.session_state.pop(k, None)
 
 
+_API = site_client.enabled()          # USE_API=on: sign-in, saved chats and the question through the API (site_account.py). Off (the default): everything below is exactly as it was.
+if _API:
+    import site_account
+
+
 def _chat_on():
-    """CHAT_MODE=on | fold (web_chat.py): follow-up questions in one conversation, kept in this browser session only. Unset or off: the page is exactly as before."""
+    """CHAT_MODE=on | fold (web_chat.py): follow-up questions in one conversation, kept in this browser session only. Unset or off: the page is exactly as before. With USE_API on, follow-ups are always on (the API keeps the conversation)."""
+    if _API:
+        return True
     try:
         import web_chat
         return web_chat.enabled()
@@ -582,7 +590,7 @@ def _start_new_conversation():
     """'Start a new question' (an on_click callback, so the box above may be emptied): forget the conversation, the answer and what hung off it."""
     _reset_answer()
     for _k in list(st.session_state.keys()):
-        if _k == "chat_turns" or _k.startswith("_petition_"):
+        if _k in ("chat_turns", "api_chat_id", "api_meta") or _k.startswith("_petition_"):
             st.session_state.pop(_k, None)
     st.session_state.text = ""
 
@@ -601,6 +609,9 @@ def _scroll_into_view(selector):
     except Exception:
         pass
 
+
+if _API:
+    site_account.gate()          # signed in and accepted, or the page stops here (st.stop inside)
 
 st.html('<div class="r-label">Start with a situation</div>')
 cols = st.columns(len(EXAMPLES))
@@ -987,6 +998,13 @@ def render_answer(result: dict):
         _n = refusal_text.notice(result)               # the words live in refusal_text.py, shared with the API
         st.markdown(f'<div class="r-label">{esc(_n["label"])}</div>', unsafe_allow_html=True)
         st.markdown(_n["body"])
+        return False
+
+    if state == "account_notice":            # USE_API only: a person-level notice (daily limit, conversation full, busy ...) written by site_account.py
+        _n = result.get("notice") or {}
+        st.markdown(f'<div class="r-label">{esc(_n.get("label") or "Your account")}</div>', unsafe_allow_html=True)
+        st.markdown("## " + str(_n.get("title") or ""))
+        st.markdown(f'<div class="r-oos">{esc(_n.get("body"))}</div>', unsafe_allow_html=True)
         return False
 
     if state in ("single_match", "conflicting_matches"):
@@ -1495,9 +1513,10 @@ def _render_followup_box(turns):
                               placeholder="e.g. Is that bailable? What should I take to the lawyer?") or ""
             ask = st.form_submit_button("Reading…" if _busy else "Ask a follow-up  →", type="primary",
                                         use_container_width=True, disabled=_busy)
+        _kept = ('Your conversation is saved to your account; to delete everything, use "My data and account" at the top.' if _API
+                 else 'The conversation is kept only while this page is open: refreshing the page starts afresh.')
         st.markdown(f'<p class="r-foot">Question {len(turns)} of {web_chat.MAX_TURNS} in this conversation. Recourse reads your earlier '
-                    'questions in this conversation together with the new one. The conversation is kept only while this page is open: '
-                    'refreshing the page starts afresh.</p>', unsafe_allow_html=True)
+                    f'questions in this conversation together with the new one. {_kept}</p>', unsafe_allow_html=True)
         if ask and fu.strip() and not _busy:
             st.session_state["_busy"] = True
             st.session_state["_busy_msg"] = fu.strip()
@@ -1521,7 +1540,7 @@ _new_q = msg.strip() if ((go or st.session_state.pop("_autorun", False)) and msg
 # clicking the button again while a (possibly slow) request is in flight.
 if _new_q and not _busy:
     for _k in list(st.session_state.keys()):
-        if _k in ("doc_check", "doc_check_sig", "_sg_result", "answer", "chat_turns") \
+        if _k in ("doc_check", "doc_check_sig", "_sg_result", "answer", "chat_turns", "api_chat_id", "api_meta") \
            or _k.startswith("_petition_"):
             st.session_state.pop(_k, None)      # never carry stale artefacts over; a question from the box above starts a new conversation
     st.session_state["_busy"] = True
@@ -1543,31 +1562,42 @@ if _busy:
             'Reading the law and the judgments on this&hellip;</div>')
     _scroll_into_view("#r-working")
     _engine_q, _chat_info = _q, None
-    if _chat:
+    if _chat and not _API:               # with the API the server folds the earlier questions in (web_chat, in api/chat_service.py)
         try:
             import web_chat
             _engine_q, _chat_info = web_chat.question_for_engine(_turns, _q)       # the earlier questions folded in, and a follow-up made standalone (web_chat.py)
         except Exception:
             logging.getLogger("recourse_app").exception("chat fold failed")
             _engine_q, _chat_info = _q, {"turn": len(_turns) + 1, "rewrite": "fold_failed", "folded": 0}
-    try:
-        # recourse_app is chat-only: cheque-bounce, bank-freeze,
-        # (added 2026-09-14) domestic-violence (PWDVA), and
-        # (added 2026-09-25) NDPS drug-offence questions are answered
-        # inline from the shared corpus rather than dead-ended with a
-        # "covered elsewhere" redirect that points nowhere here.
-        st.session_state.answer = _answer_question(
-            _engine_q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
-            audience=("lawyer" if st.session_state.get("audience_choice") == "Lawyer" else "layman") if answer_style.style() == "v3" else None)
-    except Exception:
-        logging.getLogger("recourse_app").exception("answer_question failed")
-        st.session_state.answer = {"state": "retrieval_unavailable"}
-    if _chat:
+    _aud = ("lawyer" if st.session_state.get("audience_choice") == "Lawyer" else "layman") if answer_style.style() == "v3" else None
+    if _API:
+        _steps = st.empty()
+        _seen = []
+
+        def _on_step(label):
+            _seen.append(label)
+            _steps.markdown('<div class="r-foot">' + "<br>".join("&#10003; " + _html.escape(x) for x in _seen[-8:]) + "</div>", unsafe_allow_html=True)
+        st.session_state.answer = site_account.ask(_q, _aud or "layman", _followup, on_step=_on_step)
+    else:
         try:
-            import web_chat
-            web_chat.log_turn(_engine_q, _chat_info)
+            # recourse_app is chat-only: cheque-bounce, bank-freeze,
+            # (added 2026-09-14) domestic-violence (PWDVA), and
+            # (added 2026-09-25) NDPS drug-offence questions are answered
+            # inline from the shared corpus rather than dead-ended with a
+            # "covered elsewhere" redirect that points nowhere here.
+            st.session_state.answer = _answer_question(
+                _engine_q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
+                audience=_aud)
         except Exception:
-            pass
+            logging.getLogger("recourse_app").exception("answer_question failed")
+            st.session_state.answer = {"state": "retrieval_unavailable"}
+    if _chat:
+        if not _API:
+            try:
+                import web_chat
+                web_chat.log_turn(_engine_q, _chat_info)
+            except Exception:
+                pass
         st.session_state.chat_turns = _turns + [{"q": _q, "answer": st.session_state.answer}]
     if not _followup:
         st.session_state.answer_msg = _q        # in a conversation this stays the first question (the one in the box above)
@@ -1597,6 +1627,11 @@ if answer:
         _render_thread(_turns[:-1])
         _render_asked(len(_turns), _turns[-1].get("q"))
     situation = render_answer(answer)
+    if _API:
+        try:
+            site_account.after_answer(answer)           # today's usage line and the "report a problem" box
+        except Exception:
+            logging.getLogger("recourse_app").exception("account line render failed")
     if _turns:
         try:
             _render_followup_box(_turns)

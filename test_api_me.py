@@ -63,6 +63,9 @@ try:
     check(r.status_code == 200 and r.json()["placeholder"] is True and r.json()["text"].startswith("PLACEHOLDER") and r.json()["version"] == "PLACEHOLDER-0", "the privacy text is public and says it is a placeholder")
     check(c.get("/api/legal/data_use").status_code == 200 and c.get("/api/legal/cookies").status_code == 404, "the optional document is public too; an unknown one is 404")
 
+    mu = c.get("/api/me", headers=H(*A)).json()["usage"]
+    check(mu["answer_layman"]["limit"] == 10 and mu["answer_layman"]["used"] == 0 and mu["answer_lawyer"]["limit"] == 3 and mu["answer_layman"]["resets_at"], f"/api/me carries today's usage and limits ({mu['answer_layman']})")
+
     # ------------------------------------------------------------ consent flow
     me = c.get("/api/me", headers=H(*A)).json()
     check([m["document"] for m in me["consent"]["missing"]] == ["privacy", "terms"] and me["consent"]["age_confirmed"] is False and me["consent"]["ready"] is False and me["consent"]["legal_text_is_placeholder"] is True,
