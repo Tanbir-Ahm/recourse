@@ -119,6 +119,16 @@ def rate_limit_per_minute():
     return _int("API_RATE_LIMIT_PER_MINUTE", 120, 0, 100000)
 
 
+def export_rate_per_minute():
+    """PDF / Word downloads one signed-in person may start per minute (each is built on the server, no model call), 0 = no limit. Default 12."""
+    return _int("API_EXPORT_RATE_PER_MINUTE", 12, 0, 1000)
+
+
+def export_parallel():
+    """How many PDF / Word files the service builds at the same moment (the rest are told to try again at once). Default 3."""
+    return _int("API_EXPORT_PARALLEL", 3, 1, 32)
+
+
 def auth_rate_per_minute():
     """Requests per minute one address may make to the sign-in routes, 0 = no limit. Default 20."""
     return _int("API_AUTH_RATE_PER_MINUTE", 20, 0, 100000)

@@ -722,6 +722,75 @@
         "summary": "Ask in a conversation"
       }
     },
+    "/api/chats/{chat_id}/export": {
+      "get": {
+        "description": "format=pdf|docx. With message=<id of a question or its answer> only that question and answer; without it the whole conversation (newest 12 questions). The file carries every box and warning the page shows. No model is called. 422 pdf_script_unsupported: the text has letters the PDF font cannot draw (ask for docx).",
+        "operationId": "export_chat_api_chats__chat_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chat Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "pdf",
+              "enum": [
+                "pdf",
+                "docx"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "message",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Message"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {},
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download a conversation, or one answer, as a PDF or Word file"
+      }
+    },
     "/api/feedback": {
       "post": {
         "operationId": "send_feedback_api_feedback_post",

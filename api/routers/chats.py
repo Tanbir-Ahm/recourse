@@ -4,25 +4,31 @@ gets 404 (never 403: whether a chat exists is not told). Deleting a chat deletes
 POST /api/chats/{id}/ask is the question: header Idempotency-Key (8 to 40 letters, digits, - or _) is required; server-sent events or one JSON reply as for /api/ask; the answer is saved by the server even if the caller goes away.
 """
 import asyncio
+import datetime
+import logging
+import threading
 import uuid
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+import answer_export
 import answer_view
 import refusal_text
 import web_chat
 
 from .. import ask as ask_mod
-from .. import chat_service, config, engine_adapter, quota
+from .. import chat_service, config, engine_adapter, quota, ratelimit
 from ..db import models as M
 from ..deps import Principal, get_db, ready_user
 
 router = APIRouter()
+logger = logging.getLogger("api.chats")
 MAX_CHATS = 500
+_EXPORT_SLOTS = {"n": None, "sem": None}
 
 
 def _iso(v):
@@ -163,3 +169,67 @@ async def ask_in_chat(chat_id: uuid.UUID, body: AskChat, request: Request, idemp
         chat_service.unclaim(turn.chat_id, turn.request_id)
         raise HTTPException(status_code=429, detail="busy, try again shortly", headers={"Retry-After": "5"})
     return await ask_mod.deliver(request, q, loop, rid)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# download: one answer or the whole conversation as a PDF or a Word file (answer_export.py). Built ONLY from the saved messages of the person's own conversation, so a document cannot be forged by editing a request.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+def _export_slot():
+    n = config.export_parallel()
+    if _EXPORT_SLOTS["sem"] is None or _EXPORT_SLOTS["n"] != n:
+        _EXPORT_SLOTS["n"], _EXPORT_SLOTS["sem"] = n, threading.BoundedSemaphore(n)
+    return _EXPORT_SLOTS["sem"]
+
+
+def export_entries(chat):
+    """[(entry, ids)] one per question, oldest first: the person's own words and the answer that followed (answer_view's data for it). ids = the ids of the messages the entry came from."""
+    out, msgs, i = [], list(chat.messages), 0
+    while i < len(msgs):
+        m = msgs[i]
+        if m.role != "user":
+            i += 1
+            continue
+        nxt = msgs[i + 1] if i + 1 < len(msgs) and msgs[i + 1].role == "assistant" else None
+        src = nxt or m
+        out.append(({"question": m.content, "view": answer_view.build(nxt.result) if nxt is not None else None, "plain": (nxt.content if nxt is not None else None) or None,
+                     "answer_id": "RA-" + src.id.hex[:6].upper(), "created_at": src.created_at, "audience": chat.audience},
+                    {str(m.id)} | ({str(nxt.id)} if nxt is not None else set())))
+        i += 2 if nxt is not None else 1
+    return out
+
+
+@router.get("/api/chats/{chat_id}/export", summary="Download a conversation, or one answer, as a PDF or Word file",
+            description="format=pdf|docx. With message=<id of a question or its answer> only that question and answer; without it the whole conversation (newest 12 questions). The file carries every box and warning the page shows. "
+                        "No model is called. 422 pdf_script_unsupported: the text has letters the PDF font cannot draw (ask for docx).",
+            response_class=Response, responses={200: {"content": {"application/pdf": {}, "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}}}})
+def export_chat(chat_id: uuid.UUID, fmt: Literal["pdf", "docx"] = Query("pdf", alias="format"), message: Optional[uuid.UUID] = None,
+                principal: Principal = Depends(ready_user), db=Depends(get_db)):
+    chat = _own_chat(db, principal.user, chat_id)
+    entries = export_entries(chat)
+    if message is not None:
+        entries = [e for e in entries if str(message) in e[1]]
+        if not entries:
+            raise HTTPException(status_code=404, detail="not_found")
+    if not entries:
+        raise HTTPException(status_code=409, detail="nothing_to_export")
+    limit = config.export_rate_per_minute()
+    if limit and not ratelimit.hit("export:" + str(principal.user.id), limit):
+        raise HTTPException(status_code=429, detail="rate_limited", headers={"Retry-After": "30"})
+    slot = _export_slot()
+    if not slot.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="busy", headers={"Retry-After": "5"})
+    try:
+        doc = answer_export.build_document([e[0] for e in entries], kind="answer" if message is not None else "conversation", title_chat=chat.title or None)
+        try:
+            data, _info = answer_export.export(doc, fmt)
+        except answer_export.ScriptNotSupported:
+            raise HTTPException(status_code=422, detail="pdf_script_unsupported") from None
+        except answer_export.ExportError as exc:
+            logger.error("export failed: %s", exc)
+            raise HTTPException(status_code=500, detail="export_failed") from None
+    finally:
+        slot.release()
+    today = datetime.datetime.now(answer_export.IST).strftime("%Y-%m-%d")
+    name = f"recourse-{'answer' if message is not None else 'conversation'}-{today}.{fmt}"
+    return Response(content=data, media_type=answer_export.MIME[fmt],
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})

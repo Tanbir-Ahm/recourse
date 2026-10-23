@@ -47,7 +47,7 @@ import export_openapi
 check(open(os.path.join(HERE, "api", "openapi.json"), encoding="utf-8").read() == export_openapi.render(), "api/openapi.json is up to date (run: python api/export_openapi.py)")
 paths = json.load(open(os.path.join(HERE, "api", "openapi.json"), encoding="utf-8"))["paths"]
 EXPECTED = {"/api/anon/ask": ["post"], "/api/ask": ["post"], "/api/auth/google": ["post"], "/api/auth/logout": ["post"], "/api/chats": ["get", "post"], "/api/chats/{chat_id}": ["delete", "get", "patch"],
-            "/api/chats/{chat_id}/ask": ["post"], "/api/feedback": ["post"], "/api/health": ["get"], "/api/legal/{document}": ["get"], "/api/me": ["delete", "get"], "/api/me/age": ["post"], "/api/me/consent": ["post"],
+            "/api/chats/{chat_id}/ask": ["post"], "/api/chats/{chat_id}/export": ["get"], "/api/feedback": ["post"], "/api/health": ["get"], "/api/legal/{document}": ["get"], "/api/me": ["delete", "get"], "/api/me/age": ["post"], "/api/me/consent": ["post"],
             "/api/me/export": ["post"], "/api/notes": ["get", "post"], "/api/notes/{note_id}": ["delete", "patch"]}
 check({k: sorted(v) for k, v in paths.items()} == EXPECTED, f"the contract lists exactly the routes and methods that exist (a new route must be added here on purpose) ({sorted(paths)})")
 
