@@ -90,7 +90,13 @@ def show_stream(resp):
             print(f"  - {d.get('label')}")
         elif name == "result":
             ok = True
-            print("\n" + (d.get("text") or "(no text)") + "\n")
+            n = d.get("notice")
+            if d.get("text"):
+                print("\n" + d["text"] + "\n")
+            elif n:
+                print(f"\n[{n.get('label')}] {n.get('title') or ''}\n{n.get('body')}" + (f"\n({n['reasoning']})" if n.get("reasoning") else "") + (f"\n{n['footer']}" if n.get("footer") else "") + "\n")
+            else:
+                print("\n(no text)\n")
             print(f"cost Rs {d.get('cost_inr')}, {d.get('elapsed_ms')} ms")
             for k in ("usage", "trial", "saved", "chat_id", "message_id", "replayed"):
                 if k in d:

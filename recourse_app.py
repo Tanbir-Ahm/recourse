@@ -27,6 +27,7 @@ import logging
 import streamlit as st
 
 import answer_style
+import refusal_text
 
 # chat_assistant pulls in the Anthropic SDK + the 38 MB embeddings + main
 # (~8-15s on a cold container). recourse_upload -> main is similarly heavy.
@@ -413,6 +414,11 @@ a, a:visited{ color:var(--seal); text-underline-offset:2px; }
 
 def esc(s):
     return _html.escape(str(s or ""))
+
+
+def _h(plain):
+    """Plain wording from refusal_text.py as this page's HTML: markup characters escaped, an em dash written as &mdash; (quotes left as they are, as the page always had them)."""
+    return _html.escape(plain, quote=False).replace("\u2014", "&mdash;")
 
 
 import re as _re_lbl
@@ -978,9 +984,9 @@ def render_answer(result: dict):
     state = result.get("state")
 
     if state == "budget_paused":
-        st.markdown('<div class="r-label">Daily limit reached</div>', unsafe_allow_html=True)
-        st.markdown("Recourse has reached its usage limit for today, so it cannot answer new questions until tomorrow. "
-                    "If your situation is urgent, please contact a lawyer or your nearest District Legal Services Authority (free).")
+        _n = refusal_text.notice(result)               # the words live in refusal_text.py, shared with the API
+        st.markdown(f'<div class="r-label">{esc(_n["label"])}</div>', unsafe_allow_html=True)
+        st.markdown(_n["body"])
         return False
 
     if state in ("single_match", "conflicting_matches"):
@@ -1191,44 +1197,20 @@ def render_answer(result: dict):
         return bool(result.get("situation_detected"))
 
     # ---- everything below is an honest non-answer ----
-    st.markdown('<div class="r-label">Out of scope</div>', unsafe_allow_html=True)
-
+    # The words come from refusal_text.py (one source for this page and the API); _h turns its plain text into this page's HTML (an em dash becomes &mdash;).
+    _n = refusal_text.notice(result)
+    st.markdown(f'<div class="r-label">{esc(_n["label"])}</div>', unsafe_allow_html=True)
+    st.markdown("## " + _n["title"])
     if state == "covered_elsewhere_in_tool":
-        dom = result.get("redirect_domain")
-        label = {
-            "freeze": "a frozen bank account", "cheque_bounce": "a bounced cheque",
-            "domestic_violence": "domestic violence",
-        }.get(dom, "this")
-        st.markdown("## That's a different kind of matter")
-        st.markdown(f'<div class="r-oos">This looks like it is about <b>{esc(label)}</b>. '
-                    'Recourse focuses on arrest, FIR, police procedure and bail. For a cheque, '
-                    'bank-freeze, or domestic violence matter, take the notice, letter, or details '
-                    'to a lawyer or your nearest District Legal Services Authority.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="r-oos">' + _h(_n["body_template"]).replace("{topic}", f'<b>{esc(_n["topic"])}</b>') + '</div>', unsafe_allow_html=True)
     elif state == "adjacent_uncovered":
-        st.markdown("## Recourse can't help with this one")
-        reason = result.get("reasoning") or ""
-        st.markdown(f'<div class="r-oos">This looks like a real legal question, but it is '
-                    'outside what Recourse checks &mdash; it covers police arrests, FIRs, '
-                    'criminal procedure and bail under the BNS and BNSS. '
+        reason = _n["reasoning"] or ""
+        st.markdown('<div class="r-oos">' + _h(_n["body"]) + ' '
                     + (f'<br><span class="r-src">{esc(reason)}</span>' if reason else "")
                     + '</div>', unsafe_allow_html=True)
-        st.markdown('<p class="r-foot">For this kind of question, speak with a lawyer who '
-                    'handles that area of law.</p>', unsafe_allow_html=True)
-    elif state == "unrelated":
-        st.markdown("## That doesn't look like a legal question")
-        st.markdown('<div class="r-oos">Recourse is built for police arrests, FIRs and '
-                    'criminal procedure under Indian law. Ask about any of those in your '
-                    'own words.</div>', unsafe_allow_html=True)
-    elif state == "no_match":
-        st.markdown("## Not enough to go on yet")
-        st.markdown('<div class="r-oos">Recourse looked but could not find anything in the '
-                    'law and judgments it holds that clearly matches this. Try adding detail '
-                    '&mdash; what happened, and roughly when &mdash; or name the section of '
-                    'law if you know it.</div>', unsafe_allow_html=True)
-    else:  # classifier_unavailable / retrieval_unavailable / anything unexpected
-        st.markdown("## Something isn't working right now")
-        st.markdown('<div class="r-oos">This is a technical problem on Recourse\'s side, not '
-                    'your question. Try again in a moment.</div>', unsafe_allow_html=True)
+        st.markdown(f'<p class="r-foot">{_h(_n["footer"])}</p>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="r-oos">' + _h(_n["body"]) + '</div>', unsafe_allow_html=True)
 
     _act_note = result.get("act_notice")
     if isinstance(_act_note, dict) and _act_note.get("html"):      # Act Directory (act_directory.py): the Act the question names, whose text Recourse does not hold, and where to read it

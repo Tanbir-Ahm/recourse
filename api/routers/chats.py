@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+import refusal_text
 import web_chat
 
 from .. import ask as ask_mod
@@ -32,7 +33,8 @@ def chat_view(c):
 
 
 def message_view(m):
-    return {"id": str(m.id), "seq": m.seq, "role": m.role, "content": m.content, "result": m.result, "state": m.state, "created_at": _iso(m.created_at)}
+    return {"id": str(m.id), "seq": m.seq, "role": m.role, "content": m.content, "result": m.result, "state": m.state, "created_at": _iso(m.created_at),
+            "notice": refusal_text.notice(m.result) if m.role == "assistant" else None}
 
 
 def _own_chat(db, user, chat_id):
