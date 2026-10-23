@@ -197,19 +197,20 @@ at.text_input(key="acct_delete_word").set_value("DELETE").run()
 [b for b in at.button if b.key == "acct_delete"][0].click().run()
 check(("delete",) in CALLS, "typing DELETE and pressing the button deletes the account through the client")
 
-# ------------------------------------------------------------ the login configuration text
+# ------------------------------------------------------------ the login configuration
 SA2 = __import__("importlib").reload(SA)
-for k in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "STREAMLIT_COOKIE_SECRET", "SITE_URL"):
+for k in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "STREAMLIT_COOKIE_SECRET", "SITE_URL", "SITE_OIDC_METADATA_URL"):
     os.environ.pop(k, None)
-check(SA2.login_config_text() is None, "no login settings: no configuration")
+check(SA2.login_config() is None, "no login settings: no configuration")
 os.environ.update({"GOOGLE_CLIENT_ID": "cid.apps.googleusercontent.com", "GOOGLE_CLIENT_SECRET": 'sec"ret', "STREAMLIT_COOKIE_SECRET": "c" * 40, "SITE_URL": "https://staging.example.test/"})
-txt = SA2.login_config_text()
-import tomllib
-cfg = tomllib.loads(txt)["auth"]
-check(cfg["redirect_uri"] == "https://staging.example.test/oauth2callback" and cfg["client_id"] == "cid.apps.googleusercontent.com" and cfg["client_secret"] == 'sec"ret' and cfg["cookie_secret"] == "c" * 40 and cfg["server_metadata_url"].endswith("openid-configuration"),
-      "the login configuration is valid TOML with the redirect address, the client, the cookie secret (quotes in a secret are escaped)")
+cfg = SA2.login_config()["auth"]
+check(cfg["redirect_uri"] == "https://staging.example.test/oauth2callback" and cfg["client_id"] == "cid.apps.googleusercontent.com" and cfg["client_secret"] == 'sec"ret' and cfg["cookie_secret"] == "c" * 40 and cfg["server_metadata_url"] == "https://accounts.google.com/.well-known/openid-configuration",
+      "the login configuration holds the redirect address, the client, the cookie secret and Google's discovery address")
 os.environ["STREAMLIT_COOKIE_SECRET"] = "short"
-check(SA2.login_config_text() is None, "a cookie secret under 32 characters: no configuration (fails closed)")
+check(SA2.login_config() is None, "a cookie secret under 32 characters: no configuration (fails closed)")
+os.environ["STREAMLIT_COOKIE_SECRET"] = "c" * 40
+os.environ["SITE_URL"] = "staging.example.test"
+check(SA2.login_config() is None, "a SITE_URL without http: no configuration")
 
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

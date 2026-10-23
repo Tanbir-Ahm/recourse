@@ -2,10 +2,11 @@
 site_account.py -- what the Streamlit page shows and does when USE_API is on (step A5; WEBSITE_DESIGN 1.3 and 14): sign in with Google (st.login), accept the privacy notice and terms and say you are 18 or older, a line saying how many answers are
 left today, the question itself through the API (saved chats, live steps), "report a problem with this answer", and "my data" (download, delete). Imported by recourse_app.py ONLY when site_client.enabled(); with the switch off none of this
 runs and the page is exactly as before. All calls go through site_client.py. The page's own code draws the answer: the API hands back the engine's whole result, which render_answer already knows how to draw.
-Settings for sign-in (environment, never in the repository), used to write Streamlit's login configuration at start-up:
+Settings for sign-in (environment, never in the repository), handed to Streamlit's login in memory at start-up (nothing is written to disk):
   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET   the Google OAuth client (Google Cloud console: Credentials, OAuth client ID, Web application)
   STREAMLIT_COOKIE_SECRET                  a long random value (32+ characters) that signs Streamlit's login cookie; keep it stable or everyone is signed out at each deploy
   SITE_URL                                 this website's public address, e.g. https://staging-site-production-xxxx.up.railway.app ; Google must be told the redirect address SITE_URL/oauth2callback
+  SITE_OIDC_METADATA_URL                   (tests only) another OpenID provider's discovery address instead of Google's; leave unset for Google
 """
 import html as _html
 import logging
@@ -30,40 +31,29 @@ def _env(name):
 
 
 # ------------------------------------------------------------------ sign-in configuration
-def login_config_text():
-    """Streamlit's [auth] block from the environment, or None when something is missing."""
+def login_config():
+    """Streamlit's [auth] settings from the environment as a dict, or None when something is missing."""
     cid, csec, cookie, site = _env("GOOGLE_CLIENT_ID"), _env("GOOGLE_CLIENT_SECRET"), _env("STREAMLIT_COOKIE_SECRET"), _env("SITE_URL").rstrip("/")
     if not (cid and csec and site.startswith("http") and len(cookie) >= 32):
         return None
-    q = lambda v: '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
-    return ("[auth]\n" f"redirect_uri = {q(site + '/oauth2callback')}\n" f"cookie_secret = {q(cookie)}\n" f"client_id = {q(cid)}\n" f"client_secret = {q(csec)}\n" f"server_metadata_url = {q(GOOGLE_METADATA)}\n")
+    return {"auth": {"redirect_uri": site + "/oauth2callback", "cookie_secret": cookie, "client_id": cid, "client_secret": csec, "server_metadata_url": _env("SITE_OIDC_METADATA_URL") or GOOGLE_METADATA}}
 
 
 def ensure_login_config():
-    """True when Streamlit's login is configured. If the environment holds the settings and no [auth] block exists yet, writes ~/.streamlit/secrets.toml (outside the repository) BEFORE Streamlit first reads its secrets."""
+    """True when Streamlit's login is configured. If the environment holds the settings and no [auth] block exists yet, hands them to Streamlit in memory (st.secrets.merge_programmatic_secrets): nothing is written to disk, so no secret ever sits in a file."""
     try:
         if "auth" in st.secrets:
             return True
     except Exception:  # noqa: BLE001 -- no secrets file at all
         pass
-    text = login_config_text()
-    if text is None:
-        return False
-    path = os.path.join(os.path.expanduser("~"), ".streamlit", "secrets.toml")
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text)
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
-    except OSError:
-        logger.warning("could not write the login configuration")
+    cfg = login_config()
+    if cfg is None:
         return False
     try:
+        st.secrets.merge_programmatic_secrets(cfg)
         return "auth" in st.secrets
     except Exception:  # noqa: BLE001
+        logger.warning("could not hand the login configuration to Streamlit")
         return False
 
 

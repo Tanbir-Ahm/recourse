@@ -102,3 +102,4 @@ websockets==16.0
 xxhash==4.0.1
 yarl==1.24.5
 zstandard==0.25.0
+Authlib==1.9.1          # st.login (the page's Google sign-in when USE_API is on); streamlit[auth] needs it
