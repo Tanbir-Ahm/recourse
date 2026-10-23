@@ -243,6 +243,31 @@
         "title": "PatchChat",
         "type": "object"
       },
+      "SearchBody": {
+        "properties": {
+          "mode": {
+            "default": "library",
+            "enum": [
+              "library",
+              "wider"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "q": {
+            "description": "What the person typed: a section, a case name, a citation or a few words. Only the first 300 characters are used.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Q",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "title": "SearchBody",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1153,6 +1178,43 @@
           }
         },
         "summary": "Change a note"
+      }
+    },
+    "/api/search": {
+      "post": {
+        "description": "mode=library searches the stored Acts (BNS, BNSS, the IT and NI Acts, the Acts on the shelf), the reviewed library judgments and the Supreme Court title index; no model is called. mode=wider asks the sci-search service for Supreme Court passages (labelled not independently verified). Each search counts one unit of the plan's daily `search` / `search_wider` allowance (429 limit_reached with `usage`); a wider search that cannot be served gives its unit back. 429 rate_limited / busy: try again shortly. The query is not stored.",
+        "operationId": "search_api_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search the sections and judgments Recourse holds"
       }
     }
   }

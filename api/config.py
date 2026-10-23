@@ -129,6 +129,16 @@ def export_parallel():
     return _int("API_EXPORT_PARALLEL", 3, 1, 32)
 
 
+def search_rate_per_minute():
+    """Searches (the search page) one signed-in person may start per minute, 0 = no limit. Default 30. A search calls no model, so this is a flood guard; the daily allowance is the plan's `search` limit."""
+    return _int("API_SEARCH_RATE_PER_MINUTE", 30, 0, 10000)
+
+
+def search_parallel():
+    """How many searches the service runs at the same moment (the rest are told to try again at once). Default 6."""
+    return _int("API_SEARCH_PARALLEL", 6, 1, 64)
+
+
 def auth_rate_per_minute():
     """Requests per minute one address may make to the sign-in routes, 0 = no limit. Default 20."""
     return _int("API_AUTH_RATE_PER_MINUTE", 20, 0, 100000)

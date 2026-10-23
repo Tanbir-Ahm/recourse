@@ -3,11 +3,15 @@
   "plans": [
     {"code": "anonymous", "name": "Without signing in", "sort": 0, "entitlements": [
       {"feature": "answer_layman", "period": "day", "limit": 3},
-      {"feature": "answer_lawyer", "period": "day", "limit": 0}
+      {"feature": "answer_lawyer", "period": "day", "limit": 0},
+      {"feature": "search", "period": "day", "limit": 0},
+      {"feature": "search_wider", "period": "day", "limit": 0}
     ]},
     {"code": "free", "name": "Free", "sort": 1, "entitlements": [
       {"feature": "answer_layman", "period": "day", "limit": 10},
       {"feature": "answer_lawyer", "period": "day", "limit": 3},
+      {"feature": "search", "period": "day", "limit": 100},
+      {"feature": "search_wider", "period": "day", "limit": 10},
       {"feature": "chat_history_days", "period": "none", "limit": null},
       {"feature": "notes_max", "period": "none", "limit": 100}
     ]}

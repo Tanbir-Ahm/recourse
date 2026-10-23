@@ -25,7 +25,7 @@ DOCUMENTS = ("privacy", "terms", "data_use")
 MESSAGE_ROLES = ("user", "assistant")
 FEEDBACK_KINDS = ("wrong_law", "wrong_case", "wrong_quote", "missing", "unclear", "helpful", "other")
 FEEDBACK_STATUSES = ("new", "reviewed", "closed")
-USAGE_KINDS = ("answer_layman", "answer_lawyer", "draft", "doc_read", "anon_answer")
+USAGE_KINDS = ("answer_layman", "answer_lawyer", "draft", "doc_read", "anon_answer", "search", "search_wider")
 PERIODS = ("day", "month", "none")
 COUNTER_KINDS = ("device", "ip")
 

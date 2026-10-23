@@ -51,6 +51,7 @@ def used_in_window(db, user_id, feature, start, end=None):
 
 
 ANSWER_KINDS = tuple(FEATURE_FOR_AUDIENCE.values())
+SEARCH_KINDS = ("search", "search_wider")             # the search page (api/routers/search.py): counted per day like answers, no model call
 ANSWER_STATES = ("single_match", "conflicting_matches")
 
 
@@ -75,10 +76,11 @@ def reserve(db, user, feature, now=None):
     if limit is not None and used >= limit:
         info["reason"] = "limit_reached"
         return False, None, info
-    cap = config.refusal_daily_limit()
-    refused = refusals_today(db, user.id, now)
-    if refused >= cap:
-        return False, None, {**info, "reason": "too_many_refusals", "refusals": refused, "refusal_limit": cap}
+    if feature in ANSWER_KINDS:                                    # the refusal cap guards the model's topic check, which only an answer feature runs
+        cap = config.refusal_daily_limit()
+        refused = refusals_today(db, user.id, now)
+        if refused >= cap:
+            return False, None, {**info, "reason": "too_many_refusals", "refusals": refused, "refusal_limit": cap}
     ev = M.UsageEvent(user_id=user.id, kind=feature, counted=True, plan_id_at_time=user.plan_id, at=now)
     db.add(ev)
     db.flush()
@@ -103,7 +105,7 @@ def usage_view(db, user, now=None):
         for e in db.execute(select(M.Entitlement).where(M.Entitlement.plan_id == user.plan_id).order_by(M.Entitlement.version)).scalars():
             latest[e.feature] = e
     for feature, e in latest.items():
-        if e.period in ("day", "month") and feature.startswith("answer_"):
+        if e.period in ("day", "month") and (feature.startswith("answer_") or feature in SEARCH_KINDS):
             start, resets = window(e.period, now)
             out[feature] = {"used": used_in_window(db, user.id, feature, start, resets), "limit": e.limit_count, "period": e.period, "resets_at": resets.isoformat()}
         else:

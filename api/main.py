@@ -19,6 +19,7 @@ from .routers import auth as _auth_router
 from .routers import chats as _chats_router
 from .routers import me as _me_router
 from .routers import notes as _notes_router
+from .routers import search as _search_router
 
 ROLE = "api"
 
@@ -55,11 +56,17 @@ async def lifespan(_app):
         else:
             print("api: API_RUN_MIGRATIONS is on but DATABASE_URL is not set; skipping")
     task = asyncio.create_task(_purge_loop()) if config.purge_on() else None
+    warm = None
+    if (os.environ.get("API_SEARCH_WARM") or "").strip().strip("\"'").lower() not in ("0", "off", "false", "no"):
+        import search_service
+        warm = asyncio.create_task(asyncio.to_thread(search_service.warm))         # loads the corpus and the word index in the background so that the first search is not the slow one
     try:
         yield
     finally:
         if task is not None:
             task.cancel()
+        if warm is not None:
+            warm.cancel()
 
 
 app = FastAPI(title="Recourse API", version="0.1.0", lifespan=lifespan)
@@ -73,6 +80,7 @@ app.include_router(_me_router.router)
 app.include_router(_chats_router.router)
 app.include_router(_anon_router.router)
 app.include_router(_notes_router.router)
+app.include_router(_search_router.router)
 
 
 @app.get("/api/debug/headers", include_in_schema=False)

@@ -1,5 +1,5 @@
 """
-test_api_db.py -- the API's database layer (api/db/: models, migration 0001, session, seed, migrate; website design WEBSITE_DESIGN.md section 4, step A2), run against a REAL throwaway PostgreSQL 16 that this test starts
+test_api_db.py -- the API's database layer (api/db/: models, migrations 0001 and 0002, session, seed, migrate; website design WEBSITE_DESIGN.md section 4, step A2), run against a REAL throwaway PostgreSQL 16 that this test starts
 and removes itself (no network, no cost). When no Postgres server is installed the test says SKIPPED and exits 0, so the free suite still passes on a machine without one; on this repository's development sandbox it runs.
 Proves: the migration builds exactly the tables the models describe (no drift) and can go down and up again; plans and quotas load, are safe to load twice, and a changed number becomes a new version; the constraints refuse
 bad data; "delete my data" is one delete of the users row and removes everything a person owns while the billing and audit rows stay, with no person attached; four services starting at once migrate once; a broken or
@@ -136,15 +136,17 @@ try:
     with eng.connect() as c:
         rev = c.execute(text("select version_num from alembic_version")).scalar()
         drift = compare_metadata(MigrationContext.configure(c, opts={"compare_type": True}), D.Base.metadata)
-    check(rev == "0001", f"the schema is at revision 0001 ({rev})")
+    check(rev == "0002", f"the schema is at revision 0002 ({rev})")
     check(drift == [], f"the migrated schema and the models do not differ ({drift[:2]})")
-    check(res == {"plans_added": 2, "entitlements_added": 6}, f"the seed added the two plans and their six limits ({res})")
+    check(res == {"plans_added": 2, "entitlements_added": 10}, f"the seed added the two plans and their ten limits ({res})")
     with Session(eng) as ss:
         plans = {p.code: p for p in ss.execute(select(D.Plan)).scalars()}
         ents = {(e.plan.code, e.feature): (e.period, e.limit_count, e.version) for e in ss.execute(select(D.Entitlement)).scalars()}
     check(set(plans) == {"anonymous", "free"}, "the plans are 'anonymous' (the no-sign-in trial) and 'free'")
     check(ents[("anonymous", "answer_layman")] == ("day", 3, 1) and ents[("anonymous", "answer_lawyer")] == ("day", 0, 1), "the anonymous trial: 3 layman answers a day, no lawyer mode (D4)")
     check(ents[("free", "chat_history_days")] == ("none", None, 1), "an unlimited limit is stored as NULL")
+    check(ents[("free", "search")] == ("day", 100, 1) and ents[("free", "search_wider")] == ("day", 10, 1), "the search page: 100 library searches and 10 wider searches a day on the free plan (provisional)")
+    check(ents[("anonymous", "search")] == ("day", 0, 1) and ents[("anonymous", "search_wider")] == ("day", 0, 1), "the search page is not part of the trial without signing in")
     res2 = M.upgrade(eng)
     check(res2 == {"plans_added": 0, "entitlements_added": 0}, "running the migration and the seed again changes nothing")
 
@@ -209,6 +211,8 @@ try:
     check(attempt(lambda s_: s_.add(D.AnonCounter(kind="phone", key="k", day=time.gmtime() and __import__("datetime").date.today(), count=1))) is not None, "an anonymous counter of an unknown kind is refused")
     check(attempt(lambda s_: s_.add(D.AnonQuestion(device_id="d", question="q", audience="judge", expires_at=func.now()))) is not None, "an anonymous question with an unknown audience is refused")
     check(attempt(lambda s_: s_.add(D.UsageEvent(kind="mystery"))) is not None, "a usage event of an unknown kind is refused")
+    check(attempt(lambda s_: s_.add(D.UsageEvent(kind="search"))) is None and attempt(lambda s_: s_.add(D.UsageEvent(kind="search_wider"))) is None, "usage events of the two search kinds are accepted (migration 0002)")
+    attempt(lambda s_: s_.execute(text("delete from usage_events where kind in ('search', 'search_wider')")))      # keep the table as the later checks expect it
 
     # ------------------------------------------------------------ "delete my data"
     now_expr = func.now()
@@ -267,6 +271,18 @@ try:
     from alembic import command
     cfgA = M.alembic_config()
     cfgA.attributes["engine"] = eng
+    with Session(eng) as ss:
+        ss.add(D.UsageEvent(kind="search"))
+        ss.commit()
+    command.downgrade(cfgA, "0001")
+    with eng.connect() as c:
+        n_search = c.execute(text("select count(*) from usage_events where kind in ('search', 'search_wider')")).scalar()
+        rev1 = c.execute(text("select version_num from alembic_version")).scalar()
+    check(rev1 == "0001" and n_search == 0, f"downgrading 0002 removes the search events and puts the old constraint back ({rev1}, {n_search})")
+    check(attempt(lambda s_: s_.add(D.UsageEvent(kind="search"))) is not None, "at revision 0001 a 'search' event is refused again")
+    command.upgrade(cfgA, "head")
+    check(attempt(lambda s_: s_.add(D.UsageEvent(kind="search"))) is None, "upgrading again accepts it")
+    attempt(lambda s_: s_.execute(text("delete from usage_events where kind = 'search'")))
     command.downgrade(cfgA, "base")
     left = set(inspect(eng).get_table_names())
     check(left == {"alembic_version"}, f"downgrading to base removes every table ({sorted(left)})")
@@ -296,7 +312,7 @@ try:
         npl = c.execute(text("select count(*) from plans")).scalar()
         nen = c.execute(text("select count(*) from entitlements")).scalar()
     e2.dispose()
-    check(not errs and len(out) == 4 and npl == 2 and nen == 6, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
+    check(not errs and len(out) == 4 and npl == 2 and nen == 10, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
     check(sum(r["plans_added"] for r in out) == 2, "...and exactly one of them did the seeding")
 
     # ------------------------------------------------------------ the migrate command
@@ -319,7 +335,7 @@ try:
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         rc = M.main()
-    check(rc == 0 and "schema at head; plans added 2, entitlements added 6" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
+    check(rc == 0 and "schema at head; plans added 2, entitlements added 10" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
     r = subprocess.run([sys.executable, "-m", "api.db.migrate"], cwd=HERE, env={**os.environ}, capture_output=True, text=True, timeout=120)
     check(r.returncode == 0 and "plans added 0, entitlements added 0" in r.stdout, f"`python -m api.db.migrate` as the start command would run it: exits 0 on an up-to-date database ({r.stdout.strip()})")
 
