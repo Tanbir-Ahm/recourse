@@ -1070,8 +1070,15 @@ def wider(parsed, sci_fn=None):
             else:
                 status = {"source": "not_checked", "text": short.get("not_checked") or NOT_CHECKED}
             link = r.get("link") if str(r.get("link") or "").startswith(("http://", "https://")) else None
-            items.append({"title": r["case_name"], "date": r.get("date"), "year": _year_of(r.get("date")), "paragraph": _s(r.get("paragraph")), "link": link, "link_kind": _s(r.get("link_kind")) if link else None,
+            try:
+                import quote_notes
+                q = quote_notes.clean(r.get("quote"))                       # the number the passage starts with is not the judgment's own: the paragraph shown is the one it sits inside
+            except Exception:  # noqa: BLE001
+                q = None
+            items.append({"title": r["case_name"], "date": r.get("date"), "year": _year_of(r.get("date")), "paragraph": q["within"] if q else _s(r.get("paragraph")), "link": link, "link_kind": _s(r.get("link_kind")) if link else None,
                           "court": T.court_of(r), "excerpt": _clean_passage(r.get("text")), "status": status})
+            if q:
+                items[-1]["passage_note"] = quote_notes.page_note(q)
             if len(items) >= MAX_WIDER:
                 break
         courts = [i["court"] for i in items]

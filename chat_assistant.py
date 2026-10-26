@@ -1899,7 +1899,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
     try:
         try:                                       # SCI_SEARCH_MODE=feed (experiment, staging only): the wider-search passages join the prompt; "" in every other mode
             import sci_search_tier
-            retrieved_text = retrieved_text + sci_search_tier.feed_block(question)
+            retrieved_text = retrieved_text + sci_search_tier.feed_block(question, exclude_names=sci_search_tier.library_keys(matches))     # a judgment the library already supplies is not handed over a second time as "wider search"
         except Exception:  # pragma: no cover -- fail-open
             pass
         try:                                       # ANCHORS=on (staging first): verbatim Supreme Court excerpts for this kind of question (excerpt_anchors.py); "" otherwise
@@ -3007,7 +3007,103 @@ def _find_relevant_sections_for_turn(current_message: str, full_question: str, *
     result = find_relevant_sections(current_message, **kwargs)
     if result.get("state") == "no_match" and current_message != full_question:
         result = find_relevant_sections(full_question, **kwargs)
-    return result
+    return _add_own_words_search(result, current_message, find_relevant_sections, **kwargs)
+
+
+# Follow-up questions on the website (web_chat.py, CHAT_MODE): the current message reaches the engine as the person's own
+# words, a newline, then the rewrite "(Read with the earlier messages, this asks: ...)". The search above runs on that whole
+# string, so the rewrite's words (the earlier matter) can drown the words the person has just typed: "is bail possible in
+# this case?" alone finds the bail sections of the BNSS; read with a rewrite about an arrest under a special law it found
+# arrest-warrant sections and no bail section at all (FOLLOW_UPS 2cl, found in the owner's staging test of 2026-10-26).
+# So a follow-up is searched a second time on the person's own words, and what that finds is MERGED in, never swapped in.
+_FOLLOW_UP_REWRITE_FALLBACK = "(Read with the earlier messages, this asks: "
+FOLLOW_UP_MAX_STATUTES = 7        # the ordinary search keeps 5 (semantic_retrieval.MAX_STATUTE_MATCHES_FOR_PROMPT); a merged follow-up may carry two more
+FOLLOW_UP_MAX_JUDGMENTS = 5       # ... against 4
+
+
+def _follow_up_own_words(current_message: str) -> str:
+    """The person's own words from a follow-up message that carries a rewrite; "" when it has none (a first message, a message
+    web_chat did not rewrite, WhatsApp): then nothing in this file changes. Needs the line break before the rewrite lead, which
+    only web_chat.question_for_engine writes."""
+    try:
+        from web_chat import REWRITE_LEAD as lead
+    except Exception:  # noqa: BLE001
+        lead = _FOLLOW_UP_REWRITE_FALLBACK
+    msg = current_message or ""
+    cut = msg.find("\n" + lead)
+    if cut == -1:
+        return ""
+    return msg[:cut].strip()
+
+
+def _match_key(m: dict):
+    return m.get("chunk_id") or (m.get("case_name"), m.get("paragraph_number"), m.get("section_number"), m.get("act"))
+
+
+def _interleave_unique(first: list, second: list, limit: int) -> list:
+    """first[0], second[0], first[1], second[1], ... without a repeated match (same chunk), at most `limit`. The person's own
+    words go FIRST: they are what was just asked."""
+    import itertools
+
+    out, seen = [], set()
+    for pair in itertools.zip_longest(first, second):
+        for m in pair:
+            if m is None:
+                continue
+            k = _match_key(m)
+            if k in seen:
+                continue
+            seen.add(k)
+            out.append(m)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def _merge_follow_up_results(combined: dict, own: dict) -> dict:
+    """`combined`: the result of searching the whole message (own words plus rewrite). `own`: the result of searching the own
+    words alone. Pure function, no search and no network; returns `combined` itself, untouched, whenever merging is not safe:
+
+    - own found nothing, or is "unavailable" or malformed: nothing to add.
+    - combined is "no_match" and own found something: own is used as it is (the combined search found nothing to keep).
+    - combined is "single_match": the statutes and judgments of both are interleaved (own words first), dropping repeats;
+      the state stays "single_match" -- the extra sections are context for the answer, not a finding that the law forks.
+    - combined is "conflicting_matches" or "unavailable": left alone. A fork between two closely scored sections is a finding
+      about THOSE sections; adding sections from a different search could not be scored against them."""
+    try:
+        if not isinstance(combined, dict) or not isinstance(own, dict):
+            return combined
+        if own.get("state") not in ("single_match", "conflicting_matches"):
+            return combined
+        c_state = combined.get("state")
+        if c_state == "no_match":
+            return own
+        if c_state != "single_match":
+            return combined
+        statutes = _interleave_unique(list(own.get("matches") or []), list(combined.get("matches") or []), FOLLOW_UP_MAX_STATUTES)
+        judgments = _interleave_unique(list(own.get("judgment_matches") or []), list(combined.get("judgment_matches") or []), FOLLOW_UP_MAX_JUDGMENTS)
+        return {**combined, "state": "single_match", "matches": statutes, "judgment_matches": judgments}
+    except Exception:  # noqa: BLE001
+        return combined
+
+
+def _add_own_words_search(result: dict, current_message: str, search, **kwargs) -> dict:
+    """Second search for a follow-up, then _merge_follow_up_results. Fail-open: any error leaves `result` as it was. The log line
+    holds counts only, never the person's words or a section."""
+    own_words = _follow_up_own_words(current_message)
+    if not own_words:
+        return result
+    try:
+        own = search(own_words, **kwargs)
+        merged = _merge_follow_up_results(result, own)
+        print("CHAT_MERGE " + json.dumps({
+            "combined": result.get("state"), "own": (own or {}).get("state"), "merged": merged is not result,
+            "statutes": [len(result.get("matches") or []), len((own or {}).get("matches") or []), len(merged.get("matches") or [])],
+            "judgments": [len(result.get("judgment_matches") or []), len((own or {}).get("judgment_matches") or []), len(merged.get("judgment_matches") or [])],
+        }), flush=True)
+        return merged
+    except Exception:  # noqa: BLE001
+        return result
 
 
 _INLINE_DOMAIN_CONFIG = {

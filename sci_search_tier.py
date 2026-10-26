@@ -241,7 +241,7 @@ _TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.
 
 def reset():
     """Forget what was fed to the model for the previous question (called at the start of answer_question)."""
-    _LOCAL.question, _LOCAL.block, _LOCAL.cases = None, "", []
+    _LOCAL.question, _LOCAL.skips, _LOCAL.block, _LOCAL.cases = None, (), "", []
     _LOCAL.statute_ctx = []
 
 
@@ -413,7 +413,30 @@ def _locate_strong(text, case_name):
     return span
 
 
-def _second_party_span(text, p2, avoid=()):
+_FIRST_PARTY_STOP = frozenset("the and ors anr another others dr mr mrs ms shri smt sri etc versus".split())
+
+
+def _first_party_agrees(text, a, p1):
+    """True when the words standing before the 'v.' that precedes position `a` of `text` could be the case's first party `p1` (they share a word of three letters or more, or spell it alike): 'Pankaj Bansal v. Union of
+    India' is not 'Vijay Madanlal Choudhary v. Union of India'. Found with real data on 2026-10-26: a generic second party alone ('Union of India' after 'v.') used to be enough, so the label of one wider-search case
+    landed on another case that has the same respondent. True when `p1` is unknown."""
+    try:
+        if not p1:
+            return True
+        before = re.sub(r"[*_\[\]()]", " ", text[max(0, a - 120):a])
+        before = re.sub(r"\s+(?:v\.?|vs\.?|versus)\s*$", "", before.rstrip(), flags=re.I)
+        words = re.findall(r"[A-Za-z][A-Za-z.'\u2019-]*", before)[-6:]
+        have = {w.strip(".'\u2019-").lower() for w in words} - _FIRST_PARTY_STOP
+        want = {w.strip(".'\u2019-").lower() for w in re.findall(r"[A-Za-z][A-Za-z.'\u2019-]*", p1)} - _FIRST_PARTY_STOP
+        if any(len(w) >= 3 and w in have for w in want):
+            return True
+        import difflib
+        return any(len(h) >= 4 and len(w) >= 4 and difflib.SequenceMatcher(None, h, w).ratio() >= 0.8 for h in have for w in want)
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _second_party_span(text, p2, avoid=(), p1=None):
     """(start, end) of the second party of a case standing ALONE in `text` (the first party was not found: it is misspelt, or the answer shortened it). Owner's staging test 2026-10-19: 'Yunus Zia v. State of
     Karnataka' (fed in the same turn) was found at the start of 'State of Karnataka v. T.N. Sudhakar Reddy', and 'State of Andhra Pradesh' passed for 'State of Madhya Pradesh' by the typo tolerance, so the label
     landed inside another case's name. Now: (1) a stretch that overlaps the name of another case (`avoid`) never counts; (2) a party that many cases share ('State of ...', 'Union of India', 'CBI') counts only
@@ -429,6 +452,8 @@ def _second_party_span(text, p2, avoid=()):
             continue
         if generic and not _AFTER_V.search(text[max(0, a - 14):a]):
             continue
+        if generic and not _first_party_agrees(text, a, p1):
+            continue
         return a, b
     return None
 
@@ -441,7 +466,7 @@ def _locate(text, case_name, others=None):
     span = _locate_strong(text, case_name)
     if span is None and p2 and len(p2) >= 8:
         avoid = [sp for sp in (_locate_strong(text, o) for o in (others or []) if o and o != case_name) if sp]
-        span = _second_party_span(text, p2, avoid)
+        span = _second_party_span(text, p2, avoid, p1)
     if span is None and p1 and p2:
         span = _fuzzy_span(text, re.sub(r"^(?:dr|mr|mrs|ms|shri|smt)\.?\s+", "", p1, flags=re.I) + " v. " + p2, 0.9)
     if span is not None and text[span[1]:span[1] + 1] == "." and re.search(r"(?:\b[A-Za-z]\.){1,}[A-Za-z]$", text[:span[1]]):
@@ -826,7 +851,47 @@ def _named_register(text):
         return {"lines": [], "clauses": [], "overruling": []}
 
 
-def feed_block(question):
+QUOTE_INSTRUCTION = ("\nA \"Note by code\" that says a passage's number is NOT a paragraph number of its judgment is correct (the search service read the judgment's numbering): the passage sits inside the paragraph the note names. "
+                     "Refer to that paragraph only, never to the number the passage starts with, and treat the words as possibly quoted from another decision or document, as the note says.\n")
+
+
+def _library_skips(exclude):
+    """`exclude`: case names (str) or (name, year) pairs of the reviewed-library judgments that already reach this answer, as a tuple that can be a cache key; names that are empty are dropped."""
+    out = []
+    for e in exclude or []:
+        name, year = (e if isinstance(e, (tuple, list)) and len(e) == 2 else (e, None))
+        if isinstance(name, str) and name.strip():
+            out.append((name.strip(), str(year)[:4] if year else None))
+    return tuple(sorted(set(out), key=lambda t: (t[0], t[1] or "")))
+
+
+def library_keys(matches):
+    """(case name, year or None) for each judgment among an answer's reviewed-library `matches` (the year from the match's own year field, else the first year in its citation: '2023 INSC 866', '(2014) 8 SCC 273', 'AIR 1978 SC 597')."""
+    out = []
+    try:
+        for m in matches or []:
+            if isinstance(m, dict) and m.get("case_name"):
+                found = re.search(r"\b(?:18|19|20)\d{2}\b", str(m.get("year") or "") + " " + str(m.get("citation") or ""))
+                out.append((m["case_name"], found.group(0) if found else None))
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def is_library_case(case_name, date, skips):
+    """True when a wider-search result is a judgment the answer already has from the reviewed library: the same case by the register's own name rule (_same_case_loose), and, where both sides give a year, the
+    same year (two decisions of the same parties in different years are two cases). Never raises."""
+    try:
+        year = (date or "")[:4]
+        for name, y in skips or ():
+            if _same_case_loose(case_name, name) and (not y or not year or y == year):
+                return True
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def feed_block(question, exclude_names=None):
     """The prompt section for feed mode ('' in every other mode, and on any failure). One passage per case, up to FEED_MAX_CASES cases; a case the register flags goes last and the case that overruled it
     is added (taken from the results, or fetched by a second search), so the model can name the controlling case. The same is done for a case the register lists that a passage merely NAMES (a later
     judgment that quotes or discusses it): the passage carries the REGISTER FACT line and the case that corrected it is added. The search runs once per question and is reused by the retry loop.
@@ -834,14 +899,20 @@ def feed_block(question):
     try:
         if mode() != "feed" or not question:
             return ""
-        if getattr(_LOCAL, "question", None) == question:
+        skips = _library_skips(exclude_names)                         # judgments the answer already has from the reviewed library: not handed over again, never labelled "wider search" (FOLLOW_UPS 2cm)
+        if getattr(_LOCAL, "question", None) == question and getattr(_LOCAL, "skips", ()) == skips:
             return _LOCAL.block
         found = search(question, timeout=max(float(_env("SCI_SEARCH_TIMEOUT", "6")), 15.0))
-        _LOCAL.question, _LOCAL.block, _LOCAL.cases = question, "", []
+        _LOCAL.question, _LOCAL.skips, _LOCAL.block, _LOCAL.cases = question, skips, "", []
         if not found:
             print("SCI_FEED no passages: the search service gave no answer (down, slow, wrong address or token)", flush=True)
             return ""
         res = [r for r in found["results"] if r.get("case_name") and not r.get("name_to_review")]
+        in_library = [r for r in res if is_library_case(r["case_name"], r.get("date"), skips)]
+        if in_library:
+            gone = {id(r) for r in in_library}
+            res = [r for r in res if id(r) not in gone]
+            print("SCI_FEED_LIBRARY " + json.dumps({"left_out": sorted({r["case_name"][:100] for r in in_library})}), flush=True)
         res, left_out = _statute_filter(res)                              # a passage that cites the section the person named, of ANOTHER statute (owner's staging test 2026-10-19)
         if left_out:
             print("SCI_FEED_FILTER " + json.dumps({"dropped": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "why": why[:160]} for r, why in left_out]}), flush=True)
@@ -869,6 +940,8 @@ def feed_block(question):
             if hit:
                 return hit
             hit = next((p for p in pairs if _same_case(p[0]["case_name"], name)), None) or _fetch_case(name, question)
+            if hit and is_library_case(hit[0]["case_name"], hit[0].get("date"), skips):
+                return None                                            # the reviewed library already hands this case over
             if hit and all(hit[0]["doc"] != c[0]["doc"] for c in correcting) and all(hit[0]["doc"] != p[0]["doc"] for p in flagged):
                 correcting.append(hit)
             return hit
@@ -899,13 +972,16 @@ def feed_block(question):
         plain, room = _split()
         chosen = plain[:room] + correcting + flagged
         blocks, cases = [], []
+        any_quoted = False
         chosen_courts = courts_of([r for r, _f in chosen])
         any_other = any(c != SC_COURT for c in chosen_courts)           # only then does a heading name its court; an all-Supreme-Court feed is worded exactly as before
         for r, f in chosen:
             year = r["date"][:4] if r.get("date") else None
             court = court_of(r)
+            import quote_notes
+            q = quote_notes.clean(r.get("quote"))                      # the search service (SCI_QUOTES=on) found the passage's number to be outside the judgment's own sequence: it sits inside paragraph q["within"]
             head = (f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", {court}" if any_other else "")
-                    + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]")
+                    + (quote_notes.head_phrase(q) if q else (f", paragraph {r['paragraph']}" if r.get("paragraph") else "")) + "]")
             body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
             voices = []
             try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
@@ -915,6 +991,9 @@ def feed_block(question):
                     body += passage_notes.prompt_note(voices)
             except Exception:  # noqa: BLE001
                 voices = []
+            if q:
+                body += quote_notes.prompt_note(q, r.get("text"))
+                any_quoted = True
             facts = ""
             try:
                 if court != SC_COURT:                                 # the register is about Supreme Court decisions (see register_hooks.result_flags)
@@ -931,9 +1010,10 @@ def feed_block(question):
             if men:                                                    # the passage names a case on the register: the fact rides with the passage
                 facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
-            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
+            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": (q["within"] if q else r.get("paragraph")), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
                           "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
-                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)})
+                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices + (["quoted"] if q else []),
+                          "passage_note": (" ".join(x for x in ((passage_notes.page_note(voices, court) if voices else ""), (quote_notes.page_note(q) if q else "")) if x) or None)})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
@@ -946,6 +1026,8 @@ def feed_block(question):
             extra = passage_notes.INSTRUCTION if passage_notes.enabled() else ""
         except Exception:  # noqa: BLE001
             extra = ""
+        if any_quoted:
+            extra += QUOTE_INSTRUCTION
         _LOCAL.block = feed_instruction(chosen_courts) + extra + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
@@ -968,6 +1050,9 @@ def attach(question, result, background=True):
             return result
         if m == "feed":
             cases = getattr(_LOCAL, "cases", None) or []
+            skips = _library_skips(library_keys(result.get("matches")))
+            if cases and skips:                                       # a case the reviewed library supplied for this answer is never shown or labelled as a wider-search case, whatever reached the prompt
+                cases = [c for c in cases if not is_library_case(c.get("case_name"), c.get("date"), skips)]
             pilot = [{"case_name": j["case_name"]} for j in (result.get("unverified_related_judgments") or []) if isinstance(j, dict) and j.get("case_name")]       # the site's pilot cases are cited like the rest
             if cases:
                 result["sci_related_judgments"] = cases
