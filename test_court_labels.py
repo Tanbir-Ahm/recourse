@@ -91,6 +91,12 @@ def feed(results, question="my bail question"):
         T.search = saved
 
 
+# ---- 2b. the rule for quoted passages (staging 2026-10-26: a paragraph of V.L. Rohlua, quoted in Sadhwi Pragyna Singh Thakur, was credited to Sadhwi with Rohlua's paragraph number) ----
+RULE_PARTS = ("A passage can be a QUOTATION from another, earlier decision", "a 1968 arrest described in a judgment of 2011", "never say that the listed case decided, held or recorded it",
+              "never give its paragraph number, which belongs to the quoted decision and not to the listed case", "build no ground and no For/Against point on it",
+              "from an earlier decision that the passage does not name, and that the original must be checked", "A quoted section of a statute is not a problem")
+check(all(x in T.FEED_INSTRUCTION for x in RULE_PARTS), "the instruction for wider-search passages holds the rule for quoted passages")
+check(all(x in T.feed_instruction([SC, HC]) for x in RULE_PARTS) and all(x in T.feed_instruction([HC]) for x in RULE_PARTS), "and so does the court-aware one")
 blk_old, cases_old = feed([B_SC_OLD])
 check(blk_old.startswith(T.FEED_INSTRUCTION) and "[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: Arnesh Kumar v. State of Bihar (2014-07-02), paragraph 9]" in blk_old, "feed (no court sent): the block opens with the old instruction and the head is the old head")
 check(cases_old and cases_old[0]["court"] == SC, "feed (no court sent): the case is a Supreme Court one")
@@ -103,6 +109,11 @@ check("[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: Dinathso Chaitom v. The Stat
 check({c["case_name"]: c["court"] for c in cases_mx} == {"Arnesh Kumar v. State of Bihar": SC, "Dinathso Chaitom v. The State of AP": HC}, "feed (mixed): the cases carry their court")
 blk_hc, cases_hc = feed([C_HC])
 check("## High Court passages" in blk_hc and "Gauhati High Court, paragraph 4]" in blk_hc, "feed (High Court only)")
+ROH = res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-09-23", SC, text="8. From the order-sheets produced before us it is clear that the petitioner was first produced before the Magistrate on March 3, 1968. Under Section 5 of the Armed Forces (Assam and Manipur) Special Powers Act, he had to be made over to the officer in-charge of the nearest police station with the least possible delay.", para="8")
+blk_roh, _c = feed([ROH])
+check("paragraph 8]" in blk_roh and all(x in blk_roh for x in RULE_PARTS), "feed: the passage and the rule reach the model together")
+check(blk_roh.count("A passage can be a QUOTATION") == 1, "and the rule is there once")
+
 
 # ---- 3b. the register is about Supreme Court decisions: a High Court judgment with a register case's name is not that case ----
 RDS_SC = res(7, "Raj Deo Sharma v. The State of Bihar", "1999-05-03", SC, text="Time limit held X.")
