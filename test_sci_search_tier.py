@@ -206,6 +206,13 @@ os.environ["SCI_SEARCH_MODE"] = "off"
 T.reset()
 check(T.feed_block("x") == "" and "sci_related_judgments" not in T.attach("x", {"state": "single_match"}), "with the mode off feed does nothing")
 
+# --- staging 2026-10-26: a longer note about the case between its name and the model's own label must not get a second label
+_c = [{"case_name": "Sadhwi Pragyna Singh Thakur v. State of Maharashtra"}]
+_t = "In Sadhwi Pragyna Singh Thakur v. State of Maharashtra (Supreme Court, 1968 facts recorded in a 2011 order) " + T.LABEL + ", the Court recorded X."
+check(T.label_fed_cases(_t, _c) == _t, "a long bracket between the name and the model's own label: no second label")
+check(T.label_fed_cases("In Sadhwi Pragyna Singh Thakur v. State of Maharashtra (Supreme Court, 1968 facts recorded in a 2011 order), the Court said X.", _c).count(T.LABEL) == 1, "a long bracket and no label: exactly one label is added")
+
+
 # --- staging 2026-10-14: label bugs found in the seven saved answers
 LB = T.LABEL
 def _one(txt, *names):

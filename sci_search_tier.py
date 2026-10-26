@@ -260,9 +260,15 @@ def _party_core(p):
     return _NUMBER_MARK.sub("", _TRAIL_PARTY.sub("", (p or "").strip())).strip(" .,;")      # 'Hussainara Khatoon (I)' is written 'Hussainara Khatoon' as often as not
 
 
+_SERVICE_NO = re.compile(r"^[^,]{0,25}\d[^,]{0,25},\s*(\S+(?:\s+\S+)+)$")          # 'I C 62912 F, Major Sowmithri S': the High Court's title starts with the officer's service number; the answer writes the name without it
+
+
 def _parties(name):
     parts = re.split(r"\s+(?:v\.?|vs\.?|versus)\s+", name or "", maxsplit=1, flags=re.I)
-    return (_party_core(parts[0]), _party_core(parts[1])) if len(parts) == 2 else (_party_core(name), "")
+    if len(parts) == 2:
+        m = _SERVICE_NO.match(parts[0].strip())
+        return (_party_core(m.group(1) if m else parts[0]), _party_core(parts[1]))
+    return (_party_core(name), "")
 
 
 def _same_case(a, b):
@@ -451,6 +457,10 @@ def _name_end(out, end, note_re):
     for _ in range(3):
         if _labelled_here(out, end, note_re):
             break
+        mlong = re.match(r"\s*\([^()]{41,140}\)", out[end:])          # a longer note about the case ('(Supreme Court, 1968 facts recorded in a 2011 order)') that the model itself follows with the label: the label is already there, after it
+        if mlong and note_re.match(out[end + mlong.end():].lstrip(" \t")):
+            end += mlong.end()
+            continue
         m2 = re.match(r"\s*[\(\[][^)\]]{0,40}[\)\]]", out[end:]) or _REPORT_CITE.match(out[end:])
         if not m2 or note_re.match(out[end:].lstrip()):
             break

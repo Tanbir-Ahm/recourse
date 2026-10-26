@@ -28,7 +28,7 @@ _REJECTED = re.compile(r"\b(?:erred|was\s+in\s+error|fell\s+into\s+(?:an\s+)?err
 _ONE_JUDGE = re.compile(r"\bI\s+(?:am\s+of\s+the\s+(?:considered\s+|firm\s+|humble\s+)?(?:opinion|view)|hold|would\s+(?:allow|dismiss|answer|hold|have)|respectfully\s+(?:agree|disagree|dissent|differ)|dissent|concur|"
                         r"agree\s+with\s+my|have\s+had\s+the\s+benefit|shall\s+examine|am\s+unable\s+to\s+(?:agree|subscribe))\b|"
                         r"\b(?:in|to)\s+my\s+(?:considered\s+|humble\s+)?(?:opinion|view|judgment)\b|(?-i:\bmy\s+(?:learned\s+)?(?:Brother|Sister|Colleague)s?\b)|\bmy\s+learned\s+(?:brother|sister|colleague)s?\b", re.I)
-_HOLD = re.compile(r"\b(?:we\s+(?:hold|are\s+of\s+the\s+(?:considered\s+)?(?:view|opinion)|find|agree|reject|are\s+convinced|are\s+satisfied|answer)|in\s+our\s+(?:considered\s+)?(?:view|opinion))\b", re.I)
+_HOLD = re.compile(r"\b(?:we\s+(?:hold|are\s+of\s+the\s+(?:considered\s+)?(?:view|opinion)|find|agree|reject|are\s+convinced|are\s+satisfied|answer|have\s+(?:carefully\s+)?(?:considered|heard|perused|examined))|in\s+our\s+(?:considered\s+)?(?:view|opinion))\b", re.I)
 _SUBMIT = re.compile(r"\bit\s+(?:was|is|has\s+been)\s+(?:further\s+|also\s+|then\s+|strenuously\s+|vehemently\s+)?(?:submitted|contended|argued|urged)\b|"
                      r"\b(?:submitted|contended|argued|urged)\s+(?:before\s+us\s+)?that\b|"
                      r"\b(?:learned\s+)?(?:senior\s+|additional\s+solicitor\s+general\s+|standing\s+)?(?:counsel|advocate)s?\b[^.?!]{0,60}\b(?:submit|contend|argue|urge)\w*|"

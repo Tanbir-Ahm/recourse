@@ -114,6 +114,20 @@ check("[Overruled Register" not in blk_rds and "A High Court passage with the sa
 blk_rds_sc, _c = feed([A_SC, RDS_SC])
 check("[Overruled Register" in blk_rds_sc, "feed: the Supreme Court case of the same name still carries its REGISTER FACT line")
 
+
+# ---- 3c. a High Court title that starts with the officer's service number (staging test 2026-10-26): the name in the answer is still found, labelled once, and left out of the 'not checked' sentence ----
+SOW = {"case_name": "I C 62912 F, Major Sowmithri S v. The State of Assam and Ors", "court": HC}
+t_sow = "In Major Sowmithri S v. State of Assam (Gauhati High Court, 2012), the Court stated X."
+lab_sow = T.label_fed_cases(t_sow, [SOW])
+check(lab_sow.count(T.LABEL) == 1 and lab_sow.index(T.LABEL) > lab_sow.index("2012)"), f"a service-number title: the case is found and labelled once, after the bracket ({lab_sow!r})")
+check(T.label_fed_cases(lab_sow, [SOW]) == lab_sow, "and labelling again adds nothing")
+T.reset()
+T._LOCAL.cases = [SOW]
+names_sow = T.fed_names_in(t_sow)
+check(any(n.startswith("Major Sowmithri S v. State of Assam") for n in names_sow), f"the 'not checked' sentence can leave it out ({names_sow})")
+T.reset()
+check(T._parties("Rohit Kumar, Singh v. State")[0].startswith("Rohit Kumar") and T._parties("Smt. Kanwar v. State of Bihar") == ("Smt. Kanwar", "State of Bihar"), "a name without a digit before its comma is left alone")
+
 # ---- 4. the attached result, show mode ----
 def attach_show(results, by_court=None):
     found = {"ok": True, "as_of": "2026-10-16", "results": results}
