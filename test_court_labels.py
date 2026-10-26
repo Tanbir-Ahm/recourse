@@ -104,6 +104,16 @@ check({c["case_name"]: c["court"] for c in cases_mx} == {"Arnesh Kumar v. State 
 blk_hc, cases_hc = feed([C_HC])
 check("## High Court passages" in blk_hc and "Gauhati High Court, paragraph 4]" in blk_hc, "feed (High Court only)")
 
+# ---- 3b. the register is about Supreme Court decisions: a High Court judgment with a register case's name is not that case ----
+RDS_SC = res(7, "Raj Deo Sharma v. The State of Bihar", "1999-05-03", SC, text="Time limit held X.")
+RDS_HC = res(2000000007, "Raj Deo Sharma v. The State of Bihar", "1999-05-03", HC, "high_court_bucket_pdf", text="A High Court passage with the same name.")
+fl = T._flags([RDS_SC, RDS_HC, B_SC_OLD])
+check(fl[0]["source"] == "register" and fl[1] == {"source": "none", "note": None} and fl[2]["source"] in ("none", "register", "card", "card_quiet"), f"flags: the register flags the Supreme Court case of that name, never a High Court judgment that shares it ({fl[0]['source']}, {fl[1]['source']})")
+blk_rds, _c = feed([A_SC, RDS_HC])
+check("[Overruled Register" not in blk_rds and "A High Court passage with the same name." in blk_rds, "feed: no REGISTER FACT line under a High Court passage")
+blk_rds_sc, _c = feed([A_SC, RDS_SC])
+check("[Overruled Register" in blk_rds_sc, "feed: the Supreme Court case of the same name still carries its REGISTER FACT line")
+
 # ---- 4. the attached result, show mode ----
 def attach_show(results, by_court=None):
     found = {"ok": True, "as_of": "2026-10-16", "results": results}

@@ -114,6 +114,8 @@ def result_flags(results):
             name = r.get("case_name")
             if not name or r.get("name_to_review"):
                 continue
+            if r.get("court") and r["court"] != "Supreme Court of India":
+                continue                           # the register and the cards are about Supreme Court decisions: a High Court judgment that happens to share a case's name is not that case (the service sends a court since 2026-10)
             year = int(r["date"][:4]) if r.get("date") else None
             cits = r.get("citations") or {}
             def _one(v):                       # the names table holds a string for open-bucket judgments and a list for crawl judgments

@@ -902,6 +902,8 @@ def feed_block(question):
                 voices = []
             facts = ""
             try:
+                if court != SC_COURT:                                 # the register is about Supreme Court decisions (see register_hooks.result_flags)
+                    raise LookupError
                 from register_hooks import prompt_lines_for_match
                 cits = r.get("citations") or {}
                 one = lambda v: v[0] if isinstance(v, (list, tuple)) and v else (v if isinstance(v, str) else None)
