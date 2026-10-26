@@ -83,10 +83,20 @@ def prompt_note(kind_list):
     return "\n[Note by code -- read before using this passage: " + " Also, ".join(_PROMPT[k] for k in ks) + "]" if ks else ""
 
 
-def page_note(kind_list):
-    """One short plain sentence for the page's list of wider-search passages ('' for none)."""
-    ks = [k for k in kind_list or [] if k in _PAGE]
-    return " ".join(_PAGE[k] for k in ks)
+_PAGE_OTHER = {            # the same sentences for a passage of a High Court: "the Supreme Court's own holding" would be false there
+    "lower_court": "This passage reports what a lower court held; it is not necessarily this court's own holding.",
+    "lower_court_rejected": "This passage reports what a lower court held and shows this court finding that court wrong.",
+    "one_judge": _PAGE["one_judge"],
+    "submission": "This passage records a party's submission, not the court's decision.",
+}
+_SC_COURT = "Supreme Court of India"
+
+
+def page_note(kind_list, court=None):
+    """One short plain sentence for the page's list of wider-search passages ('' for none). `court`: the court that decided the case; any court but the Supreme Court gets the sentences that do not name the Supreme Court."""
+    table = _PAGE if (not court or court == _SC_COURT) else _PAGE_OTHER
+    ks = [k for k in kind_list or [] if k in table]
+    return " ".join(table[k] for k in ks)
 
 
 _FORUMS = r"High\s+Court|trial\s+court|lower\s+court|Sessions|Magistrate|Tribunal|Division\s+Bench|Single\s+Judge|Special\s+Judge|Court\s+below"
@@ -145,6 +155,45 @@ def overstated(window, kind_list, tail=None):
         return bool(_COURT_SAYS.search(w)) or bool(tail and _NAME_SAYS.match(_flat(tail)))
     except Exception:  # noqa: BLE001
         return False
+
+
+_SC_NAMED = re.compile(r"\b(?:Supreme\s+Court|Apex\s+Court)\b", re.I)
+_HC_NAMED = re.compile(r"\bHigh\s+Court\b|\bH\.?C\.?\b")
+_NOT_RECORDED = "Court not recorded"
+
+
+def court_notes(text, cases, locate):
+    """Notices for the page: one per wider-search case decided by a court other than the Supreme Court (case['court']) whose name is, in the answer, in a sentence that names the Supreme Court and no High Court.
+    Counts words, proves nothing: the notice says to check which court decided it. `cases` and `locate` as in answer_notes. [] on any problem."""
+    out = []
+    try:
+        text = text or ""
+        others = [c for c in cases or [] if c.get("case_name") and (c.get("court") or _SC_COURT) != _SC_COURT]
+        if not others:
+            return out
+        spans = {}
+        for n in {c["case_name"] for c in cases or [] if c.get("case_name")}:
+            found, pos = [], 0
+            while len(found) < 6:
+                sp = locate(text[pos:], n)
+                if not sp:
+                    break
+                found.append((sp[0] + pos, sp[1] + pos))
+                pos += max(sp[1], 1)
+            spans[n] = found
+        for c in others:
+            n = c["case_name"]
+            rest = [sp for m, lst in spans.items() if m != n for sp in lst]
+            for sp in spans.get(n) or []:
+                w = _sentence(text, sp, rest)
+                if _SC_NAMED.search(w) and not _HC_NAMED.search(w):
+                    court = c.get("court")
+                    who = "our index does not record which court decided it" if court == _NOT_RECORDED else f"our index records it as a judgment of the {court}, not of the Supreme Court"
+                    out.append(f"{n}: {who}, but the sentence in this answer that names it also names the Supreme Court. Check which court decided it before relying on what this answer says.")
+                    break
+        return out
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def answer_notes(text, cases, locate):

@@ -139,6 +139,98 @@ FEED_INSTRUCTION = (
     "A passage that ends in \"...\" is cut off: do not complete it from memory. "
     "If no passage clearly bears on the person's situation, ignore them all. Do not say that a case is good law.\n"
 )
+
+# ---- which court decided a wider-search passage (the wide index holds Gauhati High Court judgments beside the Supreme Court's since the index of 2026-10-24) ----
+# Everything below leaves the text above and every string of an all-Supreme-Court result exactly as it was: a service that sends no `court` (the one on production) is read as the Supreme Court, which is all it holds.
+SC_COURT = "Supreme Court of India"
+COURT_RULE = ("The heading of each passage names the court that decided that case. Name that court exactly as the heading gives it. NEVER call a High Court's decision a decision of the Supreme Court, and never present it "
+              "as the law everywhere in India: a High Court's decision does not bind courts outside its own territory, so say which High Court decided it. ")
+
+
+def court_of(r):
+    """The court that decided a wider-search result: the service's `court` field; the Supreme Court when the service sends none."""
+    c = r.get("court") if isinstance(r, dict) else None
+    c = re.sub(r"\s+", " ", str(c)).strip() if c else ""
+    return c or SC_COURT
+
+
+def courts_of(items):
+    return [court_of(r) for r in items or [] if isinstance(r, dict)]
+
+
+def mixed(items):
+    """True when at least one of the items was decided by a court other than the Supreme Court (only then does anything on a page or in the prompt name a court)."""
+    return any(c != SC_COURT for c in courts_of(items))
+
+
+def scope_phrase(courts):
+    """'Supreme Court' when all are Supreme Court; else 'Supreme Court and High Court' / 'High Court' (every other court a High Court) or the plainer 'Supreme Court and other court' / 'court'."""
+    others = {c for c in courts if c != SC_COURT}
+    if not others:
+        return "Supreme Court"
+    kind = "High Court" if all("High Court" in c for c in others) else "other court"
+    if SC_COURT in courts:
+        return "Supreme Court and " + kind
+    return kind if kind == "High Court" else "court"
+
+
+def short_court(court):
+    """'Supreme Court' for the Supreme Court of India; every other court as it is recorded."""
+    return "Supreme Court" if (court or SC_COURT) == SC_COURT else court
+
+
+OPEN_BUCKET_CREDIT = "copy from the open Supreme Court judgments bucket (CC-BY-4.0, Dattam Labs)"
+CREDITS = {"open_bucket_pdf": OPEN_BUCKET_CREDIT,
+           "high_court_bucket_pdf": "copy from the open High Court judgments bucket (Dattam Labs; licence terms to be confirmed)",
+           "high_court_site_pdf": "copy from the High Court's own website"}
+COURT_FOOT = (" A passage marked with a High Court is that court's decision, not the Supreme Court's, and it does not bind courts outside that High Court's territory.")
+
+
+def credit_for(link_kind):
+    """The words that credit the place a wider-search PDF link points to ('' when it is the court's own archive)."""
+    return CREDITS.get(link_kind or "", "")
+
+
+def _upper_first(s):
+    return s[:1].upper() + s[1:]
+
+
+def box_title(items, fed, scope=None):
+    """The heading of the box of wider-search passages (for the list `items`, or for a `scope` phrase already worked out). For an all-Supreme-Court list it is the heading that was there before the High Court judgments came."""
+    scope = scope or scope_phrase(courts_of(items))
+    return (_upper_first(scope) + " passages from a wider search that this answer also read (not independently verified)" if fed
+            else "More " + scope + " judgments that may be relevant (a wider search; not independently verified)")
+
+
+def asof_sentence(as_of, by_court=None):
+    """' The collection ends 2026-07-13.' (nothing when no date). With a date for each of several courts: ' The collection ends 2026-10-16 for the Supreme Court and 2026-10-14 for the Gauhati High Court.'"""
+    if isinstance(by_court, dict) and len(by_court) > 1:
+        order = sorted(by_court.items(), key=lambda kv: (kv[0] != SC_COURT, kv[0]))
+        return " The collection ends " + " and ".join("%s for the %s" % (d, short_court(c)) for c, d in order if d) + "."
+    return (" The collection ends " + str(as_of) + ".") if as_of else ""
+
+
+def feed_instruction(courts):
+    """The prompt block's opening for the courts of the passages fed: FEED_INSTRUCTION itself when all are Supreme Court (nothing changes), else the same text with the court named, plus COURT_RULE."""
+    if not any(c != SC_COURT for c in courts):
+        return FEED_INSTRUCTION
+    scope = scope_phrase(courts)
+    other = short_court(next((c for c in courts if c != SC_COURT), "court"))
+    example = '("the Supreme Court in X said ..." or "the %s in X said ...")' % other if SC_COURT in courts else '("the %s in X said ...")' % other
+    text = FEED_INSTRUCTION
+    for old, new in _feed_swaps(scope, example):
+        text = text.replace(old, new, 1)
+    return text
+
+
+def _feed_swaps(scope, example):
+    """(old, new) pairs applied to FEED_INSTRUCTION for a feed that has a passage of another court; test_sci_search_tier checks that every `old` is in the text exactly once."""
+    return (("## Supreme Court passages from", "## " + scope[0].upper() + scope[1:] + " passages from"),
+            ("a much larger collection of Supreme Court judgments", "a much larger collection of " + scope + " judgments"),
+            ('attributed to the court ("the Supreme Court in X said ...")', "attributed to the court that decided it " + example),
+            (" right after its name. ", " right after its name. " + COURT_RULE))
+
+
 _TRAIL_PARTY = re.compile(r"(?:[,.\s]+(?:&|and)\s+(?:anr|ors|another|others)\b\.?|[,.\s]+(?:anr|ors|another|others|etc)\b\.?)+\s*$", re.I)
 
 
@@ -792,9 +884,13 @@ def feed_block(question):
         plain, room = _split()
         chosen = plain[:room] + correcting + flagged
         blocks, cases = [], []
+        chosen_courts = courts_of([r for r, _f in chosen])
+        any_other = any(c != SC_COURT for c in chosen_courts)           # only then does a heading name its court; an all-Supreme-Court feed is worded exactly as before
         for r, f in chosen:
             year = r["date"][:4] if r.get("date") else None
-            head = f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]"
+            court = court_of(r)
+            head = (f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", {court}" if any_other else "")
+                    + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]")
             body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
             voices = []
             try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
@@ -818,9 +914,9 @@ def feed_block(question):
             if men:                                                    # the passage names a case on the register: the fact rides with the passage
                 facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
-            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
+            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
                           "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
-                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices) if voices else None)})
+                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
@@ -833,7 +929,7 @@ def feed_block(question):
             extra = passage_notes.INSTRUCTION if passage_notes.enabled() else ""
         except Exception:  # noqa: BLE001
             extra = ""
-        _LOCAL.block = FEED_INSTRUCTION + extra + "\n\n".join(blocks) + "\n"
+        _LOCAL.block = feed_instruction(chosen_courts) + extra + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
     except Exception as exc:  # noqa: BLE001
@@ -861,6 +957,16 @@ def attach(question, result, background=True):
                 result["sci_fed"] = True
             if cases or pilot:
                 result["response_text"] = label_fed_cases(result.get("response_text") or "", list(cases) + pilot)      # every wider-search or pilot case named in the answer is tagged as unverified, whatever the model wrote
+            try:                                                      # a High Court passage that the answer's own sentence calls a Supreme Court one: a notice and a log line (no switch: it can only fire when a passage of another court was fed)
+                import passage_notes
+                if cases and mixed(cases):
+                    wrong = passage_notes.court_notes(result.get("response_text") or "", cases, lambda t, n: _locate(t, n, [c.get("case_name") for c in cases if c.get("case_name") != n]))
+                    if wrong:
+                        print("COURT_LABEL_FLAG " + json.dumps({"cases": [w.split(":", 1)[0][:100] for w in wrong]}), flush=True)
+                        import grounding_checks
+                        grounding_checks.add_notes(wrong)
+            except Exception:  # noqa: BLE001
+                pass
             try:                                                      # PASSAGE_NOTES=on: the answer calls a flagged passage "the Supreme Court" in so many words: a notice (shown with GROUNDING_CHECKS=warn or enforce), and a log line
                 import passage_notes
                 if passage_notes.enabled() and cases:
@@ -883,13 +989,15 @@ def attach(question, result, background=True):
                 continue                                        # a judgment with no readable name is not shown to a person
             seen.add(r["doc"])
             txt = _cut(r.get("text") or "", EXCERPT)
-            shown.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"),
+            shown.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court_of(r),
                           "excerpt": txt, "register_note": f["note"] if f["source"] in ("register", "card") else None})
             if len(shown) >= MAX_SHOWN:
                 break
         if shown:
             result["sci_related_judgments"] = shown
             result["sci_as_of"] = found.get("as_of")
+            if isinstance(found.get("as_of_by_court"), dict) and len(found["as_of_by_court"]) > 1:
+                result["sci_as_of_by_court"] = {str(k): str(v) for k, v in found["as_of_by_court"].items() if v}
     except Exception as exc:  # noqa: BLE001 -- fail-open
         logger.warning("sci tier attach failed: %s", type(exc).__name__)
     return result

@@ -1157,18 +1157,21 @@ def render_answer(result: dict):
         # The wider Supreme Court pool (sci_search_tier.py, off unless SCI_SEARCH_MODE=show): its own box, never mixed with the verified sources above.
         sci_rel = result.get("sci_related_judgments")
         if sci_rel:
-            with st.expander("Supreme Court passages from a wider search that this answer also read (not independently verified)" if result.get("sci_fed")
-                             else "More Supreme Court judgments that may be relevant (a wider search; not independently verified)", expanded=bool(result.get("sci_fed"))):
-                asof = f" The collection ends {esc(str(result.get('sci_as_of')))}." if result.get("sci_as_of") else ""
+            import sci_search_tier as _SCI
+            _tag = _SCI.mixed(sci_rel)                                    # a court is named beside a passage only when some passage of the list is not the Supreme Court's
+            with st.expander(_SCI.box_title(sci_rel, result.get("sci_fed")), expanded=bool(result.get("sci_fed"))):
+                asof = esc(_SCI.asof_sentence(result.get("sci_as_of"), result.get("sci_as_of_by_court")))
                 st.markdown('<p class="r-foot">These passages came from a search of a much wider judgment database. Nobody at Recourse has read '
                             'and confirmed them, and this search does not say whether a decision is still good law. Read the real judgment yourself, or with a lawyer, '
-                            f'before relying on it.{asof}</p>', unsafe_allow_html=True)
+                            f'before relying on it.{esc(_SCI.COURT_FOOT) if _tag else ""}{asof}</p>', unsafe_allow_html=True)
                 for j in sci_rel:
                     para = f" &mdash; paragraph {esc(str(j['paragraph']))}" if j.get("paragraph") else ""
                     when = f" ({esc(str(j['date']))})" if j.get("date") else ""
                     link = (f'[{esc(j["case_name"])}]({esc(j["link"])})' if j.get("link") else esc(j["case_name"]))
-                    src = " &middot; copy from the open Supreme Court judgments bucket (CC-BY-4.0, Dattam Labs)" if j.get("link_kind") == "open_bucket_pdf" else ""
-                    st.markdown(f'- {link}{when}{para}<span class="r-src">{src}</span>', unsafe_allow_html=True)
+                    court = f" &middot; {esc(_SCI.court_of(j))}" if _tag else ""
+                    credit = _SCI.credit_for(j.get("link_kind"))
+                    src = f" &middot; {esc(credit)}" if credit else ""
+                    st.markdown(f'- {link}{when}{court}{para}<span class="r-src">{src}</span>', unsafe_allow_html=True)
                     if j.get("register_note"):
                         st.markdown(f'<div class="r-concord">{esc(j["register_note"])}</div>', unsafe_allow_html=True)
                     if j.get("passage_note"):                     # PASSAGE_NOTES=on: whose voice this passage is in

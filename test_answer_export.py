@@ -97,8 +97,13 @@ for node in ast.walk(ast.parse(src)):
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         lits.append(node.value)
 hay = norm(re.sub(r"&(mdash|middot|nbsp|amp|rsquo|lsquo);", lambda m: {"mdash": "—", "middot": "·", "nbsp": " ", "amp": "&", "rsquo": "'", "lsquo": "'"}[m.group(1)], "\n".join(lits)))
-for name in ("CONFLICT", "FALLBACK_LEAD", "H_RELIED", "H_CURRENCY", "H_GROUNDING", "H_SCI_FED", "H_SCI_SHOWN", "SCI_FOOT", "H_ANCHORS", "ANCHORS_UNCONFIRMED", "ANCHORS_FOOT_1", "ANCHORS_FOOT_2", "ANCHORS_FOOT_3", "H_UNVERIFIED", "UNVERIFIED_FOOT", "OPEN_BUCKET"):
+for name in ("CONFLICT", "FALLBACK_LEAD", "H_RELIED", "H_CURRENCY", "H_GROUNDING", "SCI_FOOT", "H_ANCHORS", "ANCHORS_UNCONFIRMED", "ANCHORS_FOOT_1", "ANCHORS_FOOT_2", "ANCHORS_FOOT_3", "H_UNVERIFIED", "UNVERIFIED_FOOT"):
     check(norm(getattr(X, name)) in hay, f"the export's {name} is the page's own wording")
+# the wider-search heading and the bucket credit are worded by sci_search_tier (they name the court when a High Court judgment is among the passages); the page calls it, and for Supreme Court passages it says what it said before
+import sci_search_tier as _T
+check("_SCI.box_title(" in src and "_SCI.credit_for(" in src, "the page words the wider-search heading and the credit through sci_search_tier")
+check(_T.box_title([], True) == X.H_SCI_FED and _T.box_title([], False) == X.H_SCI_SHOWN and _T.box_title([{"court": "Supreme Court of India"}], True) == X.H_SCI_FED, "the export's H_SCI_FED / H_SCI_SHOWN are the page's own wording (Supreme Court passages)")
+check(_T.credit_for("open_bucket_pdf") == X.OPEN_BUCKET == _T.OPEN_BUCKET_CREDIT, "the export's OPEN_BUCKET is the page's own wording")
 
 # ---------------------------------------------------------------- 3. a rich layman answer
 TEXT = ("**Your situation**\nYou were arrested on a *bailable* charge.\n\n**What the law says**\nUnder section 35 of the BNSS an arrest is limited. In *Arnesh Kumar v. State of Bihar* (2014) the Supreme Court said arrest is not routine.\n\n"

@@ -15,6 +15,7 @@ TABLE_NOTE = ("Where it stands on our lists: \"Not checked by us\" means neither
 TIER_LIBRARY = "Reviewed library"
 TIER_WIDER = "Wider search (not independently verified)"
 TIER_ANCHOR = "Verbatim excerpts"
+_SC = "Supreme Court of India"               # a wider-search row with no court recorded is a Supreme Court one (the search service sent no court before 2026-10)
 
 
 def _paras(ms):
@@ -75,7 +76,7 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", 
             note = ((note + " ") if note else "") + "Reading note: " + j["passage_note"]
         wider.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": _paras([j]), "bench": j.get(bench_key), "tier": TIER_WIDER,
                       "status": note, "status_source": "register" if j.get("register_note") else st.get("source"), "link": j.get("link"),
-                      "link_kind": j.get("link_kind")})
+                      "link_kind": j.get("link_kind"), "court": j.get("court") or _SC})
     ex_rows = []                                              # the verbatim excerpts (excerpt_anchors.py) the answer was given
     for j in anchors or []:
         if not isinstance(j, dict) or not j.get("case_name"):
@@ -85,22 +86,31 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", 
         ex_rows.append({"case": j["case_name"], "year": _year_of(j), "citation": _one(j.get("citation")), "paragraphs": [str(j["paragraph"])] if j.get("paragraph") else [], "bench": None,
                         "tier": TIER_ANCHOR, "status": ("Excerpt not yet confirmed by our reviewer. " if unconfirmed else "Excerpt confirmed by our reviewer. ") + (SHORT_STATUS.get(st.get("source")) or st.get("note") or ""),
                         "status_source": st.get("source"), "link": j.get("link")})
-    return {"library": library, "wider": wider, "anchors": ex_rows, "has_bench": any(r.get("bench") for r in library + wider)}
+    out = {"library": library, "wider": wider, "anchors": ex_rows, "has_bench": any(r.get("bench") for r in library + wider)}
+    if any(r.get("court") != _SC for r in wider):               # a Court column only when a wider-search row is not a Supreme Court one; otherwise the result is exactly what it was before
+        out["has_court"] = True
+    return out
 
 
 def _cell(text):
     return re.sub(r"\s+", " ", str(text or "")).replace("|", "\\|").strip()
 
 
-def _table(rows, has_bench):
-    head = ["Case", "Citation", "Paragraph"] + (["Bench"] if has_bench else []) + ["Where it stands on our lists", "Link"]
+def _table(rows, has_bench, has_court=False):
+    """`has_court`: a Court column (only when some wider-search row is not a Supreme Court judgment; otherwise the table is the one that was here before the High Court judgments came)."""
+    head = ["Case", "Citation", "Paragraph"] + (["Court"] if has_court else []) + (["Bench"] if has_bench else []) + ["Where it stands on our lists", "Link"]
     lines = ["| " + " | ".join(head) + " |", "|" + "|".join(["---"] * len(head)) + "|"]
     for r in rows:
         name = _cell(r["case"]) + (f" ({r['year']})" if r.get("year") else "")
         link = f"[open]({r['link']})" if r.get("link") else "no link held"
         if r.get("link_kind") == "open_bucket_pdf":
             link += " (open bucket, CC-BY-4.0, Dattam Labs)"
+        elif r.get("link_kind") in ("high_court_bucket_pdf", "high_court_site_pdf"):
+            import sci_search_tier as _T
+            link += " (" + _T.credit_for(r["link_kind"]) + ")"
         cells = [name, _cell(r.get("citation")) or "not held", ", ".join(r.get("paragraphs") or []) or "-"]
+        if has_court:
+            cells.append(_cell(r.get("court")) or "not recorded")
         if has_bench:
             cells.append(_cell(r.get("bench")) or "not held")
         cells += [_cell(r.get("status")) or "-", link]
@@ -116,5 +126,5 @@ def render_markdown(table):
     if table.get("anchors"):
         out.append(("Verbatim excerpts the answer read (copied word for word from the judgment; checked by code against the Supreme Court's own PDF)", _table(table["anchors"], table.get("has_bench"))))
     if table.get("wider"):
-        out.append(("Further reading from a wider search (not independently verified)", _table(table["wider"], table.get("has_bench"))))
+        out.append(("Further reading from a wider search (not independently verified)", _table(table["wider"], table.get("has_bench"), bool(table.get("has_court")))))
     return out

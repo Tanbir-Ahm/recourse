@@ -33,11 +33,23 @@ SCI_REPLY = {"ok": True, "as_of": "2026-08-12", "index_commit": "stand-in", "sec
 ]}
 
 
+# The same stand-in as the wide index of 2026-10-24 answers: a High Court passage beside a Supreme Court one, with the date of each court. Sent when the question holds the word "gauhati".
+SCI_REPLY_MIXED = {"ok": True, "as_of": "2026-10-16", "as_of_by_court": {"Gauhati High Court": "2026-10-14", "Supreme Court of India": "2026-10-16"}, "index_commit": "stand-in", "seconds": 0.01, "results": [
+    {"rank": 1, "doc": 11, "case_name": "Sample Supreme Court Case v. State", "date": "2024-03-05", "paragraph": "7", "link": "https://example.org/sc-case", "link_kind": "court_site_pdf", "court": "Supreme Court of India",
+     "text": "The standing-in passage of a Supreme Court judgment about bail conditions."},
+    {"rank": 2, "doc": 2000000001, "case_name": "Dinathso Chaitom v. The State of AP", "date": "2020-12-17", "paragraph": "4", "link": "https://example.org/hc-case", "link_kind": "high_court_bucket_pdf", "court": "Gauhati High Court",
+     "text": "The standing-in passage of a Gauhati High Court judgment about bail conditions."},
+]}
+
+
 class _SciStub(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("content-length") or 0)
-        self.rfile.read(n)
-        data = json.dumps(SCI_REPLY).encode("utf-8")
+        try:
+            asked = json.loads(self.rfile.read(n).decode("utf-8")).get("question") or ""
+        except Exception:  # noqa: BLE001
+            asked = ""
+        data = json.dumps(SCI_REPLY_MIXED if "gauhati" in asked.lower() else SCI_REPLY).encode("utf-8")
         self.send_response(200 if self.path == "/search" else 404)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(data)))

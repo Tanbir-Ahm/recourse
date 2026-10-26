@@ -1037,7 +1037,7 @@ def case_cards(parsed, lex=None, sem=None, notes=None):
 def wider(parsed, sci_fn=None):
     """{'available': bool, 'items': [...], 'as_of': ..., 'note': str|None, 'label': ..., 'tier': ...}: the sci-search service's passages, each with its register verdict; never raises."""
     q = parsed["q"]
-    out = {"available": False, "items": [], "as_of": None, "note": None, "label": WIDER_LABEL, "tier": TIER_WIDER_LABEL}
+    out = {"available": False, "items": [], "as_of": None, "as_of_by_court": None, "scope": "Supreme Court", "court_tags": False, "note": None, "label": WIDER_LABEL, "tier": TIER_WIDER_LABEL}
     if parsed["intent"] in ("citation", "number") or not parsed["terms"]:
         out["note"] = WIDER_NEEDS_WORDS
         return out
@@ -1071,10 +1071,13 @@ def wider(parsed, sci_fn=None):
                 status = {"source": "not_checked", "text": short.get("not_checked") or NOT_CHECKED}
             link = r.get("link") if str(r.get("link") or "").startswith(("http://", "https://")) else None
             items.append({"title": r["case_name"], "date": r.get("date"), "year": _year_of(r.get("date")), "paragraph": _s(r.get("paragraph")), "link": link, "link_kind": _s(r.get("link_kind")) if link else None,
-                          "excerpt": _clean_passage(r.get("text")), "status": status})
+                          "court": T.court_of(r), "excerpt": _clean_passage(r.get("text")), "status": status})
             if len(items) >= MAX_WIDER:
                 break
-        out.update(available=True, items=items, as_of=found.get("as_of"))
+        courts = [i["court"] for i in items]
+        by_court = {str(k): str(v) for k, v in (found.get("as_of_by_court") or {}).items() if v} if isinstance(found.get("as_of_by_court"), dict) else None
+        out.update(available=True, items=items, as_of=found.get("as_of"), scope=T.scope_phrase(courts), court_tags=any(c != T.SC_COURT for c in courts),
+                   as_of_by_court=by_court if (by_court and len(by_court) > 1) else None)           # the date of each court's newest judgment, said whenever the index holds more than one court's
         if not items:
             out["note"] = "The wider search found no passage for these words."
     except Exception as exc:  # noqa: BLE001

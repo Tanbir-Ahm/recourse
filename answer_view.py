@@ -278,9 +278,13 @@ def build(result):
         sci = None
         if result.get("sci_related_judgments"):
             fed = bool(result.get("sci_fed"))
-            sci = {"fed": fed, "as_of": _s(result.get("sci_as_of")), "items": [
-                {"case_name": str(j.get("case_name") or ""), "link": _s(j.get("link")), "date": _s(j.get("date")), "paragraph": _s(j.get("paragraph")), "link_kind": _s(j.get("link_kind")), "register_note": _s(j.get("register_note")),
-                 "passage_note": _s(j.get("passage_note")), "names_register_note": _s(j.get("names_register_note")), "excerpt": _s(j.get("excerpt"))} for j in result["sci_related_judgments"] if isinstance(j, dict)]}
+            import sci_search_tier as _SCI
+            rel = [j for j in result["sci_related_judgments"] if isinstance(j, dict)]
+            by_court = result.get("sci_as_of_by_court") if isinstance(result.get("sci_as_of_by_court"), dict) else None
+            sci = {"fed": fed, "as_of": _s(result.get("sci_as_of")), "as_of_by_court": {str(k): str(v) for k, v in by_court.items() if v} if by_court else None,
+                   "scope": _SCI.scope_phrase(_SCI.courts_of(rel)), "court_tags": _SCI.mixed(rel), "items": [
+                {"case_name": str(j.get("case_name") or ""), "link": _s(j.get("link")), "date": _s(j.get("date")), "paragraph": _s(j.get("paragraph")), "link_kind": _s(j.get("link_kind")), "court": _SCI.court_of(j),
+                 "register_note": _s(j.get("register_note")), "passage_note": _s(j.get("passage_note")), "names_register_note": _s(j.get("names_register_note")), "excerpt": _s(j.get("excerpt"))} for j in rel]}
         anchors = None
         if result.get("anchor_excerpts"):
             items = [a for a in result["anchor_excerpts"] if isinstance(a, dict)]
