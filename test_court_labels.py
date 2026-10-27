@@ -94,7 +94,7 @@ def feed(results, question="my bail question"):
 # ---- 2b. the rule for quoted passages (staging 2026-10-26: a paragraph of V.L. Rohlua, quoted in Sadhwi Pragyna Singh Thakur, was credited to Sadhwi with Rohlua's paragraph number) ----
 RULE_PARTS = ("A passage can be a QUOTATION from another, earlier decision", "a 1968 arrest described in a judgment of 2011", "never say that the listed case decided, held or recorded it",
               "never give its paragraph number, which belongs to the quoted decision and not to the listed case", "build no ground and no For/Against point on it",
-              "from an earlier decision that the passage does not name, and that the original must be checked", "A quoted section of a statute is not a problem")
+              "do not mention it in your answer, and do not mention that it is a quotation", "never write a sentence about where it sits, which earlier decision it may reproduce, or that it needs checking", "A quoted section of a statute is not a problem")
 check(all(x in T.FEED_INSTRUCTION for x in RULE_PARTS), "the instruction for wider-search passages holds the rule for quoted passages")
 check(all(x in T.feed_instruction([SC, HC]) for x in RULE_PARTS) and all(x in T.feed_instruction([HC]) for x in RULE_PARTS), "and so does the court-aware one")
 blk_old, cases_old = feed([B_SC_OLD])

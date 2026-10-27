@@ -1,10 +1,12 @@
 """
-test_quote_notes.py -- a wider-search passage whose number is not the judgment's own (quote_notes.py; FOLLOW_UPS 2cm).
+test_quote_notes.py -- a wider-search passage whose number is not the judgment's own (quote_notes.py; FOLLOW_UPS 2cm and 2cn).
 
-The search service (SCI_QUOTES=on) sends {"quote": {"within": "25", "kind": "introduced"|"off_sequence", "intro": ...}} for a passage found inside paragraph 25 under another number ("8"). This file checks every place that words it:
-the prompt (head of the passage, the Note by code, the instruction), the cases the engine returns (paragraph, reading note), the notice when the answer credits the court with the passage, the sources box (answer view), the
-PDF/Word export, the authorities table and the search page -- and, as the main point, that a result WITHOUT a quote (a service that does not send one, SCI_QUOTES unset) is worded byte for byte as before.
-Fully offline and free: a function stands in for the service. Run: python -X utf8 test_quote_notes.py
+The search service (SCI_QUOTES=on) sends {"quote": {"within": "25", "kind": "introduced"|"off_sequence", "intro": ...}} for a passage found inside paragraph 25 under another number ("8"). What Recourse does with it:
+  * feed_block leaves such a passage OUT of what the answer model reads (another passage of the same case may take its place) and logs SCI_FEED_QUOTED;
+  * the prompt rule says never to mention a quotation (the first version told the model to say so, and the owner's circumstantial-evidence answer carried sentences about "a passage inside paragraph 19 of Hongro Ngotan ...");
+  * drop_provenance_sentences removes, from a finished answer, a sentence that names a wider-search case AND talks about where a passage sits or what it may quote;
+  * the search page (no model) shows the paragraph the passage sits inside and a reading note.
+A result WITHOUT a quote, and an answer without such sentences, are worded byte for byte as before. Offline and free. Run: python -X utf8 test_quote_notes.py
 """
 import contextlib
 import io
@@ -14,11 +16,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import answer_export as X
-import answer_view as V
-import authorities_table as AT
-import grounding_checks as G
-import passage_notes as PN
 import quote_notes as QN
 import sci_search_tier as T
 import search_service as SS
@@ -47,44 +44,26 @@ def res(doc, name, date, text, para, quote=None):
 
 SADHWI_TEXT = "8. From the order-sheets produced before us it is clear that the petitioner was first produced before the Magistrate on March 3, 1968. That was roughly two months after his arrest by the Armed Forces."
 SADHWI = res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-04-12", SADHWI_TEXT, "8", Q_INTRO)
-SADHWI_PLAIN = res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-04-12", SADHWI_TEXT, "8")           # the same passage from a service that sends no quote
+SADHWI_OWN = res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-04-12", "26. The decisions relied upon by the learned counsel for the appellant do not support the plea.", "26")
+SADHWI_PLAIN = res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-04-12", SADHWI_TEXT, "8")
 ARNESH = res(41736, "Arnesh Kumar v. State of Bihar", "2014-07-02", "Arrest is not to be made routinely.", "9")
 
-# ---- 1. quote_notes: the record
-check(QN.clean(Q_INTRO) == {"within": "25", "kind": "introduced", "intro": INTRO}, "clean: a well-formed record is kept (block is not needed)")
+# ---- 1. the record
+check(QN.clean(Q_INTRO) == {"within": "25", "kind": "introduced", "intro": INTRO}, "clean: a well-formed record is kept")
 check(QN.clean(Q_OFF) == {"within": "21", "kind": "off_sequence"}, "clean: off_sequence has no intro")
 check(QN.clean({"within": "25", "kind": "off_sequence", "intro": "words"}) == {"within": "25", "kind": "off_sequence"}, "clean: an intro on an off_sequence record is dropped")
 bad = [None, "x", [], {}, {"within": "25"}, {"kind": "introduced"}, {"within": "twenty", "kind": "introduced"}, {"within": "25", "kind": "quotation"}, {"within": "", "kind": "introduced"}, {"within": "25; DROP", "kind": "introduced"}, {"within": 99999, "kind": "off_sequence"}]
-check(all(QN.clean(b) is None for b in bad), "clean: every malformed record is ignored (the passage is worded as before)")
+check(all(QN.clean(b) is None for b in bad), "clean: every malformed record is ignored")
 check(QN.clean({"within": 25, "kind": "off_sequence"}) == {"within": "25", "kind": "off_sequence"}, "clean: a number is accepted as a string")
-long = QN.clean({"within": "25", "kind": "introduced", "intro": "word " * 300})
-check(len(long["intro"]) <= QN.MAX_INTRO, "clean: a long intro is cut")
+check(len(QN.clean({"within": "25", "kind": "introduced", "intro": "word " * 300})["intro"]) <= QN.MAX_INTRO, "clean: a long intro is cut")
 check(QN.clean({"within": "25", "kind": "off_sequence", "ends_at": "24"})["ends_at"] == "24" and "ends_at" not in QN.clean({"within": "25", "kind": "off_sequence", "ends_at": "x"}), "clean: ends_at must be a number")
-check(QN.own_number("8. From the order-sheets") == "8" and QN.own_number("  830. Only the spirit") == "830" and QN.own_number("The court said") is None and QN.own_number("") is None and QN.own_number(None) is None, "own_number")
-
-# ---- 2. the words
-head = QN.head_phrase(QN.clean(Q_INTRO))
-check(head == ", inside paragraph 25", f"head_phrase ({head!r})")
-note = QN.prompt_note(QN.clean(Q_INTRO), SADHWI_TEXT)
-check(note.startswith("\n[Note by code -- read before using this passage: ") and note.endswith("]"), "prompt_note: a Note by code line")
-check('(it starts with "8.")' in note and "NOT a paragraph number of this judgment" in note and "inside paragraph 25" in note, "prompt_note: it names the number the passage starts with and the paragraph it sits inside")
-check(INTRO in note, "prompt_note: the judgment's own introducing words are given word for word")
-check("do not say that the listed court held, decided, recorded or observed it" in note and "build no ground" in note and 'never give the number it starts with as a paragraph' in note, "prompt_note: no credit to the listed court, no ground, no number")
-check("not this court's own words" in note.lower() or "NOT this court's own words" in note, "prompt_note: it says the words are not this court's own if they introduce a quotation")
-off = QN.prompt_note(QN.clean(Q_OFF), "4. It may be mentioned that this judgment was delivered")
-check("wrapped citation" in off and "numbered list" in off and "check from the passage itself" in off and "inside paragraph 21" in off and "do not credit it to the court" in off, "prompt_note: off_sequence says what it can be, and does not tell the model the words are a quotation")
-check("do not say that the listed court held" not in off, "prompt_note: off_sequence does not forbid crediting the court outright (the words can be its own list)")
-noi = QN.prompt_note(QN.clean({"within": "7", "kind": "introduced"}), "3. text")
-check("introduce a quotation or a list" in noi and "inside paragraph 7" in noi, "prompt_note: introduced without words")
-check("last part is the judgment's own paragraph 24" in QN.prompt_note(QN.clean({"within": "23", "kind": "off_sequence", "ends_at": "24"}), "8. x"), "prompt_note: a joined passage says where its own part is")
 pg = QN.page_note(QN.clean(Q_INTRO))
-check("inside paragraph 25" in pg and "is not a paragraph of that judgment" in pg and "Saptawna" in pg and "not this court's own holding" in pg, f"page_note (introduced): plain words, the introduction, no overclaim ({pg!r})")
+check("inside paragraph 25" in pg and "is not a paragraph of that judgment" in pg and "Saptawna" in pg and "not this court's own holding" in pg, f"page_note (introduced) ({pg!r})")
 check("Saptawna" not in QN.page_note(QN.clean(Q_OFF)) and "wrapped citation" in QN.page_note(QN.clean(Q_OFF)), "page_note (off_sequence)")
-check(QN.page_note(QN.clean({"within": "25", "kind": "introduced", "intro": "w" * 360})).count("...") == 1, "page_note: a long introduction is shortened on the page")
-check("{" not in pg and "None" not in pg, "page_note: nothing left over from the code")
+check(QN.page_note(QN.clean({"within": "25", "kind": "introduced", "intro": "w" * 360})).count("...") == 1, "page_note: a long introduction is shortened")
 
 
-# ---- 3. the feed
+# ---- 2. the feed
 def feed(results, question="unlawful detention without being produced before a magistrate", pn="off"):
     found = {"ok": True, "as_of": "2026-10-16", "index_commit": "abc", "results": results}
     saved, saved_mode, saved_pn = T.search, os.environ.get("SCI_SEARCH_MODE"), os.environ.get("PASSAGE_NOTES")
@@ -92,10 +71,12 @@ def feed(results, question="unlawful detention without being produced before a m
     os.environ["SCI_SEARCH_MODE"] = "feed"
     os.environ["SCI_SEARCH_URL"] = "http://127.0.0.1:9"
     os.environ["PASSAGE_NOTES"] = pn
+    out = io.StringIO()
     try:
         T.reset()
-        with contextlib.redirect_stdout(io.StringIO()):
-            return T.feed_block(question), list(T._LOCAL.cases)
+        with contextlib.redirect_stdout(out):
+            block = T.feed_block(question)
+        return block, list(T._LOCAL.cases), out.getvalue()
     finally:
         T.search = saved
         for k, v in (("SCI_SEARCH_MODE", saved_mode), ("PASSAGE_NOTES", saved_pn)):
@@ -105,91 +86,80 @@ def feed(results, question="unlawful detention without being produced before a m
                 os.environ[k] = v
 
 
-blk, cases = feed([SADHWI, ARNESH])
-check("Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011-04-12), inside paragraph 25]" in blk, "feed: the head names the paragraph the passage sits inside")
-check("paragraph 8]" not in blk and ", paragraph 8" not in blk, "feed: the head no longer says 'paragraph 8'")
-check("Arnesh Kumar v. State of Bihar (2014-07-02), paragraph 9]" in blk, "feed: another passage in the same prompt keeps its own number")
-check("[Note by code -- read before using this passage: the number (it starts with \"8.\") is NOT a paragraph number of this judgment" in blk and INTRO in blk, "feed: the Note by code with the introducing words sits under the passage")
-check(blk.index(SADHWI_TEXT) < blk.index("[Note by code -- read before using this passage: the number") < blk.index("Arnesh Kumar"), "feed: the note is under the Sadhwi passage and before the next one")
-check(T.QUOTE_INSTRUCTION in blk and blk.count("NOT a paragraph number of its judgment") == 1, "feed: the one-sentence instruction is in the prompt when a quoted passage is")
-check(blk.count("Note by code -- read before using this passage") == 1, "feed: no note under the passage that has no quote")
-c0 = cases[0]
-check(c0["paragraph"] == "25" and "inside paragraph 25" in c0["passage_note"] and "Saptawna" in c0["passage_note"], f"cases: the page shows paragraph 25 and the reading note ({c0['paragraph']!r})")
-check("quoted" in c0["passage_kinds"] and cases[1]["passage_kinds"] == [] and cases[1]["paragraph"] == "9" and cases[1]["passage_note"] is None, "cases: only the quoted passage carries the kind and the note")
-
-blk_p, cases_p = feed([SADHWI_PLAIN, ARNESH])
-check("Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011-04-12), paragraph 8]" in blk_p and "NOT a paragraph number" not in blk_p and T.QUOTE_INSTRUCTION not in blk_p and cases_p[0]["paragraph"] == "8" and cases_p[0]["passage_note"] is None
-      and cases_p[0]["passage_kinds"] == [], "feed: a result with no quote is worded as before")
+blk, cases, log = feed([SADHWI, ARNESH])
+check("Sadhwi" not in blk and SADHWI_TEXT[:40] not in blk and "Saptawna" not in blk, "feed: a passage whose number is not the judgment's own is not in what the model reads")
+check("Arnesh Kumar v. State of Bihar (2014-07-02), paragraph 9]" in blk and [c["case_name"] for c in cases] == ["Arnesh Kumar v. State of Bihar"], "feed: the other passage is unchanged")
+check('SCI_FEED_QUOTED {"left_out": [{"case": "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "para": "8", "within": "25"}]}' in log, f"feed: one log line says what was left out ({log.strip()[:200]})")
+check("Note by code" not in blk and "inside paragraph" not in blk, "feed: no note about where a passage sits is given to the model")
+blk2, cases2, _l = feed([SADHWI, SADHWI_OWN, ARNESH])
+check([c["case_name"] for c in cases2] == ["Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "Arnesh Kumar v. State of Bihar"] and "paragraph 26]" in blk2 and "order-sheets" not in blk2, "feed: another passage of the same case, whose number is its own, takes the place")
+blk3, cases3, _l = feed([SADHWI, dict(SADHWI_PLAIN, quote=Q_OFF)])
+check(cases3 == [] and blk3 == "", "feed: when every passage is flagged the feed is empty, as when nothing came back (introduced and off_sequence alike)")
+blk_p, cases_p, log_p = feed([SADHWI_PLAIN, ARNESH])
+check("Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011-04-12), paragraph 8]" in blk_p and len(cases_p) == 2 and "SCI_FEED_QUOTED" not in log_p, "feed: a result with no quote is worded and fed as before")
 for badq in ("x", {"within": "abc", "kind": "introduced"}, {"within": "25", "kind": "quotation"}, [], {}):
-    b, c = feed([dict(SADHWI_PLAIN, quote=badq), ARNESH])
-    check(b == blk_p and c[0]["paragraph"] == "8", f"feed: a malformed quote ({str(badq)[:40]}) changes nothing")
-b_old, _c = feed([SADHWI_PLAIN, ARNESH], pn="off")
-check(b_old == blk_p, "feed: byte for byte the same as the result without a quote")
+    b, c, _l = feed([dict(SADHWI_PLAIN, quote=badq), ARNESH])
+    check(b == blk_p and len(c) == 2, f"feed: a malformed quote ({str(badq)[:40]}) changes nothing")
 
-blk_pn, cases_pn = feed([SADHWI, ARNESH], pn="on")
-check(PN.INSTRUCTION in blk_pn and T.QUOTE_INSTRUCTION in blk_pn and "inside paragraph 25" in blk_pn, "feed (PASSAGE_NOTES=on): both instructions, and the quote note")
-check("quoted" in cases_pn[0]["passage_kinds"], "feed (PASSAGE_NOTES=on): the kind is there")
+# ---- 3. the prompt rule
+RULE = ("do not mention it in your answer, and do not mention that it is a quotation", "never write a sentence about where it sits, which earlier decision it may reproduce, or that it needs checking",
+        "leave it out as if you had not seen it", "never give its paragraph number")
+check(all(x in T.FEED_INSTRUCTION for x in RULE) and "if you mention it at all, say that it is a passage" not in T.FEED_INSTRUCTION, "the rule for quotations in the instruction: never mention it (the old 'say that it is quoted' is gone)")
+check(all(x in T.feed_instruction([SC]) for x in RULE) and all(x in blk_p for x in RULE[:2]), "the court-aware instruction and the prompt carry it too")
 
-blk_o, cases_o = feed([res(38684, "Sadhwi Pragyna Singh Thakur v. State of Maharashtra", "2011-04-12", "4. It may be mentioned that this judgment was delivered by a Three Judge Bench of this Court.", "4", Q_OFF)])
-check(", inside paragraph 21]" in blk_o and "wrapped citation" in blk_o and cases_o[0]["paragraph"] == "21", "feed: an off_sequence passage is worded without a claim that it is a quotation")
+# ---- 4. the finished answer: no talk about where a passage sits or what it quotes
+NAMES = ["Pawan Kumar Sharma v. Manoj Kumar & Ors", "Herman Tirky @ Herman Orang v. The State of Assam", "Hongro Ngotan v. The State of AP", "Majendran Langeswaran v. State (NCT of Delhi) & Anr", "Suresh Majhi v. The State of AP", "Mehtab v. State of Uttarakhand"]
+loc = lambda t, n: T._locate(t, n, [])
+ANS = ("4. The chain must exclude hypotheses of innocence\n\n"
+       "The Gauhati High Court in Herman Tirky @ Herman Orang v. The State of Assam (2013) said the evidence must be inconsistent with every hypothesis of innocence before conviction can rest on it. "
+       "A passage inside paragraph 19 of Hongro Ngotan v. The State of AP (2024) appears to reproduce an earlier decision's reasoning (G. Parshwanath v. State of Karnataka) rather than the Gauhati High Court's own words, "
+       "and should not be treated as that court's holding; the same caution applies to a similarly placed passage inside paragraph 18 of Majendran Langeswaran v. State (NCT of Delhi) & Anr (2013).\n\n"
+       "5. Procedure\n\nSection 249 of the BNSS requires the prosecutor to open the case.\n\n"
+       "Gaps and checks\n\nThe dates shown for Pawan Kumar Sharma and Mehtab (2026) could not be checked. "
+       "The passages inside Hongro Ngotan and Majendran Langeswaran appear to quote an unnamed earlier decision (possibly G. Parshwanath v. State of Karnataka) and that original should be checked before relying on its wording. "
+       "The passage in Suresh Majhi v. The State of AP also appears partly quoted and should similarly be verified against its source before use.")
+new, n = QN.drop_provenance_sentences(ANS, NAMES, loc)
+check(n == 4, f"drop: the three sentences of the owner's answer are found (four stretches: a semicolon splits the first one in two) ({n})")
+check("Hongro" not in new and "Majendran" not in new and "Suresh Majhi" not in new and "Parshwanath" not in new and "inside paragraph" not in new and "partly quoted" not in new, "drop: nothing about where a passage sits or what it quotes is left")
+check("Herman Tirky @ Herman Orang v. The State of Assam (2013) said the evidence must be inconsistent with every hypothesis of innocence before conviction can rest on it." in new
+      and "Section 249 of the BNSS requires the prosecutor to open the case." in new and "The dates shown for Pawan Kumar Sharma and Mehtab (2026) could not be checked." in new, "drop: the sentences around them stay, word for word")
+check(new.count("\n\n") == ANS.count("\n\n") and "4. The chain must exclude hypotheses of innocence\n\n" in new and "Gaps and checks\n\n" in new, "drop: headings and paragraph breaks stay")
+same = "The Supreme Court in Mehtab v. State of Uttarakhand (2026) stated that the prosecution must prove each circumstance beyond reasonable doubt. Pawan Kumar Sharma v. Manoj Kumar & Ors quoted the five principles with approval."
+check(QN.drop_provenance_sentences(same, NAMES, loc) == (same, 0), "drop: an ordinary sentence, even one that says a case 'quoted' something, stays")
+no_name = "Some passages appear to quote an earlier decision and should be checked."
+check(QN.drop_provenance_sentences(no_name, NAMES, loc) == (no_name, 0), "drop: the same words with no wider-search case named in the sentence stay")
+check(QN.drop_provenance_sentences("", NAMES, loc) == ("", 0) and QN.drop_provenance_sentences(ANS, [], loc) == (ANS, 0) and QN.drop_provenance_sentences(None, NAMES, loc) == ("", 0), "drop: empty input is safe")
+check(QN.drop_provenance_sentences(ANS, NAMES, lambda t, n: (_ for _ in ()).throw(RuntimeError("x"))) == (ANS, 0), "drop: a failure inside leaves the text as it was")
+labelled = ANS.replace("Hongro Ngotan v. The State of AP (2024)", "Hongro Ngotan v. The State of AP (2024) (from a wider search, not independently verified)")
+nl, nn = QN.drop_provenance_sentences(labelled, NAMES, loc)
+check(nn == 4 and "Hongro" not in nl, "drop: works on an answer that already carries the wider-search labels")
 
-# ---- 4. the passage_notes machinery
-check("quoted" in PN.KINDS and PN.page_note(["quoted"]) and "Supreme Court" in PN.page_note(["quoted"]) and "Supreme Court" not in PN.page_note(["quoted"], "Gauhati High Court"), "passage_notes: the kind 'quoted' has page sentences, and the High Court one does not name the Supreme Court")
-check(PN.prompt_note(["quoted"]) == "", "passage_notes: the kind adds nothing to the prompt by itself (quote_notes words the prompt)")
-check(PN.overstated("The Supreme Court held that the petitioner must be produced within twenty-four hours.", ["quoted"]), "overstated: 'the Supreme Court held' about a quoted passage")
-check(not PN.overstated("The judgment quotes an older decision, which held that the petitioner must be produced within twenty-four hours.", ["quoted"]), "overstated: the answer already says it is quoted -> nothing")
+# ---- 5. attach: the backstop runs before the labels
+ANS2 = ("The Gauhati High Court in Herman Tirky @ Herman Orang v. The State of Assam (2013) said the evidence must be inconsistent with every hypothesis of innocence. "
+        "A passage inside paragraph 19 of Hongro Ngotan v. The State of AP (2024) appears to reproduce an earlier decision's reasoning and should not be treated as that court's holding.")
+HERMAN = res(1, "Herman Tirky @ Herman Orang v. The State of Assam", "2013-05-01", "The evidence must be inconsistent with every hypothesis of innocence.", "12")
+HONGRO = res(2, "Hongro Ngotan v. The State of AP", "2024-05-01", "The circumstances must form a complete chain.", "19")
+saved, saved_env = T.search, {k: os.environ.get(k) for k in ("SCI_SEARCH_MODE", "PASSAGE_NOTES")}
+T.search = lambda *a, **k: {"ok": True, "as_of": "2026-10-16", "results": [HERMAN, HONGRO]}
+os.environ["SCI_SEARCH_MODE"], os.environ["SCI_SEARCH_URL"] = "feed", "http://127.0.0.1:9"
+try:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        T.reset()
+        T.feed_block("circumstantial evidence")
+        r = T.attach("circumstantial evidence", {"state": "single_match", "response_text": ANS2})
+finally:
+    T.search = saved
+    for k, v in saved_env.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+check("Hongro" not in r["response_text"] and "inside paragraph" not in r["response_text"], "attach: the sentence about where a passage sits is gone from the finished answer")
+check(r["response_text"].startswith("The Gauhati High Court in Herman Tirky @ Herman Orang v. The State of Assam (2013) (from a wider search, not independently verified) said the evidence"), "attach: the remaining case still gets its label")
+check('QUOTE_TALK_DROPPED {"sentences": 1}' in out.getvalue(), "attach: one log line counts the sentences removed (no text)")
 
-
-def attach(answer, results=None, pn="on", mode="feed"):
-    found = {"ok": True, "as_of": "2026-10-16", "index_commit": "abc", "results": results or [SADHWI]}
-    saved, saved_env = T.search, {k: os.environ.get(k) for k in ("SCI_SEARCH_MODE", "PASSAGE_NOTES")}
-    T.search = lambda *a, **k: found
-    os.environ["SCI_SEARCH_MODE"], os.environ["SCI_SEARCH_URL"], os.environ["PASSAGE_NOTES"] = mode, "http://127.0.0.1:9", pn
-    try:
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            T.reset()
-            T.feed_block("unlawful detention without being produced before a magistrate")
-            G.reset_notes()
-            r = T.attach("unlawful detention without being produced before a magistrate", {"state": "single_match", "response_text": answer})
-        return r, G.pop_notes(), out.getvalue()
-    finally:
-        T.search = saved
-        for k, v in saved_env.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
-
-
-r1, n1, log1 = attach("The Supreme Court in Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011) held that the petitioner must be produced before a magistrate.")
-check(len(n1) == 1 and n1[0].startswith("Sadhwi Pragyna Singh Thakur v. State of Maharashtra: the passage we read is not the Court's own holding.") and "quoted from another decision or document" in n1[0], f"attach (PASSAGE_NOTES=on): the answer credits the Court with a quoted passage -> a notice ({n1})")
-r2, n2, _l = attach("Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011) quotes an older decision, which held that the petitioner must be produced before a magistrate.")
-check(n2 == [], "attach (PASSAGE_NOTES=on): the answer says it is a quotation -> no notice")
-r3, n3, _l = attach("The Supreme Court in Sadhwi Pragyna Singh Thakur v. State of Maharashtra (2011) held that the petitioner must be produced.", pn="off")
-check(n3 == [], "attach (PASSAGE_NOTES=off): no notice (that switch is the owner's), the page note and the prompt note are still there")
-check(r3["sci_related_judgments"][0]["paragraph"] == "25" and "inside paragraph 25" in r3["sci_related_judgments"][0]["passage_note"], "attach: the case the page lists carries paragraph 25 and the note")
-
-# ---- 5. the answer view, the export, the table
-def result_with(items):
-    return {"state": "single_match", "audience": "layman", "response_text": "Short answer.", "matches": [], "sci_related_judgments": items, "sci_fed": True, "sci_as_of": "2026-10-16"}
-
-
-view = V.build(result_with(cases))
-it0 = view["sci_related"]["items"][0]
-check(it0["paragraph"] == "25" and "inside paragraph 25" in it0["passage_note"], "view: the sources box gets paragraph 25 and the note")
-ENT = {"question": "My question", "view": view, "answer_id": "RA-1", "created_at": None, "audience": "layman"}
-doc = X.build_document([ENT])
-txt = X.all_text(doc)
-check("paragraph 25" in txt and "paragraph 8" not in txt and "inside paragraph 25 of the judgment" in txt, "export: the document says paragraph 25 and carries the note")
-pdf, info = X.export(doc, "pdf")
-dx, info2 = X.export(doc, "docx")
-check(info["ok"] and info2["ok"], f"export: the PDF and the Word file are proved complete ({info}, {info2})")
-tab = AT.build([], [], [], [dict(c, citation=None) for c in cases], lambda *a: {})
-md = AT.render_markdown(tab)[0][1]
-check("| 25 |" in md and "| 8 |" not in md and "Reading note:" in md and "inside paragraph 25" in md, "authorities table: paragraph 25 and the reading note")
-
-# ---- 6. the search page
+# ---- 6. the search page (no model)
 w = SS.search("detention magistrate", mode="wider", sci_fn=lambda t: {"ok": True, "as_of": "2026-10-16", "results": [SADHWI, ARNESH]})["wider"]
 i0, i1 = w["items"][0], w["items"][1]
 check(i0["paragraph"] == "25" and "inside paragraph 25" in i0["passage_note"] and "passage_note" not in i1 and i1["paragraph"] == "9", "search page: the paragraph the passage sits inside and the note; the other item is as before")

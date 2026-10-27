@@ -16,7 +16,7 @@ Used by sci_search_tier.feed_block (a "Note by code" line under the passage, and
 import os
 import re
 
-KINDS = ("lower_court", "lower_court_rejected", "one_judge", "submission", "quoted")      # "quoted" is not read from the words: the search service sends it (quote_notes.py)
+KINDS = ("lower_court", "lower_court_rejected", "one_judge", "submission")
 
 _LOWER_FORUM = (r"(?:High\s+Court|(?:Single|Division)\s+Bench(?:\s+of\s+the\s+High\s+Court)?|Full\s+Bench|Trial\s+Court|Sessions\s+(?:Judge|Court)|Special\s+(?:Judge|Court)|"
                 r"(?:Chief\s+Judicial\s+|Judicial\s+|Metropolitan\s+)?Magistrate|Tribunal|Appellate\s+(?:Court|Tribunal)|Courts?\s+below|(?:impugned|appellate)\s+(?:judgment|order))")
@@ -72,7 +72,6 @@ _PAGE = {
     "lower_court_rejected": "This passage reports what a lower court held and shows the Supreme Court finding that court wrong.",
     "one_judge": "This passage is one judge's own opinion (written in the first person), not necessarily the judgment of the whole bench.",
     "submission": "This passage records a party's submission, not the Court's decision.",
-    "quoted": "This passage is set out inside a paragraph of the judgment and may be quoted from another decision or document; it is not necessarily the Supreme Court's own holding.",
 }
 INSTRUCTION = ("\nA line starting \"Note by code\" under a passage states whose voice the passage is in. Follow it: never present a lower court's reasoning, a party's submission or one judge's separate opinion as what "
                "\"the Supreme Court held\", and when a note says a passage is one judge's opinion, do not call it the Court's.\n")
@@ -89,7 +88,6 @@ _PAGE_OTHER = {            # the same sentences for a passage of a High Court: "
     "lower_court_rejected": "This passage reports what a lower court held and shows this court finding that court wrong.",
     "one_judge": _PAGE["one_judge"],
     "submission": "This passage records a party's submission, not the court's decision.",
-    "quoted": "This passage is set out inside a paragraph of the judgment and may be quoted from another decision or document; it is not necessarily this court's own holding.",
 }
 _SC_COURT = "Supreme Court of India"
 
@@ -149,7 +147,7 @@ def overstated(window, kind_list, tail=None):
     'Naidu says that ...'), although the passage read for that case is a lower court's view (not rejected by this Court), one judge's opinion, or a submission -- and the sentence itself does not already say whose
     voice it is."""
     try:
-        if not any(k in ("lower_court", "one_judge", "submission", "quoted") for k in kind_list or []):
+        if not any(k in ("lower_court", "one_judge", "submission") for k in kind_list or []):
             return False
         w = _flat(window or "")
         if _HEDGE.search(w):

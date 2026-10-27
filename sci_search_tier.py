@@ -137,8 +137,9 @@ FEED_INSTRUCTION = (
     "A passage can be a QUOTATION from another, earlier decision that the judgment it is listed under reproduces, and it may start in the middle of the extract without naming that decision. Treat a passage as a probable "
     "quotation when the facts, dates, names or places it describes cannot be those of the case it is listed under (for example a 1968 arrest described in a judgment of 2011, or a petitioner who is plainly another person), "
     "or when it is in quotation marks or introduced by words such as \"observed as under\". Then: (1) never say that the listed case decided, held or recorded it, and never use it as that case's authority; "
-    "(2) never give its paragraph number, which belongs to the quoted decision and not to the listed case; (3) build no ground and no For/Against point on it; (4) if you mention it at all, say that it is a passage "
-    "quoted in the listed case from an earlier decision that the passage does not name, and that the original must be checked. A quoted section of a statute is not a problem; this rule is about quoted decisions. "
+    "(2) never give its paragraph number, which belongs to the quoted decision and not to the listed case; (3) build no ground and no For/Against point on it; (4) do not mention it in your answer, and do not mention that it is a "
+    "quotation: leave it out as if you had not seen it, and never write a sentence about where it sits, which earlier decision it may reproduce, or that it needs checking (the reader's page carries that caution; such a sentence only breaks the flow of the argument). "
+    "If another passage of the same case states the point in the court's own words, you may use that one. A quoted section of a statute is not a problem; this rule is about quoted decisions. "
     "Use a passage only for the question it actually decides: a passage about delay in starting a prosecution does not answer a question about delay in a trial that is already running, and a passage about one kind of bail condition says nothing about another. "
     "Put words in quotation marks ONLY when you copy them exactly, letter for letter, from a passage. If you shorten, join, reorder or reword anything (for example turning \"neither X nor Y would be justified\" into \"would not be justified\"), write it in your own words WITHOUT quotation marks. "
     "A passage that ends in \"...\" is cut off: do not complete it from memory. "
@@ -851,10 +852,6 @@ def _named_register(text):
         return {"lines": [], "clauses": [], "overruling": []}
 
 
-QUOTE_INSTRUCTION = ("\nA \"Note by code\" that says a passage's number is NOT a paragraph number of its judgment is correct (the search service read the judgment's numbering): the passage sits inside the paragraph the note names. "
-                     "Refer to that paragraph only, never to the number the passage starts with, and treat the words as possibly quoted from another decision or document, as the note says.\n")
-
-
 def _library_skips(exclude):
     """`exclude`: case names (str) or (name, year) pairs of the reviewed-library judgments that already reach this answer, as a tuple that can be a cache key; names that are empty are dropped."""
     out = []
@@ -897,6 +894,7 @@ def feed_block(question, exclude_names=None):
     judgment that quotes or discusses it): the passage carries the REGISTER FACT line and the case that corrected it is added. The search runs once per question and is reused by the retry loop.
     Never raises."""
     try:
+        import quote_notes
         if mode() != "feed" or not question:
             return ""
         skips = _library_skips(exclude_names)                         # judgments the answer already has from the reviewed library: not handed over again, never labelled "wider search" (FOLLOW_UPS 2cm)
@@ -913,6 +911,11 @@ def feed_block(question, exclude_names=None):
             gone = {id(r) for r in in_library}
             res = [r for r in res if id(r) not in gone]
             print("SCI_FEED_LIBRARY " + json.dumps({"left_out": sorted({r["case_name"][:100] for r in in_library})}), flush=True)
+        flagged_q = [r for r in res if quote_notes.clean(r.get("quote"))]
+        if flagged_q:                                                  # SCI_QUOTES=on at the service: the passage's number is not the judgment's own (a quoted decision, an order, a statute section, a list, a wrapped citation): it is not handed to the model
+            gone_q = {id(r) for r in flagged_q}                        # (FOLLOW_UPS 2cn: told to mention it, the model wrote sentences about where it sits and what it may quote). Another passage of the same case may take its place.
+            res = [r for r in res if id(r) not in gone_q]
+            print("SCI_FEED_QUOTED " + json.dumps({"left_out": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "within": r["quote"].get("within") if isinstance(r.get("quote"), dict) else None} for r in flagged_q]}), flush=True)
         res, left_out = _statute_filter(res)                              # a passage that cites the section the person named, of ANOTHER statute (owner's staging test 2026-10-19)
         if left_out:
             print("SCI_FEED_FILTER " + json.dumps({"dropped": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "why": why[:160]} for r, why in left_out]}), flush=True)
@@ -972,16 +975,13 @@ def feed_block(question, exclude_names=None):
         plain, room = _split()
         chosen = plain[:room] + correcting + flagged
         blocks, cases = [], []
-        any_quoted = False
         chosen_courts = courts_of([r for r, _f in chosen])
         any_other = any(c != SC_COURT for c in chosen_courts)           # only then does a heading name its court; an all-Supreme-Court feed is worded exactly as before
         for r, f in chosen:
             year = r["date"][:4] if r.get("date") else None
             court = court_of(r)
-            import quote_notes
-            q = quote_notes.clean(r.get("quote"))                      # the search service (SCI_QUOTES=on) found the passage's number to be outside the judgment's own sequence: it sits inside paragraph q["within"]
             head = (f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", {court}" if any_other else "")
-                    + (quote_notes.head_phrase(q) if q else (f", paragraph {r['paragraph']}" if r.get("paragraph") else "")) + "]")
+                    + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]")
             body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
             voices = []
             try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
@@ -991,9 +991,6 @@ def feed_block(question, exclude_names=None):
                     body += passage_notes.prompt_note(voices)
             except Exception:  # noqa: BLE001
                 voices = []
-            if q:
-                body += quote_notes.prompt_note(q, r.get("text"))
-                any_quoted = True
             facts = ""
             try:
                 if court != SC_COURT:                                 # the register is about Supreme Court decisions (see register_hooks.result_flags)
@@ -1010,10 +1007,9 @@ def feed_block(question, exclude_names=None):
             if men:                                                    # the passage names a case on the register: the fact rides with the passage
                 facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
-            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": (q["within"] if q else r.get("paragraph")), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
+            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
                           "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
-                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices + (["quoted"] if q else []),
-                          "passage_note": (" ".join(x for x in ((passage_notes.page_note(voices, court) if voices else ""), (quote_notes.page_note(q) if q else "")) if x) or None)})
+                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)})
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
@@ -1026,8 +1022,6 @@ def feed_block(question, exclude_names=None):
             extra = passage_notes.INSTRUCTION if passage_notes.enabled() else ""
         except Exception:  # noqa: BLE001
             extra = ""
-        if any_quoted:
-            extra += QUOTE_INSTRUCTION
         _LOCAL.block = feed_instruction(chosen_courts) + extra + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
@@ -1057,6 +1051,16 @@ def attach(question, result, background=True):
             if cases:
                 result["sci_related_judgments"] = cases
                 result["sci_fed"] = True
+            try:                                                      # a sentence that names a wider-search case and talks about where a passage sits or what it may quote is taken out (quote_notes.py, FOLLOW_UPS 2cn)
+                import quote_notes
+                names = [c["case_name"] for c in cases if c.get("case_name")]
+                if names and result.get("response_text"):
+                    text2, n_talk = quote_notes.drop_provenance_sentences(result["response_text"], names, lambda t, nm: _locate(t, nm, []))
+                    if n_talk:
+                        result["response_text"] = text2
+                        print("QUOTE_TALK_DROPPED " + json.dumps({"sentences": n_talk}), flush=True)
+            except Exception:  # noqa: BLE001
+                pass
             if cases or pilot:
                 result["response_text"] = label_fed_cases(result.get("response_text") or "", list(cases) + pilot)      # every wider-search or pilot case named in the answer is tagged as unverified, whatever the model wrote
             try:                                                      # a High Court passage that the answer's own sentence calls a Supreme Court one: a notice and a log line (no switch: it can only fire when a passage of another court was fed)
