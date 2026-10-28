@@ -79,6 +79,8 @@ for a, b, want, why in [
     ("M.C.D v. State of Delhi", "M.C.D. versus STATE OF DELHI AND ANR.", True, "a body known by its letters (three or more) is matched on them"),
     ("C.B.I v. Rajendra Prasad Agrawalla", "CENTRAL BUREAU OF INVESTIGATION versus RAJENDRA PRASAD AGRAWALLA", False, "...but not expanded to its full name (nothing here knows what CBI stands for)"),
     ("A.B. v. State of Bihar", "A.B. versus STATE OF BIHAR", False, "two letters are no name"),
+    ("Suresh Nanda v. C.B.I", "SURESH NANDA versus C.B.I.", True, "a second party known by its letters is compared on them"),
+    ("Suresh Nanda v. C.B.I", "SURESH NANDA versus N.I.A.", False, "...and another body is not the same one"),
 ]:
     check(same(a, b) is want, f"{'same' if want else 'different'}: {why}  [{a} | {b}]")
 check(NM.split_versus("Dr. V. K. Saxena v. State of U.P.")[0] == "Dr. V. K. Saxena" and NM.split_versus("Anil V. Bansal")[1] == "Bansal" and NM.split_versus("A V. K. Singh") == ["A V. K. Singh"], "split_versus: lowercase v first; a capital V. only when no initial follows")

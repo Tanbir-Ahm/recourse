@@ -134,7 +134,10 @@ def _bag(raw):
     best = set()
     for v in _variants(raw):
         text = _canon(_plain(v).replace(",", " ").replace("@", " "))
-        words = {t for t in text.split() if t not in _DROP and t not in _NOISE_WORDS and not (len(t) == 1 and t.isalpha())}
+        toks = [t for t in text.split() if t not in _DROP and t not in _NOISE_WORDS]
+        words = {t for t in toks if not (len(t) == 1 and t.isalpha())}
+        if not words and sum(1 for t in toks if len(t) == 1 and t.isalpha()) >= 3:          # C.B.I., N.I.A.: a body known by its letters (as in _segments)
+            words = {"".join(t for t in toks if len(t) == 1 and t.isalpha())}
         if len(words) > len(best):
             best = words
     return (frozenset(w for w in best if w not in _GENERIC), frozenset(w for w in best if w in _GENERIC))
