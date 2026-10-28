@@ -1,8 +1,10 @@
 """grounding_checks.py -- two checks on a finished answer, run by code, not by the model.
 
   1. Citation check: every case the answer names ("X v. Y") must be in the material the model was given (the question, the retrieved passages, the wider-search passages, the related-judgment list).
-     A case that is not there came from the model's memory, which the prompt forbids. Each one is also looked up in the site's list of Supreme Court judgments (case_lookup) so the notice can say
-     "real but not among our sources" or "not found in our list". The model may mention a case that a passage itself names (a passage that quotes Ramachandra Rao makes Ramachandra Rao part of the material).
+     A case that is not there came from the model's memory, which the prompt forbids. Each one is also looked up in the lists of judgments we hold so the notice can say
+     "real but not among our sources" or "not found in our list": the site's list of Supreme Court judgments (case_lookup) and, with CHECKER_LIST=wide (checker_list.py, 2026-10-28), also the judgments of the
+     wide search index (Supreme Court and Gauhati High Court) and of the library, with a name match that tolerates spelling variants (name_match.py). The model may mention a case that a passage itself names
+     (a passage that quotes Ramachandra Rao makes Ramachandra Rao part of the material).
   2. Quote check: words in quotation marks (five words or more) must appear in the material, apart from small differences of spacing, punctuation and case. "..." and [bracketed] insertions split a quotation
      into pieces and each piece is checked. A piece that is not an exact copy may still pass as a near match (95% of the letters), but only if it agrees with the material on every word that decides a legal
      meaning: not/no/never, may/shall/must, unless/except/only, and/or, all/any/every, and every number (see _FLIP; added 2026-10-18, because one such word is under 5% of the letters of a long quotation).
@@ -175,8 +177,8 @@ def _tokens(party):
     return {t for t in norm(party).split() if t not in _STOP}
 
 
-def sc_list_has(name):
-    """True / False / None (could not look). True only when a title in the Supreme Court list has the same first party and a similar second party; lookalikes are not enough."""
+def _sc_title_list_has(name):
+    """The Supreme Court title list alone, word for word (the original lookup; CHECKER_LIST=title uses only this)."""
     try:
         import case_lookup
         p1, p2 = _parties(name)
@@ -194,8 +196,36 @@ def sc_list_has(name):
         return None
 
 
+def list_lookup(name):
+    """(True | False | None, where). True only when a judgment in the lists we hold has the same parties; where = {'list', 'court', 'date', 'title'} for a hit found by the wider lists, else None.
+    CHECKER_LIST=title (the default): the Supreme Court title list alone, word for word, exactly as before. CHECKER_LIST=wide: that, then checker_list (the title list read with spelling tolerance, the
+    Supreme Court and Gauhati High Court judgments of the wide search index, the reviewed library). False means looked in every list and found nothing; None means no list could be read."""
+    old = _sc_title_list_has(name)
+    if old is True:
+        return True, {"list": "title list", "exact": True}
+    try:
+        import checker_list
+        if checker_list.mode() != "wide":
+            return old, None
+        r = checker_list.lookup(name)
+    except Exception:  # noqa: BLE001
+        return old, None
+    if r is None:
+        return old, None
+    if r.get("found"):
+        return True, {k: r.get(k) for k in ("list", "court", "date", "title")}
+    return (False if old is False else None), None
+
+
+def sc_list_has(name):
+    """True / False / None (could not look): is there a judgment with these parties in the lists we hold? See list_lookup. With CHECKER_LIST unset: only the Supreme Court title list, and only
+    when a title has the same first party and a similar second party; lookalikes are not enough."""
+    return list_lookup(name)[0]
+
+
 def check_cases(answer, material, exists_fn=sc_list_has):
-    """[{'name', 'status'}] for each case named in the answer that is not in the material. status: 'real_not_supplied' (in the Supreme Court list), 'not_found' (not in it), 'unknown' (could not look)."""
+    """[{'name', 'status'}] for each case named in the answer that is not in the material. status: 'real_not_supplied' (in a list we hold: the Supreme Court title list, and with CHECKER_LIST=wide the
+    wide index's Supreme Court and Gauhati High Court judgments and the library), 'not_found' (in none), 'unknown' (could not look). A hit found by the wider lists also carries 'listed_in' (list, court, date), for the log."""
     out, seen = [], set()
     try:
         mat = _nospace(material)
@@ -206,8 +236,15 @@ def check_cases(answer, material, exists_fn=sc_list_has):
             seen.add(key)
             if supported_in_material(name, mat):
                 continue
-            ex = exists_fn(name) if exists_fn else None
-            out.append({"name": name, "status": "real_not_supplied" if ex is True else ("not_found" if ex is False else "unknown")})
+            where = None
+            if exists_fn is sc_list_has:
+                ex, where = list_lookup(name)
+            else:
+                ex = exists_fn(name) if exists_fn else None
+            item = {"name": name, "status": "real_not_supplied" if ex is True else ("not_found" if ex is False else "unknown")}
+            if where and where.get("court"):
+                item["listed_in"] = where
+            out.append(item)
     except Exception:  # noqa: BLE001
         return []
     return out
@@ -324,11 +361,20 @@ def check_quotes(answer, material, question=None):
 
 
 # ---- wording ----
+def _wide():
+    try:
+        import checker_list
+        return checker_list.mode() == "wide"
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def notices(cases, quotes):
     out = []
     for c in cases:
         if c["status"] == "not_found":
-            out.append(f"The case “{c['name']}” is named in this answer, but it is not among the sources we read for it and we could not find it in our list of Supreme Court judgments. Please do not rely on it.")
+            lists = "our lists of judgments" if _wide() else "our list of Supreme Court judgments"
+            out.append(f"The case “{c['name']}” is named in this answer, but it is not among the sources we read for it and we could not find it in {lists}. Please do not rely on it.")
         else:
             out.append(f"The case “{c['name']}” is named in this answer, but it is not among the sources we read for it. Please do not rely on it unless you have read the judgment yourself.")
     for q in quotes:
