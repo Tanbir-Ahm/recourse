@@ -970,6 +970,26 @@ def feed_block(question, exclude_names=None):
             if f.get("overruling"):
                 _controlling(f["overruling"])
 
+        def _pointer(r, f):
+            """The authority facts of a result the search service marks as one of the court's own pointers (authority_notes.py), else None. A case that the Overruled Register or a warning card has a word on is never
+            presented as 'read this first': it is shown as the register wants it (last, with its fact and the case that corrected it)."""
+            try:
+                import authority_notes
+                if f.get("source") in ("register", "card"):
+                    return None
+                x = authority_notes.facts(r)
+                return x if authority_notes.is_pointer(x) else None
+            except Exception:  # noqa: BLE001
+                return None
+
+        def _limit(r, f):
+            """How many characters of a passage the answer model sees (and that the register scan reads): FEED_PASSAGE_CHARS, or longer for a pointer passage."""
+            try:
+                import authority_notes
+                return max(FEED_PASSAGE_CHARS, authority_notes.PASSAGE_CHARS) if _pointer(r, f) else FEED_PASSAGE_CHARS
+            except Exception:  # noqa: BLE001
+                return FEED_PASSAGE_CHARS
+
         def _split():
             special = {p[0]["doc"] for p in flagged} | {p[0]["doc"] for p in correcting}
             return [p for p in pairs if p[0]["doc"] not in special], max(FEED_MAX_CASES - len(flagged) - len(correcting), 2)
@@ -977,7 +997,7 @@ def feed_block(question, exclude_names=None):
         plain, room = _split()
         named, n_fetch, tried = {}, 0, set()                          # doc -> the register cases its passage names; names already looked up by a second search
         for r, f in plain[:room]:
-            men = _named_register(_cut(r.get("text") or "", FEED_PASSAGE_CHARS))
+            men = _named_register(_cut(r.get("text") or "", _limit(r, f)))
             if not men["lines"]:
                 continue
             named[r["doc"]] = men
@@ -991,7 +1011,7 @@ def feed_block(question, exclude_names=None):
                 _controlling(name)
         plain, room = _split()
         chosen = plain[:room] + correcting + flagged
-        blocks, cases = [], []
+        blocks, cases, pointers = [], [], []
         chosen_courts = courts_of([r for r, _f in chosen])
         any_other = any(c != SC_COURT for c in chosen_courts)           # only then does a heading name its court; an all-Supreme-Court feed is worded exactly as before
         for r, f in chosen:
@@ -999,7 +1019,10 @@ def feed_block(question, exclude_names=None):
             court = court_of(r)
             head = (f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", {court}" if any_other else "")
                     + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]")
-            body = _cut(r.get("text") or "", FEED_PASSAGE_CHARS)
+            body = _cut(r.get("text") or "", _limit(r, f))
+            fx = _pointer(r, f)                                       # the service's authority facts (SCI_AUTHORITY=on there): only a pointer passage gets a line, a longer cut and a page note
+            if fx:
+                import authority_notes
             voices = []
             try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
                 import passage_notes
@@ -1008,6 +1031,8 @@ def feed_block(question, exclude_names=None):
                     body += passage_notes.prompt_note(voices)
             except Exception:  # noqa: BLE001
                 voices = []
+            if fx:
+                body += authority_notes.prompt_line(fx)
             facts = ""
             try:
                 if court != SC_COURT:                                 # the register is about Supreme Court decisions (see register_hooks.result_flags)
@@ -1024,9 +1049,14 @@ def feed_block(question, exclude_names=None):
             if men:                                                    # the passage names a case on the register: the fact rides with the passage
                 facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
-            cases.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
-                          "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
-                          "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)})
+            case = {"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
+                    "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
+                    "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)}
+            if fx:                                                     # a pointer passage: the page says why it is here, beside any note on whose voice it is in
+                case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + authority_notes.page_note(fx)
+                case["authority"] = {"named_by_retrieved": fx["retrieved_by"], "retrieved": fx["retrieved"], "named_by_collection": fx["collection"]}
+                pointers.append(authority_notes.log_item(r["case_name"], fx))
+            cases.append(case)
         if not blocks:
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
@@ -1039,6 +1069,10 @@ def feed_block(question, exclude_names=None):
             extra = passage_notes.INSTRUCTION if passage_notes.enabled() else ""
         except Exception:  # noqa: BLE001
             extra = ""
+        if pointers:                                                   # at least one passage is from a judgment that the retrieved judgments themselves name: say how to use that line
+            import authority_notes
+            extra += authority_notes.INSTRUCTION
+            print("SCI_FEED_AUTHORITY " + json.dumps({"pointers": pointers}), flush=True)
         _LOCAL.block = feed_instruction(chosen_courts) + extra + "\n\n".join(blocks) + "\n"
         _LOCAL.cases = cases
         return _LOCAL.block
