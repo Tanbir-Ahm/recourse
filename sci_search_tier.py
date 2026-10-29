@@ -296,12 +296,28 @@ def _same_case_loose(a, b):
 
 
 def _anchor_case_names(question):
-    """Cases whose verbatim excerpts (excerpt_anchors.py, ANCHORS=on) go into the prompt for this question: the wider search does not hand the same case over a second time."""
+    """Cases whose verbatim excerpts (excerpt_anchors.py, ANCHORS=on or LANDMARKS=on) go into the prompt for this question: the wider search does not hand the same case over a second time."""
     try:
         import excerpt_anchors
         return [a["case_name"] for a in excerpt_anchors.selected(question)]
     except Exception:  # noqa: BLE001
         return []
+
+
+def _anchor_doc_ids(question):
+    """The court-archive ids (the number in https://api.sci.gov.in/jonew/judis/<id>.pdf) of those same cases, which the search service also reports as "doc". Added 2026-10-29 with the landmark anchors: the index
+    spells "Sharad Birdhi Chand Sarda" and "Hanumant v. The State of Madhya Pradesh.Raojibhaithe State of Madhya Pra", and a name comparison would not know them for the anchors' own names, so the same
+    judgment would reach the model twice, the second time as an unverified "wider search" case."""
+    try:
+        import excerpt_anchors
+        out = set()
+        for a in excerpt_anchors.selected(question):
+            m = re.search(r"/judis/(\d+)\.pdf", a.get("link") or "")
+            if m:
+                out.add(int(m.group(1)))
+        return out
+    except Exception:  # noqa: BLE001
+        return set()
 
 
 _GENERIC_FIRST = re.compile(r"^(?:the\s+)?(?:state|union|commissioner|collector|central|govt|government)\b", re.I)
@@ -921,9 +937,10 @@ def feed_block(question, exclude_names=None):
             print("SCI_FEED_FILTER " + json.dumps({"dropped": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "why": why[:160]} for r, why in left_out]}), flush=True)
         flags = _flags(res)
         anchor_names = _anchor_case_names(question)
+        anchor_docs = _anchor_doc_ids(question)
         by_doc = {}
         for r, f in zip(res, flags):
-            if any(_same_case_loose(r["case_name"], n) for n in anchor_names):
+            if r.get("doc") in anchor_docs or any(_same_case_loose(r["case_name"], n) for n in anchor_names):
                 continue                                              # its verbatim excerpt is already in the prompt
             by_doc.setdefault(r["doc"], (r, f))                       # the best-ranked passage of each judgment
         pairs = list(by_doc.values())

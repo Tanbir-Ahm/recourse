@@ -23,6 +23,7 @@ def check(cond, msg):
 
 Q_DELAY = "My trial has been going on for 9 years and the prosecution keeps asking for time. Can the case be closed because of the delay?"
 os.environ.pop("ANCHORS", None)
+os.environ.pop("LANDMARKS", None)        # the landmark topics have their own switch and their own test file (test_landmark_anchors.py); this file is about the trial-delay anchors
 
 # --- the switch: off by default, nothing changes
 check(E.mode() == "off" and E.selected(Q_DELAY) == [] and E.block(Q_DELAY) == "" and E.fed() == [], "off is the default: no anchor is selected and the prompt gets nothing")
@@ -35,8 +36,8 @@ for v in ("off", "banana", ""):
 os.environ["ANCHORS"] = "on"
 
 # --- the data
-anchors = E.load()
-check(len(anchors) == 2 and {a["id"] for a in anchors} == {"trial_delay_ramachandra_rao", "trial_delay_hussainara_khatoon_i"}, f"two anchors loaded ({[a['id'] for a in anchors]})")
+anchors = [a for a in E.load() if a["topic"] == "trial_delay"]          # the data file also holds the landmark topics since 2026-10-29
+check(len(anchors) == 2 and {a["id"] for a in anchors} == {"trial_delay_ramachandra_rao", "trial_delay_hussainara_khatoon_i"}, f"two trial-delay anchors loaded ({[a['id'] for a in anchors]})")
 check(all((a.get("check") or {}).get("all_found") and a["status"] in ("machine_checked", "reviewer_confirmed") and a.get("link", "").startswith("https://api.sci.gov.in/") for a in anchors), "each has a passing check against the court's PDF, a status and the official link")
 check(all(ex["segments"] and all(s.strip() for s in ex["segments"]) for a in anchors for ex in a["excerpts"]), "no empty excerpt or segment")
 check(all(a["status"] == "machine_checked" and not a.get("confirmed_by") for a in anchors), "none is marked as confirmed by a person yet")

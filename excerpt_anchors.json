@@ -1,6 +1,6 @@
 {
  "schema": "recourse-anchors-1",
- "exported_on": "2026-10-14",
+ "exported_on": "2026-10-29",
  "anchors": [
   {
    "id": "trial_delay_ramachandra_rao",
@@ -67,7 +67,7 @@
    "confirmed_on": null,
    "note_for_reviewer": "(a) Whether CrPC Sections 309, 311, 258 and 482 now read as BNSS Sections 346, 348, 281 and 528 is taken from the site's own concordance table, not from the judgment. (b) The judgment's text spells the Antulay respondent \"R.S. Nayan\"; we show the case as \"A.R. Antulay v. R.S. Nayak, (1992) 1 SCC 225\" (the citation is the judgment's own). Please confirm the name. (c) Antulay's and Kartar Singh's own judgments are not in our collection, so their words reach the site only as this Bench quotes them.",
    "check": {
-    "checked_on": "2026-10-14",
+    "checked_on": "2026-10-29",
     "source": "Supreme Court archive PDF",
     "url": "https://api.sci.gov.in/jonew/judis/18409.pdf",
     "sha256": "d7dca40832c33e802d3b816e6977c86699ca14a0ea079040e34d61e72b9203fb",
@@ -130,7 +130,7 @@
    "confirmed_on": null,
    "note_for_reviewer": null,
    "check": {
-    "checked_on": "2026-10-14",
+    "checked_on": "2026-10-29",
     "source": "Supreme Court archive PDF",
     "url": "https://api.sci.gov.in/jonew/judis/4873.pdf",
     "sha256": "ddafc8c632af169df48be43282a90268602512035d034a6eefefe31ddc9f3578",
@@ -147,6 +147,279 @@
     ]
    },
    "bench_source": "the archive PDF's header"
+  },
+  {
+   "id": "circumstantial_evidence_sharad_sarda",
+   "topic": "circumstantial_evidence",
+   "case_name": "Sharad Birdhichand Sarda v. State of Maharashtra",
+   "aliases": [
+    "Sharad Sarda"
+   ],
+   "year": 1984,
+   "date": "1984-07-17",
+   "court": "Supreme Court of India",
+   "bench_note": "a Bench of three judges: Fazal Ali, Varadarajan and Mukharji JJ.",
+   "citation": "(1984) 4 SCC 116",
+   "citation_source": "the archive PDF's header (1984 SCC (4) 116; 1984 AIR 1622; 1985 SCR (1) 88) and the many later Supreme Court judgments that cite it as (1984) 4 SCC 116",
+   "paragraph": null,
+   "paragraph_source": null,
+   "link": "https://api.sci.gov.in/jonew/judis/9517.pdf",
+   "verify_options": {
+    "ignore_page_numbers": true,
+    "ignore_footnote_marks": true,
+    "join_hyphens": true
+   },
+   "also_in": [
+    {
+     "doc": 39326,
+     "name": "Munna Kumar Upadhyaya @ Munna Upadhyaya v. State of Andhra Pradesh (2012), which quotes paragraphs 152 to 154",
+     "must_contain": [
+      "(SCC pp. 184- 85, paras 152-54)",
+      "152. Before discussing the cases relied upon by the High Court we would like to cite a few decisions on the nature, character and essential proof required in a criminal case which rests on circumstantial evidence alone"
+     ]
+    },
+    {
+     "doc": 28313,
+     "name": "Vikramjit Singh @ Vicky v. State of Punjab (2006), which quotes paragraph 153",
+     "must_contain": [
+      "153. A close analysis of this decision would show that the following conditions must be fulfilled before a case against an accused can be said to be fully established",
+      "there must be a chain of evidence so complete as not to leave any reasonable ground for the conclusion consistent with the innocence of the accused and must show that in all human probability the act must have been done by the accused"
+     ]
+    },
+    {
+     "doc": 1000252019,
+     "name": "Smt. Gargi v. State of Haryana (2019), which quotes paragraph 154",
+     "must_contain": [
+      "154. These five golden principles, if we may say so, constitute the panchsheel of the proof of a case based on circumstantial evidence"
+     ]
+    },
+    {
+     "doc": 36413,
+     "name": "Nanhar v. State of Haryana (2010), which quotes paragraphs 151 and 161",
+     "must_contain": [
+      "151. It is well settled that the prosecution must stand or fall on its own legs and it cannot derive any strength from the weakness of the defence",
+      "161. This Court, therefore, has in no way departed from the five conditions laid down in Hanumant's case"
+     ]
+    },
+    {
+     "doc": 1000253189,
+     "name": "Parubai v. State of Maharashtra (2021), which quotes paragraphs 159 and 160",
+     "must_contain": [
+      "159. It will be seen that this Court while taking into account the absence of explanation or a false explanation",
+      "160. If these conditions are fulfilled only then a court can use a false explanation or a false defence as an additional link to lend an assurance to the court and not otherwise"
+     ]
+    },
+    {
+     "doc": 34626,
+     "name": "Subramaniam v. State of Tamil Nadu (2009), which quotes paragraph 163",
+     "must_contain": [
+      "163. We then pass on to another important point which seems to have been completely missed by the High Court",
+      "two possibilities are available or open, one which goes in favour of the prosecution and the other which benefits an accused, the accused is undoubtedly entitled to the benefit of doubt"
+     ]
+    },
+    {
+     "doc": 1000254368,
+     "name": "Munikrishna @ Krishna v. State by Ulsoor PS (2022), which quotes paragraph 179",
+     "must_contain": [
+      "179. We can fully understand that though the case superficially viewed bears an ugly look so as to prima facie shock the conscience of any court yet suspicion, however great it may be, cannot take the place of legal proof"
+     ]
+    },
+    {
+     "doc": 28409,
+     "name": "Aloke Nath Dutta v. State of West Bengal (2006), which quotes paragraphs 153 and 180",
+     "must_contain": [
+      "180. It must be recalled that the well established rule of criminal justice is that"
+     ]
+    }
+   ],
+   "excerpts": [
+    {
+     "label": "The five conditions the prosecution must satisfy where its case rests on circumstantial evidence alone (the Court calls them \"the panchsheel of the proof of a case based on circumstantial evidence\")",
+     "paragraph": "152 to 154",
+     "paragraph_source": "later Supreme Court judgments quote these passages with those numbers: \"152. Before discussing the cases relied upon by the High Court ...\", \"153. A close analysis of this decision would show ...\", \"154. These five golden principles, if we may say so, constitute the panchsheel ...\" (see the also_in records); the archive PDF carries the printed report's page numbers, not the SCC paragraph numbers",
+     "note": "The conditions are drawn by this Bench from the judgment of Mahajan J. in Hanumant v. State of Madhya Pradesh (1952), which the Bench calls \"the most fundamental and basic decision of this Court\" on the subject; the Bench also quotes Shivaji Sahebrao Bobade (1973) for the words \"must be\" and \"may be\".",
+     "segments": [
+      "The most fundamental and basic decision of this Court is Hanumant v. The State of Madhya Pradesh.",
+      "A close analysis of this decision would show that the following conditions must be fulfilled before a case against an accused can be said to be fully established: (1) the circumstances from which the conclusion of guilt is to be drawn should be fully established. It may be noted here that this Court indicated that the circumstances concerned ’must or should’ and not ’may be’ established. There is not only a grammatical but a legal distinction between ’may be proved’ and ’must be or should be proved’ as was held by this Court in Shivaji Sahabrao Bobade & Anr. v. State of Maharashtra where the following observations were made: “Certainly, it is a primary principle that the accused must be and not merely may be guilty before a court can convict and the mental distance between ’may be’ and ’must be’ is long and divides vague conjectures from sure conclusions.” (2) The facts so established should be consistent only with the hypothesis of the guilt of the accused, that is to say, they should not be explainable on any other hypothesis except that the accused is guilty, (3) the circumstances should be of a conclusive nature and tendency. (4) they should exclude every possible hypothesis except the one to be proved, and (5) there must be a chain of evidence so complete as not to leave any reasonable ground for the conclusion consistent with the innocence of the accused and must show that in all human probability the act must have been done by the accused.",
+      "These five golden principles, if we may say so, constitute the panchsheel of the proof of a case based on circumstantial evidence."
+     ]
+    },
+    {
+     "label": "The prosecution must stand or fall on its own legs; a false defence or a false explanation cannot fill a gap in its chain",
+     "paragraph": "151, 159 to 161",
+     "paragraph_source": "later Supreme Court judgments quote these passages with those numbers: \"151. It is well settled that the prosecution must stand or fall on its own legs ...\", \"159. It will be seen that this Court while taking into account the absence of explanation ...\", \"160. If these conditions are fulfilled only then ...\", \"161. This Court, therefore, has in no way departed ...\" (see the also_in records)",
+     "note": "The last passage of paragraph 159 and paragraph 160 are joined here as the archive copy prints them; the Bench says the three conditions apply to the way a false explanation may be used once the chain is complete.",
+     "segments": [
+      "It is well settled that the prosecution must stand or fall on its own legs and it cannot derive any strength from the weakness of the defence. This is trite law and no decision has taken a contrary view.",
+      "before a false explanation can be used as additional link, the following essential conditions must be satisfied: (1) various links in the chain of evidence led by the prosecution have been satisfactorily proved. (2) the said circumstance point to the guilt of the accused with reasonable definiteness, and (3) the circumstance is in proximity to the time and situation. If these conditions are fulfilled only then a court can use a false explanation or a false defence as an additional link to lend an assurance to the court and not otherwise.",
+      "There is a vital difference between an incomplete chain of circumstances and a circumstance which, after the chain is complete, is added to it merely to reinforce the conclusion of the court. Where the prosecution is unable to prove any of the essential principles laid down in Hanumant’s case, the High Court cannot supply the weakness or the lacuna by taking aid of or recourse to a false defence or a false plea."
+     ]
+    },
+    {
+     "label": "Where the evidence leaves two views open, the accused is entitled to the benefit of doubt",
+     "paragraph": "163",
+     "paragraph_source": "a later Supreme Court judgment quotes it as \"163. We then pass on to another important point which seems to have been completely missed by the High Court. It is well settled that where on the evidence two possibilities are available ...\" (see the also_in records)",
+     "segments": [
+      "It is well settled that where on the evidence two possibilities are available or open, one which goes in favour of the prosecution and the other which benefits an accused, the accused is undoubtedly entitled to the benefit of doubt."
+     ]
+    },
+    {
+     "label": "Suspicion, however great, is not legal proof",
+     "paragraph": "179 and 180",
+     "paragraph_source": "later Supreme Court judgments quote these passages as \"179. We can fully understand that though the case superficially viewed bears an ugly look ...\" and \"180. It must be recalled that the well established rule of criminal justice is that ...\" (see the also_in records)",
+     "segments": [
+      "We can fully understand that though the case superficially viewed bears an ugly look so as to prima facie shock the conscience of any Court yet suspicion, however great it may be, cannot take the place of legal proof. A moral conviction however strong or genuine cannot amount to a legal conviction supportable in law.",
+      "It must be recalled that the well established rule of criminal justice is that ’fouler the crime higher the proof’."
+     ]
+    }
+   ],
+   "status": "machine_checked",
+   "confirmed_by": null,
+   "confirmed_on": null,
+   "note_for_reviewer": "(a) The paragraph numbers are the SCC report's; the archive PDF has the SCR report's page numbers instead, so each number is taken from later Supreme Court judgments that quote the passage with it (see 'also_in'). (b) The case name is shown as the reports and later judgments write it (\"Sharad Birdhichand Sarda\"); the archive PDF's header writes \"Sharad Birdhi Chand Sarda\". (c) Paragraph 151 contains a further sentence (\"What some cases have held is only this: where various links in a chain are in themselves complete than a false plea ...\") that is left out because the printed text reads \"than\" where \"then\" is meant; nothing else is left out within the passages quoted. (d) We have NOT included later three-judge or larger Bench decisions on circumstantial evidence; please say if there is one the site should show too.",
+   "bench_source": "the archive PDF's header (FAZALALI, SYED MURTAZA; VARADARAJAN, A. (J); MUKHARJI, SABYASACHI (J)); later Supreme Court judgments call it \"a three-Judge Bench\"",
+   "check": {
+    "checked_on": "2026-10-29",
+    "source": "Supreme Court archive PDF",
+    "url": "https://api.sci.gov.in/jonew/judis/9517.pdf",
+    "sha256": "1444d7f4af928c0f7aa19249def739457e182e7981ebc7a51d8c9daee8a18097",
+    "pages": 77,
+    "segments_checked": 9,
+    "all_found": true,
+    "method": "every segment, with quotation marks, dashes and other punctuation, capitals and line breaks ignored, was found word for word in the text of the Supreme Court's archive PDF (pdftotext); page headers removed In this old printed report the check looked past: lines holding only a page number, footnote marks such as (1) stuck to the end of a word, hyphens at the ends of lines (a split word was also read joined). No word was ignored.",
+    "also_in": [
+     {
+      "doc": 39326,
+      "name": "Munna Kumar Upadhyaya @ Munna Upadhyaya v. State of Andhra Pradesh (2012), which quotes paragraphs 152 to 154",
+      "found": true
+     },
+     {
+      "doc": 28313,
+      "name": "Vikramjit Singh @ Vicky v. State of Punjab (2006), which quotes paragraph 153",
+      "found": true
+     },
+     {
+      "doc": 1000252019,
+      "name": "Smt. Gargi v. State of Haryana (2019), which quotes paragraph 154",
+      "found": true
+     },
+     {
+      "doc": 36413,
+      "name": "Nanhar v. State of Haryana (2010), which quotes paragraphs 151 and 161",
+      "found": true
+     },
+     {
+      "doc": 1000253189,
+      "name": "Parubai v. State of Maharashtra (2021), which quotes paragraphs 159 and 160",
+      "found": true
+     },
+     {
+      "doc": 34626,
+      "name": "Subramaniam v. State of Tamil Nadu (2009), which quotes paragraph 163",
+      "found": true
+     },
+     {
+      "doc": 1000254368,
+      "name": "Munikrishna @ Krishna v. State by Ulsoor PS (2022), which quotes paragraph 179",
+      "found": true
+     },
+     {
+      "doc": 28409,
+      "name": "Aloke Nath Dutta v. State of West Bengal (2006), which quotes paragraphs 153 and 180",
+      "found": true
+     }
+    ],
+    "options": {
+     "ignore_page_numbers": true,
+     "ignore_footnote_marks": true,
+     "join_hyphens": true
+    }
+   }
+  },
+  {
+   "id": "circumstantial_evidence_hanumant",
+   "topic": "circumstantial_evidence",
+   "case_name": "Hanumant v. The State of Madhya Pradesh",
+   "year": 1952,
+   "date": "1952-09-23",
+   "court": "Supreme Court of India",
+   "bench_note": null,
+   "citation": "AIR 1952 SC 343",
+   "citation_source": "Sharad Birdhi Chand Sarda (1984) 4 SCC 116, paragraph 152, as quoted in Sanatan Naskar v. State of West Bengal (2010): \"Hanumant v. State of Madhya Pradesh [AIR 1952 SC 343]\"; and Ram Niwas v. State of Haryana (2022): \"[AIR 1952 SC 343 : 1952 SCR 1091 : 1953 Cri LJ 129]\"",
+   "paragraph": null,
+   "paragraph_source": null,
+   "link": "https://api.sci.gov.in/jonew/judis/1154.pdf",
+   "verify_options": {
+    "ignore_page_numbers": true,
+    "join_hyphens": true,
+    "ignore_lines": [
+     "(1) (1838) 2 Lew. 227."
+    ]
+   },
+   "also_in": [
+    {
+     "doc": 39326,
+     "name": "Munna Kumar Upadhyaya v. State of Andhra Pradesh (2012), which quotes the passage as \"(AIR pp. 345-46, para 10)\"",
+     "must_contain": [
+      "(AIR pp. 345- 46, para 10)",
+      "It is well to remember that in cases where the evidence is of a circumstantial nature"
+     ]
+    },
+    {
+     "doc": 36521,
+     "name": "Sanatan Naskar v. State of West Bengal (2010), which quotes the passage and cites the case as AIR 1952 SC 343",
+     "must_contain": [
+      "Hanumant v. State of Madhya Pradesh [AIR 1952 SC 343]",
+      "It may be useful to extract what Mahajan, J. has laid down in Hanumant case"
+     ]
+    }
+   ],
+   "excerpts": [
+    {
+     "label": "Mahajan J.'s statement of the rule for a case that rests on circumstantial evidence",
+     "paragraph": "10",
+     "report": "AIR",
+     "paragraph_source": "Sharad Birdhi Chand Sarda, paragraph 152, as quoted in Munna Kumar Upadhyaya (2012): \"(AIR pp. 345-46, para 10)\"; the archive PDF carries the SCR report's page numbers, not paragraph numbers",
+     "note": "This is the passage the Bench in Sharad Birdhi Chand Sarda (1984) extracts and from which it draws its five conditions.",
+     "segments": [
+      "In such cases there is always the danger that conjecture or suspicion may take the place of legal proof",
+      "It is well to remember that in cases where the evidence is of a circumstantial nature, the circumstances from which the conclusion of guilt is to be drawn should in the first instance be fully established, and all the facts so established should be consistent only with the hypothesis of the guilt of the accused. Again, the circumstances should be of a conclusive nature and tendency and they should be such as to exclude every hypothesis but the one proposed to be proved. In other words, there must be a chain of evidence so far complete as not to leave any reasonable ground for a conclusion consistent with the innocence of the accused and it must be such as to show that within all human probability the act must have been done by the accused."
+     ]
+    }
+   ],
+   "status": "machine_checked",
+   "confirmed_by": null,
+   "confirmed_on": null,
+   "note_for_reviewer": "(a) The archive's record for this judgment has wrong header fields (citation \"1975 AIR 1083\", a bench of 1975 judges, date 23/01/1952, respondent \"THE STATE OF MADHYA PRADESH.RAOJIBHAITHE STATE OF MADHYA PRA\"). The BODY is the 1952 judgment of Mahajan J. (\"1952. Sept. 23. The Judgment of the Court was delivered by MAHAJAN J.\"), so the date, citation and name shown here come from the body and from later judgments, not from the header; we show no bench because the header is wrong. (b) The case is also written \"Hanumant Govind Nargundkar v. State of M.P.\" in later judgments. (c) The passage is quoted by the Bench in Sharad Birdhi Chand Sarda (1984) with the printer's slip \"far a conclusion\"; here it is taken from Hanumant's own text.",
+   "check": {
+    "checked_on": "2026-10-29",
+    "source": "Supreme Court archive PDF",
+    "url": "https://api.sci.gov.in/jonew/judis/1154.pdf",
+    "sha256": "9cbd58ce206f57833587c3647b3689a803419b640f484362d3bfd5c053437a83",
+    "pages": 13,
+    "segments_checked": 2,
+    "all_found": true,
+    "method": "every segment, with quotation marks, dashes and other punctuation, capitals and line breaks ignored, was found word for word in the text of the Supreme Court's archive PDF (pdftotext); page headers removed In this old printed report the check looked past: lines holding only a page number, hyphens at the ends of lines (a split word was also read joined), the footnote line(s) '(1) (1838) 2 Lew. 227.' that the page break puts inside a sentence. No word was ignored.",
+    "also_in": [
+     {
+      "doc": 39326,
+      "name": "Munna Kumar Upadhyaya v. State of Andhra Pradesh (2012), which quotes the passage as \"(AIR pp. 345-46, para 10)\"",
+      "found": true
+     },
+     {
+      "doc": 36521,
+      "name": "Sanatan Naskar v. State of West Bengal (2010), which quotes the passage and cites the case as AIR 1952 SC 343",
+      "found": true
+     }
+    ],
+    "options": {
+     "ignore_page_numbers": true,
+     "join_hyphens": true,
+     "ignore_lines": [
+      "(1) (1838) 2 Lew. 227."
+     ]
+    }
+   }
   }
  ]
 }
