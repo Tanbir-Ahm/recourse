@@ -852,6 +852,12 @@ def find_relevant_sections(query, domain=None):
                     len(_added), [r.get("case_name") for r in _added])
         judgment_matches = judgment_matches + _added
 
+    try:                                                      # RELEVANCE_GATE=off|log|on (default off): leave out what a cross-encoder scores below the floors (relevance_gate.py)
+        import relevance_gate
+        statute_matches, judgment_matches = relevance_gate.apply(query, statute_matches, judgment_matches, statutes_trusted=exact_hit is not None)
+    except Exception:  # noqa: BLE001
+        pass
+
     if not statute_matches and not judgment_matches:
         return {"state": "no_match", "results": results}
 

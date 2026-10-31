@@ -538,6 +538,7 @@ Language: short sentences, one idea each, about 25 words or fewer; split any sen
 Length and level: match the person's own wording. If they write in simple words or sound frightened: about 250 words, almost no section numbers, and make the first step something they can do today. If they describe things in ordinary terms: about 350 words. If they use legal terms (a section number, "SLP", "quash", "default bail"): about 400 words, lead with the provisions and cases, and skip the basics. Keep the same four parts at every level. Never go over 450 words. Never talk down to anyone.
 
 Cases: when you name a judgment, name it in the sentence where you use it, with the court and the year only if the material below gives the year: "In *Arnesh Kumar v. State of Bihar* (2014), the Supreme Court directed ...". Say what the court said in one sentence and why it matters to this person in the next. Never write a report citation (SCC, AIR), a paragraph number or the size of a bench unless the material below shows it. Do not list the cases again at the end: the page shows the sources. Never say that a case "is good law".
+Provisions: cite a section only if it answers the question. A section is not relevant because it is among the material below. If none of the sections below governs what was asked, say in one sentence that the material below does not include the provision that governs it, and answer from the cases; never stretch a procedural section over a question it does not address.
 """
 
 _V3_LAWYER_INTRO = (
@@ -548,6 +549,7 @@ _V3_LAWYER_INTRO = (
 _V3_LAWYER_INCLUDE = """## What to include, what to leave out
 - The material below is roughly in order of relevance. Build the note around the provisions and the cases most on point. You may cite up to 8 distinct section numbers and up to 6 cases when the question genuinely needs them; omit anything that only tangentially relates, without comment.
 - Address the section(s) defining the OFFENCE or the remedy in question before general procedure sections.
+- Cite a section only if it answers the question. A section is not relevant because it is among the material below. If none of the sections below governs the point, write under **Gaps and checks** that the material does not include the governing provision, and do not use an unrelated section to fill the gap (for example a section about how a trial opens is not authority on how guilt is proved).
 - If a provision or case below carries a note about its legal currency, state it in ONE short clause where you use it ("...though the scope of this is under review by a larger bench"). Never write a separate paragraph about verification status or "treat this with caution".
 - A line that starts REGISTER FACT is not optional: whenever you mention that case, say how it was treated in the same sentence. A line that starts REGISTER NOTE (not yet confirmed) means say it is reported to have been so treated; never present its holding as settled.
 
@@ -4126,7 +4128,13 @@ def _answer_from_wider_search_only(question):
     (generate_grounded_response adds them through sci_search_tier.feed_block, which keeps its own labels and register facts). Returns an answer dict or None (search off, nothing found, generation failed
     or withheld by a check): the caller then ends as 'no_match', exactly as before. Never raises."""
     try:
-        if not (_scope_gate_open() and _open_topic_info(question)):
+        opened = bool(_scope_gate_open() and _open_topic_info(question))
+        try:
+            import relevance_gate
+            gated = relevance_gate.emptied()                      # RELEVANCE_GATE=on removed every library match: the question stays answerable, from the wider search alone
+        except Exception:  # noqa: BLE001
+            gated = False
+        if not (opened or gated):
             return None
         import sci_search_tier
         if sci_search_tier.mode() != "feed" or not sci_search_tier.feed_block(question):
@@ -4134,7 +4142,10 @@ def _answer_from_wider_search_only(question):
         response_text = generate_grounded_response(question, "")
         if not response_text:
             return None
-        _open_topic_info(question)["wider_only"] = True
+        if opened:
+            _open_topic_info(question)["wider_only"] = True
+        else:
+            print("RELEVANCE_GATE_WIDER_ONLY " + json.dumps({"note": "every library match was below the relevance floor; answered from the wider search alone"}), flush=True)
         return {"state": "single_match", "matches": [], "response_text": response_text, "situation_detected": False, "from_cache": False, "unverified_related_judgments": []}
     except Exception as exc:  # noqa: BLE001
         logger.warning("_answer_from_wider_search_only failed: %s", exc)
@@ -4347,6 +4358,11 @@ def _answer_question_inner(question, inline_domains=frozenset()):
     try:
         import sci_search_tier
         sci_search_tier.reset()
+        try:
+            import relevance_gate
+            relevance_gate.reset()
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # pragma: no cover
         pass
     try:
