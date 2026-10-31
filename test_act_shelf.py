@@ -32,9 +32,10 @@ APP = os.path.join(HERE, "recourse_app.py")
 KEYS = ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"]
 NEW = ["muslim_women_act_2019", "pdpp_act_1984"]                 # added 2026-10-17: two very short Acts, handed over whole (manifest "whole_act")
 LONG2 = ["dowry_prohibition_act_1961", "jj_act_2015"]           # added 2026-10-17 (later): two more Acts, normal meaning-search path (Dowry 13 sections, JJ 112; both over the whole_act size limit)
-ALLK = KEYS + NEW + LONG2
-COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26, "muslim_women_act_2019": 8, "pdpp_act_1984": 7, "dowry_prohibition_act_1961": 13, "jj_act_2015": 112}
-CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT", "muslim_women_act_2019": "MWACT", "pdpp_act_1984": "PDPP", "dowry_prohibition_act_1961": "DOWRY", "jj_act_2015": "JJACT"}
+EVID = ["evidence_act_1872", "bsa_2023"]                    # added 2026-10-31 (FOLLOW_UPS 2cs): the Evidence Act (PDF only, machine_extracted) and the Bharatiya Sakshya Adhiniyam
+ALLK = KEYS + NEW + LONG2 + EVID
+COUNTS = {"pc_act_1988": 35, "pocso_act_2012": 47, "uapa_1967": 67, "pmla_2002": 81, "sc_st_act_1989": 26, "muslim_women_act_2019": 8, "pdpp_act_1984": 7, "dowry_prohibition_act_1961": 13, "jj_act_2015": 112, "evidence_act_1872": 185, "bsa_2023": 170}
+CODES = {"pc_act_1988": "PCACT", "pocso_act_2012": "POCSO", "uapa_1967": "UAPA", "pmla_2002": "PMLA", "sc_st_act_1989": "SCSTACT", "muslim_women_act_2019": "MWACT", "pdpp_act_1984": "PDPP", "dowry_prohibition_act_1961": "DOWRY", "jj_act_2015": "JJACT", "evidence_act_1872": "IEA", "bsa_2023": "BSA"}
 
 
 def check(cond, msg):
@@ -80,11 +81,11 @@ check(off_matches == [] and buf.getvalue() == "" and CA._shelf_held([], "Section
 
 # ---------------------------------------------------------------- the shelf itself
 SH = S.load()
-check(set(SH["acts"]) == set(ALLK) and all(SH["acts"][k]["ok"] for k in ALLK) and SH["problems"] == [], f"the shelf loads: nine Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
+check(set(SH["acts"]) == set(ALLK) and all(SH["acts"][k]["ok"] for k in ALLK) and SH["problems"] == [], f"the shelf loads: eleven Acts, every check passed ({ {k: v['problems'] for k, v in SH['acts'].items() if v['problems']} })")
 check(all(len(SH["acts"][k]["by_num"]) == COUNTS[k] for k in ALLK), "every section of every Act is reachable by number (omitted and repealed stubs too)")
 check(all(len(SH["acts"][k]["ranked"]) == COUNTS[k] - n for k, n in (("pc_act_1988", 2), ("pocso_act_2012", 0), ("uapa_1967", 1), ("pmla_2002", 8), ("sc_st_act_1989", 0), ("muslim_women_act_2019", 0), ("pdpp_act_1984", 0), ("dowry_prohibition_act_1961", 0), ("jj_act_2015", 0))), "omitted and repealed stubs are not searched by meaning")
-check(all(SH["acts"][k]["code"] == CODES[k] for k in ALLK) and all(SH["acts"][k]["text_status"] == "machine_checked" for k in ALLK), "codes as expected; the status is machine_checked (nobody has read the text)")
-check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act", "MWACT": "Muslim Women Act, 2019", "PDPP": "Prevention of Damage to Public Property Act, 1984", "DOWRY": "Dowry Prohibition Act, 1961", "JJACT": "Juvenile Justice Act, 2015"}, "display names (for the label and the repaired citation)")
+check(all(SH["acts"][k]["code"] == CODES[k] for k in ALLK) and all(SH["acts"][k]["text_status"] == ("machine_extracted" if k == "evidence_act_1872" else "machine_checked") for k in ALLK), "codes as expected; the status is machine_checked (the Evidence Act, held only as a PDF: machine_extracted); nobody has read the text")
+check(S.display_names() == {"PCACT": "Prevention of Corruption Act, 1988", "POCSO": "POCSO Act", "UAPA": "UAPA", "PMLA": "PMLA", "SCSTACT": "SC/ST Act", "MWACT": "Muslim Women Act, 2019", "PDPP": "Prevention of Damage to Public Property Act, 1984", "DOWRY": "Dowry Prohibition Act, 1961", "JJACT": "Juvenile Justice Act, 2015", "IEA": "Indian Evidence Act, 1872", "BSA": "Bharatiya Sakshya Adhiniyam, 2023"}, "display names (for the label and the repaired citation)")
 check(all(k in {a["id"] for a in AD.load()["acts"]} for k in ALLK), "every shelf Act is an Act of the Directory (same ids)")
 check([k for k in ALLK if SH["acts"][k]["whole"]] == NEW, "only the two very short Acts are handed over whole; the five long ones are searched by meaning")
 check(S.loaded_label("2026-10-16") == "16 October 2026" and S.loaded_label("nonsense") == "" and S.loaded_label(None) == "", "the date label")

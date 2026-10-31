@@ -1,5 +1,5 @@
 {
- "written": "2026-10-17",
+ "written": "2026-10-31",
  "reports": {
   "pc_act_1988": {
    "key": "pc_act_1988",
@@ -956,6 +956,151 @@
     "min": 0.942,
     "below_0.90": {}
    }
+  },
+  "bsa_2023": {
+   "key": "bsa_2023",
+   "act_id": "AC_CEN_5_23_00049_2023-47_1719292804654",
+   "loaded_on": "2026-10-31",
+   "sections": 170,
+   "omitted_sections": [],
+   "record_last_modified": {
+    "min": "2026-07-10T23:17:55.008365Z",
+    "max": "2026-07-10T23:19:26.103287Z"
+   },
+   "pdf": {
+    "name": "a2023-47.pdf",
+    "sha256": "554b2b4ae3d9f09bf31e6e1ba2b2cb8a4e7f4f5ffd6f3156736752cbbce116d5",
+    "pages": 54,
+    "as_on": "6th October, 2025",
+    "toc": {
+     "toc_entries": 170,
+     "loaded": 170,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 0,
+    "state_amendments_set_aside": []
+   },
+   "corrections": [
+    {
+     "section": "2",
+     "from": "caused Bs death",
+     "to": "caused B's death",
+     "count": 1,
+     "why": "India Code's database drops the possessive apostrophe in the fourth illustration to the definition of 'fact in issue'; the PDF reads “B’s death”."
+    },
+    {
+     "section": "45",
+     "from": "relevant.\nIllustrations.\nAn expert may give",
+     "to": "relevant.\nIllustration.\nAn expert may give",
+     "count": 1,
+     "why": "The database heads the single illustration of section 45 'Illustrations.'; the PDF reads 'Illustration.'."
+    },
+    {
+     "section": "121",
+     "from": "that thing.\nIllustrations.\nA intentionally",
+     "to": "that thing.\nIllustration.\nA intentionally",
+     "count": 1,
+     "why": "The database heads the single illustration of section 121 'Illustrations.'; the PDF reads 'Illustration.'."
+    },
+    {
+     "section": "94",
+     "from": "the bill of exchange must be proved.\n(d) A contracts",
+     "to": "the bill of exchange must be proved.\n(c) If a bill of exchange is drawn in a set of three, one only need be proved.\n(d) A contracts",
+     "count": 1,
+     "why": "India Code's database LACKS illustration (c) of section 94 (it jumps from (b) to (d)); the PDF has it. The missing sentence is inserted exactly as the PDF prints it."
+    },
+    {
+     "section": "119",
+     "from": "(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;\n(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;",
+     "to": "(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;",
+     "count": 1,
+     "why": "India Code's database prints illustration (a) of section 119(1) twice in a row; the PDF prints it once. The doubled line is removed."
+    }
+   ],
+   "accepted": [],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 170,
+    "words_compared": 26041,
+    "bare_numbers_ignored": 0,
+    "differences": 10,
+    "accepted_in_manifest": 10,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.917,
+    "below_0.90": {}
+   }
+  },
+  "evidence_act_1872": {
+   "key": "evidence_act_1872",
+   "loaded_on": "2026-10-31",
+   "sections": 185,
+   "source": "PDF only (India Code holds no section records for this repealed Act)",
+   "pdf": {
+    "name": "A1872-1.pdf",
+    "sha256": "06729a1f84e186ae953798766696a736c344dcbd94da2b0cc2a474e7859378ce",
+    "pages": 61,
+    "as_on": null,
+    "toc": {
+     "ok": true,
+     "about": "the sections cut from the running text equal the PDF's arrangement of sections in number and order"
+    }
+   },
+   "absent_words_unresolved": [],
+   "toc_equal": true,
+   "titles_accepted": [
+    {
+     "section": "2",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says '[Repealed.]', the heading '[Repeal of enactments.]'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "14",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'or of body, or bodily feeling', the heading 'or of body of bodily feeling'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "43",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'sections 40, 41 and 42', the heading 'sections 40 to 42'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "47",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections ('handwriting' against 'hand-writing'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "85",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections ('Presumptions' against 'Presumption'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "95",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'unmeaning in reference to', the heading 'unmeaning reference to'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    },
+    {
+     "section": "160",
+     "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement prints 'section159' with no space). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+    }
+   ],
+   "second_reading": {
+    "engine": "pdftotext -raw",
+    "runs_explained_by_footnote_or_page_text": 35,
+    "runs_unexplained": [],
+    "words_not_printed_by_poppler": []
+   },
+   "state_amendment_blocks": [
+    "53A",
+    "114A",
+    "146"
+   ]
   }
  }
 }

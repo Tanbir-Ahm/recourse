@@ -875,6 +875,171 @@
       "sections_loaded": 112,
       "pdf_as_on": "not printed on the PDF",
       "text_status": "machine_checked"
+    },
+    {
+      "key": "bsa_2023",
+      "code": "BSA",
+      "name": "The Bharatiya Sakshya Adhiniyam, 2023",
+      "short": "Bharatiya Sakshya Adhiniyam, 2023",
+      "display": "Bharatiya Sakshya Adhiniyam, 2023",
+      "answer_names": [
+        "Bharatiya Sakshya Adhiniyam",
+        "BSA"
+      ],
+      "citation": "Act No. 47 of 2023",
+      "india_code": {
+        "uuid": "9e461245-2c13-4171-9d9d-267425c01e1d",
+        "handle": "123456789/496549",
+        "act_id": "AC_CEN_5_23_00049_2023-47_1719292804654"
+      },
+      "pointers": [],
+      "corrections": [
+        {
+          "section": "2",
+          "from": "caused Bs death",
+          "to": "caused B's death",
+          "count": 1,
+          "why": "India Code's database drops the possessive apostrophe in the fourth illustration to the definition of 'fact in issue'; the PDF reads “B’s death”."
+        },
+        {
+          "section": "45",
+          "from": "relevant.\nIllustrations.\nAn expert may give",
+          "to": "relevant.\nIllustration.\nAn expert may give",
+          "count": 1,
+          "why": "The database heads the single illustration of section 45 'Illustrations.'; the PDF reads 'Illustration.'."
+        },
+        {
+          "section": "121",
+          "from": "that thing.\nIllustrations.\nA intentionally",
+          "to": "that thing.\nIllustration.\nA intentionally",
+          "count": 1,
+          "why": "The database heads the single illustration of section 121 'Illustrations.'; the PDF reads 'Illustration.'."
+        },
+        {
+          "section": "94",
+          "from": "the bill of exchange must be proved.\n(d) A contracts",
+          "to": "the bill of exchange must be proved.\n(c) If a bill of exchange is drawn in a set of three, one only need be proved.\n(d) A contracts",
+          "count": 1,
+          "why": "India Code's database LACKS illustration (c) of section 94 (it jumps from (b) to (d)); the PDF has it. The missing sentence is inserted exactly as the PDF prints it."
+        },
+        {
+          "section": "119",
+          "from": "(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;\n(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;",
+          "to": "(a) a man who is in possession of stolen goods soon, after the theft is either the thief or has received the goods knowing them to be stolen, unless he can account for his possession;",
+          "count": 1,
+          "why": "India Code's database prints illustration (a) of section 119(1) twice in a row; the PDF prints it once. The doubled line is removed."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "3",
+          "pdf_starts": "closely connected facts",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"closely connected facts\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "14",
+          "pdf_starts": "admissions",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"admissions\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "25",
+          "pdf_starts": "statements by persons who cannot be called as witnesses",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"statements by persons who cannot be called as witnesses\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "27",
+          "pdf_starts": "statements made under special circumstances",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"statements made under special circumstances\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "32",
+          "pdf_starts": "how much of a statement is to be proved",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"how much of a statement is to be proved\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "33",
+          "pdf_starts": "judgments of courts when relevant",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"judgments of courts when relevant\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "38",
+          "pdf_starts": "opinions of third persons when relevant",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"opinions of third persons when relevant\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "45",
+          "pdf_starts": "character when relevant",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"character when relevant\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "73",
+          "pdf_starts": "public documents",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"public documents\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        },
+        {
+          "section": "77",
+          "pdf_starts": "presumptions as to documents",
+          "why": "A group heading that the PDF prints on its own line between two sections (\"presumptions as to documents\"). It belongs to the arrangement of the Act, not to the section before it, so it is not part of the section's text."
+        }
+      ],
+      "loaded_on": "2026-10-31",
+      "sections_loaded": 170,
+      "pdf_as_on": "6th October, 2025",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "evidence_act_1872",
+      "code": "IEA",
+      "name": "The Indian Evidence Act, 1872",
+      "short": "Indian Evidence Act, 1872",
+      "display": "Indian Evidence Act, 1872",
+      "answer_names": [
+        "Indian Evidence Act",
+        "Evidence Act",
+        "IEA"
+      ],
+      "citation": "Act No. 1 of 1872",
+      "source": "pdf_only",
+      "india_code": {
+        "uuid": "b62073e0-4d33-4348-8eda-d92af40af24b",
+        "handle": "123456789/488783",
+        "act_id": null
+      },
+      "pointers": [],
+      "title_accepted": [
+        {
+          "section": "2",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says '[Repealed.]', the heading '[Repeal of enactments.]'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "14",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'or of body, or bodily feeling', the heading 'or of body of bodily feeling'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "43",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'sections 40, 41 and 42', the heading 'sections 40 to 42'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "47",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections ('handwriting' against 'hand-writing'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "85",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections ('Presumptions' against 'Presumption'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "95",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement says 'unmeaning in reference to', the heading 'unmeaning reference to'). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        },
+        {
+          "section": "160",
+          "why": "The wording of the heading printed in the PDF's running text differs from the PDF's own arrangement of sections (the arrangement prints 'section159' with no space). Both readings of the PDF (PyMuPDF and Poppler) print the heading as loaded; the PDF is not changed."
+        }
+      ],
+      "loaded_on": "2026-10-31",
+      "sections_loaded": 185,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_extracted"
     }
   ]
 }

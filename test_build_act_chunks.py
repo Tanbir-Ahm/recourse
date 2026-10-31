@@ -373,20 +373,21 @@ check(B.body_text(pdf_lines) == "\n".join(ln for ln in pdf_lines if "CHAPTER" no
 SHELF = os.path.join(HERE, "act_shelf")
 manifest = json.load(open(os.path.join(SHELF, "manifest.json"), encoding="utf-8"))
 M = {a["key"]: a for a in manifest["acts"]}
+MD = {k: a for k, a in M.items() if a.get("source") != "pdf_only"}          # the Acts loaded from India Code's database and checked against its PDF; the Evidence Act (PDF only, 2026-10-31) is tested in test_evidence_bsa.py
 directory = {a["id"]: a for a in json.load(open(os.path.join(HERE, "acts_directory.json"), encoding="utf-8"))["acts"]}
-check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984", "dowry_prohibition_act_1961", "jj_act_2015"],
-      "manifest: the five Acts the owner chose, the two very short ones, then the Dowry (1961) and Juvenile Justice (2015) Acts added on 2026-10-17")
-check(len({a["code"] for a in M.values()}) == 9 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: nine distinct upper-case codes")
+check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984", "dowry_prohibition_act_1961", "jj_act_2015", "bsa_2023", "evidence_act_1872"],
+      "manifest: the five Acts the owner chose, the two very short ones, then the Dowry (1961) and Juvenile Justice (2015) Acts added on 2026-10-17, then the Evidence Act (PDF only) and the Bharatiya Sakshya Adhiniyam added on 2026-10-31")
+check(len({a["code"] for a in M.values()}) == 11 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: eleven distinct upper-case codes")
 check([k for k, a in M.items() if a.get("whole_act")] == ["muslim_women_act_2019", "pdpp_act_1984"], "manifest: only the two very short Acts are marked whole_act (the Dowry and JJ Acts are over the size limit)")
 check(M["dowry_prohibition_act_1961"].get("toc_absent") == ["8A"] and all("toc_absent" not in a for k, a in M.items() if k != "dowry_prohibition_act_1961"),
       "manifest: only the Dowry Act declares toc_absent (section 8A, in the PDF body but omitted from the printed arrangement of sections)")
 check(all(a["india_code"]["uuid"] == directory[k]["indiacode"]["uuid"] and a["name"] == directory[k]["name"] and a["citation"] == "Act No. " + directory[k]["act_no"] for k, a in M.items()), "manifest: each Act is the Directory's Act (same India Code record, name and number)")
-check(all(f.get("why", "").strip() for a in M.values() for f in a["corrections"]) and all(f.get("why", "").strip() for a in M.values() for f in a["accepted"]), "manifest: every correction and every accepted difference says why")
-check(all(a.get("text_status") == "machine_checked" and a.get("loaded_on") and a.get("sections_loaded") and a.get("pdf_as_on") for a in M.values()), "manifest: every Act records when it was loaded, how many sections, the PDF's date and that it is only machine-checked")
+check(all(f.get("why", "").strip() for a in M.values() for f in a.get("corrections", [])) and all(f.get("why", "").strip() for a in M.values() for f in a.get("accepted", [])), "manifest: every correction and every accepted difference says why")
+check(all(a.get("text_status") == "machine_checked" and a.get("loaded_on") and a.get("sections_loaded") and a.get("pdf_as_on") for a in MD.values()), "manifest: every Act records when it was loaded, how many sections, the PDF's date and that it is only machine-checked")
 report = json.load(open(os.path.join(SHELF, "LOAD_REPORT.json"), encoding="utf-8"))["reports"]
 check(set(report) == set(M) and all(r["pdf"]["toc"]["ok"] and not r["absent_words_unresolved"] for r in report.values()), "load report: every Act passed the arrangement-of-sections check and has no unresolved word")
 SH = {}
-for k, a in M.items():
+for k, a in MD.items():
     SH[k] = json.load(open(os.path.join(SHELF, f"{k}.json"), encoding="utf-8"))
     nums = [c["section_number"] for c in SH[k]]
     check(len(SH[k]) == a["sections_loaded"] == report[k]["sections"] and len(set(nums)) == len(nums), f"{k}: {len(SH[k])} sections as the manifest and the report say, none twice")
@@ -406,7 +407,7 @@ check(next(c for c in SH["pc_act_1988"] if c["section_number"] == "7")["footnote
 
 
 # ---- the strict comparison and the two tidy-ups, as committed (2026-10-17)
-for k, a in M.items():
+for k, a in MD.items():
     oc_ = report[k]["ordered_check"]
     n_real = len([c for c in SH[k] if not c["omitted"]])
     check(oc_["unexplained"] == [] and oc_["accepted_unused"] == [] and oc_["sections_compared"] == n_real and oc_["words_compared"] > 500 and oc_["differences"] == oc_["accepted_in_manifest"] == sum(int(x.get("count", 1)) for x in a["ordered_accepted"]),
@@ -415,7 +416,7 @@ for k, a in M.items():
     check(not any(B.strip_repeated_heading(copy.deepcopy(c)) for c in SH[k]), f"{k}: no section starts its body with its own heading again")
     check(not any(re.search(r"STATE\s+AMENDMENT", c["text"], re.I) for c in SH[k]), f"{k}: no State amendment text is left inside a section's text")
     check(all((B.NOTE_PREFIX in c["text"]) == bool(c.get("state_amendments")) and c["text"].count(B.NOTE_PREFIX) <= 1 for c in SH[k]), f"{k}: a section that has State amendments set aside carries exactly one note, and no other section has one")
-    check(not any(re.search(r"\b([A-Za-z]+)\s+\1\b", (c.get(f) or ""), re.I) for c in SH[k] for f in ("text", "footnotes", "state_amendments")), f"{k}: no word is doubled anywhere ('or or', 'of of' were database slips)")
+    check(not any(re.search(r"\b([A-Za-z]{2,})\s+\1\b", (c.get(f) or ""), re.I) for c in SH[k] for f in ("text", "footnotes", "state_amendments")), f"{k}: no word of two letters or more is doubled anywhere ('or or', 'of of' were database slips; a single letter pair such as 'A a' in an illustration is legitimate)")
 check({c["section_number"] for k in SH for c in SH[k] if c.get("state_amendments")} == {"17A", "42", "14"} and len(SH["pc_act_1988"][[c["section_number"] for c in SH["pc_act_1988"]].index("17A")]["text"]) < 2500,
       "State amendments set aside: PC Act 17A (Jammu and Kashmir / Ladakh), POCSO 42 (Arunachal Pradesh), SC/ST 14 (Karnataka); section 17A is now short (it was 10,167 characters, 84% of them the Union Territory text)")
 sec = lambda k, n: next(c for c in SH[k] if c["section_number"] == n)  # noqa: E731

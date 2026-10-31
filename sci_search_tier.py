@@ -917,6 +917,11 @@ def feed_block(question, exclude_names=None):
         if getattr(_LOCAL, "question", None) == question and getattr(_LOCAL, "skips", ()) == skips:
             return _LOCAL.block
         found = search(question, timeout=max(float(_env("SCI_SEARCH_TIMEOUT", "6")), 15.0))
+        try:
+            import evidence_companions                                   # EVIDENCE_COMPANIONS (default off): more questions put to the wider search for a circumstantial-evidence question
+            found = evidence_companions.merge(found, question, lambda q: search(q, timeout=max(float(_env("SCI_SEARCH_TIMEOUT", "6")), 15.0), label="sci_search_companion"))
+        except Exception:  # noqa: BLE001
+            pass
         _LOCAL.question, _LOCAL.skips, _LOCAL.block, _LOCAL.cases = question, skips, "", []
         if not found:
             print("SCI_FEED no passages: the search service gave no answer (down, slow, wrong address or token)", flush=True)

@@ -3985,6 +3985,16 @@ def _drop_sections_claimed_by_shelf(explicit, question, current_message):
         return explicit
 
 
+def _companion_shelf_matches(question, matches):
+    """`matches` plus the companion sections of evidence_companions.py (EVIDENCE_COMPANIONS=on, circumstantial-evidence questions); `matches` unchanged when the switch is off or on any failure."""
+    try:
+        import evidence_companions
+        extra = evidence_companions.shelf_matches(question, already={m.get("chunk_id") for m in matches or [] if isinstance(m, dict)})
+        return list(matches or []) + extra if extra else (matches or [])
+    except Exception:  # noqa: BLE001
+        return matches or []
+
+
 def _act_shelf_matches(question, current_message):
     """Act shelf (act_shelf.py, ACT_SHELF=on, default off): when the Act Directory finds an Act with a shelf in the question, the sections of that Act that bear on it, as statute matches (source 'act_shelf') that
     join the curated overrides. [] when the switch is off, when the question names no such Act, and on any failure. One log line per question that drew a shelf Act: ACT_SHELF {...} (a hash of the question, the
@@ -3995,7 +4005,7 @@ def _act_shelf_matches(question, current_message):
             return []
         acts = _acts_named(question)
         if not acts:
-            return []
+            return _companion_shelf_matches(question, [])               # EVIDENCE_COMPANIONS (default off): sections the question needs although it names no Act
         res = act_shelf.search(question, acts, current_message=current_message)
         info = res.get("info") or {}
         try:                                       # the wider search must not hand over a passage that cites the section the person named of ANOTHER statute (sci_search_tier._statute_filter)
@@ -4006,7 +4016,7 @@ def _act_shelf_matches(question, current_message):
         if info.get("acts"):
             import hashlib
             print("ACT_SHELF " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], **info}), flush=True)
-        return res.get("matches") or []
+        return _companion_shelf_matches(question, res.get("matches") or [])
     except Exception as exc:  # noqa: BLE001
         logger.warning("_act_shelf_matches failed: %s", exc)
         return []

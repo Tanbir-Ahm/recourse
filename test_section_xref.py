@@ -147,7 +147,7 @@ check(S.cited_sections(syn, "18") == (["4"], {}), "'section 2 of the Cr.P.C.' an
 check(S.cited_sections(syn, "19") == ([], {"fanout": 4}), "four citations: fan-out, none followed")
 check(S.MAX_FANOUT == S.MAX_CITED == 2, "the limits: at most two cited sections, all or none")
 
-# ---------------------------------------------------------------- the sweep over the nine Acts: invariants, and nothing for an Act whose text did not pass
+# ---------------------------------------------------------------- the sweep over the eleven Acts: invariants, and nothing for an Act whose text did not pass
 total = with_c = fan = 0
 broken = []
 for aid, st in SH["acts"].items():
@@ -160,7 +160,7 @@ for aid, st in SH["acts"].items():
         fan += bool(info.get("fanout"))
         if len(cites) > S.MAX_FANOUT or n in cites or any(x not in st["by_num"] or st["by_num"][x].get("omitted") for x in cites) or (cites and info):
             broken.append((aid, n, cites, info))
-check(total == 396 and not broken, f"all nine Acts, {total} sections: no section follows itself, an absent or omitted section, or more than {S.MAX_FANOUT} ({broken[:3]})")
+check(total == 751 and not broken, f"all eleven Acts, {total} sections: no section follows itself, an absent or omitted section, or more than {S.MAX_FANOUT} ({broken[:3]})")
 check(with_c >= 80 and fan >= 10, f"...{with_c} sections cite one or two sections of their own Act, {fan} cite more (none followed)")
 
 # ---------------------------------------------------------------- the search

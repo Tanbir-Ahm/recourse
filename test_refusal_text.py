@@ -67,7 +67,8 @@ for name, res in RES.items():
     at = AppTest.from_file(APP, default_timeout=90).run()
     at.text_area(key="text").set_value("My brother was arrested").run()
     [b for b in at.button if "Check my situation" in b.label][0].click().run()
-    got = [m.value for m in at.markdown]
+    import build_info
+    got = [m.value for m in at.markdown if build_info.footer_text() not in m.value]                  # the quiet build line at the foot of the page (build_info.py, 2026-10-31) is not a refusal text
     check(not at.exception and got == golden[name], f"page, {name}: the rendered text is identical to the golden copy" + ("" if got == golden[name] else f" (first difference: {[ (a, b) for a, b in zip(golden[name], got) if a != b][:1]})"))
 
 # ------------------------------------------------------------ the API carries the same words

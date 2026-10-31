@@ -222,7 +222,8 @@ check(steps.describe("library", {"statutes": "x", "judgments": True}) ["detail"]
 
 # ---------------------------------------------------------------- health never imports the engine
 code = "import sys; import api.main as m; from fastapi.testclient import TestClient; r = TestClient(m.app).get('/api/health'); print(r.json()['role'], 'chat_assistant' in sys.modules, 'streamlit' in sys.modules)"
-out = subprocess.run([sys.executable, "-c", code], cwd=HERE, capture_output=True, text=True, timeout=120).stdout.strip()
+out = [ln for ln in subprocess.run([sys.executable, "-c", code], cwd=HERE, capture_output=True, text=True, timeout=120).stdout.strip().splitlines() if not ln.startswith("BUILD_INFO ")][-1:]       # the BUILD_INFO line (build_info.py) is the deploy log's, not the check's
+out = out[0] if out else ""
 check(out == "api False False", f"/api/health answers without importing the engine or Streamlit ({out!r}); the database library is loaded with the signed-in routes since step A3, a connection is made only when DATABASE_URL is set")
 
 

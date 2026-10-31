@@ -51,7 +51,7 @@ WHOLE_ACT_MAX_CHARS = 6000         # a manifest entry may say "whole_act": true 
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
 WINDOW = 45                        # characters either side of a section number in which the Act's name must START (after the number) or END (before it): 'section 45 of the PMLA', 'PMLA section 45'
 NAME_ROOM = 110                    # how far past WINDOW a name may run: the longest name of an Act, the SC/ST Act's full title with its short name, is under 100 characters (until 2026-10-17 the whole name had to fit inside WINDOW, which no official title of a long-named Act does)
-GOOD_STATUS = ("machine_checked", "reviewed")
+GOOD_STATUS = ("machine_checked", "machine_extracted", "reviewed")    # machine_extracted (2026-10-31): the text of an Act that India Code holds only as a PDF, cut into sections by program and read by two PDF readers (build_act_from_pdf.py); weaker than machine_checked
 # Housekeeping sections: they amend ANOTHER enactment or only repeal/save. Never ranked by meaning (staging 2026-10-17: PC Act s.29, "Amendment of the Ordinance 38 of 1944", ranked 2nd for a bribery question,
 # ahead of s.7, the offence), but still handed over when a question NAMES them by number. 'Amendment of Schedule' (UAPA s.35, a live power over the list of terrorist organisations) is NOT in this class.
 _HOUSEKEEPING = re.compile(r"^\s*(?:amendments?\s+of\s+(?:the\s+)?(?:[A-Z][\w()'.,-]*\s+)*?(?:Ordinance|Act|Code|Acts|Sanhita)\b.*|repeals?(?:\s+and\s+savings?)?|savings?|repealed|repeal\s+and\s+savings?)\W*$", re.I)
@@ -559,7 +559,26 @@ def _embed_query(text):
     return resp.embeddings[0]
 
 
+def _counterpart_note(st, c):
+    """The fixed Evidence Act / Adhiniyam pairing note (ea_bsa_map.py) for a section of those two Acts, '' for every other section and on any problem."""
+    try:
+        if st.get("key") in ("evidence_act_1872", "bsa_2023"):
+            import ea_bsa_map
+            return ea_bsa_map.note_for(st["key"], c["section_number"])
+    except Exception:  # noqa: BLE001 -- fail-open
+        pass
+    return ""
+
+
 def _match(st, c, how, score):
+    m = _match_core(st, c, how, score)
+    note = _counterpart_note(st, c)
+    if note and not m.get("context_note"):
+        m["context_note"] = note
+    return m
+
+
+def _match_core(st, c, how, score):
     return {"type": "statute", "act": st["code"], "act_key": st["key"], "act_display": st["display"], "section_number": str(c["section_number"]), "title": c.get("title"), "text": c["text"],
             "score": round(float(score), 4) if score is not None else None, "source": "act_shelf", "retrieval": how, "chunk_id": f"act:{c['act']}:{c['section_number']}", "all_variants": {},
             "shelf": {"loaded_on": st["loaded_on"], "pdf_as_on": st["pdf_as_on"], "text_status": st["text_status"], "source_url": c.get("source_url"), "footnotes": c.get("footnotes") or "",
