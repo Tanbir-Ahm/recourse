@@ -744,6 +744,12 @@ def _footer():
         'see anything beyond what you type. For a real case, take this to a lawyer or your '
         'nearest District Legal Services Authority, which provides that help free.</p>',
         unsafe_allow_html=True)
+    try:                                                      # which code is running, in small type (build_info.py)
+        import build_info
+        build_info.announce("streamlit-site")
+        st.markdown(f'<p class="r-foot" style="opacity:.6">{esc(build_info.footer_text())}</p>', unsafe_allow_html=True)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # --------------------------------------------------------------------------

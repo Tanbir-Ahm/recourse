@@ -122,6 +122,11 @@ def finish(style="", audience="", switches=None):
                "unpriced": [c["model"] for c in calls if not c.get("priced")]}
         if switches:
             rec["switches"] = switches
+        try:
+            import build_info
+            rec["commit"] = build_info.commit()
+        except Exception:  # noqa: BLE001
+            pass
         rec["spent_today_inr"] = round(spent_today_inr(), 4)
         print("COST_QUESTION " + json.dumps(rec), flush=True)
         _LOCAL.calls = None

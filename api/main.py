@@ -95,6 +95,13 @@ def debug_headers(request: Request):
             "trusted_proxy_hops": config.trusted_proxy_hops(), "client_ip_header": config.client_ip_header() or "(default: hops rule)", "address_the_service_would_use": netutil.client_ip(request)}
 
 
+try:                                                  # the deploy log shows which commit started (build_info.py)
+    import build_info as _build_info
+    _build_info.announce("api")
+except Exception:  # noqa: BLE001
+    pass
+
+
 @app.get("/api/health")
 def health():
     """Liveness and identity. No authentication. 'role' must be 'api'; 'commit' is Railway's build commit when present; 'db' is 'not_configured' without DATABASE_URL, else 'ok' or 'down' (a down database does not fail the health check: the service still answers; the value is for the monitor)."""
