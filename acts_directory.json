@@ -1521,6 +1521,86 @@
         "enforced": "19-9-2018",
         "verified_on": "2026-10-17"
       }
+    },
+    {
+      "id": "ni_act_1881",
+      "priority": 2,
+      "detect": false,
+      "name": "The Negotiable Instruments Act, 1881",
+      "short": "Negotiable Instruments Act, 1881",
+      "act_no": "26 of 1881",
+      "pack": "none",
+      "aliases": [
+        "negotiable instruments act"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/items/38b01c2d-f1b8-4b1f-a8bf-86b4da3b72a0",
+      "url_alt": null,
+      "url_checked": "2026-10-31 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 1 March 1882. Amended since, including by the Acts that inserted sections 142A, 143A and 148 (as the loaded text shows).",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-31: enactment date 9-12-1881, enforcement date 1-3-1882, not marked repealed; sections 142A, 143A and 148 as inserted or amended in 2015 and 2018 are in the loaded text."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Negotiable Instruments Act, 1881",
+        "act_number": "26",
+        "act_year": "1881",
+        "uuid": "38b01c2d-f1b8-4b1f-a8bf-86b4da3b72a0",
+        "handle": "123456789/496318",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "1881-12-09",
+        "enforced": "1882-03-01",
+        "verified_on": "2026-10-31"
+      }
+    },
+    {
+      "id": "it_act_2000",
+      "priority": 2,
+      "detect": false,
+      "name": "The Information Technology Act, 2000",
+      "short": "Information Technology Act, 2000",
+      "act_no": "21 of 2000",
+      "pack": "none",
+      "aliases": [
+        "information technology act"
+      ],
+      "phrases": [],
+      "url": "https://indiacode.gov.in/items/d41fe391-b9c0-40b1-afdc-ad034c7ac62f",
+      "url_alt": null,
+      "url_checked": "2026-10-31 (machine: India Code's own record matches on title, number and year)",
+      "status": {
+        "text": "In force since 17 October 2000. Amended, among others, by the Information Technology (Amendment) Act, 2008 and the Jan Vishwas (Amendment of Provisions) Act, 2023.",
+        "confidence": "certain",
+        "reviewed": null,
+        "evidence": "India Code, read 2026-10-31: enactment date 9-6-2000, enforcement date 17-10-2000 (notification G.S.R. 788(E)), not marked repealed; its PDF of 27 June 2025 carries the amendments by Act 10 of 2009 and Act 18 of 2023."
+      },
+      "appeal": {
+        "text": "",
+        "confidence": "",
+        "reviewed": null
+      },
+      "indiacode": {
+        "kind": "act",
+        "title": "The Information Technology Act, 2000",
+        "act_number": "21",
+        "act_year": "2000",
+        "uuid": "d41fe391-b9c0-40b1-afdc-ad034c7ac62f",
+        "handle": "123456789/496511",
+        "repealed": false,
+        "repealed_by": null,
+        "enacted": "2000-06-09",
+        "enforced": "17-10-2000",
+        "verified_on": "2026-10-31"
+      }
     }
   ]
 }

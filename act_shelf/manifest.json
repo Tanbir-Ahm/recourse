@@ -1040,6 +1040,406 @@
       "sections_loaded": 185,
       "pdf_as_on": "not printed on the PDF",
       "text_status": "machine_extracted"
+    },
+    {
+      "key": "ni_act_1881",
+      "code": "NIACTFULL",
+      "name": "The Negotiable Instruments Act, 1881",
+      "short": "Negotiable Instruments Act, 1881",
+      "display": "Negotiable Instruments Act, 1881",
+      "answer_names": [
+        "Negotiable Instruments Act",
+        "NI Act",
+        "N.I. Act"
+      ],
+      "citation": "Act No. 26 of 1881",
+      "india_code": {
+        "uuid": "38b01c2d-f1b8-4b1f-a8bf-86b4da3b72a0",
+        "handle": "123456789/496318",
+        "act_id": "AC_CEN_2_33_00042_00042_1523271998701"
+      },
+      "pointers": [],
+      "toc_absent": [
+        "70",
+        "104A"
+      ],
+      "body_start": "^\\s*Preamble\\.\\W*Whereas",
+      "corrections": [
+        {
+          "section": "103",
+          "from": "protested for nonpayment",
+          "to": "protested for non-payment",
+          "count": 1,
+          "why": "India Code's database drops the hyphen of the compound; the PDF prints it with the hyphen."
+        },
+        {
+          "section": "108",
+          "from": "protested for nonacceptance",
+          "to": "protested for non-acceptance",
+          "count": 1,
+          "why": "India Code's database drops the hyphen of the compound; the PDF prints it with the hyphen."
+        },
+        {
+          "section": "121",
+          "field": "footnotes",
+          "from": "to the orderof, a specified",
+          "to": "to the order of, a specified",
+          "count": 1,
+          "why": "A lost space in India Code's footnote."
+        },
+        {
+          "section": "135",
+          "from": "\nhere a promissory note, bill of exchange or cheque is made payable",
+          "to": "\nWhere a promissory note, bill of exchange or cheque is made payable",
+          "count": 1,
+          "why": "The database lost the first letter of the section's first word ('here' for 'Where'); the PDF prints 'Where'."
+        },
+        {
+          "section": "133",
+          "field": "title",
+          "from": "Holder of first acquired part entitled to.",
+          "to": "Holder of first acquired part entitled to all.",
+          "count": 1,
+          "why": "The database's title field lacks the word 'all' that the PDF's heading of the section has ('... entitled to all.')."
+        },
+        {
+          "section": "7",
+          "field": "title",
+          "from": "''Drawer.''",
+          "to": "''Drawer'' ''Drawee''.",
+          "count": 1,
+          "why": "The database's title field names only 'Drawer'; the PDF's heading of the section names both terms ('Drawer' 'Drawee')."
+        },
+        {
+          "section": "21",
+          "field": "title",
+          "from": "''At sight''.",
+          "to": "''At sight''. ''On presentment''.",
+          "count": 1,
+          "why": "The database's title field names only 'At sight'; the PDF's heading of the section names both terms ('At sight' 'On presentment')."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "1",
+          "pdf_starts": "2 repeal of enactments rep by the repealing",
+          "why": "The PDF prints, run on after section 1, the stub of section 2 (repealed); India Code's database lists section 2 as its own (omitted) record."
+        },
+        {
+          "section": "148",
+          "pdf_starts": "32 schedule enactments repealed",
+          "why": "The PDF prints the Schedule of repealed enactments after the last section; the Schedule is not loaded."
+        },
+        {
+          "section": "5",
+          "loaded": "event",
+          "pdf": "even",
+          "why": "A misprint in the PDF ('even' for 'event'); the database reads correctly."
+        },
+        {
+          "section": "23",
+          "loaded": "is",
+          "pdf": "it",
+          "count": 2,
+          "why": "A misprint in the PDF in both illustrations ('it made payable' for 'is made payable'); the database reads correctly."
+        },
+        {
+          "section": "46",
+          "loaded": "authorised",
+          "pdf": "authorized",
+          "why": "Two spellings of the same word."
+        },
+        {
+          "section": "84",
+          "loaded": "or",
+          "pdf": "of",
+          "why": "A misprint in the PDF ('drawer of person' for 'drawer or person'); the database reads correctly."
+        },
+        {
+          "section": "118",
+          "loaded": "thereon",
+          "pdf": "then on",
+          "why": "The PDF prints 'then on' where the database has 'thereon' (clause (e), 'in the order in which they appear thereon'); the database reads correctly; flagged for Mr. Advocate."
+        },
+        {
+          "section": "143A",
+          "loaded": "2 of 1974",
+          "pdf": "",
+          "why": "The database adds the Act number after 'Code of Criminal Procedure, 1973'; the PDF does not print it. No change of meaning."
+        }
+      ],
+      "loaded_on": "2026-11-01",
+      "sections_loaded": 155,
+      "pdf_as_on": "not printed on the PDF",
+      "text_status": "machine_checked"
+    },
+    {
+      "key": "it_act_2000",
+      "code": "ITACTFULL",
+      "name": "The Information Technology Act, 2000",
+      "short": "Information Technology Act, 2000",
+      "display": "Information Technology Act, 2000",
+      "answer_names": [
+        "Information Technology Act",
+        "IT Act"
+      ],
+      "citation": "Act No. 21 of 2000",
+      "india_code": {
+        "uuid": "d41fe391-b9c0-40b1-afdc-ad034c7ac62f",
+        "handle": "123456789/496511",
+        "act_id": "AC_CEN_45_76_00001_200021_1517807324077"
+      },
+      "pointers": [],
+      "toc_title_accepted": [
+        {
+          "section": "16",
+          "why": "The PDF's printed arrangement of sections reads 'Security procedure and practices'; the section's own heading in the PDF's running text, and India Code's database, read 'Security procedures and practices'. The arrangement is not updated; the running text is compared."
+        },
+        {
+          "section": "72A",
+          "why": "The arrangement reads 'Penalty for disclosure ...'; the database's title field reads 'Punishment for ...' while the section's own text (and the PDF's running text) read '[Penalty] for disclosure ...'. See the title correction."
+        },
+        {
+          "section": "82",
+          "why": "The arrangement still reads 'Chairperson, Members, officers and employees to be public servants' (the Act's earlier wording); the PDF's running text and the database both read 'Controller, Deputy Controller and Assistant Controller to be public servants'."
+        }
+      ],
+      "corrections": [
+        {
+          "section": "72A",
+          "field": "title",
+          "from": "Punishment for disclosure of information in breach of lawful contract.",
+          "to": "Penalty for disclosure of information in breach of lawful contract.",
+          "count": 1,
+          "why": "India Code's database keeps the old title 'Punishment for ...' in its title field, while the section's own text reads '[Penalty] for disclosure of information in breach of lawful contract' (the word substituted by amendment, as the PDF's running text prints it)."
+        },
+        {
+          "section": "48",
+          "field": "title",
+          "from": "Appellate Tribunal.",
+          "to": "Establishment of Appellate Tribunal.",
+          "count": 1,
+          "why": "The database's title field reads 'Appellate Tribunal.'; the PDF's running text heads the section 'Establishment of [Appellate Tribunal]'."
+        },
+        {
+          "section": "1",
+          "from": "a ddition",
+          "to": "addition",
+          "count": 1,
+          "why": "India Code's database has a stray space inside the word; the PDF prints it whole."
+        },
+        {
+          "section": "1",
+          "from": "fo rce",
+          "to": "force",
+          "count": 1,
+          "why": "India Code's database has a stray space inside the word; the PDF prints it whole."
+        },
+        {
+          "section": "1",
+          "from": "notificati on",
+          "to": "notification",
+          "count": 1,
+          "why": "India Code's database has a stray space inside the word; the PDF prints it whole."
+        },
+        {
+          "section": "9",
+          "from": "es tablished",
+          "to": "established",
+          "count": 1,
+          "why": "India Code's database has a stray space inside the word; the PDF prints it whole."
+        },
+        {
+          "section": "2",
+          "from": "by means of digital signature;",
+          "to": "by means of electronic signature;",
+          "count": 1,
+          "why": "India Code's database keeps the Act's earlier words 'digital signature' in clause (ta)'s neighbour; the PDF (as on 27 June 2025) reads 'electronic signature' (the Information Technology (Amendment) Act, 2008 substituted the term)."
+        },
+        {
+          "section": "2",
+          "from": "a 1 [electronic signature] Certificate",
+          "to": "a [electronic signature] Certificate",
+          "count": 1,
+          "why": "A footnote number ('1') of the database is printed inside the text; the PDF has none there."
+        },
+        {
+          "section": "45",
+          "from": "or/be (b)",
+          "to": "or\n(b)",
+          "count": 1,
+          "why": "A stray 'be' with a slash (a lost line break) stands between clauses (a) and (b) in the database; the PDF has a line break."
+        },
+        {
+          "section": "68",
+          "from": "shall be liable on conviction to imprisonment for a term not exceeding two years or a fine not exceeding one lakh rupees or with both.]",
+          "to": "shall be liable [to penalty which may extend to twenty-five lakh rupees].]",
+          "count": 1,
+          "why": "SUBSTANTIVE. India Code's database keeps the OLD sub-section (2) of section 68 (imprisonment up to two years or fine up to one lakh rupees or both); the PDF (as on 27 June 2025) has the amended sub-section: 'liable [to penalty which may extend to twenty-five lakh rupees]' (substituted by the Jan Vishwas (Amendment of Provisions) Act, 2023). The PDF's wording is used."
+        },
+        {
+          "section": "66A",
+          "from": "[66A. Punishment for sending offensive messages through communication service, etc.--Any person who sends, by means of a computer resource or a communication device,\n(a) any information that is grossly offensive or has menacing character; or\n(b) any information which he knows to be false, but for the purpose of causing annoyance, inconvenience, danger, obstruction, insult, injury, criminal intimidation, enmity, hatred or ill will, persistently by making use of such computer resource or a communication device;\n(c) any electronic mail or electronic mail message for the purpose of causing annoyance or inconvenience or to deceive or to mislead the addressee or recipient about the origin of such messages,\nshall be punishable with imprisonment for a term which may extend to three years and with fine.\nExplanation.--For the purposes of this section, terms \"electronic mail\" and \"electronic mail message\" means a message or information created or transmitted or received on a computer, computer system, computer resource or communication device including attachments in text, image, audio, video and any other electronic record, which may be transmitted with the message.]",
+          "to": "[Punishment for sending offensive messages through communication service, etc.]-- Omitted by the Jan Vishwas (Amendment of Provisions) Act, 2023 (18 of 2023), s. 2 and Schedule (w.e.f. 30-11-2023).",
+          "count": 1,
+          "why": "SUBSTANTIVE. India Code's database keeps the whole text of section 66A, which the Supreme Court struck down on 24 March 2015 (Shreya Singhal v. Union of India) and which the PDF (as on 27 June 2025) shows as omitted by the Jan Vishwas (Amendment of Provisions) Act, 2023. The text is replaced by the PDF's own omission line, so the shelf never hands the struck-down wording to the answer model; India Code's footnote about Shreya Singhal is kept."
+        },
+        {
+          "section": "2",
+          "from": "under subsection (1) of Section 70B",
+          "to": "under sub-section (1) of Section 70B",
+          "count": 1,
+          "why": "India Code's database drops the hyphen of 'sub-section'; the PDF prints it with the hyphen."
+        },
+        {
+          "section": "87",
+          "from": "of subsection (2) of section 22",
+          "to": "of sub-section (2) of section 22",
+          "count": 1,
+          "why": "India Code's database drops the hyphen of 'sub-section'; the PDF prints it with the hyphen."
+        }
+      ],
+      "accepted": [
+        {
+          "section": "1",
+          "word": "th",
+          "why": "India Code's own footnote 1 prints the date as '17 th October, 2000' (a space inside '17th'); not a slip of the text."
+        },
+        {
+          "section": "66A",
+          "word": "24th",
+          "why": "The words of India Code's footnote on section 66A ('struck down by Supreme Court's Order dated 24th March, 2015 in the Shreya Singhal vs. Union of India'); the footnote is India Code's, not part of the Act, and is kept."
+        },
+        {
+          "section": "66A",
+          "word": "march",
+          "why": "Same footnote on section 66A."
+        },
+        {
+          "section": "66E",
+          "word": "corrigenda",
+          "why": "India Code's footnote on section 66E: 'By Corrigenda in Gazette of India, Extraordinary, Part II, ...' (the correction of 'public area' to 'pubic area')."
+        },
+        {
+          "section": "66E",
+          "word": "pubic",
+          "why": "The database follows the Gazette corrigendum recorded in its own footnote ('pubic area'); the PDF still prints the uncorrected word 'public' (see the ordered difference for section 66E)."
+        }
+      ],
+      "ordered_accepted": [
+        {
+          "section": "12",
+          "loaded": "acknowledgment",
+          "pdf": "acknowledgement",
+          "why": "Two spellings of the same word."
+        },
+        {
+          "section": "21",
+          "loaded": "fulfils",
+          "pdf": "fulfills",
+          "why": "Two spellings of the same word."
+        },
+        {
+          "section": "21",
+          "loaded": "are",
+          "pdf": "arc",
+          "why": "A misprint in the PDF ('arc' for 'are'); the database reads correctly."
+        },
+        {
+          "section": "48",
+          "loaded": "appellate tribunal 48",
+          "pdf": "",
+          "why": "The database repeats the section's heading ('48.[Appellate Tribunal].--') inside the body; the PDF prints it once."
+        },
+        {
+          "section": "48",
+          "loaded": "24 of 1997",
+          "pdf": "",
+          "why": "The database adds the Act number after 'Telecom Regulatory Authority of India Act, 1997'; the PDF does not print it. No change of meaning."
+        },
+        {
+          "section": "48",
+          "loaded": "2017 7 of",
+          "pdf": "",
+          "why": "The database adds the Act number after 'the Finance Act, 2017'; the PDF does not print it. No change of meaning."
+        },
+        {
+          "section": "66B",
+          "loaded": "receive",
+          "pdf": "received",
+          "why": "A difference of one letter in the verb ('dishonestly receive or retains' in the database, 'dishonestly received or retains' in the PDF). Neither is the usual printing ('receives'); flagged for Mr. Advocate; the database wording is kept."
+        },
+        {
+          "section": "66D",
+          "loaded": "personation",
+          "pdf": "personating",
+          "why": "The database reads 'cheats by personation', the PDF 'cheats by personating'; flagged for Mr. Advocate; the database wording is kept."
+        },
+        {
+          "section": "66E",
+          "loaded": "pubic",
+          "pdf": "public",
+          "why": "The database follows the Gazette corrigendum in its own footnote ('pubic area'); the PDF prints the uncorrected 'public area'."
+        },
+        {
+          "section": "84",
+          "loaded": "officer",
+          "pdf": "officers",
+          "why": "The database reads 'adjudicating officer', the PDF 'adjudicating officers'; flagged for Mr. Advocate; the database wording is kept."
+        },
+        {
+          "section": "87",
+          "loaded": "69",
+          "pdf": "69a",
+          "why": "'section 69A' is printed in the database as 'section 69 A' and in the PDF as 'section 69a' (a spacing difference)."
+        },
+        {
+          "section": "87",
+          "loaded": "a",
+          "pdf": "b",
+          "why": "The same spacing difference for 'section 69B' ('69B' in the database, '69 b' in the PDF's alignment)."
+        },
+        {
+          "section": "90",
+          "loaded": "state",
+          "pdf": "stale",
+          "why": "A misprint in the PDF ('stale legislature' for 'State legislature'); the database reads correctly."
+        },
+        {
+          "section": "19",
+          "pdf_starts": "20 controller to act as repository omitted",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        },
+        {
+          "section": "48",
+          "pdf_starts": "49 composition of cyber appellate tribunal omitted",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        },
+        {
+          "section": "52D",
+          "pdf_starts": "53 filling up of vacancies omitted",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        },
+        {
+          "section": "55",
+          "pdf_starts": "56 staff of the cyber appellate tribunal omitted",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        },
+        {
+          "section": "66",
+          "pdf_starts": "66a punishment for sending offensive messages",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        },
+        {
+          "section": "90",
+          "pdf_starts": "91 amendment of act 45 of 1860 omitted",
+          "why": "The PDF prints, run on after this section, the stub of the next section, which is omitted from the Act; India Code's database lists that section as its own (omitted) record, so the words are not part of this section."
+        }
+      ],
+      "loaded_on": "2026-11-01",
+      "sections_loaded": 125,
+      "pdf_as_on": "27th June, 2025",
+      "text_status": "machine_checked"
     }
   ]
 }

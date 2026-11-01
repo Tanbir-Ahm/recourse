@@ -562,6 +562,27 @@ def _mapped_card(sec, new, ref, change):
     return {"act": sec["act"], "section": sec["number"], "new_act": new, "new_ref": ref, "change": bool(change), "note": note}
 
 
+FULL_ACT_KEYS = {"NIACT": "ni_act_1881", "ITACT": "it_act_2000"}      # the library's short code -> the shelf key of the whole Act (shelf codes NIACTFULL / ITACTFULL)
+
+
+def _full_act_section(shelf, lib_code, number):
+    """The shelf copy of a section of the NI Act / IT Act as a provision card, or None when the shelf does not hold the Act or the section."""
+    try:
+        st = shelf.get(FULL_ACT_KEYS.get(lib_code))
+        c = st["by_num"].get(str(number).upper()) if st else None
+        m = _match_dict(st, c, "named", 1.0) if c is not None else None
+        return _shelf_provision(m, "named", TEXT_CAP_ASKED) if m else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _drop_shelf_duplicates(provisions):
+    """The whole NI Act / IT Act is on the shelf (codes NIACTFULL / ITACTFULL) while the library holds some of their sections under NIACT / ITACT: where both are in a result the library's card stays (the reviewed library
+    comes first) and the shelf's copy of the same section is dropped."""
+    have = {(p.get("act"), str(p.get("section")).upper()) for p in provisions}
+    return [p for p in provisions if not (str(p.get("act") or "").endswith("FULL") and (p["act"][:-4], str(p.get("section")).upper()) in have)]
+
+
 def named_provisions(parsed, shelf, notes, embed_fn=None):
     """The sections the query names: library sections (an old IPC / CrPC number through the table) and sections of the shelf Acts the Directory found in it. -> [cards]"""
     out, seen = [], set()
@@ -599,7 +620,11 @@ def named_provisions(parsed, shelf, notes, embed_fn=None):
                     held = retrieval._load_statute_chunks(act) or {}
                     n_held = len([k for k in held if str(k)[:1].isdigit()])
                     if act in ("ITACT", "NIACT"):
-                        notes.append(f"Section {number} of the {_act_label(act)} is not one of the {n_held} sections of that Act that Recourse holds.")
+                        full = _full_act_section(shelf, act, number)                 # the whole Act is on the shelf since 2026-10-31: a section the library does not hold is taken from there
+                        if full is not None:
+                            card = full
+                        else:
+                            notes.append(f"Section {number} of the {_act_label(act)} is not one of the {n_held} sections of that Act that Recourse holds.")
                     else:
                         notes.append(f"The {_short(act)} has no section {number} in the text Recourse holds. Check the number.")
                 add(card)
@@ -1295,7 +1320,7 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
             else:
                 res["provisions"] = _guard(notes, PART_DOWN, word_provisions, terms, qv, shelf, MAX_PROVISIONS, default=[])
             res["cases"], res["mentions"] = _guard(notes, "The case list could not be searched just now.", case_cards, parsed, lex=lex, sem=sem, notes=notes, default=([], []))
-        res["provisions"] = res["provisions"][:MAX_PROVISIONS]
+        res["provisions"] = _drop_shelf_duplicates(res["provisions"])[:MAX_PROVISIONS]
         if any(p["act"] in ("BNS", "BNSS") for p in res["provisions"]):
             notes.append(BNS_COMPARED_NOTE)
         for a in res["acts"]:

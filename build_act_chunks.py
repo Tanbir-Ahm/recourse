@@ -233,9 +233,9 @@ def is_caps_line(line):
     return bool(letters) and letters == letters.upper() and not re.search(r"\d", line)
 
 
-def body_text(lines):
+def body_text(lines, start_pattern=None):
     """The Act's own text from the PDF's lines: after the enacting words, capital-letter headings left out, ending where a Schedule begins (the Schedules are not loaded). LoadError if the enacting words are absent."""
-    enacting, start = re.compile(r"enacted\s+by\s+parliament", re.I), None
+    enacting, start = re.compile(start_pattern or r"enacted\s+by\s+parliament", re.I), None          # start_pattern (manifest "body_start"): for an Act whose PDF has no enacting words (the Negotiable Instruments Act's: "Preamble.—Whereas ...")
     for i, ln in enumerate(lines):
         if enacting.search(ln):
             start = i + 1
@@ -328,7 +328,7 @@ def parse_toc(pages):
     for p in pages:
         lines += p.splitlines()
     try:
-        i0 = next(i for i, l in enumerate(lines) if "ARRANGEMENT OF SECTIONS" in l.upper())
+        i0 = next(i for i, l in enumerate(lines) if re.search(r"ARR[A-Z]*MENT\s+OF\s+SECTIONS", l.upper()))             # the Negotiable Instruments Act's PDF prints "ARRENGMENT OF SECTIONS" (2026-10-31)
     except StopIteration:
         return []
     out, cur = [], None
@@ -344,7 +344,7 @@ def parse_toc(pages):
     return [(n, t) for n, t in out]
 
 
-def compare_toc(toc, chunks, toc_absent=()):
+def compare_toc(toc, chunks, toc_absent=(), title_accepted=()):
     """The PDF's arrangement of sections against what was loaded: same numbers, same order, same titles (words only, 'non-compliance' = 'noncompliance').
     `toc_absent` are section numbers the manifest declares the PDF's printed arrangement-of-sections omits although the PDF's BODY has them (a real section the front index was not updated for, e.g. an
     amendment-inserted section); they are allowed to be 'only in loaded' and are ignored for the order check, but the section's text is still verified against the PDF's running text by ordered_compare, so the
@@ -357,7 +357,8 @@ def compare_toc(toc, chunks, toc_absent=()):
     toc_absent_seen = [n for n in only_loaded_all if n in absent]
     toc_absent_unused = [n for n in sorted(absent) if n not in only_loaded_all]
     order_nums = [n for n in c_nums if n not in absent]                     # the order check ignores the declared-absent sections
-    tmap = {n: t for n, t in toc}
+    tacc = {str(a["section"]) for a in title_accepted or []}                 # sections whose title in the PDF's printed arrangement differs from the database's, accepted in the manifest with a reason (2026-10-31: the arrangement is not updated for amendments); the section TEXT is still compared with the PDF's running text
+    tmap = {n: t for n, t in toc if n not in tacc}
     squash = lambda s: "".join(norm_words(s))  # noqa: E731
     title_diffs = [(c["section_number"], c["title"], tmap[c["section_number"]]) for c in chunks
                    if c["section_number"] in tmap and squash(c["title"]) != squash(tmap[c["section_number"]])
@@ -385,7 +386,8 @@ def absent_words(chunks, vocab):
         whole = full_section_text(c)                      # the shelf's own note is not India Code's text; the State amendments set aside are
         body = whole.split("\n", 1)[1] if "\n" in whole else whole
         foot = c.get("footnotes", "")
-        for w in sorted({w for w in norm_words(body + " " + foot) if w not in vocab}):
+        foot_chk = re.sub(r"(?<![\w])(\d{1,2})(?=[A-Z][a-z])", r"\1 ", foot)            # a footnote number glued to its first word ("1Subs. by") is not part of the word (the IT Act's footnotes, 2026-10-31)
+        for w in sorted({w for w in norm_words(body + " " + foot_chk) if w not in vocab}):
             m, src = re.search(re.escape(w), body, re.I), body
             if not m:
                 m, src = re.search(re.escape(w), foot, re.I), foot
@@ -618,12 +620,12 @@ def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
         return chunks, report
     name, data, pages = pick_english_pdf(fetcher.original_pdfs(ic["uuid"]), entry["name"])
     toc = parse_toc(pages)
-    cmp_ = compare_toc(toc, chunks, entry.get("toc_absent"))
+    cmp_ = compare_toc(toc, chunks, entry.get("toc_absent"), entry.get("toc_title_accepted"))
     report["pdf"] = {"name": name, "sha256": hashlib.sha256(data).hexdigest(), "pages": len(pages), "as_on": pdf_as_on(pages), "toc": cmp_}
     if not cmp_["ok"]:
         raise LoadError(f"the loaded sections do not equal the PDF's arrangement of sections: {json.dumps({k: v for k, v in cmp_.items() if k != 'ok'}, ensure_ascii=False)[:600]}")
     vocab = pdf_vocabulary(pages)
-    body = body_text(pdf_body_lines(data))
+    body = body_text(pdf_body_lines(data), entry.get("body_start"))
     bad_fix = check_corrections_in_pdf(entry.get("corrections"), vocab, pages, body)
     if bad_fix:
         raise LoadError(f"a correction is not what the PDF reads: {bad_fix}")

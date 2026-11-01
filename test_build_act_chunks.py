@@ -375,12 +375,12 @@ manifest = json.load(open(os.path.join(SHELF, "manifest.json"), encoding="utf-8"
 M = {a["key"]: a for a in manifest["acts"]}
 MD = {k: a for k, a in M.items() if a.get("source") != "pdf_only"}          # the Acts loaded from India Code's database and checked against its PDF; the Evidence Act (PDF only, 2026-10-31) is tested in test_evidence_bsa.py
 directory = {a["id"]: a for a in json.load(open(os.path.join(HERE, "acts_directory.json"), encoding="utf-8"))["acts"]}
-check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984", "dowry_prohibition_act_1961", "jj_act_2015", "bsa_2023", "evidence_act_1872"],
-      "manifest: the five Acts the owner chose, the two very short ones, then the Dowry (1961) and Juvenile Justice (2015) Acts added on 2026-10-17, then the Evidence Act (PDF only) and the Bharatiya Sakshya Adhiniyam added on 2026-10-31")
-check(len({a["code"] for a in M.values()}) == 11 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: eleven distinct upper-case codes")
+check(list(M) == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989", "muslim_women_act_2019", "pdpp_act_1984", "dowry_prohibition_act_1961", "jj_act_2015", "bsa_2023", "evidence_act_1872", "ni_act_1881", "it_act_2000"],
+      "manifest: the five Acts the owner chose, the two very short ones, then the Dowry (1961) and Juvenile Justice (2015) Acts added on 2026-10-17, then the Evidence Act (PDF only) and the Bharatiya Sakshya Adhiniyam added on 2026-10-31, then the whole Negotiable Instruments Act and Information Technology Act on 2026-10-31")
+check(len({a["code"] for a in M.values()}) == 13 and all(re.fullmatch(r"[A-Z]+", a["code"]) for a in M.values()), "manifest: thirteen distinct upper-case codes")
 check([k for k, a in M.items() if a.get("whole_act")] == ["muslim_women_act_2019", "pdpp_act_1984"], "manifest: only the two very short Acts are marked whole_act (the Dowry and JJ Acts are over the size limit)")
-check(M["dowry_prohibition_act_1961"].get("toc_absent") == ["8A"] and all("toc_absent" not in a for k, a in M.items() if k != "dowry_prohibition_act_1961"),
-      "manifest: only the Dowry Act declares toc_absent (section 8A, in the PDF body but omitted from the printed arrangement of sections)")
+check(M["dowry_prohibition_act_1961"].get("toc_absent") == ["8A"] and M["ni_act_1881"].get("toc_absent") == ["70", "104A"] and all("toc_absent" not in a for k, a in M.items() if k not in ("dowry_prohibition_act_1961", "ni_act_1881")),
+      "manifest: only the Dowry Act (section 8A) and the Negotiable Instruments Act (sections 70 and 104A) declare toc_absent: in the PDF body but omitted from the printed arrangement of sections")
 check(all(a["india_code"]["uuid"] == directory[k]["indiacode"]["uuid"] and a["name"] == directory[k]["name"] and a["citation"] == "Act No. " + directory[k]["act_no"] for k, a in M.items()), "manifest: each Act is the Directory's Act (same India Code record, name and number)")
 check(all(f.get("why", "").strip() for a in M.values() for f in a.get("corrections", [])) and all(f.get("why", "").strip() for a in M.values() for f in a.get("accepted", [])), "manifest: every correction and every accepted difference says why")
 check(all(a.get("text_status") == "machine_checked" and a.get("loaded_on") and a.get("sections_loaded") and a.get("pdf_as_on") for a in MD.values()), "manifest: every Act records when it was loaded, how many sections, the PDF's date and that it is only machine-checked")

@@ -45,7 +45,7 @@ ACTS = RAW["acts"]
 PRIORITY = [a["id"] for a in ACTS if a.get("priority") == 1]
 
 # ---------------------------------------------------------------- data integrity
-check(RAW.get("schema") == 1 and len(ACTS) == 34, f"the directory holds 34 Acts ({len(ACTS)})")
+check(RAW.get("schema") == 1 and len(ACTS) == 36, f"the directory holds 36 Acts ({len(ACTS)})")
 check(len({a["id"] for a in ACTS}) == len(ACTS), "every id is unique")
 check(PRIORITY == ["pc_act_1988", "pocso_act_2012", "uapa_1967", "pmla_2002", "sc_st_act_1989"], f"the five priority Acts are the ones the owner accepted ({PRIORITY})")
 check(all(a.get("name") and a.get("short") and a.get("act_no") and a.get("aliases") for a in ACTS), "every entry has a name, a short name, an Act number and at least one alias")
@@ -71,7 +71,7 @@ check({a["id"]: a["indiacode"]["repealed_by"] for a in ACTS if a["indiacode"]["r
 check(all(a["status"]["text"] and a["status"]["reviewed"] is None for a in ACTS), "every status line is a draft with no reviewer stamp")
 check(all(a["appeal"]["reviewed"] is None for a in ACTS) and sorted(a["id"] for a in ACTS if a["appeal"]["text"]) == ["nia_act_2008", "pc_act_1988", "pmla_2002", "pocso_act_2012", "sc_st_act_1989", "tada_1987", "uapa_1967"],
       "seven appeal-route drafts (the five priority Acts, TADA and the NIA Act), none confirmed")
-check([a["id"] for a in ACTS if a["detect"] is False] == ["ipc_1860", "crpc_1973"], "the two repealed codes the concordance already handles are not detected (a notice would be noise)")
+check([a["id"] for a in ACTS if a["detect"] is False] == ["ipc_1860", "crpc_1973", "ni_act_1881", "it_act_2000"], "the two repealed codes the concordance already handles are not detected (a notice would be noise), and neither are the Negotiable Instruments Act and the Information Technology Act (2026-10-31: their whole text is on the shelf, but the library's own cheque-bounce and IT Act flows answer questions on them, so the Directory does not tie a question to the shelf copy)")
 check(all(a["status"]["confidence"] in ("certain", "likely", "guessing") for a in ACTS), "every status draft carries the drafter's confidence")
 check(all((a["status"].get("evidence") or "").strip() for a in ACTS) and all((a["appeal"].get("evidence") or "").strip() for a in ACTS if a["appeal"]["text"]) and all(a["appeal"]["confidence"] in ("certain", "likely") for a in ACTS if a["appeal"]["text"]),
       "every drafted line says what it rests on (what was read on India Code, and what is only recollection)")
