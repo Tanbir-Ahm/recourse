@@ -137,16 +137,32 @@ check(pdf[:5] == b"%PDF-" and info_pdf["ok"] is True and not info_pdf["fallback"
 check(dx[:2] == b"PK" and info_dx["ok"] is True, f"a Word file, proved complete ({info_dx})")
 PT, pages = pdf_text(pdf)
 DT = docx_text(dx)
-MUST = ["My brother was arrested. What now?", "You were arrested on a bailable charge.", "Ask for the grounds of arrest.", "Bharatiya Nagarik Suraksha Sanhita", "https://www.indiacode.nic.in/", "Section 17 in full", "The text of 17.", "Second line.", "Section 13", "The text of 13.", "not yet read by our reviewer",
+MUST = ["My brother was arrested. What now?", "You were arrested on a bailable charge.", "Ask for the grounds of arrest.", "Bharatiya Nagarik Suraksha Sanhita", "Section 17 in full", "The text of 17.", "Second line.", "Section 13", "The text of 13.", "not yet read by our reviewer",
         "BNSS Section 35", "Arrest without warrant, with notice of appearance.", "Arnesh Kumar v. State of Bihar", "(2014) 8 SCC 273", "paragraph 7", "Arrest is not to be made routinely.",
-        X.H_RELIED, "https://example.org/a", "Indian Kanoon", X.H_CURRENCY, "Reported as overruled; not yet confirmed by our reviewer.", "A possible later case.", "Not checked by us.",
-        X.H_GROUNDING, "One quotation could not be matched to the sources.", X.H_SCI_FED, "This search does not say whether a decision is still good law", "The collection ends 2026-10-01.", "X v. Y", "paragraph 4", "passage text of x",
+        X.H_RELIED, "Indian Kanoon", X.H_CURRENCY, "Reported as overruled; not yet confirmed by our reviewer.", "A possible later case.", "Not checked by us.",
+        X.H_GROUNDING, "One quotation could not be matched to the sources.", X.H_SCI_FED, X.SCI_FOOT_EXPORT, "The collection ends 2026-10-01.", "X v. Y", "paragraph 4", "passage text of x",
         "a reading note", "X was reported as doubted.", "open Supreme Court judgments bucket", X.H_ANCHORS + X.ANCHORS_UNCONFIRMED, "P. Ramachandra Rao", "Held", "word for word text", "an anchor note",
         X.H_UNVERIFIED, "Z v. W", "may be a procedural/bail order, not a full judgment", "Facts to find out or bring to a lawyer", "Whether you were told the reason", "Notes for my lawyer", "Bad Link v. State"]
 for needle in MUST:
     check(norm(needle) in norm(PT), f"PDF has: {needle[:70]}")
     check(norm(needle) in norm(DT), f"Word file has: {needle[:70]}")
 check("javascript" not in PT and "javascript" not in DT, "the unsafe link's address is nowhere in either file")
+# the layout change of 2026-11-02: web addresses are printed in the PDF (a printed page cannot be clicked) and left out of the Word file (its links are clickable); the answer comes first and the apparatus follows under one heading
+for url in ("https://www.indiacode.nic.in/", "https://example.org/a"):
+    check(norm(url) in norm(PT), f"PDF prints the address {url}")
+    check(norm(url) not in norm(DT), f"Word file does not print the address {url}")
+import zipfile as _zf
+_rels = _zf.ZipFile(io.BytesIO(dx)).read("word/_rels/document.xml.rels").decode("utf-8", "replace")
+check("https://example.org/a" in _rels and "https://www.indiacode.nic.in/" in _rels, "the Word file still links to both addresses (clickable)")
+_t = [b["text"] for b in doc["blocks"] if b["t"] == "h2"]
+check(_t.count(X.H_CHECKS) == 1, "the file has one 'Sources and checks' heading")
+_i = [b["t"] for b in doc["blocks"]]
+_k = next(i for i, b in enumerate(doc["blocks"]) if b["t"] == "h2" and b["text"] == X.H_CHECKS)
+check(all(b["t"] != "h2" or b["text"] in (X.H_CHECKS, "Your question", "The answer", "Notes for my lawyer") for b in doc["blocks"][_k + 1:]) , "after 'Sources and checks' no other level-2 heading (they sit one level lower)")
+check(X.plain(doc["blocks"][_k + 1]["runs"]) == X.CHECKS_INTRO and doc["blocks"][_k - 1]["t"] == "rule", "a rule, the heading and the caveat said once")
+check(X.all_text(doc).count("good law") <= 2, f"the 'good law' remark is not repeated all over the file ({X.all_text(doc).count('good law')} times)")
+check(X.para_text("preamble/128") == "not numbered" and X.para_text("423/5") == "not numbered" and X.para_text("9/3") == "not numbered" and X.para_text("152 to 154") == "152 to 154"
+      and X.para_text("151, 152 to 154, 159 to 161, 163, 179 and 180") != "not numbered" and X.para_text("10 (AIR report)") == "10 (AIR report)" and X.para_text("") == "" and X.para_text(None) == "", "paragraph labels: numbers as written, the index's passage ids as 'not numbered'")
 check(pages >= 2 and "Page 1 of" in PT, f"the PDF has {pages} pages with 'Page n of N' footers")
 with zipfile.ZipFile(io.BytesIO(dx)) as z:
     rels = z.read("word/_rels/document.xml.rels").decode("utf-8")
@@ -179,13 +195,16 @@ check(LVIEW["authorities"] and LVIEW["authorities"]["tables"], "the lawyer's vie
 ldoc = X.build_document([dict(ENTRY, view=LVIEW, audience="lawyer")], generated_at=WHEN)
 check(ldoc["title"] == "Research note" and X.DISCLAIMER_LAWYER in X.plain(next(b for b in ldoc["blocks"] if b["t"] == "note")["runs"]), "the lawyer's file is a Research note with the lawyer's disclaimer")
 check(not any(b["t"] == "lines" for b in ldoc["blocks"]) and "Notes for my lawyer" not in X.all_text(ldoc), "no 'Notes for my lawyer' lines in a lawyer's file")
-check(sum(1 for b in ldoc["blocks"] if b["t"] == "table") == len(LVIEW["authorities"]["tables"]), "one table per table of authorities")
+check(sum(1 for b in ldoc["blocks"] if b["t"] == "table") == 1, "the tables of authorities are ONE table (2026-11-02)")
+_mt = next(b for b in ldoc["blocks"] if b["t"] == "table")
+check(_mt["head"][:2] == ["Case", "Source"] and _mt["head"][-2:] == ["Where it stands on our lists", "Link"], f"the merged table's columns ({_mt['head']})")
+check(len(_mt["rows"]) == sum(1 for t in LVIEW["authorities"]["tables"] for ln in t["markdown"].splitlines()[2:] if ln.strip().startswith("|")), "no row of any table is lost in the merge")
 lpdf, lip = X.export(ldoc, "pdf")
 ldx, lid = X.export(ldoc, "docx")
 check(lip["ok"] is True and lid["ok"] is True, f"both lawyer files proved complete ({lip}, {lid})")
 LP, LD = pdf_text(lpdf)[0], docx_text(ldx)
-for needle in ["Where it stands on our lists", "Authorities (reviewed library)", "Further reading from a wider search (not independently verified)", "Arnesh Kumar v. State of Bihar (2014)", "(2014) 8 SCC 273", "Reported as overruled; not yet confirmed by our reviewer.",
-               "Please ask a lawyer before relying on any case here.", "Facts to find out"]:
+for needle in ["Where it stands on our lists", "Authorities and where each stands on our lists", "Wider search (not independently verified)", "Arnesh Kumar v. State of Bihar (2014)", "(2014) 8 SCC 273", "Reported as overruled; not yet confirmed by our reviewer.",
+               X.H_CHECKS, X.CHECKS_INTRO, "Facts to find out"]:
     ok = norm(needle) in norm(LP) and norm(needle) in norm(LD)
     if needle == "Facts to find out":
         ok = norm(needle) not in norm(LP) and norm(needle) not in norm(LD)
@@ -194,7 +213,7 @@ for needle in ["Where it stands on our lists", "Authorities (reviewed library)",
         check(ok, f"lawyer's file (both formats) has: {needle[:70]}")
 import docx
 tbls = docx.Document(io.BytesIO(ldx)).tables
-check(len(tbls) >= 2 and tbls[0].rows[0].cells[0].text == "Case", "the Word file holds real tables with a header row")
+check(len(tbls) >= 1 and tbls[0].rows[0].cells[0].text == "Case", "the Word file holds real tables with a header row")
 
 # ---------------------------------------------------------------- 4. a conversation
 NOTICE_VIEW = V.build({"state": "adjacent_uncovered", "reasoning": "An employment dispute.", "register_notes": ["Case A was reported as overruled."]})

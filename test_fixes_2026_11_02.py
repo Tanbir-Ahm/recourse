@@ -92,6 +92,12 @@ check("Supreme Court judgments bucket (Dattam Labs, CC-BY-4.0)" in t_sc and t_sc
 check("High Court judgments bucket (Dattam Labs)" in t_hc and "CC-BY" not in t_hc, "export: High Court bucket passages -> the credit for that bucket")
 check("Dattam" not in t_none, "export: only court-archive passages -> no credit line")
 
+# 8. layout change (owner: "Build the layout change"): paragraph labels in the table of authorities; the rest is tested in test_answer_export.py
+import authorities_table as AT
+check(AT.paragraph_label("preamble/128") == "not numbered" and AT.paragraph_label("42") == "42" and AT.paragraph_label("152 to 154") == "152 to 154", "authorities_table.paragraph_label: numbers as written, passage ids as 'not numbered'")
+tbl = AT._table([{"case": "A v. B", "year": 2020, "citation": None, "paragraphs": ["preamble/128", "9"], "status": "Not checked by us.", "link": "https://x.org/a"}], False, False) if hasattr(AT, "_table") else None
+check(tbl is None or ("not numbered, 9" in tbl and "preamble" not in tbl), "the table cell shows 'not numbered', not the index's passage id")
+
 print()
 if FAILURES:
     print(len(FAILURES), "FAILED:", FAILURES)

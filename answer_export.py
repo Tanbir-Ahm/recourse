@@ -96,7 +96,7 @@ def link_runs(label, url, **fmt):
         return [R(label, **fmt)] if label else []
     out = [R(label or u, href=u, **fmt)]
     if label and label != u:
-        out.append(R(" (" + u + ")", muted=True))
+        out.append(R(" (" + u + ")", muted=True, addr=True))        # addr: the printed address; the Word file leaves it out (its links can be clicked), the PDF keeps it (2026-11-02)
     return out
 
 
@@ -269,6 +269,80 @@ def _s(v):
     return None if v is None else str(v)
 
 
+# ---- layout of the apparatus (2026-11-02, owner: "Build the layout change") -----------------------------------------------
+H_CHECKS = "Sources and checks"
+CHECKS_INTRO = ("Everything below was assembled by code from the sources Recourse read, so that you can check the answer; it is not part of the answer. Nobody at Recourse has yet read and confirmed the cases and sections listed, "
+                "and \"Not checked by us\" means that neither our Overruled Register nor our automatic check covers the case. Neither ever says that a decision is still good law: read the real judgment yourself, or with a lawyer, "
+                "before relying on it.")
+SCI_FOOT_EXPORT = "These passages came from a search of a much wider judgment database and are not independently verified."          # the first sentence of SCI_FOOT; the rest is in CHECKS_INTRO
+def para_text(p):
+    """A paragraph label as the file shows it (the rule is authorities_table.paragraph_label)."""
+    from authorities_table import paragraph_label
+    return paragraph_label(p)
+
+
+def _col(head, key):
+    for i, h in enumerate(head):
+        if str(h).strip().lower().startswith(key):
+            return i
+    return None
+
+
+def merged_authorities(tables):
+    """The page's separate tables of authorities (verbatim excerpts, wider search, library) as ONE table with a Source column, a paragraph column free of the index's passage ids, and a Court column only when some court is not the Supreme Court.
+    -> a table block, or None when a table has an unexpected shape (the caller then keeps the tables as the page has them)."""
+    try:
+        parsed = []
+        for t in tables or []:
+            tb = [b for b in md_blocks(t.get("markdown") or "") if b["t"] == "table"]
+            if len(tb) != 1:
+                return None
+            parsed.append(((t.get("heading") or ""), tb[0]))
+        if not parsed:
+            return None
+        rows = []
+        for heading, tb in parsed:
+            h = tb["head"]
+            ci, wi, li = _col(h, "case"), _col(h, "where"), _col(h, "link")
+            if None in (ci, wi, li):
+                return None
+            cit, par, cou = _col(h, "citation"), _col(h, "paragraph"), _col(h, "court")
+            hl = heading.lower()
+            source = "Verbatim excerpt" if "verbatim" in hl else ("Wider search (not independently verified)" if "wider" in hl else "Library")
+            for r in tb["rows"]:
+                get = lambda i: r[i] if i is not None and i < len(r) else []  # noqa: E731
+                court = plain(get(cou)) or ("Supreme Court of India" if source == "Verbatim excerpt" else "")
+                rows.append({"case": get(ci), "source": [R(source)], "cit": get(cit), "par": [R(para_text(plain(get(par))))] if plain(get(par)) else [], "court": court, "where": get(wi), "link": get(li)})
+        show_court = any(x["court"] and x["court"] != "Supreme Court of India" for x in rows)
+        head = ["Case", "Source", "Citation", "Paragraph"] + (["Court"] if show_court else []) + ["Where it stands on our lists", "Link"]
+        out = []
+        for x in rows:
+            out.append([x["case"], x["source"], x["cit"], x["par"]] + ([[R(x["court"] or "Supreme Court of India")]] if show_court else []) + [x["where"], x["link"]])
+        return {"t": "table", "head": head, "rows": out}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _new_sentences(note, seen_norm):
+    """The sentences of `note` that the table text (given normalised) does not already hold; '' when there is nothing new."""
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z])", str(note or "").strip())
+    keep = [x for x in parts if x and _norm(x) not in seen_norm]
+    return " ".join(keep)
+
+
+def _demote(blocks):
+    """Inside 'Sources and checks' the section headings sit one level lower: h2 -> h3, h3 -> a bold line."""
+    out = []
+    for b in blocks:
+        if b["t"] == "h2":
+            out.append({**b, "t": "h3"})
+        elif b["t"] == "h3":
+            out.append({"t": "p", "runs": [R(b["text"], b=True)]})
+        else:
+            out.append(b)
+    return out
+
+
 # ---- the blocks for one answer, in the page's own order ----------------------------------------------------------------
 def _answer_blocks(view, lawyer):
     B = []
@@ -300,6 +374,7 @@ def _answer_blocks(view, lawyer):
         runs = html_to_runs(view["act_notice_html"])
         if runs:
             B.append(_box(runs))
+    ANSWER_PART, B = B, []                                    # what follows is the apparatus: it goes under one heading, after the answer (2026-11-02)
     for it in view.get("section_notes") or []:
         if it.get("lead"):
             B.append(_box([R(it["lead"])]))
@@ -315,12 +390,20 @@ def _answer_blocks(view, lawyer):
             cap += [R(" · ", muted=True)] + link_runs("India Code", it["url"], muted=True)
         B.append({"t": "p", "runs": cap})
     auth = view.get("authorities")
+    table_norm = ""
     if auth:
-        for t in auth.get("tables") or []:
-            B.append({"t": "h3", "text": t.get("heading") or ""})
-            B += [b for b in md_blocks(t.get("markdown") or "") if b["t"] == "table"] or md_blocks(t.get("markdown") or "")
-        if auth.get("note"):
-            B.append(_p(auth["note"], muted=True))
+        mt = merged_authorities(auth.get("tables"))
+        if mt:
+            B.append({"t": "h3", "text": "Authorities and where each stands on our lists"})
+            B.append(mt)
+            table_norm = _norm(" ".join(plain(c) for row in mt["rows"] for c in row))
+        else:
+            for t in auth.get("tables") or []:
+                B.append({"t": "h3", "text": t.get("heading") or ""})
+                B += [b for b in md_blocks(t.get("markdown") or "") if b["t"] == "table"] or md_blocks(t.get("markdown") or "")
+                table_norm += _norm(t.get("markdown") or "")
+            if auth.get("note"):
+                B.append(_p(auth["note"], muted=True))
     if view.get("statutes") or view.get("judgments"):
         B.append({"t": "h2", "text": H_SOURCES})
         for s in view.get("statutes") or []:
@@ -338,7 +421,7 @@ def _answer_blocks(view, lawyer):
             for cv in c.get("caveats") or []:
                 B.append(_box([R(cv)]))
             for e in c.get("excerpts") or []:
-                B.append(_p(("paragraph " + e["paragraph"]) if e.get("paragraph") else "excerpt", i=True, muted=True))
+                B.append(_p(("paragraph " + para_text(e["paragraph"])) if e.get("paragraph") else "excerpt", i=True, muted=True))
                 B.append(_official(e.get("text") or ""))
     if view.get("cited_links"):
         B.append({"t": "h2", "text": H_RELIED})
@@ -360,18 +443,20 @@ def _answer_blocks(view, lawyer):
         tagged = bool(sci.get("court_tags"))                      # a court is named beside a passage only when some passage of the list is not the Supreme Court's
         scope = sci.get("scope") or "Supreme Court"
         B.append({"t": "h2", "text": (H_SCI_FED if sci.get("fed") else H_SCI_SHOWN) if scope == "Supreme Court" else _SCI.box_title(None, bool(sci.get("fed")), scope)})
-        B.append(_p(SCI_FOOT + (_SCI.COURT_FOOT if tagged else "") + _SCI.asof_sentence(sci.get("as_of"), sci.get("as_of_by_court")), muted=True))
+        B.append(_p(SCI_FOOT_EXPORT + (_SCI.COURT_FOOT if tagged else "") + _SCI.asof_sentence(sci.get("as_of"), sci.get("as_of_by_court")), muted=True))
         for j in sci["items"]:
             head = link_runs(j.get("case_name") or "", j.get("link"), b=True)
             if not head:
                 head = [R(j.get("case_name") or "", b=True)]
             credit = _SCI.credit_for(j.get("link_kind"))
-            tail = ((" (" + j["date"] + ")") if j.get("date") else "") + ((" · " + j["court"]) if tagged and j.get("court") else "") + ((" — paragraph " + j["paragraph"]) if j.get("paragraph") else "") + ((" · " + credit) if credit else "")
+            tail = ((" (" + j["date"] + ")") if j.get("date") else "") + ((" · " + j["court"]) if tagged and j.get("court") else "") + ((" — paragraph " + para_text(j["paragraph"])) if j.get("paragraph") else "") + ((" · " + credit) if credit else "")
             B.append({"t": "p", "runs": head + ([R(tail)] if tail else [])})
-            if j.get("register_note"):
-                B.append(_box([R(j["register_note"])]))
-            if j.get("passage_note"):
-                B.append(_p(j["passage_note"], muted=True))
+            rn = _new_sentences(j.get("register_note"), table_norm)          # a note the table above already holds is not printed again (2026-11-02)
+            if rn:
+                B.append(_box([R(rn)]))
+            pn = _new_sentences(j.get("passage_note"), table_norm)
+            if pn:
+                B.append(_p(pn, muted=True))
             if j.get("names_register_note"):
                 B.append(_box([R("This passage names a case on our register: " + j["names_register_note"])]))
             if j.get("excerpt"):
@@ -385,7 +470,7 @@ def _answer_blocks(view, lawyer):
             tail = ((" (" + a["year"] + ")") if a.get("year") else "") + ((", " + a["citation"]) if a.get("citation") else "")
             B.append({"t": "p", "runs": head + ([R(tail)] if tail else [])})
             for e in a.get("excerpts") or []:
-                B.append(_p((e.get("label") or "") + ((" — paragraph " + e["paragraph"]) if e.get("paragraph") else ""), i=True, muted=True))
+                B.append(_p((e.get("label") or "") + ((" — paragraph " + para_text(e["paragraph"])) if e.get("paragraph") else ""), i=True, muted=True))
                 B.append(_official(e.get("text") or ""))
                 if e.get("note"):
                     B.append(_p(e["note"], muted=True))
@@ -395,11 +480,13 @@ def _answer_blocks(view, lawyer):
         for j in view["unverified"]:
             runs = link_runs(j.get("case_name") or "", j.get("url")) or [R(j.get("case_name") or "")]
             if j.get("paragraph"):
-                runs.append(R(" — paragraph " + j["paragraph"]))
+                runs.append(R(" — paragraph " + para_text(j["paragraph"])))
             if j.get("procedural"):
                 runs.append(R(" — may be a procedural/bail order, not a full judgment"))
             B.append({"t": "p", "runs": runs})
-    return B
+    if B:                                                      # the apparatus after the answer, under one heading, with the caveat said once
+        ANSWER_PART += [{"t": "rule"}, {"t": "h2", "text": H_CHECKS}, _p(CHECKS_INTRO, muted=True)] + _demote(B)
+    return ANSWER_PART
 
 
 def _notice_blocks(view):
@@ -455,7 +542,7 @@ def build_document(entries, *, kind="answer", title_chat=None, generated_at=None
     if multi or kind == "conversation":
         title = "Your conversation with Recourse" if not lawyer else "Research notes from Recourse"
         ids = f"{len(entries)} answers"
-        meta = f"Recourse · {len(entries)} questions and answers · generated {generated}"
+        meta = f"Recourse · {len(entries)} question{'s' if len(entries) != 1 else ''} and answer{'s' if len(entries) != 1 else ''} · generated {generated}"
     else:
         title = ("Your question and the answer" if not lawyer else "Research note")
         ids = "Answer ID " + entries[0]["answer_id"]
@@ -1012,12 +1099,22 @@ def verify_docx(data, doc):
 # ======================================================================================================================
 # 4. the safe build
 # ======================================================================================================================
+def without_addresses(x):
+    """A copy of the document model without the printed web addresses (runs marked addr): the Word file's links are clickable, so the address would only clutter the page."""
+    if isinstance(x, list):
+        return [without_addresses(v) for v in x if not (isinstance(v, dict) and v.get("addr"))]
+    if isinstance(x, dict):
+        return {k: without_addresses(v) for k, v in x.items()}
+    return x
+
+
 def export(doc, fmt):
     """(bytes, info) for fmt 'pdf' or 'docx'. A PDF is built, proved complete and, if the proof fails, rebuilt in the plain layout. Raises ScriptNotSupported for a PDF whose text has characters the font lacks,
     ExportError if nothing could be built. info = {'ok': True/None, 'fallback': bool, 'checked': n}; 'ok' False is never returned: a file that fails its proof twice is an ExportError."""
     if fmt not in FORMATS:
         raise ExportError("unknown format")
     if fmt == "docx":
+        doc = without_addresses(doc)
         try:
             data = render_docx(doc)
         except Exception as exc:  # noqa: BLE001

@@ -96,6 +96,17 @@ def _cell(text):
     return re.sub(r"\s+", " ", str(text or "")).replace("|", "\\|").strip()
 
 
+_PARA_OK = re.compile(r"\d+[A-Za-z]?(?:\s*(?:,|and|to|-|–)\s*\d+[A-Za-z]?)*(?:\s*\([A-Za-z ]+\))?")
+
+
+def paragraph_label(p):
+    """A paragraph label as the table shows it (2026-11-02): a number, a range or a list of numbers as written; the search index's own passage ids ('preamble/128', '423/5', '9/3') mean nothing to a reader -> 'not numbered'."""
+    s = str(p or "").strip()
+    if not s or s == "-":
+        return s
+    return s if _PARA_OK.fullmatch(s) else "not numbered"
+
+
 def _table(rows, has_bench, has_court=False):
     """`has_court`: a Court column (only when some wider-search row is not a Supreme Court judgment; otherwise the table is the one that was here before the High Court judgments came)."""
     head = ["Case", "Citation", "Paragraph"] + (["Court"] if has_court else []) + (["Bench"] if has_bench else []) + ["Where it stands on our lists", "Link"]
@@ -107,7 +118,7 @@ def _table(rows, has_bench, has_court=False):
         credit = _T.credit_for(r.get("link_kind"))                 # '' since 2026-11-02 (SOURCE_TAGS=on brings the tag back); the credit is in the page footer
         if credit:
             link += " (" + credit + ")"
-        cells = [name, _cell(r.get("citation")) or "not held", ", ".join(r.get("paragraphs") or []) or "-"]
+        cells = [name, _cell(r.get("citation")) or "not held", ", ".join(paragraph_label(x) for x in (r.get("paragraphs") or [])) or "-"]
         if has_court:
             cells.append(_cell(r.get("court")) or "not recorded")
         if has_bench:

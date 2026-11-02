@@ -449,7 +449,10 @@ _dt = re.sub(r"\s+", " ", " ".join(p.text for p in _docx.Document(io.BytesIO(_dx
 _need = [X.H_ANCHORS + X.ANCHORS_UNCONFIRMED, "Sharad Birdhichand Sarda", "(1984) 4 SCC 116", "paragraph 152 to 154", "paragraph 151, 159 to 161", "Hanumant", "AIR 1952 SC 343", "paragraph 10 (AIR report)", "panchsheel",
          "https://api.sci.gov.in/jonew/judis/9517.pdf", "https://api.sci.gov.in/jonew/judis/1154.pdf"]
 check(_ip["ok"] is True and _ix["ok"] is True and all(re.sub(r"\s+", " ", n).lower() in _pt for n in _need), "the PDF export carries both cases, their citations, paragraphs, links and the unconfirmed notice (and proves itself complete)")
-check(all(re.sub(r"\s+", " ", n).lower() in _dt for n in _need), "the Word export carries the same")
+_need_w = [n for n in _need if not n.startswith("https://")]              # the Word file leaves printed addresses out (its links are clickable; layout change 2026-11-02)
+check(all(re.sub(r"\s+", " ", n).lower() in _dt for n in _need_w) and not any(n.lower() in _dt for n in _need if n.startswith("https://")), "the Word export carries the same (the web addresses are links, not printed text)")
+_rels = __import__("zipfile").ZipFile(io.BytesIO(_dx)).read("word/_rels/document.xml.rels").decode("utf-8", "replace")
+check("https://api.sci.gov.in/jonew/judis/9517.pdf" in _rels and "https://api.sci.gov.in/jonew/judis/1154.pdf" in _rels, "the Word export still links to both judgments")
 
 # --- the wider search does not hand the same judgments over a second time (the index spells them differently)
 os.environ.update(SCI_SEARCH_MODE="feed", SCI_SEARCH_URL="http://127.0.0.1:9", SCI_SEARCH_TOKEN="t")
