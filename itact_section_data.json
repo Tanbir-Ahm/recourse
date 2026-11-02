@@ -131,24 +131,28 @@
   },
   "72": {
     "offence": "Whoever, having secured access to any electronic record, book, register, correspondence, information, document, or other material under the powers conferred by this Act, discloses it to any other person without the consent of the person concerned",
-    "max_years": 2,
+    "max_years": null,
     "max_months": null,
     "life_or_death": false,
-    "punishment_shape": "ceiling_only",
-    "cognizable": false,
-    "bailable": true,
+    "punishment_shape": "penalty_only",
+    "cognizable": null,
+    "bailable": null,
     "has_multiple_conditions": false,
-    "needs_review": false
+    "needs_review": false,
+    "penalty_up_to": "5,00,000 rupees",
+    "changed_by": "Act 18 of 2023 (Jan Vishwas (Amendment of Provisions) Act, 2023), w.e.f. 30-11-2023: 'liable to penalty' replaced imprisonment and fine; text from India Code's PDF of 27 June 2025 (act_shelf/it_act_2000.json)"
   },
   "72A": {
     "offence": "Whoever, including an intermediary, while providing services under a lawful contract, having secured access to material containing personal information about another person, discloses it without consent or in breach of the contract, intending or knowing it is likely to cause wrongful loss or wrongful gain",
-    "max_years": 3,
+    "max_years": null,
     "max_months": null,
     "life_or_death": false,
-    "punishment_shape": "ceiling_only",
-    "cognizable": true,
-    "bailable": true,
+    "punishment_shape": "penalty_only",
+    "cognizable": null,
+    "bailable": null,
     "has_multiple_conditions": false,
-    "needs_review": false
+    "needs_review": false,
+    "penalty_up_to": "25,00,000 rupees",
+    "changed_by": "Act 18 of 2023 (Jan Vishwas (Amendment of Provisions) Act, 2023), w.e.f. 30-11-2023: 'liable to penalty' replaced imprisonment and fine; text from India Code's PDF of 27 June 2025 (act_shelf/it_act_2000.json)"
   }
 }

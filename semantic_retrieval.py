@@ -1027,6 +1027,8 @@ def _conflict_state(enriched):
     all_cognizable_values = set()
     for e in conflict_pool:
         for variant_data in e["all_variants"].values():
+            if variant_data.get("punishment_shape") == "penalty_only":              # no cognizable/bailable fact (IT Act ss.72, 72A since 30-11-2023): not a disagreement
+                continue
             all_cognizable_values.add(variant_data.get("cognizable"))
     return "conflicting_matches" if len(all_cognizable_values) > 1 else "single_match"
 

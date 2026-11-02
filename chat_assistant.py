@@ -1521,7 +1521,7 @@ def _find_cognizable_bailable_mismatches(response_text: str, variants: dict) -> 
             bare_family = [v for k, v in variants.items() if k == num or k.startswith(f"{num}(")]
             if len(bare_family) == 1:
                 data = bare_family[0]
-        if data is None:
+        if data is None or data.get("punishment_shape") == "penalty_only":     # IT Act ss.72 and 72A since 30-11-2023: a penalty, no imprisonment -- there is no cognizable/bailable fact to check a claim against
             continue
 
         window_end = section_hits[i + 1].start() if i + 1 < len(section_hits) else len(response_text)
@@ -1623,7 +1623,7 @@ def _find_cognizable_bailable_omissions(response_text: str, variants: dict) -> l
             bare_family = [v for k, v in variants.items() if k == num or k.startswith(f"{num}(")]
             if len(bare_family) == 1:
                 data = bare_family[0]
-        if data is None or data.get("has_multiple_conditions"):
+        if data is None or data.get("has_multiple_conditions") or data.get("punishment_shape") == "penalty_only":
             continue
 
         window_end = section_hits[i + 1].start() if i + 1 < len(section_hits) else len(response_text)
@@ -2829,6 +2829,9 @@ def format_retrieved_text_for_prompt(matches):
                 bail = variant_data.get("bailable")
                 years = variant_data.get("max_years")
                 has_multiple = variant_data.get("has_multiple_conditions")
+                if variant_data.get("punishment_shape") == "penalty_only":                    # IT Act ss.72 and 72A since 30-11-2023 (Act 18 of 2023): "liable to penalty", no imprisonment
+                    variant_lines.append(f"  - {variant_key}: a penalty only (no imprisonment is provided since 30 November 2023); the section text above gives the amount; cognizable/bailable are not stated for it -- do not state them")
+                    continue
                 line = f"  - {variant_key}: cognizable={cog}, bailable={bail}, max_years={years}"
                 if has_multiple:
                     conditions = variant_data.get("all_conditions", [])
