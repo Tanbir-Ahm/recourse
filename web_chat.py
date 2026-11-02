@@ -236,22 +236,40 @@ def rewrite(turns, current, call=None):
     return "used", standalone, inr
 
 
+def should_carry(outcome, current):
+    """Whether the sections the earlier answers relied on are offered again to this message (carry_forward.py): the rewrite judged it a follow-up ('used', 'unchanged'), or it is a short message that points back
+    ("what about him?") whatever the rewrite said. A message judged a new topic that does not point back carries nothing."""
+    if outcome in ("used", "unchanged"):
+        return True
+    return _leans_back(current)
+
+
 def question_for_engine(turns, current, call=None):
-    """The string to hand answer_question for a follow-up, plus a record for the log. With no earlier turns: the message alone."""
+    """The string to hand answer_question for a follow-up, plus a record for the log. With no earlier turns: the message alone. The record's 'carry' lists the sections of the earlier answers to offer again
+    ([{'act', 'section'}], carry_forward.py); it is handed to the engine as a separate argument, never as words of the question."""
     if not turns:
-        return current, {"turn": 1, "rewrite": "first", "folded": 0, "rewrite_inr": 0.0}
+        return current, {"turn": 1, "rewrite": "first", "folded": 0, "rewrite_inr": 0.0, "carry": []}
     outcome, standalone, inr = rewrite(turns, current, call=call)
     earlier = earlier_messages(turns)
     if outcome == "new_topic" and not _leans_back(current):
         earlier = []
     message = current + "\n" + REWRITE_LEAD + standalone + ")" if outcome == "used" else current
-    return fold(earlier, message), {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4)}
+    carry = []
+    try:
+        if should_carry(outcome, current):
+            import carry_forward
+            carry = carry_forward.refs_from_turns(turns)
+    except Exception:  # noqa: BLE001 -- fail-open: the follow-up goes without the carried sections
+        carry = []
+    return fold(earlier, message), {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4), "carry": carry}
 
 
 def log_turn(question, info):
     """One CHAT_TURN line per question asked in chat mode. Never the text: 'q' is the same hash as the COST_QUESTION line's."""
     try:
         rec = {"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "mode": mode(), "of": MAX_TURNS, **(info or {})}
+        if "carry" in rec:                                                  # the sections offered again, as 'BNSS 482' (never the text)
+            rec["carry"] = [f"{r.get('act')} {r.get('section')}" for r in (rec.get("carry") or []) if isinstance(r, dict)]
         print("CHAT_TURN " + json.dumps(rec), flush=True)
     except Exception:  # noqa: BLE001
         pass

@@ -1599,9 +1599,10 @@ if _busy:
             # (added 2026-09-25) NDPS drug-offence questions are answered
             # inline from the shared corpus rather than dead-ended with a
             # "covered elsewhere" redirect that points nowhere here.
+            _carry_kw = {"carried_sections": _chat_info["carry"]} if (_chat_info or {}).get("carry") else {}       # sections the earlier answers of the conversation relied on (carry_forward.py)
             st.session_state.answer = _answer_question(
                 _engine_q, inline_domains={"cheque_bounce", "freeze", "domestic_violence", "ndps"},
-                audience=_aud)
+                audience=_aud, **_carry_kw)
         except Exception:
             logging.getLogger("recourse_app").exception("answer_question failed")
             st.session_state.answer = {"state": "retrieval_unavailable"}

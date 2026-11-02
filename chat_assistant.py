@@ -564,7 +564,7 @@ Write a research note for an advocate or a law student: formal, precise, firm ab
 3. Numbered issues, one per heading. Write each heading as a proposition or a question, for example **1. Delay alone does not end a trial**. Under each heading give: the rule (the provision, with its Act and the subsection as the material shows it); the authority (the case with court and year, and what the court held or said, attributed to the court, from the excerpt below); the reasoning in a sentence or two; and the qualification. State each point once.
 4. **Application to the facts**. (a) When the question states the facts of a particular matter: a two-column table headed For the client | Against the client. Each row ties a point to a provision or a case and is conditional where the facts decide. (b) When the question states no facts of a particular matter (it asks what the law is or how a rule works): do NOT use the words "client" or "on these facts"; write the heading **How the rule is applied** and a two-column table headed Points the accused can rely on | Points the prosecution can rely on (for a matter that is not criminal, use the parties the question names). Each row ties a point to a provision or a case. Say what a court weighs, never what it would decide.
 5. **Grounds that can be urged**: the arguments the facts allow and the forum or relief they point to, written as "can be urged" or "may be raised". Never as advice and never as a prediction of the result. Put at the end of each ground, in brackets, the provision or the case it rests on; a ground that rests on no provision or passage in the material is not written. If no ground can be tied to the material, write one line saying that the material does not support a specific ground, and stop.
-6. **Gaps and checks**: what could not be checked from the material; any later amendment or change to a provision that you were not shown; and each case that comes only from the wider search. Do NOT write a table of authorities: the page adds one, built from the sources.
+6. **Gaps and checks**: what could not be checked from the material; any later amendment or change to a provision that you were not shown; and a point on which the passages you were given stop short or do not agree. Do NOT say in this part that a case comes from a wider search or is unverified or unreviewed, and do not list such cases: the page states that once, under "Sources and checks", and saying it again only weakens the note. (What our register says about a case is still stated in the sentence that mentions the case.) Do NOT write a table of authorities: the page adds one, built from the sources.
 
 Headings: a bold line on its own, at most 90 characters, followed by a blank line. Headings are the ONLY bold text. Write case names in italics with single asterisks. Do not use "#" headings or emoji.
 
@@ -2776,6 +2776,8 @@ def format_retrieved_text_for_prompt(matches):
             source = f"Section {label}"
 
         block = f"[{source}, Section/Para {label}]\n{m['text']}"
+        if m.get("retrieval") == "carried":                                          # carry_forward.py: relied on in an earlier answer of this same conversation
+            block = f"[{source}, Section/Para {label}]\n(Relied on in your earlier answer in this same conversation. It is given again because a follow-up carries no subject of its own: use it only if it bears on the new question, and say nothing about it otherwise.)\n{m['text']}"
         if m.get("retrieval") == "cited" and m.get("cited_by"):                       # SECTION_XREF: a section handed over because the section the person asked about refers to it
             block = f"[{source}, Section/Para {label}]\n(Cited by section {m['cited_by']} of the same Act, the section the person asked about.)\n{m['text']}"
 
@@ -3678,6 +3680,8 @@ def _answer_question_core(question, inline_domains=frozenset()):
 
     # everything curated that must reach the answer regardless of ranking
     overrides = statute_overrides + judgment_overrides + shelf_overrides
+    # a follow-up: the sections the earlier answers of this conversation relied on (carry_forward.py), unless the question already has them
+    overrides = overrides + _carried_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
 
     # Search on the CURRENT message first, falling back to the full
     # history-included question only if that narrow search finds nothing
@@ -3686,6 +3690,8 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # brand-new one) this fixes.
     result = _find_relevant_sections_for_turn(current_message, question)
     _progress_library(result)
+    _lib = {((m.get("act") or "").upper(), str(m.get("section_number")).upper()) for m in (result.get("matches") or []) if isinstance(m, dict)}
+    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") == "carried" and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
     overrides = _drop_full_act_duplicates(overrides, (result.get("matches") or []) + statute_overrides)       # the NI Act / IT Act shelf copies (detection on since 2026-11-02): a section the library already supplies is not handed over twice
 
     if result["state"] == "unavailable":
@@ -3989,6 +3995,51 @@ def _drop_sections_claimed_by_shelf(explicit, question, current_message):
         return [e for e in explicit if not (e.get("source") == "explicit_section_ref" and str(e.get("section_number") or "").upper() in mine)]
     except Exception:  # noqa: BLE001 -- fail-open
         return explicit
+
+
+import threading as _threading_carry
+
+_CARRIED = _threading_carry.local()                 # per thread: [{'act','section','act_key'?}] handed to answer_question for a follow-up (carry_forward.py)
+
+
+def _carried_matches(have):
+    """The sections of the earlier answers of this conversation (carry_forward.py), as statute matches marked retrieval 'carried': the library's own text for a library Act, the shelf's for a shelf Act. `have` is a set of
+    (act, section) pairs the question already has; those are not added twice. [] when nothing was carried; any section that cannot be fetched is left out. One log line: CARRY_FORWARD {...} (Act and section only)."""
+    refs = getattr(_CARRIED, "refs", None)
+    if not refs:
+        return []
+    out, tried = [], []
+    for r in refs[:5]:
+        try:
+            act, num = str(r.get("act") or "").upper(), str(r.get("section") or "").strip()
+            if not act or not num or (act, num.upper()) in have:
+                continue
+            tried.append(f"{act} {num}")
+            m = None
+            if r.get("act_key"):
+                import act_shelf
+                if act_shelf.enabled():
+                    st = (act_shelf.load().get("acts") or {}).get(r["act_key"])
+                    c = st["by_num"].get(num.upper()) if st and st.get("ok") else None
+                    if c and not c.get("omitted"):
+                        m = act_shelf._match(st, c, "carried", None)
+            elif act == "BNS":
+                m = _bns_section_as_match(num)
+            elif act == "ITACT":
+                m = _itact_section_as_match(num)
+            else:
+                from retrieval import get_statute_section
+                data = get_statute_section(act, num)
+                if data:
+                    m = {"type": "statute", "act": data["act"], "section_number": data["section_number"], "text": data["text"], "source": "carried_section"}
+            if m:
+                m["retrieval"] = "carried"
+                out.append(m)
+        except Exception as exc:  # noqa: BLE001 -- fail-open: a section that cannot be fetched is simply not carried
+            logger.warning("carry-forward of %s failed: %s", r, type(exc).__name__)
+    if tried:
+        print("CARRY_FORWARD " + json.dumps({"offered": tried, "added": [f"{m.get('act')} {m.get('section_number')}" for m in out]}), flush=True)
+    return out
 
 
 def _companion_shelf_matches(question, matches):
@@ -4302,11 +4353,12 @@ def _progress_wider(result):
         pass
 
 
-def answer_question(question, inline_domains=frozenset(), audience=None, channel=None):
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
     answer_style.set_audience(audience)
     answer_style.set_channel(channel)
+    _CARRIED.refs = list(carried_sections) if carried_sections else None          # carry_forward.py: sections the earlier answers of this conversation relied on (a follow-up only); cleared in the finally below
     try:
         import cost_log
         cost_log.begin(question)
@@ -4356,6 +4408,7 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
             pass
         answer_style.set_audience(None)
         answer_style.set_channel(None)
+        _CARRIED.refs = None
 
 
 def _ensure_bottom_line(text):

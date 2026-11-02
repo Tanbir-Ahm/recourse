@@ -94,7 +94,7 @@ q, info = W.question_for_engine(T1, "is it bailable?", call=good)
 cur = CA._extract_current_message(q)
 check(info["rewrite"] == "used" and cur.startswith("is it bailable?\n" + W.REWRITE_LEAD) and cur.endswith("contractor bailable?)"),
       f"a clean rewrite is added after the person's own words, labelled ({cur!r})")
-check(info == {"turn": 2, "rewrite": "used", "folded": 1, "rewrite_inr": 0.25}, f"the log record for a used rewrite ({info})")
+check(info == {"turn": 2, "rewrite": "used", "folded": 1, "rewrite_inr": 0.25, "carry": []}, f"the log record for a used rewrite ({info})")
 check("taking money from a contractor" in good.seen["prompt"] and "Answer to: my son" in good.seen["prompt"], "the rewrite step sees the earlier messages and the shortened earlier answers")
 
 for payload, why in (({"follow_up": True, "standalone": "Is the offence under Section 7 bailable?"}, "number_not_in_person_messages"),

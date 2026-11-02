@@ -118,7 +118,7 @@ def run_turn(on_step, c):
     try:
         engine_q, info = web_chat.question_for_engine(c.turns, c.question)
         web_chat.log_turn(engine_q, info)
-        out = engine_adapter.work(engine_q, c.audience, on_step)
+        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None)
     except BaseException:
         _release_only(c.event_id)
         unclaim(c.chat_id, c.request_id)
