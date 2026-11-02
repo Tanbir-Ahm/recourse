@@ -744,6 +744,11 @@ def _footer():
         'see anything beyond what you type. For a real case, take this to a lawyer or your '
         'nearest District Legal Services Authority, which provides that help free.</p>',
         unsafe_allow_html=True)
+    try:                                                      # the data credit, once (CC-BY asks for credit, not a tag after every link; owner's instruction 2026-11-02)
+        import sci_search_tier as _credit_T
+        st.markdown(f'<p class="r-foot" style="opacity:.75">{esc(_credit_T.PAGE_CREDIT)}</p>', unsafe_allow_html=True)
+    except Exception:  # noqa: BLE001
+        pass
     try:                                                      # which code is running, in small type (build_info.py)
         import build_info
         build_info.announce("streamlit-site")

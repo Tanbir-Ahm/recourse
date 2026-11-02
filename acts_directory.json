@@ -1525,13 +1525,14 @@
     {
       "id": "ni_act_1881",
       "priority": 2,
-      "detect": false,
+      "detect": true,
       "name": "The Negotiable Instruments Act, 1881",
       "short": "Negotiable Instruments Act, 1881",
       "act_no": "26 of 1881",
       "pack": "none",
       "aliases": [
-        "negotiable instruments act"
+        "negotiable instruments act",
+        "ni act"
       ],
       "phrases": [],
       "url": "https://indiacode.gov.in/items/38b01c2d-f1b8-4b1f-a8bf-86b4da3b72a0",
@@ -1565,7 +1566,7 @@
     {
       "id": "it_act_2000",
       "priority": 2,
-      "detect": false,
+      "detect": true,
       "name": "The Information Technology Act, 2000",
       "short": "Information Technology Act, 2000",
       "act_no": "21 of 2000",

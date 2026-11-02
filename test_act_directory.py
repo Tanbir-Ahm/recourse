@@ -71,7 +71,7 @@ check({a["id"]: a["indiacode"]["repealed_by"] for a in ACTS if a["indiacode"]["r
 check(all(a["status"]["text"] and a["status"]["reviewed"] is None for a in ACTS), "every status line is a draft with no reviewer stamp")
 check(all(a["appeal"]["reviewed"] is None for a in ACTS) and sorted(a["id"] for a in ACTS if a["appeal"]["text"]) == ["nia_act_2008", "pc_act_1988", "pmla_2002", "pocso_act_2012", "sc_st_act_1989", "tada_1987", "uapa_1967"],
       "seven appeal-route drafts (the five priority Acts, TADA and the NIA Act), none confirmed")
-check([a["id"] for a in ACTS if a["detect"] is False] == ["ipc_1860", "crpc_1973", "ni_act_1881", "it_act_2000"], "the two repealed codes the concordance already handles are not detected (a notice would be noise), and neither are the Negotiable Instruments Act and the Information Technology Act (2026-10-31: their whole text is on the shelf, but the library's own cheque-bounce and IT Act flows answer questions on them, so the Directory does not tie a question to the shelf copy)")
+check([a["id"] for a in ACTS if a["detect"] is False] == ["ipc_1860", "crpc_1973"], "the two repealed codes the concordance already handles are not detected (a notice would be noise); the NI Act and the IT Act are detected since 2026-11-02")
 check(all(a["status"]["confidence"] in ("certain", "likely", "guessing") for a in ACTS), "every status draft carries the drafter's confidence")
 check(all((a["status"].get("evidence") or "").strip() for a in ACTS) and all((a["appeal"].get("evidence") or "").strip() for a in ACTS if a["appeal"]["text"]) and all(a["appeal"]["confidence"] in ("certain", "likely") for a in ACTS if a["appeal"]["text"]),
       "every drafted line says what it rests on (what was read on India Code, and what is only recollection)")
@@ -207,9 +207,11 @@ OTHERS = {
     "child_marriage_act_2006": ["Can a child marriage be stopped by a court order before the wedding?", "Prohibition of Child Marriage Act, who can file a complaint?", "my cousin was married off at 16, is it a child marriage and voidable?", "child marriage prohibition officer powers"],
     "pcr_act_1955": ["Protection of Civil Rights Act section 7 punishment", "He was stopped from entering the temple, a case of practice of untouchability?", "PCR Act and SC ST Act, which applies?", "untouchability offences act, old name"],
     "pdpp_act_1984": ["A bus was burned during the bandh, which law is used: the Prevention of Damage to Public Property Act?", "pdpp act bail rules", "Damage to Public Property Act section 3 punishment", "He was arrested for damage to public property during the protest"],
+    "ni_act_1881": ["Negotiable Instruments Act section 138: my cheque bounced", "Is a notice under the Negotiable Instruments Act valid if sent by email?", "NI Act section 141 offences by companies"],
+    "it_act_2000": ["Is section 66C of the Information Technology Act bailable?", "Information Technology Act section 43 compensation", "What does the Information Technology Act say about intermediaries?"],
     "muslim_women_act_2019": ["Muslim Women (Protection of Rights on Marriage) Act, 2019 section 4 punishment", "My husband said triple talaq on WhatsApp, what can I do?", "Is bail possible in a triple talaq case?", "talaq e biddat complaint by the wife"],
 }
-check(len(OTHERS) == 27 and set(OTHERS) | set(PRIORITY) == {a["id"] for a in ACTS if a["detect"]}, "the test set covers every detected Act")
+check(len(OTHERS) == 29 and set(OTHERS) | set(PRIORITY) == {a["id"] for a in ACTS if a["detect"]}, "the test set covers every detected Act")
 bad = {a: [q for q in qs if a not in ids(q)] for a, qs in OTHERS.items()}
 check(not any(bad.values()), f"3 natural questions for each of the other 27 Acts are all found ({ {k: v for k, v in bad.items() if v} })")
 

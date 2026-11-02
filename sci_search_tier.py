@@ -124,6 +124,14 @@ _LOCAL = threading.local()
 FEED_MAX_CASES = 8
 FEED_PASSAGE_CHARS = 900
 LABEL = "(from a wider search, not independently verified)"
+
+
+def label_on():
+    """WIDER_LABEL=on|off (default off since 2026-11-02, the owner's instruction: 'these own disclaimers weaken the authority of the answer'): off = the answer text carries no "(from a wider search, not independently verified)"
+    after a wider-search case and the prompt no longer asks for it. The sources box and the table of authorities keep their tier label ('Wider search (not independently verified)'). 'on' brings the old behaviour back."""
+    return _env("WIDER_LABEL", "off").lower() == "on"
+
+
 FEED_INSTRUCTION = (
     "\n\n## Supreme Court passages from a wider, automatic search -- NOT independently verified\n"
     "The passages below came from an automatic search of a much larger collection of Supreme Court judgments. Nobody at Recourse has read and confirmed them. You may name one of these cases when "
@@ -186,6 +194,7 @@ def short_court(court):
 
 
 OPEN_BUCKET_CREDIT = "copy from the open Supreme Court judgments bucket (CC-BY-4.0, Dattam Labs)"
+PAGE_CREDIT = "Some judgment copies come from open datasets: the Supreme Court judgments bucket (Dattam Labs, CC-BY-4.0) and the High Court judgments bucket (Dattam Labs)."      # shown once in the page footer instead of after each link (2026-11-02, owner's instruction); CC-BY needs the credit, not a tag in every answer
 CREDITS = {"open_bucket_pdf": OPEN_BUCKET_CREDIT,
            "high_court_bucket_pdf": "copy from the open High Court judgments bucket (Dattam Labs; licence terms to be confirmed)",
            "high_court_site_pdf": "copy from the High Court's own website"}
@@ -193,7 +202,10 @@ COURT_FOOT = (" A passage marked with a High Court is that court's decision, not
 
 
 def credit_for(link_kind):
-    """The words that credit the place a wider-search PDF link points to ('' when it is the court's own archive)."""
+    """The words that credit the place a wider-search PDF link points to. Since 2026-11-02 (owner's instruction) the answer and its sources box carry NO credit tag after a link: this returns '' unless
+    SOURCE_TAGS=on; the credit is given once, in the page footer (PAGE_CREDIT) and in the terms."""
+    if _env("SOURCE_TAGS", "off").lower() != "on":
+        return ""
     return CREDITS.get(link_kind or "", "")
 
 
@@ -216,17 +228,24 @@ def asof_sentence(as_of, by_court=None):
     return (" The collection ends " + str(as_of) + ".") if as_of else ""
 
 
+def _with_label_sentence(text):
+    """FEED_INSTRUCTION as it is when WIDER_LABEL=on; with the sentence that asks for the label taken out when it is off (the default)."""
+    if label_on():
+        return text
+    return text.replace("EVERY TIME you name one of these cases, put the words " + LABEL + " right after its name. ", "", 1)
+
+
 def feed_instruction(courts):
     """The prompt block's opening for the courts of the passages fed: FEED_INSTRUCTION itself when all are Supreme Court (nothing changes), else the same text with the court named, plus COURT_RULE."""
     if not any(c != SC_COURT for c in courts):
-        return FEED_INSTRUCTION
+        return _with_label_sentence(FEED_INSTRUCTION)
     scope = scope_phrase(courts)
     other = short_court(next((c for c in courts if c != SC_COURT), "court"))
     example = '("the Supreme Court in X said ..." or "the %s in X said ...")' % other if SC_COURT in courts else '("the %s in X said ...")' % other
     text = FEED_INSTRUCTION
     for old, new in _feed_swaps(scope, example):
         text = text.replace(old, new, 1)
-    return text
+    return _with_label_sentence(text)
 
 
 def _feed_swaps(scope, example):
@@ -615,7 +634,9 @@ def label_cases(text, cases, label, note_re, span_re, tidy=None):
 
 
 def label_fed_cases(text, cases):
-    """The wider-search label (LABEL) after the first mention of each wider-search case in a finished answer."""
+    """The wider-search label (LABEL) after the first mention of each wider-search case in a finished answer (nothing when WIDER_LABEL is off, the default)."""
+    if not label_on():
+        return text
     return label_cases(text, cases, LABEL, _LABEL_NOTE, _LABEL_SPAN, _tidy_labels)
 
 

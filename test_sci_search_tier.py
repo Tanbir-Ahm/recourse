@@ -2,6 +2,9 @@
 test_sci_search_tier.py -- the wider-pool search tier on the website side (sci_search_tier.py + its call in chat_assistant.answer_question + the page box).
 Fully offline and free: a local stand-in for the sci-search service, no model, no network beyond localhost. Run: python -X utf8 test_sci_search_tier.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import json
 import os
 import sys

@@ -1,5 +1,8 @@
 """test_answer_style_v3.py -- answer style v3: 'The Adviser' (laypeople) and 'The Research Note' (lawyers), the Layman/Lawyer switch, the table of authorities, the WhatsApp version.
 Offline and free (no model, no network). Run: python -X utf8 test_answer_style_v3.py"""
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import os
 import sys
 import types
@@ -181,7 +184,7 @@ md = AT.render_markdown(tab)
 check([h for h, _ in md] == ["Authorities (reviewed library)", "Further reading from a wider search (not independently verified)"], "two tiers, two headings")
 check("| Case | Citation | Paragraph | Where it stands on our lists | Link |" in md[0][1] and "(2014)" in md[0][1] and "(2014) 8 SCC 273" in md[0][1] and "[open](https://l/a)" in md[0][1], "the table has the columns, the year, the held citation and a link")
 check("not held" in md[1][1] and "[open](https://s3/x.pdf)" in md[1][1], "a wider-search row with no citation says 'not held' and keeps its link")
-check("open bucket, CC-BY-4.0, Dattam Labs" in md[1][1], "an open-bucket copy is credited")
+check("CC-BY-4.0, Dattam Labs" in md[1][1], "an open-bucket copy is credited (SOURCE_TAGS=on; off by default since 2026-11-02, see test_no_inline_disclaimers.py)")
 tab2 = AT.build([{"type": "judgment", "case_name": "A | B v. C", "citation": "(1) 1 SCC 1", "paragraph_number": "3", "bench": "5 judges"}], ["A | B v. C"], [], [], fake_status)
 md2 = AT.render_markdown(tab2)
 check(tab2["has_bench"] and "| Bench |" in md2[0][1] and "A \\| B v. C" in md2[0][1], "a bench column appears only when the data has one, and a pipe in a name is escaped")

@@ -8,6 +8,9 @@ test_answer_export.py -- answer_export.py: an answer or a conversation as a PDF 
 6. the Word file's structure (element order, relationships) and, where LibreOffice Writer is installed, a real conversion.
 Run: python -X utf8 test_answer_export.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import ast
 import datetime
 import io

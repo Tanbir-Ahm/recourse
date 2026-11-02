@@ -2,6 +2,9 @@
 test_authority_notes.py -- authority_notes.py and its use in sci_search_tier.feed_block (2026-10-29: the search service says which judgments the retrieved judgments name).
 Offline and free: the search service is replaced by a function that returns fixed results; no model, no network. Run: python -X utf8 test_authority_notes.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import hashlib
 import io

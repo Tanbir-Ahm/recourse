@@ -41,14 +41,14 @@ check("addition" in it["1"]["text"] and "a ddition" not in it["1"]["text"] and "
 check(all("STATE AMENDMENT" not in c["text"].upper() for c in list(ni.values()) + list(it.values())), "no State-amendment text inside a section")
 
 d = {a["id"]: a for a in jl("acts_directory.json")["acts"]}
-check(d["ni_act_1881"]["detect"] is False and d["it_act_2000"]["detect"] is False, "Directory: both entries have detect=false (the library's own flows answer questions on these Acts)")
+check(d["ni_act_1881"]["detect"] is True and d["it_act_2000"]["detect"] is True, "Directory: both entries have detect=true since 2026-11-02 (owner: 'Switch NI and IT detection on')")
 check(d["ni_act_1881"]["status"]["reviewed"] is None and d["it_act_2000"]["status"]["reviewed"] is None, "Directory: neither status line is marked reviewed")
 
 import act_directory  # noqa: E402
 import act_shelf  # noqa: E402
 import search_service as S  # noqa: E402
 
-check(act_directory.detect("What does section 138 of the Negotiable Instruments Act say?") == [] and act_directory.detect("Is section 66 of the Information Technology Act bailable?") == [], "a question that names either Act is not tied to the shelf copy (the library's flows answer it, as before)")
+check([x["id"] for x in act_directory.detect("What does section 138 of the Negotiable Instruments Act say?")] == ["ni_act_1881"] and [x["id"] for x in act_directory.detect("Is section 66 of the Information Technology Act bailable?")] == ["it_act_2000"], "a question that names either Act is tied to the shelf copy (detection on)")
 sh = act_shelf.load(refresh=True)
 check(sh["acts"]["ni_act_1881"]["ok"] and sh["acts"]["it_act_2000"]["ok"], "shelf: both Acts load with fresh embeddings")
 

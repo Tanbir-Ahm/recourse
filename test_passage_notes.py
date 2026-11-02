@@ -5,6 +5,9 @@ The owner's staging test of 2026-10-19 (section 17 of the Prevention of Corrupti
 law (paragraph 45 says the High Court erred); paragraph 28 of "Nara Chandrababu Naidu" starts "I am of the opinion": one judge's opinion, which the answer called "the Supreme Court said".
 The passages are the first 900 characters exactly as the owner's page showed them. Offline, free, no model. Run: python -X utf8 test_passage_notes.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import io
 import json

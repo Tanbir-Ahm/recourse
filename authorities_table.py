@@ -103,11 +103,10 @@ def _table(rows, has_bench, has_court=False):
     for r in rows:
         name = _cell(r["case"]) + (f" ({r['year']})" if r.get("year") else "")
         link = f"[open]({r['link']})" if r.get("link") else "no link held"
-        if r.get("link_kind") == "open_bucket_pdf":
-            link += " (open bucket, CC-BY-4.0, Dattam Labs)"
-        elif r.get("link_kind") in ("high_court_bucket_pdf", "high_court_site_pdf"):
-            import sci_search_tier as _T
-            link += " (" + _T.credit_for(r["link_kind"]) + ")"
+        import sci_search_tier as _T
+        credit = _T.credit_for(r.get("link_kind"))                 # '' since 2026-11-02 (SOURCE_TAGS=on brings the tag back); the credit is in the page footer
+        if credit:
+            link += " (" + credit + ")"
         cells = [name, _cell(r.get("citation")) or "not held", ", ".join(r.get("paragraphs") or []) or "-"]
         if has_court:
             cells.append(_cell(r.get("court")) or "not recorded")

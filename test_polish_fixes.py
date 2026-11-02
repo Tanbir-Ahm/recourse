@@ -1,5 +1,8 @@
 """test_polish_fixes.py -- three small defects seen in the live Q7 answer (2026-10-14): a doubled wider-search label after an italic case name that ends in a bracket, a v3 lawyer heading with a colon
 split into a heading plus a stray paragraph, and the quote-check log now saying what the closest wording in the sources was. Offline and free. Run: python -X utf8 test_polish_fixes.py"""
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import re
 import sys
 

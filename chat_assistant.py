@@ -570,7 +570,7 @@ Headings: a bold line on its own, at most 90 characters, followed by a blank lin
 
 Language: sentences of 35 words or fewer with at most one parenthetical each. Use exact verbs: "held", "observed", "directed", "reiterated". Do not write "decisive", "settled", "well-settled" or "clearly" unless the passage itself says so or a larger bench is shown. No "Important:" labels and no capitalised NOT. A quotation is at most 40 words, in quotation marks, only when the excerpt below contains those exact words, copied letter for letter, with the paragraph number if the material shows it. If you shorten, join, reorder or reword anything, write it in your own words without quotation marks.
 
-Evidence: give a full report citation and a pinpoint paragraph only when the material below shows them; otherwise name the case with its year and say nothing more. A case that comes from the wider search may appear in an issue but never in the Bottom line, and is followed each time by the words in the wider-search instruction. Never say that a case "is good law".
+Evidence: give a full report citation and a pinpoint paragraph only when the material below shows them; otherwise name the case with its year and say nothing more. A case that comes from the wider search may appear in an issue but never in the Bottom line. Never say that a case "is good law".
 
 Length: about 500-900 words, each issue 80-150 words. Write every part, ending with **Gaps and checks**, and never stop before it: keep the whole note within about 900 words so that it is finished.
 """
@@ -635,7 +635,7 @@ def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
     return ("\n\n## More Supreme Court passages from the site's wider pool -- NOT independently verified\n"
             "Nobody at Recourse has read and confirmed the passages below. You may name one of these cases when it clearly bears on the person's situation, and describe ONLY what its own passage "
             "literally says, attributed to the court (\"the Supreme Court in X said ...\"). Never state more than the passage shows, do not call a passage the whole holding of the case, and do not "
-            "say that a case is good law. EVERY TIME you name one of these cases, put the words " + T.LABEL + " right after its name. If no passage clearly bears on the person's situation, "
+            "say that a case is good law. " + (("EVERY TIME you name one of these cases, put the words " + T.LABEL + " right after its name. ") if T.label_on() else "") + "If no passage clearly bears on the person's situation, "
             "ignore them.\n\n" + "\n\n".join(blocks) + "\n")
 
 
@@ -3686,6 +3686,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # brand-new one) this fixes.
     result = _find_relevant_sections_for_turn(current_message, question)
     _progress_library(result)
+    overrides = _drop_full_act_duplicates(overrides, (result.get("matches") or []) + statute_overrides)       # the NI Act / IT Act shelf copies (detection on since 2026-11-02): a section the library already supplies is not handed over twice
 
     if result["state"] == "unavailable":
         # Even if retrieval is unavailable, a curated override may
@@ -3998,6 +3999,25 @@ def _companion_shelf_matches(question, matches):
         return list(matches or []) + extra if extra else (matches or [])
     except Exception:  # noqa: BLE001
         return matches or []
+
+
+_FULL_ACT_BASE = {"NIACTFULL": "NIACT", "ITACTFULL": "ITACT"}
+
+
+def _drop_full_act_duplicates(overrides, library_matches):
+    """The whole NI Act / IT Act are on the Act shelf under the codes NIACTFULL / ITACTFULL while the library holds some of their sections under NIACT / ITACT (curated cheque-bounce and IT flows). Where both
+    supply the same section the library's copy stays and the shelf copy is dropped, so the prompt never carries a section twice. Anything else in `overrides` is returned as it was."""
+    try:
+        have = {((m.get("act") or "").upper(), str(m.get("section_number")).upper()) for m in library_matches or [] if isinstance(m, dict)}
+        out = []
+        for m in overrides:
+            base = _FULL_ACT_BASE.get(((m.get("act") or "") if isinstance(m, dict) else "").upper())
+            if base and (base, str(m.get("section_number")).upper()) in have:
+                continue
+            out.append(m)
+        return out
+    except Exception:  # noqa: BLE001
+        return overrides
 
 
 def _act_shelf_matches(question, current_message):

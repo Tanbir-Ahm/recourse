@@ -1,6 +1,9 @@
 """test_library_dedupe.py -- a judgment the reviewed library already supplies for an answer is not handed over a second time as a "wider search" passage and is never labelled "(from a wider search, not independently
 verified)" (FOLLOW_UPS 2cl/2cm: Pankaj Bansal was in the library AND came again from the wider search, so the answer called its own library case unverified while the table beside it said "No adverse later judgment found").
 Fully offline and free: a function stands in for the search service. Run: python -X utf8 test_library_dedupe.py"""
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import io
 import os

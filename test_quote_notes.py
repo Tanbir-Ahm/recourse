@@ -8,6 +8,9 @@ The search service (SCI_QUOTES=on) sends {"quote": {"within": "25", "kind": "int
   * the search page (no model) shows the paragraph the passage sits inside and a reading note.
 A result WITHOUT a quote, and an answer without such sentences, are worded byte for byte as before. Offline and free. Run: python -X utf8 test_quote_notes.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import io
 import os

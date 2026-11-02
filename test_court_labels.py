@@ -6,6 +6,9 @@ the prompt (heading, the passage heads, the rule), the cases the engine returns,
 the notice for an answer that calls a High Court case a Supreme Court one -- and, as the main point, that when EVERY passage is a Supreme Court one (or the service sends no court, as the one on production does)
 every string is exactly what it was before. Fully offline and free: a function stands in for the service. Run: python -X utf8 test_court_labels.py
 """
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import io
 import os

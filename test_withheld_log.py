@@ -1,5 +1,8 @@
 """test_withheld_log.py -- when a hard check still fails after the second try the answer is withheld AND the log says which check and on what (RECHECK ... detail=, ANSWER_WITHHELD ...).
 Offline and free. Run: python -X utf8 test_withheld_log.py"""
+import os as _os_sw
+_os_sw.environ["WIDER_LABEL"] = "on"            # these tests exercise the wider-search label and the source-credit tags; both are off by default since 2026-11-02 (owner), so they are switched on here
+_os_sw.environ["SOURCE_TAGS"] = "on"
 import contextlib
 import io
 import sys
