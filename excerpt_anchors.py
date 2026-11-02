@@ -347,6 +347,13 @@ def _section(topic, anchors):
             lines.append("[Overruled Register -- not optional: the excerpts name cases on our register; if you mention one of them at all, state this fact in the same sentence]\n" + "\n".join(men["lines"]) + "\n")
     except Exception:  # noqa: BLE001
         pass
+    try:                                                    # the register's line for each anchor case ITSELF (2026-11-02): a landmark we hand over that is on the register must carry its fact into the answer, as it does on the page
+        from register_hooks import own_case_lines_for_anchor
+        own = [ln for a in anchors for ln in own_case_lines_for_anchor(a)]
+        if own:
+            lines.append("[Overruled Register -- not optional: a case whose excerpt is given above is on our register; whenever you mention it, state this fact in the same sentence]\n" + "\n".join(own) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
     return "\n".join(lines)
 
 

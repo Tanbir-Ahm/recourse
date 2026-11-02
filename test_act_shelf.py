@@ -275,14 +275,14 @@ check(n["text"].startswith("This question also names the Prevention of Money-lau
 check("does not hold" not in n["text"] and "Official text on India Code: Prevention of Money-laundering Act, 2002 (PMLA): https://indiacode.gov.in/items/" in n["text"] and "not yet read by our reviewer" not in n["html"] and '<a href="https://indiacode.gov.in/items/' in n["html"],
       "used: no 'does not hold', the link is still there (as a link on the page), nothing about the reviewer")
 n = AD.notice(PM, "answer", held=HN)
-check("Recourse has loaded the official text of that Act, but the answer below does not rest on it." in n["text"] and "does not hold" not in n["text"], "unused (answer): loaded, but the answer does not rest on it")
+check("does not rest on it" not in n["text"] and "has loaded" not in n["text"] and "does not hold" not in n["text"] and "Official text on India Code:" in n["text"], "unused (answer): owner's instruction 2026-11-02: no 'loaded, but the answer below does not rest on it' sentence; the subject line and the link stay")
 n = AD.notice(PM, "refusal", held=HN)
 check("loaded" not in n["text"] and "does not hold" not in n["text"] and n["text"].startswith("This question names the Prevention of Money-laundering Act, 2002 (PMLA). Official text"), "unused (refusal): no claim either way, the link only")
 n = AD.notice(PM, "opened", held=HU)
 check("has not checked this area in depth" not in n["text"] and "loaded the official text" not in n["text"] and "please confirm what follows with a lawyer" not in n["text"] and n["text"].startswith("This question names the Prevention of Money-laundering Act, 2002 (PMLA). Official text on India Code:"),
       "used (opened): owner's instruction 2026-10-20: neither the loaded sentence nor the 'not checked in depth; confirm with a lawyer' caution")
 n = AD.notice(PM, "opened", held=HN)
-check("has not checked this area in depth" not in n["text"] and "Recourse has loaded the official text of that Act, but the answer below does not rest on it." in n["text"], "unused (opened): the 'loaded, but the answer does not rest on it' sentence stays; the caution is gone")
+check("has not checked this area in depth" not in n["text"] and "does not rest on it" not in n["text"] and "Official text on India Code:" in n["text"], "unused (opened): the 'loaded, but the answer does not rest on it' sentence is gone (2026-11-02); the caution is gone")
 MIX = AD.detect("My son is accused under the POCSO Act and the Juvenile Justice Act.")
 check([a["id"] for a in MIX] == ["pocso_act_2012", "jj_act_2015"], f"two Acts found ({[a['id'] for a in MIX]})")
 HM = {"pocso_act_2012": {"state": "used", "loaded_on": "2026-10-16"}}

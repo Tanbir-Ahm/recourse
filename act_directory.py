@@ -201,9 +201,8 @@ def _held_sentences(acts, kind, held):
         many_full = len(used_full) > 1
         out.append(f"Recourse has loaded the official text of {it} from India Code ({_stamp(used_full, held)}). {it[:1].upper() + it[1:]} {'are' if many_full else 'is'} short, so the answer below was written from all of "
                    f"{'their' if many_full else 'its'} sections; any rules made under {them} are not included.")
-    if unused and kind != "refusal":
-        it, them, they = _ref(unused, whole(unused))
-        out.append(f"Recourse has loaded the official text of {it}, but the answer below does not rest on {them}.")
+    # Owner's instruction 2026-11-02 ("build it, along with the other fixes"): an Act whose text is loaded but which the answer does not rest on no longer gets "Recourse has loaded the official text of that Act, but the answer
+    # below does not rest on it." -- the sentence weakened an answer that was often right (a cheque-bounce answer under section 138 of the NI Act). The subject line and the link stay. An Act that is NOT held keeps its sentence.
     if plain:
         it, them, they = _ref(plain, whole(plain))
         out.append(f"Recourse does not hold the text of {it}, so the answer below does not rest on {them}." if kind != "refusal" else f"Recourse does not hold the text of {it}.")

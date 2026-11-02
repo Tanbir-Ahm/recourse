@@ -32,9 +32,40 @@ def prompt_lines_for_match(m):
     try:
         from overruled_register import register_guard as G
         reg, _ = _load()
-        return G.prompt_facts(reg, [" ".join(str(x) for x in (m.get("case_name"), m.get("year"), m.get("citation")) if x)])
+        # the year goes in brackets ("Hanumant v. The State of Madhya Pradesh (1952) AIR 1952 SC 343"): joined bare ("... 1952 AIR 1952 SC 343") the register's scan did not recognise the citation (found 2026-11-02)
+        text = " ".join(x for x in (str(m.get("case_name") or ""), f"({m['year']})" if m.get("year") else "", str(m.get("citation") or "")) if x)
+        return G.prompt_facts(reg, [text])
     except Exception as exc:
         logger.warning("register prompt lines failed: %s", exc)
+        return []
+
+
+def own_case_lines_for_anchor(a):
+    """The register's REGISTER FACT / REGISTER NOTE line for an excerpt-anchor case ITSELF (added 2026-11-02, after a staging answer rested on Hanumant (1952) while the page's table said the register lists it as overruled and the answer said nothing).
+    The cases an excerpt merely NAMES are found by text_mentions; the anchor is found here by its own name, year and citation, which the anchor data holds, so a landmark handed over by us always carries the register's line.
+    When the register row does not say WHICH POINT of the judgment was corrected (no `scope`), one more sentence tells the model to say exactly that and not to say that the excerpt's rule has been displaced: the register records the
+    treatment of the case, not of every proposition in it. [] when the case is not on the register, when the register is off, or on any error."""
+    if _off() or not isinstance(a, dict) or not a.get("case_name"):
+        return []
+    try:
+        m = {"case_name": a.get("case_name"), "year": a.get("year"), "citation": a.get("citation")}
+        lines = prompt_lines_for_match(m)
+        if not lines:
+            return []
+        reg, _ = _load()
+        yr = int(a["year"]) if a.get("year") not in (None, "") else None
+        hits = [h for h in reg.lookup_case(a["case_name"], yr, a.get("citation") if isinstance(a.get("citation"), str) else None) if h["strength"] == "strong" and reg.clause(h["row"])]
+        if hits and not any((h["row"].get("scope") or "").strip() for h in hits):
+            out = []
+            for ln in lines:                                      # the generic tail ("Do not state its holding as current law; ...") would contradict the excerpt we hand over, so it is replaced
+                head = ln.split(" Do not state its holding")[0]
+                word = "reported to have been treated so" if ln.startswith("REGISTER NOTE") else "listed so"
+                out.append(head + f" Whenever you mention this case, say in the same sentence that our register has it {word}. The register does not say which point of this judgment was corrected: say that in those words, "
+                                  "and do not say that the rule in the excerpt below has been displaced or is no longer the law; the excerpt is the Court's own wording of that rule.")
+            lines = out
+        return lines
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("register lines for an anchor failed: %s", exc)
         return []
 
 

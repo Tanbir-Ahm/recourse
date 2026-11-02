@@ -35,6 +35,10 @@ _SUBMIT = re.compile(r"\bit\s+(?:was|is|has\s+been)\s+(?:further\s+|also\s+|then
                      r"\b(?:the\s+)?(?:appellants?|respondents?|petitioners?|accused|complainant|prosecution|state)\b[^.?!]{0,40}\b(?:contends?|submits?|urges?|argues?)\b", re.I)
 
 
+# a reported decision cited by its report: '(2000) 8 SCC 382', 'AIR 1952 SC 343', '2011 SCC (Cri) 1', 'SCC OnLine ...'
+_RECITAL = re.compile(r"\(\d{4}\)\s+\d+\s+SCC\s+\d+|\bAIR\s+\d{4}\s+SC\s+\d+|\b\d{4}\s+SCC\s*\(\s*(?:Cri|L&S|Civ)\s*\)\s*\d+|\bSCC\s+OnLine\b|\(\d{4}\)\s+\d+\s+SCR\s+\d+", re.I)
+
+
 def enabled():
     return (os.environ.get("PASSAGE_NOTES") or "off").strip().strip("\"'").strip().lower() in ("on", "1", "true", "yes")
 
@@ -47,8 +51,11 @@ def kinds(text, passage_type=None):
             return []
         out = []
         sub = bool((passage_type == "argument" or _SUBMIT.search(t)) and not _HOLD.search(t))          # a party's submission, with no word of the Court's own in it
-        if _LOWER.search(t):                                                                           # 'the High Court erred' inside a SUBMISSION is the party's view, not this Court's finding
-            out.append("lower_court_rejected" if (_REJECTED.search(t) and not sub) else "lower_court")
+        lm = _LOWER.search(t)
+        if lm:                                                                                         # 'the High Court erred' inside a SUBMISSION is the party's view, not this Court's finding
+            rejected = bool(_REJECTED.search(t) and not sub)
+            if rejected or not _RECITAL.search(t[:lm.start()]):                                        # a reported decision cited BEFORE the lower-court sentence: the passage tells the story of that decision (its trial court, its High Court), which is not this judgment's lower court; no note (2026-11-02)
+                out.append("lower_court_rejected" if rejected else "lower_court")
         one = bool(_ONE_JUDGE.search(t))
         if one:
             out.append("one_judge")

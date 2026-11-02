@@ -486,6 +486,20 @@ def build_document(entries, *, kind="answer", title_chat=None, generated_at=None
             B += md_blocks(e["plain"])
         else:
             B.append(_box([R("No answer was saved for this question.")]))
+    kinds = set()                                            # the data credit (CC-BY needs it somewhere; it is no longer after each link): once, at the end, naming only the buckets this file's passages were copied from (2026-11-02)
+    for e in entries:
+        v = e.get("view")
+        w = (v or {}).get("sci_related") if isinstance(v, dict) else None
+        for it in ((w or {}).get("items") or []) if isinstance(w, dict) else []:
+            if isinstance(it, dict) and it.get("link_kind"):
+                kinds.add(str(it["link_kind"]))
+    parts = []
+    if "open_bucket_pdf" in kinds:
+        parts.append("the Supreme Court judgments bucket (Dattam Labs, CC-BY-4.0)")
+    if any(k.startswith("high_court_bucket") for k in kinds):
+        parts.append("the High Court judgments bucket (Dattam Labs)")
+    if parts:
+        B.append(_p("Some judgment copies come from open datasets: " + " and ".join(parts) + ".", muted=True))
     if not lawyer:
         B.append({"t": "h2", "text": "Notes for my lawyer"})
         B.append({"t": "lines", "n": 4})

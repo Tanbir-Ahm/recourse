@@ -83,7 +83,7 @@ def note_for(act_key, section_number, path=None):
             how = HOW.get(pr.get("kind"), "Some of this section's wording is found in")
             return (head + f"{how} {where} of the Bharatiya Sakshya Adhiniyam, 2023. This pairing was made by a program comparing the "
                     "words of the two Acts; our reviewer has not read it. Name the Adhiniyam section only as 'the corresponding provision in the new Act, reportedly', and do not say the two mean the same unless "
-                    "the passages given show it.")
+                    "the passages given show it. Say that the pairing is unreviewed ONCE in the whole answer (in the Gaps part if there is one), not each time you name the section.")
         if act_key == BSA_KEY:
             rows = rev.get(num) or []
             head = "The Bharatiya Sakshya Adhiniyam, 2023 replaced the Indian Evidence Act, 1872 from 1 July 2024 (India Code's record). "
@@ -92,7 +92,8 @@ def note_for(act_key, section_number, path=None):
             nums = [ea for ea, _b in rows[:4]]
             eas = ("section %s" % nums[0]) if len(nums) == 1 else ("sections " + ", ".join(nums[:-1]) + " and " + nums[-1])
             return (head + f"Judgments and books written before then cite the old Act: this section holds much of the wording of {eas} of the Evidence Act. This pairing was made by a program comparing the words of the "
-                    "two Acts; our reviewer has not read it. Say 'reportedly corresponds to' and do not say the two mean the same unless the passages given show it.")
+                    "two Acts; our reviewer has not read it. Say 'reportedly corresponds to' and do not say the two mean the same unless the passages given show it. Say that the pairing is unreviewed ONCE in the whole answer "
+                    "(in the Gaps part if there is one), not each time you name the section.")
     except Exception:  # noqa: BLE001 -- fail-open
         return ""
     return ""
