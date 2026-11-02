@@ -18,6 +18,10 @@ for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_I
 
 import pg_harness
 
+import json as _json_plans
+_FREE = {e["feature"]: e["limit"] for p in _json_plans.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "db", "plans.json"), encoding="utf-8"))["plans"] if p["code"] == "free" for e in p["entitlements"]}
+LAY, LAW = _FREE["answer_layman"], _FREE["answer_lawyer"]          # the shipped free-plan limits (plans.json): the tests follow the file, they do not assume 10 and 3
+
 FAILURES = []
 
 
@@ -64,7 +68,7 @@ try:
     check(c.get("/api/legal/data_use").status_code == 200 and c.get("/api/legal/cookies").status_code == 404, "the optional document is public too; an unknown one is 404")
 
     mu = c.get("/api/me", headers=H(*A)).json()["usage"]
-    check(mu["answer_layman"]["limit"] == 10 and mu["answer_layman"]["used"] == 0 and mu["answer_lawyer"]["limit"] == 3 and mu["answer_layman"]["resets_at"], f"/api/me carries today's usage and limits ({mu['answer_layman']})")
+    check(mu["answer_layman"]["limit"] == LAY and mu["answer_layman"]["used"] == 0 and mu["answer_lawyer"]["limit"] == LAW and mu["answer_layman"]["resets_at"], f"/api/me carries today's usage and limits ({mu['answer_layman']})")
 
     # ------------------------------------------------------------ consent flow
     me = c.get("/api/me", headers=H(*A)).json()

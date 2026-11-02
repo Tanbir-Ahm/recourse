@@ -152,22 +152,23 @@ try:
 
     # ------------------------------------------------------------ seed: versions and validation
     cfg = SEED.load_config()
+    LAY = next(e["limit"] for p in cfg["plans"] if p["code"] == "free" for e in p["entitlements"] if e["feature"] == "answer_layman")          # the shipped limit (plans.json); the test follows the file
     cfg2 = json.loads(json.dumps(cfg))
     for p in cfg2["plans"]:
         if p["code"] == "free":
             for e in p["entitlements"]:
                 if e["feature"] == "answer_layman":
-                    e["limit"] = 12
+                    e["limit"] = LAY + 2
     with Session(eng) as ss:
         a = SEED.seed(ss, cfg2)
         ss.commit()
         vers = [(e.version, e.limit_count) for e in ss.execute(select(D.Entitlement).join(D.Plan).where(D.Plan.code == "free", D.Entitlement.feature == "answer_layman").order_by(D.Entitlement.version)).scalars()]
-    check(a == {"plans_added": 0, "entitlements_added": 1} and vers == [(1, 10), (2, 12)], f"a changed number is a NEW version; the old one stays as history ({vers})")
+    check(a == {"plans_added": 0, "entitlements_added": 1} and vers == [(1, LAY), (2, LAY + 2)], f"a changed number is a NEW version; the old one stays as history ({vers})")
     with Session(eng) as ss:
         a = SEED.seed(ss, cfg)
         ss.commit()
         vers = [(e.version, e.limit_count) for e in ss.execute(select(D.Entitlement).join(D.Plan).where(D.Plan.code == "free", D.Entitlement.feature == "answer_layman").order_by(D.Entitlement.version)).scalars()]
-    check(vers == [(1, 10), (2, 12), (3, 10)], f"changing it back is version 3, nothing is rewritten ({vers})")
+    check(vers == [(1, LAY), (2, LAY + 2), (3, LAY)], f"changing it back is version 3, nothing is rewritten ({vers})")
     for label, mut in (("a duplicate plan code", lambda c: c["plans"].append(dict(c["plans"][0]))), ("a bad period", lambda c: c["plans"][1]["entitlements"][0].update(period="week")),
                        ("a negative limit", lambda c: c["plans"][1]["entitlements"][0].update(limit=-1)), ("a true/false limit", lambda c: c["plans"][1]["entitlements"][0].update(limit=True)),
                        ("a duplicate feature", lambda c: c["plans"][1]["entitlements"].append(dict(c["plans"][1]["entitlements"][0])))):

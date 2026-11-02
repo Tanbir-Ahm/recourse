@@ -56,6 +56,10 @@ except SC.ApiError as e:
 
 import api_harness
 import pg_harness
+
+import json as _json_plans
+_FREE = {e["feature"]: e["limit"] for p in _json_plans.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "db", "plans.json"), encoding="utf-8"))["plans"] if p["code"] == "free" for e in p["entitlements"]}
+LAY, LAW = _FREE["answer_layman"], _FREE["answer_lawyer"]          # the shipped free-plan limits (plans.json): the tests follow the file
 pg = pg_harness.start()
 if pg is None:
     print("SKIPPED: no PostgreSQL here, the part over real HTTP was not run")
@@ -77,7 +81,7 @@ try:
 
     # ---- sign-in is by the minted token
     me = SC.me(P)
-    check(me["user"]["email"] == "client@example.com" and me["user"]["plan"] == "free" and me["via"] == "streamlit" and [d["document"] for d in me["consent"]["missing"]] == ["privacy", "terms"] and me["usage"]["answer_layman"]["limit"] == 10,
+    check(me["user"]["email"] == "client@example.com" and me["user"]["plan"] == "free" and me["via"] == "streamlit" and [d["document"] for d in me["consent"]["missing"]] == ["privacy", "terms"] and me["usage"]["answer_layman"]["limit"] == LAY,
           "me: the person is created on first use, on the free plan, with the documents to accept and today's limits")
     tok = SC.mint(P)
     import urllib.request
@@ -125,8 +129,8 @@ try:
         stamps.append(time.time())
     t0 = time.time()
     r = SC.ask(P, chat, "What happens at a remand hearing before a magistrate?", on_step=on_step)
-    check(r["result"]["state"] == "single_match" and r["text"].startswith("Stub answer to:") and r["saved"] is True and r["message_id"] and r["usage"]["used"] == 1 and r["usage"]["limit"] == 10 and r["notice"] is None,
-          "ask: the engine's result, the saved message id, the usage 1 of 10, no notice for an answer")
+    check(r["result"]["state"] == "single_match" and r["text"].startswith("Stub answer to:") and r["saved"] is True and r["message_id"] and r["usage"]["used"] == 1 and r["usage"]["limit"] == LAY and r["notice"] is None,
+          "ask: the engine's result, the saved message id, the usage 1 of the daily limit, no notice for an answer")
     check(len(steps) == 2 and steps[0].startswith("Checked the topic") and steps[1] == "Writing the answer" and stamps[0] - t0 < stamps[1] - t0 and stamps[1] - stamps[0] > 0.05, f"the steps arrived one at a time, before the end ({steps})")
     r2 = SC.ask(P, chat, "And what if I am not given a lawyer there?")
     check(r2["usage"]["used"] == 2 and r2["turn"] == 2, "a follow-up in the same chat: usage 2, turn 2")
@@ -160,14 +164,14 @@ try:
     except SC.ApiError as e:
         check(e.status == 409 and e.code == "turn_limit", "the ninth question in a chat: 409 turn_limit")
     with DBS.session() as s:
-        for _ in range(8):
+        for _ in range(LAY - 2):          # two questions of this test are already counted
             s.add(M.UsageEvent(user_id=uid, kind="answer_layman", counted=True))
         s.commit()
     try:
         SC.ask(P, SC.new_chat(P, "layman")["id"], "one more please")
         check(False, "the daily limit raises")
     except SC.ApiError as e:
-        check(e.status == 429 and e.code == "limit_reached" and e.payload["usage"]["limit"] == 10 and e.payload["usage"]["resets_at"], f"over the daily allowance: 429 limit_reached with the limit and the reset time ({e})")
+        check(e.status == 429 and e.code == "limit_reached" and e.payload["usage"]["limit"] == LAY and e.payload["usage"]["resets_at"], f"over the daily allowance: 429 limit_reached with the limit and the reset time ({e})")
 
     # ---- feedback, export, delete
     try:

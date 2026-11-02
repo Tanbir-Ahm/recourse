@@ -18,6 +18,10 @@ for _v in ("DATABASE_URL", "ANON_DAILY_BUDGET_INR", "ANON_IP_DAILY_LIMIT"):
 
 import pg_harness
 
+import json as _json_plans
+_FREE = {e["feature"]: e["limit"] for p in _json_plans.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "db", "plans.json"), encoding="utf-8"))["plans"] if p["code"] == "free" for e in p["entitlements"]}
+LAY, LAW = _FREE["answer_layman"], _FREE["answer_lawyer"]          # the shipped free-plan limits (plans.json): the tests follow the file, they do not assume 10 and 3
+
 FAILURES = []
 
 
@@ -79,10 +83,10 @@ try:
     # ------------------------------------------------------------ basic reserve (free plan: 10 layman, 3 lawyer a day)
     NOW = at(2026, 10, 21, 6)
     u1 = new_user()
-    got = [reserve(u1, now=NOW)[0] for _ in range(12)]
-    check(got == [True] * 10 + [False] * 2, f"free plan: the first 10 layman answers of the day are allowed, the 11th and 12th are not ({got.count(True)} allowed)")
+    got = [reserve(u1, now=NOW)[0] for _ in range(LAY + 2)]
+    check(got == [True] * LAY + [False] * 2, f"free plan: the first {LAY} layman answers of the day are allowed, the next two are not ({got.count(True)} allowed)")
     ok, ev, info = reserve(u1, now=NOW)
-    check(ok is False and info["reason"] == "limit_reached" and info["limit"] == 10 and info["used"] == 10 and info["period"] == "day" and info["resets_at"].startswith("2026-10-21T18:30"), f"a refusal says the limit, the use, and when it resets ({info})")
+    check(ok is False and info["reason"] == "limit_reached" and info["limit"] == LAY and info["used"] == LAY and info["period"] == "day" and info["resets_at"].startswith("2026-10-21T18:30"), f"a refusal says the limit, the use, and when it resets ({info})")
     check(reserve(u1, "answer_lawyer", now=NOW)[0] is True, "the lawyer allowance is separate from the layman allowance")
     ok, _, _ = reserve(u1, now=at(2026, 10, 21, 18, 31))
     check(ok is True, "after IST midnight the day's allowance is fresh")
@@ -98,8 +102,8 @@ try:
         db.commit()
         check(db.get(M.UsageEvent, ev).counted is False, "release gives the unit back")
     u2 = new_user()
-    evs = [reserve(u2, now=NOW)[1] for _ in range(10)]
-    check(reserve(u2, now=NOW)[0] is False, "10 reserved: the 11th is refused")
+    evs = [reserve(u2, now=NOW)[1] for _ in range(LAY)]
+    check(reserve(u2, now=NOW)[0] is False, f"{LAY} reserved: the next is refused")
     with DBS.session() as db:
         Q.release(db, evs[0])
         db.commit()
@@ -150,16 +154,16 @@ try:
         res = list(pool.map(lambda _: reserve(u7, now=NOW)[0], range(48)))
     with DBS.session() as db:
         counted = db.execute(select(func.count()).select_from(M.UsageEvent).where(M.UsageEvent.user_id == u7, M.UsageEvent.counted.is_(True))).scalar()
-    check(res.count(True) == 10 and counted == 10, f"48 simultaneous requests, limit 10: exactly 10 are allowed and 10 are counted ({res.count(True)} allowed, {counted} counted)")
+    check(res.count(True) == LAY and counted == LAY, f"48 simultaneous requests, limit {LAY}: exactly {LAY} are allowed and counted ({res.count(True)} allowed, {counted} counted)")
     u8, u9 = new_user(), new_user()
     with concurrent.futures.ThreadPoolExecutor(max_workers=24) as pool:
-        r8 = list(pool.map(lambda i: reserve(u8 if i % 2 else u9, now=NOW)[0], range(40)))
-    check(r8[1::2].count(True) == 10 and r8[0::2].count(True) == 10, "two people's requests mixed together: each gets their own 10")
+        r8 = list(pool.map(lambda i: reserve(u8 if i % 2 else u9, now=NOW)[0], range(2 * LAY + 4)))
+    check(r8[1::2].count(True) == LAY and r8[0::2].count(True) == LAY, "two people's requests mixed together: each gets their own allowance")
 
     # ------------------------------------------------------------ usage view
     with DBS.session() as db:
         v = Q.usage_view(db, db.get(M.User, u1), NOW)
-    check(v["answer_layman"]["used"] == 10 and v["answer_layman"]["limit"] == 10 and v["answer_lawyer"]["used"] == 1 and v["answer_lawyer"]["limit"] == 3 and v["answer_layman"]["resets_at"].startswith("2026-10-21T18:30"), f"the usage view shows used, limit and reset ({v['answer_layman']})")
+    check(v["answer_layman"]["used"] == LAY and v["answer_layman"]["limit"] == LAY and v["answer_lawyer"]["used"] == 1 and v["answer_lawyer"]["limit"] == LAW and v["answer_layman"]["resets_at"].startswith("2026-10-21T18:30"), f"the usage view shows used, limit and reset ({v['answer_layman']})")
     check(v["notes_max"] == {"limit": 100, "period": "none"} and v["chat_history_days"]["limit"] is None, "...and the non-counted limits (notes, history) without a count")
 
     # ------------------------------------------------------------ the anonymous trial

@@ -14,6 +14,10 @@ import threading
 import time
 import uuid
 
+import json as _json_plans
+_FREE = {e["feature"]: e["limit"] for p in _json_plans.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "db", "plans.json"), encoding="utf-8"))["plans"] if p["code"] == "free" for e in p["entitlements"]}
+LAY, LAW = _FREE["answer_layman"], _FREE["answer_lawyer"]          # the shipped free-plan limits (plans.json): the tests follow the file, they do not assume 10 and 3
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 for _v in ("DATABASE_URL", "API_ACCESS_TOKEN", "ACCOUNTS_OPEN", "GOOGLE_CLIENT_ID", "STREAMLIT_API_SECRET", "IP_HASH_SECRET", "CORS_ALLOW_ORIGINS", "TRUSTED_PROXY_HOPS", "API_COOKIE_SECURE", "API_RUN_MIGRATIONS",
@@ -145,7 +149,7 @@ try:
     r = ask(A, chat, Q1, key="key-first-0001")
     j = r.json()
     check(r.status_code == 200 and j["saved"] is True and j["chat_id"] == chat and j["message_id"] and j["text"].startswith("ANSWER-1"), f"JSON reply: the answer, its message id, saved=true ({r.status_code})")
-    check(j["usage"]["used"] == 1 and j["usage"]["limit"] == 10 and j["usage"]["period"] == "day", f"the reply says how much of today's allowance is used ({j['usage']})")
+    check(j["usage"]["used"] == 1 and j["usage"]["limit"] == LAY and j["usage"]["period"] == "day", f"the reply says how much of today's allowance is used ({j['usage']})")
     g = c.get(f"/api/chats/{chat}", headers=A()).json()
     check([m["role"] for m in g["messages"]] == ["user", "assistant"] and [m["seq"] for m in g["messages"]] == [1, 2] and g["messages"][0]["content"] == Q1 and g["messages"][1]["result"]["state"] == "single_match", "the question and the answer are stored in order, with the engine's whole result")
     check(g["title"].startswith("My landlord is refusing") and len(g["title"]) <= 70 and g["turn_limit"] == 8, f"the chat takes its title from the first question ({g['title']!r})")
@@ -216,13 +220,13 @@ try:
 
     # ------------------------------------------------------------ the limits
     with DBS.session() as s:
-        for _ in range(12):
+        for _ in range(LAY + 2):
             s.add(M.UsageEvent(user_id=uid("bob@example.com"), kind="answer_layman", counted=True))
         s.commit()
     bc = c.post("/api/chats", json={}, headers=B()).json()["id"]
     n0 = FakeEngine.n
     r = ask(B, bc, "Can I still ask today?")
-    check(r.status_code == 429 and r.json()["detail"] == "limit_reached" and r.json()["usage"]["limit"] == 10 and r.json()["usage"]["resets_at"], f"over the daily allowance: 429 with the limit and the reset time ({r.json()})")
+    check(r.status_code == 429 and r.json()["detail"] == "limit_reached" and r.json()["usage"]["limit"] == LAY and r.json()["usage"]["resets_at"], f"over the daily allowance: 429 with the limit and the reset time ({r.json()})")
     check(FakeEngine.n == n0 and n_messages(bc) == 0, "...the engine was not asked and nothing was saved")
     lc = c.post("/api/chats", json={"audience": "lawyer"}, headers=A()).json()["id"]
     check(ask(A, lc, "Research note on the maintainability of a Section 138 complaint.").status_code == 200 and counted("alice@example.com", "answer_lawyer") == 1, "a lawyer-voice chat uses the lawyer allowance, not the layman one")
