@@ -141,6 +141,7 @@ FEED_INSTRUCTION = (
     "If a line starting REGISTER FACT is attached to a case, whenever you mention that case say how it was treated in the same sentence, and never present its holding as the current law; "
     "the case that corrected it is among the passages when it could be found, so name that case too. "
     "A REGISTER FACT line placed under a passage that only NAMES another case is about that other case: if you rely on that passage, do not present the named case's rule as current law, and say how it was treated. "
+    "A line starting REGISTER POSSIBLE MATCH means our register holds a decision with the same name (another year, or none given) that it lists or reports as overruled: whenever you mention that case, say in the same sentence that our register holds a decision of that name treated that way and that we cannot tell whether it is the same case; do not say it is, and do not say it is not. "
     "Credit a principle to the case whose own words state it: if a passage quotes or restates an earlier decision, say it was an earlier decision's holding, never the named case's. "
     "A passage can be a QUOTATION from another, earlier decision that the judgment it is listed under reproduces, and it may start in the middle of the extract without naming that decision. Treat a passage as a probable "
     "quotation when the facts, dates, names or places it describes cannot be those of the case it is listed under (for example a 1968 arrest described in a judgment of 2011, or a petitioner who is plainly another person), "
@@ -1069,6 +1070,11 @@ def feed_block(question, exclude_names=None):
                 lines = prompt_lines_for_match({"case_name": r["case_name"], "year": year, "citation": one(cits.get("scr")) or one(cits.get("insc")) or one(cits.get("air"))})
                 if lines:
                     facts = "\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n" + "\n".join(lines)
+                else:
+                    from register_hooks import possible_for_case
+                    pm = possible_for_case(r["case_name"], year, one(cits.get("scr")) or one(cits.get("insc")) or one(cits.get("air")))
+                    if pm:                                            # a decision of the same name is on the register (another year, or none): say so beside the case, never that they are the same
+                        facts = "\n[Overruled Register -- possible match, not optional: if you mention this case at all, say this in the same sentence]\n" + pm["line"]
             except Exception:  # noqa: BLE001
                 facts = ""
             men = named.get(r["doc"]) if f["source"] != "register" else None

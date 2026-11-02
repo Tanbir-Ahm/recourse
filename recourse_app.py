@@ -817,8 +817,8 @@ def _case_is_named(m, reply_lc):
     return False
 
 
-def _sources_worth_showing(matches, reply_text, cap=16):
-    """The 'Read the source' JUDGMENT list.
+def _sources_worth_showing(matches, reply_text, cap=16, strict=False):
+    """The 'Read the source' JUDGMENT list. `strict` (the lawyers' note, 2026-11-02): when the answer names no case, show none (the layman's list keeps its fallback).
 
     If the answer NAMES any case, show ONLY those -- every case it names
     (grounding: the prompt forbids naming a case with no excerpt) and
@@ -844,6 +844,8 @@ def _sources_worth_showing(matches, reply_text, cap=16):
     named = [m for m in pool if _case_is_named(m, reply_lc)]
     if named:
         pool = named
+    elif strict:
+        pool = []
     else:
         # nothing named -> curated anchors first, then score order
         pool = sorted(
@@ -1092,7 +1094,7 @@ def render_answer(result: dict):
         # judgments: the anchored + answer-named ones, capped for length.
         # Pass judgment matches ONLY -- see _sources_worth_showing docstring.
         judgments = _sources_worth_showing(
-            [m for m in all_matches if m.get("case_name")], reply)
+            [m for m in all_matches if m.get("case_name")], reply, strict=(result.get("audience") == "lawyer"))
 
         # group judgment paragraphs under ONE heading per case
         by_case, order = {}, []

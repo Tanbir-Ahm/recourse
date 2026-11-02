@@ -243,6 +243,28 @@ def text_mentions(text):
         return empty
 
 
+def possible_for_case(name, year=None, citation=None):
+    """The register's level-2 reading of a case that the register does NOT hold as such (no strong hit) but whose two full party names match a row with another year or none (2026-11-02, after a staging answer relied
+    on Bhadresh Bipinbhai Sheth v. State of Gujarat while the page's Currency notes said a decision of that name is reported overruled, and the table said 'Not checked by us'). -> {'clause': the 'Possible match: ...'
+    sentence (register.possible_clause), 'line': the prompt line} or None (a strong hit, no hit, the register off, any error). Never says the two are the same case and never says 'good law'."""
+    if _off() or not name:
+        return None
+    try:
+        reg, _ = _load()
+        yr = int(year) if year not in (None, "") else None
+        hits = reg.lookup_case(name, yr, citation if isinstance(citation, str) else None)
+        if not hits or any(h["strength"] == "strong" for h in hits):
+            return None
+        rows = [h["row"] for h in hits if h["strength"] == "weak" and reg.clause(h["row"])]
+        clause = reg.possible_clause(rows, "answer") if rows else None
+        if not clause:
+            return None
+        return {"clause": clause, "line": "REGISTER POSSIBLE MATCH: " + clause}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("register possible match failed: %s", exc)
+        return None
+
+
 def case_status(name, year=None, citation=None):
     """For the lawyers' authorities table: one line saying where a case stands on our lists. {'source': 'register'|'card'|'card_quiet'|'not_checked'|'off', 'note': sentence}.
     The register first (firm or 'reported ... not yet confirmed'), then the cards overlay (warning, caution or quiet), else the fixed 'Not checked by us' sentence. Never says a case is good law. Never raises."""

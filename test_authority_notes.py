@@ -66,7 +66,7 @@ BASE = [
     {"rank": 4, "doc": 11, "case_name": "Alpha Kumar v. State of Bihar", "date": "2015-05-03", "paragraph": "14", "link": "https://x/11.pdf", "link_kind": "open_bucket_pdf", "text": "again", "name_to_review": False, "citations": {}, "score": 0.6, "passage_type": "reasoning"},
 ]
 # the two hashes were taken from the code as it was BEFORE authority_notes existed (2026-10-29), for exactly this scenario
-BLOCK_SHA, CASES_SHA = "1fc213652d1bd600033c6ef6b624ae84cbd012e8de2a9dffd89966b54ec4ce47", "ee722b7b2a79d2846c7fcb6e865c1be986d90f2916817cf7830d9caf8e39798e"
+BLOCK_SHA, CASES_SHA = "de22e003552ca46dd016f7d47ece763ba031fc8889aeb448eef00690dcfac592", "ee722b7b2a79d2846c7fcb6e865c1be986d90f2916817cf7830d9caf8e39798e"
 STATE = {"res": BASE}
 
 
@@ -88,7 +88,7 @@ def block_for(results, question=Q):
 
 
 b0, c0, log0 = block_for(BASE)
-check(sha(b0) == BLOCK_SHA and sha(json.dumps(c0, sort_keys=True)) == CASES_SHA, "no authority facts: the block and the page list are byte for byte what the code produced before this change")
+check(sha(b0) == BLOCK_SHA and sha(json.dumps(c0, sort_keys=True)) == CASES_SHA, "no authority facts: the block and the page list are byte for byte what the code produced before this change (the block was re-pinned 2026-11-02: the wider-search instruction gained the REGISTER POSSIBLE MATCH sentence; the page list is unchanged)")
 check("SCI_FEED_AUTHORITY" not in log0 and "Named by other judgments" not in b0 and AN.INSTRUCTION not in b0, "no authority facts: no log line, no authority line and no instruction")
 with_junk = [dict(r, authority=a) for r, a in zip(BASE, ["446", {"named_by_collection": "x"}, {"named_by_collection": 5, "named_by_retrieved": 9, "retrieved": 3, "pointer": True}, [1, 2]])]
 b1, c1, log1 = block_for(with_junk)

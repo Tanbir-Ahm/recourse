@@ -629,6 +629,11 @@ def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
             lines = prompt_lines_for_match({"case_name": m.get("case_name"), "year": yr.group(1) if yr else None, "citation": m.get("citation")})
             if lines:
                 facts = "\n[Overruled Register -- not optional: if you mention this case at all, state this fact in the same sentence]\n" + "\n".join(lines)
+            else:
+                from register_hooks import possible_for_case
+                pm = possible_for_case(m.get("case_name"), yr.group(1) if yr else None, m.get("citation"))
+                if pm:                                                 # a decision of the same name is on the register (another year, or none): say so beside the case, never that they are the same
+                    facts = "\n[Overruled Register -- possible match, not optional: if you mention this case at all, say this in the same sentence]\n" + pm["line"]
         except Exception:  # noqa: BLE001
             facts = ""
         blocks.append(f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {m['case_name']}{citation}]\n{text}{facts}")
@@ -4435,7 +4440,19 @@ def _build_authorities(result):
         if isinstance(m, dict) and m.get("type") == "judgment" and m.get("case_name") and m["case_name"] not in named:
             if _name_in_text(_case_distinctive_name(m["case_name"]), text) or any(l.get("case_name") == m["case_name"] for l in (result.get("cited_judgment_links") or []) if isinstance(l, dict)):
                 named.append(m["case_name"])
-    return authorities_table.build(result.get("matches"), named, result.get("cited_judgment_links"), result.get("sci_related_judgments"), case_status, anchors=result.get("anchor_excerpts"))
+    def status_with_possible(name, year=None, citation=None):
+        """case_status, except that a case the register does not hold as such but whose two full party names match one of its rows (another year, or none) says so in its own row ('Possible match: ...'), instead of 'Not checked by us'."""
+        st = case_status(name, year, citation)
+        try:
+            if (st or {}).get("source") == "not_checked":
+                from register_hooks import possible_for_case
+                p = possible_for_case(name, year, citation)
+                if p:
+                    return {"source": "possible", "note": p["clause"]}
+        except Exception:  # noqa: BLE001
+            pass
+        return st
+    return authorities_table.build(result.get("matches"), named, result.get("cited_judgment_links"), result.get("sci_related_judgments"), status_with_possible, anchors=result.get("anchor_excerpts"))
 
 
 def _answer_question_inner(question, inline_domains=frozenset()):

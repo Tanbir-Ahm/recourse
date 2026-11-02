@@ -95,7 +95,9 @@ def case_is_named(m, reply_lc):
     return False
 
 
-def sources_worth_showing(matches, reply_text, cap=16):
+def sources_worth_showing(matches, reply_text, cap=16, strict=False):
+    """The judgments to show under 'the sections and judgments this answer rests on': those the reply names; when it names none, every one handed over (the layman's box, which keeps its sources even when the answer
+    does not name a case), or, with `strict` (the lawyers' note, 2026-11-02: 'Arnesh Kumar' was listed under two answers about anticipatory bail that never named it), none."""
     reply_lc = (reply_text or "").lower()
 
     def _label(m):
@@ -105,6 +107,8 @@ def sources_worth_showing(matches, reply_text, cap=16):
     named = [m for m in pool if case_is_named(m, reply_lc)]
     if named:
         pool = named
+    elif strict:
+        pool = []
     else:
         pool = sorted(pool, key=lambda m: 0 if str(m.get("source") or "").startswith("curated") else 1)
     picked, seen = [], set()
@@ -213,7 +217,7 @@ def _sources(result, reply):
         seen.add(k)
         cap = shelf_caption(m)
         statutes.append({"heading": f'{m.get("act_display") or m.get("act")} Section {m.get("section_number")}', "caption": cap["text"] if cap else None, "caption_url": cap["url"] if cap else None, "text": statute_excerpt(m)})
-    judgments = sources_worth_showing([m for m in all_matches if m.get("case_name")], reply)
+    judgments = sources_worth_showing([m for m in all_matches if m.get("case_name")], reply, strict=(result.get("audience") == "lawyer"))
     by_case, order = {}, []
     for m in judgments:
         k = (m.get("case_name"), m.get("citation"))
@@ -229,6 +233,22 @@ def _sources(result, reply):
             excerpts.append({"paragraph": head if head.isdigit() else None, "text": clean_excerpt(m.get("text") or "")[:1100]})
         cases.append({"name": name, "citation": cite or None, "caveats": currency_notes(name), "excerpts": excerpts})
     return statutes, cases
+
+
+UNVERIFIED_EXCERPT_CHARS = 1200       # what the answer model was shown of such a passage (chat_assistant._PILOT_CONTEXT_MAX_CHARS_PER_CHUNK)
+
+
+def _unverified_excerpt(j, reply_lc):
+    """The passage of a case in the 'Other real court cases' list, only when the answer NAMES the case (2026-11-02: a staging answer quoted words of Sibbia and cited Sushila para 102 while the file showed only their names, so a reader could not
+    check them). The same first UNVERIFIED_EXCERPT_CHARS characters the answer model was given, cleaned; None when the case is not named, the passage is missing or on any error."""
+    try:
+        raw = str(j.get("text") or "")
+        if not raw.strip() or not case_is_named(j, reply_lc):
+            return None
+        t = clean_excerpt(raw[:UNVERIFIED_EXCERPT_CHARS])
+        return (t + " ...") if t and len(raw) > UNVERIFIED_EXCERPT_CHARS else (t or None)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _s(v):
@@ -291,7 +311,9 @@ def build(result):
             anchors = {"unconfirmed": any(a.get("status") != "reviewer_confirmed" for a in items), "items": [
                 {"case_name": str(a.get("case_name") or ""), "link": _s(a.get("link")), "year": _s(a.get("year")), "citation": _s(a.get("citation")),
                  "excerpts": [{"label": str(e.get("label") or ""), "paragraph": _s(e.get("paragraph")), "text": str(e.get("text") or ""), "note": _s(e.get("note"))} for e in (a.get("excerpts") or []) if isinstance(e, dict)]} for a in items]}
-        unverified = [{"case_name": str(j.get("case_name") or ""), "url": _s(j.get("ik_search_url")), "paragraph": _s(j.get("paragraph_number")), "procedural": bool(j.get("procedural_disposal"))}
+        reply_lc_u = str(result.get("response_text") or "").lower()
+        unverified = [{"case_name": str(j.get("case_name") or ""), "url": _s(j.get("ik_search_url")), "paragraph": _s(j.get("paragraph_number")), "procedural": bool(j.get("procedural_disposal")),
+                       "excerpt": _unverified_excerpt(j, reply_lc_u)}
                       for j in (result.get("unverified_related_judgments") or []) if isinstance(j, dict)]
         return {
             "kind": "answer", "label": "Your situation", "conflicting": state == "conflicting_matches",

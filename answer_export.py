@@ -428,11 +428,13 @@ def _answer_blocks(view, lawyer):
         B.append({"t": "ul", "items": [{"num": None, "runs": link_runs(c.get("case_name") or "", c.get("url")) + [R("  ·  " + (c.get("source_label") or "source link"), muted=True)]} for c in view["cited_links"]]})
     reg = view.get("register")
     if reg:
-        B.append({"t": "h2", "text": H_CURRENCY})
-        for n in list(reg.get("notes") or []) + list(reg.get("possible") or []):
-            B.append(_box([R(n)]))
-        if reg.get("not_checked"):
-            B.append(_p(reg["not_checked"], muted=True))
+        cur = [n for n in list(reg.get("notes") or []) + list(reg.get("possible") or []) if not (table_norm and _norm(n) in table_norm)]       # a note the table of authorities already holds in the case's own row is not printed again (2026-11-02)
+        if cur or reg.get("not_checked"):
+            B.append({"t": "h2", "text": H_CURRENCY})
+            for n in cur:
+                B.append(_box([R(n)]))
+            if reg.get("not_checked"):
+                B.append(_p(reg["not_checked"], muted=True))
     if view.get("grounding_notes"):
         B.append({"t": "h2", "text": H_GROUNDING})
         for n in view["grounding_notes"]:
@@ -484,6 +486,8 @@ def _answer_blocks(view, lawyer):
             if j.get("procedural"):
                 runs.append(R(" — may be a procedural/bail order, not a full judgment"))
             B.append({"t": "p", "runs": runs})
+            if j.get("excerpt"):                                  # the passage the answer model was shown, when the answer names the case (2026-11-02)
+                B.append(_official(j["excerpt"]))
     if B:                                                      # the apparatus after the answer, under one heading, with the caveat said once
         ANSWER_PART += [{"t": "rule"}, {"t": "h2", "text": H_CHECKS}, _p(CHECKS_INTRO, muted=True)] + _demote(B)
     return ANSWER_PART
