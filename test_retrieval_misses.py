@@ -1,5 +1,5 @@
 """
-test_retrieval_misses.py -- the three retrieval-miss fixes of 2026-11-03 (research FOLLOW_UPS 2dg):
+test_retrieval_misses.py -- the three retrieval-miss fixes of 2026-11-03 (research FOLLOW_UPS 2de):
   statute_widen.py     STATUTE_WIDEN=off|log|on     sections just outside the 0.08 gap / cap of five that a cross-encoder scores high are ADDED
   statute_aliases.py   STATUTE_ALIASES=off|on       BNSS 528 (quash) and BNSS 359 (compound / settle) by word groups
   act_detect.py        EVIDENCE_DETECT=on           the Bharatiya Sakshya Adhiniyam is found by the law of evidence's own topics

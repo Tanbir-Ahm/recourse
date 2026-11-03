@@ -272,7 +272,7 @@ ACTS = {
         ],
     },
 
-    # ---- the law of evidence (added 2026-11-03; switch EVIDENCE_DETECT, default OFF; research FOLLOW_UPS 2dg) ----
+    # ---- the law of evidence (added 2026-11-03; switch EVIDENCE_DETECT, default OFF; research FOLLOW_UPS 2de) ----
     # WHY: the Directory finds the Bharatiya Sakshya Adhiniyam only when its name is in the question. On 16 questions written by Claude about what a court may admit or how a fact is proved, none of which named the Act,
     # 1 of 18 expected BSA sections reached the answer model (4 of 4 when the question did name the Act). These patterns are about the law's OWN topics (admissibility, confession, dying declaration, burden of proof,
     # electronic records, secondary evidence, hostile witness, cross-examination, presumptions, who may testify), each with a second cue where the bare word is common in other questions. A match is a ranking hint,

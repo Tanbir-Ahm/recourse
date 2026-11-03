@@ -1,5 +1,5 @@
 """
-statute_widen.py -- STATUTE_WIDEN=off|log|on (default off; written 2026-11-03 on the owner's "Yes, measure the misses and fix the common ones"; research repository FOLLOW_UPS item 2dg).
+statute_widen.py -- STATUTE_WIDEN=off|log|on (default off; written 2026-11-03 on the owner's "Yes, measure the misses and fix the common ones"; research repository FOLLOW_UPS item 2de).
 
 THE MISS IT CLOSES. The library search keeps a section only if it is within 0.08 of the best section's cosine score AND among the first five. A section that the question is plainly about is often just outside that:
 on the 65 development questions it was ranked 3rd to 7th by cosine and was cut by the 0.08 rule or the cap of five (BNSS 187 for "kept at the police station more than 24 hours", BNSS 483, BNSS 250, BNS 189, BNSS 359), while a
@@ -13,7 +13,7 @@ retrieval 'widened'. The conflict state is computed BEFORE they are added, so a 
 WHAT IT DOES NOT DO. It does not find a section whose wording shares nothing with the question's (quashing an FIR is BNSS 528, "Saving of inherent powers of the High Court"; that section ranked 83rd and 119th): that is the
 far-miss class, not touched here. It does not say the added section is right: a neighbour in the same chapter can pass the floor (BNS 192, 193, 195 beside 191). It costs one re-rank call per question (a few thousand tokens).
 The settings were chosen on the 65 development questions and the 48 frozen questions together (on the development questions alone every floor from 0.50 to 0.60 recovers the same 5 of 9; the frozen narrative questions score lower with the
-cross-encoder and 0.55 recovers 4 of 11 where 0.60 recovers 2 and 0.50 no more than 0.55); a third set of 36 questions, written after the floor was fixed, is the only unseen test. A section the person NAMED is trusted and
+cross-encoder and 0.55 recovers 4 of 11 where 0.60 recovers 2 and 0.50 no more than 0.55); a third set of 35 questions, written after the floor was fixed, is the only unseen test. A section the person NAMED is trusted and
 nothing is added. If the re-ranker is unavailable nothing is added. No hallucination rate has been measured.
 
 SWITCH: STATUTE_WIDEN = off (default; nothing changes, no call) | log (scores and writes a STATUTE_WIDEN line, adds nothing) | on.

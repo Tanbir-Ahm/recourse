@@ -1,5 +1,5 @@
 """
-statute_aliases.py -- STATUTE_ALIASES=off|on (default off; written 2026-11-03 on the owner's "Yes, measure the misses and fix the common ones"; research repository FOLLOW_UPS item 2dg).
+statute_aliases.py -- STATUTE_ALIASES=off|on (default off; written 2026-11-03 on the owner's "Yes, measure the misses and fix the common ones"; research repository FOLLOW_UPS item 2de).
 
 THE MISS IT CLOSES (a small one, on purpose). Some sections are never close to the words people use for them. The Sanhita calls BNSS 528 "Saving of inherent powers of the High Court" and its text never says "quash" or "FIR";
 a question "How can a High Court quash an FIR?" ranked it 83rd and "Can the High Court cancel an FIR that is false and malicious?" 119th of the library's sections. BNSS 359 (compounding of offences) ranked 38th for "Can the
