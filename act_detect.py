@@ -10,6 +10,9 @@ Two passes, both OFF unless ACT_DETECT is set:
   ACT_DETECT = wide                      the WORD pass: everyday wording and the Acts' own vocabulary, by regular expression. No model, no cost.
   ACT_DETECT = ai                        the word pass, and, only when it finds nothing, ONE short Haiku call that may pick an Act from the Directory's own list. Costs about Rs 0.2 a question [Likely].
 
+A third switch, EVIDENCE_DETECT=on (default off, added 2026-11-03), turns on the word pass for the law of evidence (the Bharatiya Sakshya Adhiniyam, entry bsa_2023 below). It acts only when ACT_DETECT is wide or ai;
+EVIDENCE_DETECT alone does nothing. Before it, the Directory found the Act only when its name was in the question: on 12 evidence questions that did not name it, 1 of 18 expected BSA sections reached the answer.
+
 Where the words come from:
   * the owner's trigger workbook (research `review_data/ruler/inputs/2026-10-12_trigger_workbook_with_spec_v2.xlsx`): Mr. Advocate's "Revised Trigger Map" and "False-Positive Audit", the owner's
     "Layperson Trigger Additions", and Machine Spec v2's N1/N2 anchors (`review_tools/machine_spec_v2.py`), which that workbook froze on 2026-10-12 after Mr. Advocate's regex audit.
@@ -35,6 +38,12 @@ AI_MODEL_MAX_TOKENS = 500
 AI_TIMEOUT_S = 15
 MAX_HITS = 2
 FLAGS = re.I | re.S
+
+
+def _env_on(name):
+    """True when the environment variable `name` is on/true/1 (quotation marks ignored); False otherwise, including unset."""
+    v = (os.environ.get(name) or "").strip().strip("\"'").strip().lower()
+    return v in ("on", "true", "1", "yes")
 
 
 def mode():
@@ -123,6 +132,11 @@ def _set_on_fire(thing):
 def _break_obj(thing):
     """'breaking the signal lights': the object IS the public thing."""
     return r"\b(?:break(?:ing|s)?|broke|broken)\s+(?:(?:the|a|an|all|some|several|many|two|three|their|its)\s+){0,2}(?:" + thing + ")"
+
+
+# what counts as "evidence" next to the word admissible (added 2026-11-03, the evidence word pass below)
+_EVID_THING = (r"\b(?:evidence|statements?|confessions?|admissions?|documents?|records?|recordings?|videos?|footage|cctv|audio|photos?|photographs?|screenshots?|chats?|messages?|whatsapp|e-?mails?|testimony|depositions?"
+               r"|certificates?|copy|copies|letters?|reports?|diary|register|ledger|dying declaration)\b")
 
 
 ACTS = {
@@ -257,6 +271,43 @@ ACTS = {
             {"when": _BURN_INJURY, "unless": _MOB},
         ],
     },
+
+    # ---- the law of evidence (added 2026-11-03; switch EVIDENCE_DETECT, default OFF; research FOLLOW_UPS 2dg) ----
+    # WHY: the Directory finds the Bharatiya Sakshya Adhiniyam only when its name is in the question. On 16 questions written by Claude about what a court may admit or how a fact is proved, none of which named the Act,
+    # 1 of 18 expected BSA sections reached the answer model (4 of 4 when the question did name the Act). These patterns are about the law's OWN topics (admissibility, confession, dying declaration, burden of proof,
+    # electronic records, secondary evidence, hostile witness, cross-examination, presumptions, who may testify), each with a second cue where the bare word is common in other questions. A match is a ranking hint,
+    # worded 'looks like it is about'; the shelf then chooses sections by meaning with its usual floor. 'circumstantial evidence' is left to its own flow (EVIDENCE_COMPANIONS, the landmark anchors).
+    "bsa_2023": {
+        "about": "the current law of evidence: what can be proved and how, including electronic records and their certificate.",
+        "switch": "EVIDENCE_DETECT",
+        "wide": [
+            near(r"\b(?:in)?admissib\w+", _EVID_THING, 80),                                                      # admissible / inadmissible + something that is evidence
+            r"\bas (?:an? )?evidence\b", r"\b(?:valid|legal|legally valid|primary|secondary|documentary|oral|electronic|digital|direct|hearsay|ocular|expert|material) evidence\b",
+            r"\bburden of proof\b", r"\bonus of proof\b", r"\bstandard of proof\b", r"\bbeyond (?:a )?reasonable doubt\b", r"\bpresum(?:ed|ption of) innocen\w+",
+            r"\b(?:who|whom) (?:has|have|had|must|should|needs?|is to) (?:to )?prove\b", r"\bprove (?:his|her|their|my|your) innocence\b",
+            r"\bdying declarations?\b", r"\bhearsay\b", r"\bres gestae\b", r"\bestoppel\b", r"\bjudicial notice\b",
+            r"\bhostile witness\b", r"\b(?:turn|turns|turned|turning) hostile\b",
+            r"\bcross[- ]?examin\w+", r"\bexamination[- ]in[- ]chief\b", r"\bchief[- ]examination\b", r"\bleading questions?\b", r"\brefresh\w* (?:his|her|their|the witness'?s?) memory\b",
+            r"\baccomplices?\b", r"\bapprovers?\b",
+            r"\bsection 65\s?B\b", r"\bsection 63 (?:certificate|of the (?:bsa|sakshya))\b", r"\bcertificate under section (?:63|65\s?B)\b",
+            r"\b(?:expert opinion|handwriting expert|expert witness|forensic expert|fingerprint expert)\b",
+            r"\b(?:bad|previous bad|prior bad|good) character\b", r"\b(?:previous|past|prior) sexual (?:experience|history|conduct|life)\b",
+            r"\b(?:how many|number of) witnesses\b", r"\b(?:single|sole|lone|one) witness\b",
+            near(r"\bconfess\w*", r"\b(?:police|admissible|inadmissible|court|magistrate|evidence|accused|co[- ]accused|extorted|torture|forced|pressure|beaten|signed|proof|trial|against)\b", 80),
+            near(r"\b(?:whatsapp|sms|text messages?|chats?|e-?mails?|screenshots?|call recordings?|audio recordings?|video recordings?|recorded (?:call|conversation)s?|cctv|dashcam|footage|voice notes?|digital records?|electronic records?|call detail records?|cdr|social media posts?)\b",
+                 r"\b(?:evidence|proof|prove|proving|admissible|inadmissible|valid in court|accepted? in court|used in court|produced? in court|certificate|65\s?B|authentic\w*|tamper\w*|genuine)\b", 100),
+            near(r"\b(?:photocopy|photocopies|xerox|original (?:document|copy|deed)|certified cop(?:y|ies)|attested cop(?:y|ies)|duplicate copy)\b", r"\b(?:court|evidence|accept\w*|admissible|proof|prove|produce\w*)\b", 80),
+            near(r"\b(?:prov(?:e|ed|es|ing)|proof of)\b", r"\b(?:signature|handwriting|execution of (?:a |the )?(?:will|deed|document))\b", 40),
+            near(r"\bpresum\w+", r"\b(?:court|law|dowry|married woman|seven years|rape|consent|abetment|suicide)\b", 60),
+            near(r"\btestif\w+|\btestimony\b|\bgive evidence\b|\bgiving evidence\b", r"\b(?:wife|husband|spouse|child|children|minor|young|doctor|lawyer|advocate|priest|compel\w*|forc\w+|privilege\w*|competent|incompetent)\b", 60),
+            near(r"\bwitness\b", r"\b(?:denies|denied|deny|resile\w*|retract\w*|go\w* back on|going back on|contradict\w*|changed (?:his|her|their) (?:statement|story|version)|previous statement|earlier statement)\b", 80),
+            near(r"\b(?:statement|confession|said|told|words)\b", r"\b(?:used|usable|accepted|admissible|valid|count\w*|relied)\s+(?:\w+\s+){0,3}(?:in|by|before)\s+(?:the\s+)?(?:court|trial|judge)\b", 120),
+            near(r"\b(?:statement|said|told)\b", r"\b(?:used|use|usable)\s+(?:\w+\s+){0,3}against\s+(?:him|her|them|me|the accused)\b", 80),
+            near(r"\b(?:judge|court|magistrate)\b", r"\bquestions?\s+(?:to|from)\s+(?:a\s+|the\s+)?witness", 60),
+            r"\bbefore (?:he|she|they) died\b", r"\bbefore dying\b", r"\bdeath ?bed\b",
+        ],
+        "not_when": "",
+    },
 }
 
 # The rest of the Directory's Acts: no word pass of their own (nothing in the workbook was measured for them), but the AI pass may choose them, so each needs its one line. 'wide' empty = never matched by code.
@@ -295,7 +346,7 @@ def _compiled():
         out = {}
         for act_id, spec in ACTS.items():
             try:
-                out[act_id] = {"wide": [re.compile(p, FLAGS) for p in spec["wide"]],
+                out[act_id] = {"switch": spec.get("switch"), "wide": [re.compile(p, FLAGS) for p in spec["wide"]],
                                "not_when": re.compile(spec["not_when"], FLAGS) if spec.get("not_when") else None,
                                "soft": ([(re.compile(spec["soft_not_when"], FLAGS), re.compile(spec["lifted_by"], FLAGS) if spec.get("lifted_by") else None)] if spec.get("soft_not_when") else [])
                                + [(re.compile(g["when"], FLAGS), re.compile(g["unless"], FLAGS) if g.get("unless") else None) for g in spec.get("soft_guards") or []]}
@@ -314,6 +365,8 @@ def wide(question, ids=None):
         for act_id, c in _compiled().items():
             if ids is not None and act_id not in ids:
                 continue
+            if c.get("switch") and _env_on(c["switch"]) is False:
+                continue                                          # an Act whose word pass has its own switch (EVIDENCE_DETECT), default off
             if c["not_when"] and c["not_when"].search(question):
                 continue
             if any(g.search(question) and not (u and u.search(question)) for g, u in c["soft"]):

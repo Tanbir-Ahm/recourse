@@ -3665,6 +3665,15 @@ def _answer_question_core(question, inline_domains=frozenset()):
             if (m["act"], m["section_number"]) not in seen
         ]
 
+    # STATUTE_ALIASES=on (default off; statute_aliases.py): sections whose wording shares nothing with the words people use for them (BNSS 528 for "quash an FIR", BNSS 359 for "settle the case"). The library's own
+    # text, no note; a section already above, or one the person named by number, is not added.
+    if not explicit:
+        try:
+            import statute_aliases
+            statute_overrides = statute_overrides + statute_aliases.matches(current_message, already={((o.get("act") or ""), str(o.get("section_number"))) for o in statute_overrides})
+        except Exception:  # noqa: BLE001 -- fail open
+            pass
+
     # General "this is probably an IT Act matter too" orientation note
     # (loc-transit-remand-plan, confirmed real gap found via live user
     # testing 2026-09-05): a cyber-crime-agency + online-post + arrest/
@@ -3707,7 +3716,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     result = _find_relevant_sections_for_turn(current_message, question)
     _progress_library(result)
     _lib = {((m.get("act") or "").upper(), str(m.get("section_number")).upper()) for m in (result.get("matches") or []) if isinstance(m, dict)}
-    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") == "carried" and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
+    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") in ("carried", "alias") and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
     overrides = _drop_full_act_duplicates(overrides, (result.get("matches") or []) + statute_overrides)       # the NI Act / IT Act shelf copies (detection on since 2026-11-02): a section the library already supplies is not handed over twice
 
     if result["state"] == "unavailable":

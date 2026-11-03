@@ -888,6 +888,17 @@ def find_relevant_sections(query, domain=None):
     # matches within CONFLICT_SCORE_MARGIN of the top statute match.
     state = _conflict_state(enriched)
 
+    if domain is None and exact_hit is None:                  # STATUTE_WIDEN=off|log|on (default off): sections just outside the 0.08 gap / cap of five that a cross-encoder scores high are ADDED (statute_widen.py); the state above is already fixed
+        try:
+            import statute_widen
+            if statute_widen.mode() != "off":
+                _widened, _winfo = statute_widen.widen(query, results, statute_matches, STATUTE_SIMILARITY_THRESHOLD)
+                statute_widen.log(query, _winfo)
+                if _widened:
+                    enriched = enriched + [_enrich_statute_match(m, tables) for m in _widened]
+        except Exception:  # noqa: BLE001 -- fail open: the usual selection stands
+            pass
+
     return {"state": state, "matches": enriched, "judgment_matches": judgment_matches}
 
 
