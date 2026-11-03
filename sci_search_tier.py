@@ -978,6 +978,9 @@ def feed_block(question, exclude_names=None):
             return (any(_same_case(c[0]["case_name"], name) for c in correcting) or any(_same_case(p[0]["case_name"], name) for p in pairs)
                     or any(_same_case_loose(n, name) for n in anchor_names))
 
+        asked = {}                                                     # name -> what the second search for that name gave (None included): one search per name per question (2026-11-03, owner's E: four flagged cases that
+                                                                       # all pointed at Sushila Aggarwal ran the SAME second search four times when it found nothing usable)
+
         def _controlling(name):
             """The passage of the case that corrected another one: already chosen, else among the results, else by a second search. Added to `correcting` once. A case whose verbatim excerpt is
             in the prompt (an anchor) needs none."""
@@ -986,7 +989,12 @@ def feed_block(question, exclude_names=None):
             hit = next((c for c in correcting if _same_case(c[0]["case_name"], name)), None)
             if hit:
                 return hit
-            hit = next((p for p in pairs if _same_case(p[0]["case_name"], name)), None) or _fetch_case(name, question)
+            key = re.sub(r"\W+", " ", (name or "").lower()).strip()
+            hit = next((p for p in pairs if _same_case(p[0]["case_name"], name)), None)
+            if hit is None:
+                if key not in asked:
+                    asked[key] = _fetch_case(name, question)
+                hit = asked[key]
             if hit and is_library_case(hit[0]["case_name"], hit[0].get("date"), skips):
                 return None                                            # the reviewed library already hands this case over
             if hit and all(hit[0]["doc"] != c[0]["doc"] for c in correcting) and all(hit[0]["doc"] != p[0]["doc"] for p in flagged):
@@ -1058,6 +1066,14 @@ def feed_block(question, exclude_names=None):
                     body += passage_notes.prompt_note(voices)
             except Exception:  # noqa: BLE001
                 voices = []
+            headnote = False
+            try:                                                      # a reporter's headnote (page markers such as [419 C-E]) is not the Court's own words: said to the model and on the page (owner's B, 2026-11-03)
+                import passage_notes as _pn
+                headnote = _pn.is_headnote(body)
+                if headnote:
+                    body += _pn.HEADNOTE_PROMPT
+            except Exception:  # noqa: BLE001
+                headnote = False
             if fx:
                 body += authority_notes.prompt_line(fx)
             facts = ""
@@ -1084,6 +1100,9 @@ def feed_block(question, exclude_names=None):
             case = {"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
                     "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
                     "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)}
+            if headnote:
+                import passage_notes as _pn2
+                case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + _pn2.HEADNOTE_PAGE
             if fx:                                                     # a pointer passage: the page says why it is here, beside any note on whose voice it is in
                 case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + authority_notes.page_note(fx)
                 case["authority"] = {"named_by_retrieved": fx["retrieved_by"], "retrieved": fx["retrieved"], "named_by_collection": fx["collection"]}

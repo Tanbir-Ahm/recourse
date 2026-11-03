@@ -314,11 +314,13 @@ def merged_authorities(tables):
                 court = plain(get(cou)) or ("Supreme Court of India" if source == "Verbatim excerpt" else "")
                 rows.append({"case": get(ci), "source": [R(source)], "cit": get(cit), "par": [R(para_text(plain(get(par))))] if plain(get(par)) else [], "court": court, "where": get(wi), "link": get(li)})
         show_court = any(x["court"] and x["court"] != "Supreme Court of India" for x in rows)
-        head = ["Case", "Source", "Citation", "Paragraph"] + (["Court"] if show_court else []) + ["Where it stands on our lists", "Link"]
+        labels = {plain(x["source"]) for x in rows}
+        single = next(iter(labels)) if len(labels) == 1 else None            # every row from one source: no column, the label goes in the heading instead (2026-11-03, owner's C: 'Wider search (not independently verified)' was printed on every row)
+        head = ["Case"] + ([] if single else ["Source"]) + ["Citation", "Paragraph"] + (["Court"] if show_court else []) + ["Where it stands on our lists", "Link"]
         out = []
         for x in rows:
-            out.append([x["case"], x["source"], x["cit"], x["par"]] + ([[R(x["court"] or "Supreme Court of India")]] if show_court else []) + [x["where"], x["link"]])
-        return {"t": "table", "head": head, "rows": out}
+            out.append([x["case"]] + ([] if single else [x["source"]]) + [x["cit"], x["par"]] + ([[R(x["court"] or "Supreme Court of India")]] if show_court else []) + [x["where"], x["link"]])
+        return {"t": "table", "head": head, "rows": out, "single_source": single}
     except Exception:  # noqa: BLE001
         return None
 
@@ -394,7 +396,7 @@ def _answer_blocks(view, lawyer):
     if auth:
         mt = merged_authorities(auth.get("tables"))
         if mt:
-            B.append({"t": "h3", "text": "Authorities and where each stands on our lists"})
+            B.append({"t": "h3", "text": "Authorities and where each stands on our lists" + (f" — {mt['single_source'][:1].lower() + mt['single_source'][1:]}" if mt.get("single_source") and mt["single_source"] != "Library" else "")})
             B.append(mt)
             table_norm = _norm(" ".join(plain(c) for row in mt["rows"] for c in row))
         else:
@@ -488,6 +490,8 @@ def _answer_blocks(view, lawyer):
             B.append({"t": "p", "runs": runs})
             if j.get("excerpt"):                                  # the passage the answer model was shown, when the answer names the case (2026-11-02)
                 B.append(_official(j["excerpt"]))
+                if j.get("note"):                                 # a reporter's headnote is said to be one (2026-11-03)
+                    B.append(_p(j["note"], muted=True))
     if B:                                                      # the apparatus after the answer, under one heading, with the caveat said once
         ANSWER_PART += [{"t": "rule"}, {"t": "h2", "text": H_CHECKS}, _p(CHECKS_INTRO, muted=True)] + _demote(B)
     return ANSWER_PART

@@ -883,10 +883,14 @@ SHELF_EXCERPT_CHARS = 16000      # a section of the Act shelf is shown whole (th
                                  # second proviso of section 17 of the Prevention of Corruption Act (the last 450 characters of a 1,354-character section); BNS and BNSS sections keep the 900
 
 
-def _statute_excerpt(m: dict) -> str:
-    """The text of a statute match as 'Read the source' shows it: a shelf section whole, any other statute cut at 900 characters."""
-    limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
-    return _clean_excerpt(m.get("text") or "")[:limit]
+def _statute_excerpt(m: dict, reply: str = "") -> str:
+    """The text of a statute match as 'Read the source' shows it: a shelf section whole, any other statute cut at 900 characters; with `reply`, a sub-section that the answer cites beyond the cut is shown too (answer_view.statute_excerpt)."""
+    try:
+        import answer_view
+        return answer_view.statute_excerpt(m, reply)
+    except Exception:  # noqa: BLE001
+        limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
+        return _clean_excerpt(m.get("text") or "")[:limit]
 
 
 def _shelf_caption_html(m: dict) -> str:
@@ -1112,7 +1116,7 @@ def render_answer(result: dict):
                     _cap = _shelf_caption_html(m)
                     if _cap:                                  # an Act-shelf section: where the text comes from, and that no reviewer has read it
                         st.markdown(_cap, unsafe_allow_html=True)
-                    st.markdown(f'<div class="r-mono">{esc(_statute_excerpt(m))}</div>',
+                    st.markdown(f'<div class="r-mono">{esc(_statute_excerpt(m, reply))}</div>',
                                 unsafe_allow_html=True)
                 if judgments:
                     st.markdown('<div class="r-label" style="margin-top:1rem">Judgments</div>',

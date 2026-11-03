@@ -111,7 +111,7 @@ check(v["register"] == {"notes": RES["register_notes"], "possible": ["A possible
 check(v["grounding_notes"] == ["One quotation could not be matched."], "grounding notes kept")
 check(v["sci_related"]["fed"] is True and len(v["sci_related"]["items"]) == 1 and v["sci_related"]["items"][0]["link"] == "https://sci.gov.in/x", "wider-search list, junk dropped")
 check(v["anchors"]["unconfirmed"] is True and v["anchors"]["items"][0]["excerpts"][0]["paragraph"] == "29", "anchors: unconfirmed flag, paragraph as text")
-check(v["unverified"] == [{"case_name": "Z v. W", "url": "https://indiankanoon.org/search/?formInput=z", "paragraph": "2", "procedural": True, "excerpt": None}], "unverified related judgments (no passage text, so no excerpt)")
+check(v["unverified"] == [{"case_name": "Z v. W", "url": "https://indiankanoon.org/search/?formInput=z", "paragraph": "2", "procedural": True, "excerpt": None, "note": None}], "unverified related judgments (no passage text, so no excerpt and no note)")
 sn = v["section_notes"][0]
 check(sn["lead"] == "Section 17 in full" and sn["texts"] == ["The text of 17."] and sn["cites"][0]["texts"] == ["The text of 13."] and "shortened here" in sn["caption"] and sn["url"] == "https://indiacode.nic.in/x", "section note: lead, whole text, cited section, caption, link")
 check(v["authorities"] is None, "layman: no table of authorities")

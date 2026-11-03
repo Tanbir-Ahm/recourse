@@ -39,6 +39,26 @@ _SUBMIT = re.compile(r"\bit\s+(?:was|is|has\s+been)\s+(?:further\s+|also\s+|then
 _RECITAL = re.compile(r"\(\d{4}\)\s+\d+\s+SCC\s+\d+|\bAIR\s+\d{4}\s+SC\s+\d+|\b\d{4}\s+SCC\s*\(\s*(?:Cri|L&S|Civ)\s*\)\s*\d+|\bSCC\s+OnLine\b|\(\d{4}\)\s+\d+\s+SCR\s+\d+", re.I)
 
 
+# ---- a reporter's headnote (2026-11-03, owner's B): the Gurbaksh Singh Sibbia passage handed to the answer model was the reporter's numbered summary ("... [419 E-F]"), and the answer quoted it as what the Court held. ---------
+_HEADNOTE = re.compile(r"\[\s*\d{1,4}\s*[A-H](?:\s*[-\u2013]\s*[A-H])?\s*\]")
+HEADNOTE_PROMPT = ("\n[Note by code -- read before using this passage: this passage is the reporter's HEADNOTE (a summary written by the law reporter; it carries the reporter's page markers, such as [419 C-E]), "
+                   "not the Court's own words. Do not put its words in quotation marks as what the Court said or held; if you rely on it, say it is the reporter's summary of the judgment.]")
+HEADNOTE_PAGE = "This passage is the law reporter's headnote (a summary with the reporter's page markers), not the Court's own words."
+
+
+def headnote_enabled():
+    """HEADNOTE_NOTE=off turns the headnote note off (default on: it only labels a passage)."""
+    return (os.environ.get("HEADNOTE_NOTE") or "on").strip().strip("\"'").strip().lower() not in ("off", "0", "false", "no")
+
+
+def is_headnote(text):
+    """True when `text` carries a law reporter's page markers ('[419 C-E]', '[420 A]'), the mark of a headnote summary: at least one marker. Never raises."""
+    try:
+        return headnote_enabled() and bool(_HEADNOTE.search(text or ""))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def enabled():
     return (os.environ.get("PASSAGE_NOTES") or "off").strip().strip("\"'").strip().lower() in ("on", "1", "true", "yes")
 

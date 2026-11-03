@@ -123,9 +123,51 @@ def sources_worth_showing(matches, reply_text, cap=16, strict=False):
     return picked
 
 
-def statute_excerpt(m):
+CITED_SUBSECTION_CHARS = 900          # each sub-section the answer cites that lies beyond the plain excerpt is shown up to this many characters
+_SUB_MARK = _re.compile(r"(?m)^\((\d+[A-Za-z]?)\)")
+
+
+def cited_subsections(reply, number):
+    """The sub-sections of section `number` that `reply` cites as 'Section 483(3)' or 's. 483(3)' (a list of strings like '3'; [] when it cites the section only)."""
+    try:
+        n = _re.escape(str(number).split("(")[0].strip())
+        out = []
+        for m in _re.finditer(r"(?:sections?|sec\.|ss?\.)\s*" + n + r"\s*\(\s*(\d+[A-Za-z]?)\s*\)", reply or "", _re.I):
+            if m.group(1) not in out:
+                out.append(m.group(1))
+        return out
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def statute_excerpt(m, reply=""):
+    """The text of a statute section as 'the sections and judgments this answer rests on' shows it: a shelf section whole, any other statute cut at 900 characters. NEW (2026-11-03, owner's A): when the answer cites a
+    sub-section that the cut leaves out (both anticipatory-bail answers rested on BNSS 483(3), and the box stopped inside the provisos of 483(1)), the section's first line is shown, then a gap marked '...', then each
+    cited sub-section (up to CITED_SUBSECTION_CHARS each). Without such a citation, or when the cited sub-section is inside the plain excerpt, the excerpt is what it always was."""
     limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
-    return clean_excerpt(m.get("text") or "")[:limit]
+    text = clean_excerpt(m.get("text") or "")
+    plain = text[:limit]
+    if len(text) <= limit or not reply:
+        return plain
+    try:
+        marks = [(x.start(), x.group(1)) for x in _SUB_MARK.finditer(text)]
+        parts = []
+        for sub in cited_subsections(reply, m.get("section_number")):
+            for i, (pos, label) in enumerate(marks):
+                if label.lower() != sub.lower():
+                    continue
+                end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+                if end <= limit:                                   # already inside the plain excerpt
+                    break
+                block = text[pos:end].rstrip()
+                parts.append(block[:CITED_SUBSECTION_CHARS] + (" ..." if len(block) > CITED_SUBSECTION_CHARS else ""))
+                break
+        if not parts:
+            return plain
+        first = text.split("\n", 1)[0]
+        return first[:300] + " ...\n\n[...]\n\n" + "\n\n".join(parts)
+    except Exception:  # noqa: BLE001
+        return plain
 
 
 # ------------------------------------------------------------------ data builders (what the page draws with Streamlit calls, as data)
@@ -216,7 +258,7 @@ def _sources(result, reply):
             continue
         seen.add(k)
         cap = shelf_caption(m)
-        statutes.append({"heading": f'{m.get("act_display") or m.get("act")} Section {m.get("section_number")}', "caption": cap["text"] if cap else None, "caption_url": cap["url"] if cap else None, "text": statute_excerpt(m)})
+        statutes.append({"heading": f'{m.get("act_display") or m.get("act")} Section {m.get("section_number")}', "caption": cap["text"] if cap else None, "caption_url": cap["url"] if cap else None, "text": statute_excerpt(m, reply)})
     judgments = sources_worth_showing([m for m in all_matches if m.get("case_name")], reply, strict=(result.get("audience") == "lawyer"))
     by_case, order = {}, []
     for m in judgments:
@@ -247,6 +289,18 @@ def _unverified_excerpt(j, reply_lc):
             return None
         t = clean_excerpt(raw[:UNVERIFIED_EXCERPT_CHARS])
         return (t + " ...") if t and len(raw) > UNVERIFIED_EXCERPT_CHARS else (t or None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _unverified_note(j, reply_lc):
+    """For a pool passage that is shown (the answer names the case): one sentence when it is a law reporter's headnote, not the Court's own words (passage_notes.is_headnote); else None."""
+    try:
+        import passage_notes
+        raw = str(j.get("text") or "")
+        if raw.strip() and case_is_named(j, reply_lc) and passage_notes.is_headnote(raw[:UNVERIFIED_EXCERPT_CHARS]):
+            return passage_notes.HEADNOTE_PAGE
+        return None
     except Exception:  # noqa: BLE001
         return None
 
@@ -313,7 +367,7 @@ def build(result):
                  "excerpts": [{"label": str(e.get("label") or ""), "paragraph": _s(e.get("paragraph")), "text": str(e.get("text") or ""), "note": _s(e.get("note"))} for e in (a.get("excerpts") or []) if isinstance(e, dict)]} for a in items]}
         reply_lc_u = str(result.get("response_text") or "").lower()
         unverified = [{"case_name": str(j.get("case_name") or ""), "url": _s(j.get("ik_search_url")), "paragraph": _s(j.get("paragraph_number")), "procedural": bool(j.get("procedural_disposal")),
-                       "excerpt": _unverified_excerpt(j, reply_lc_u)}
+                       "excerpt": _unverified_excerpt(j, reply_lc_u), "note": _unverified_note(j, reply_lc_u)}
                       for j in (result.get("unverified_related_judgments") or []) if isinstance(j, dict)]
         return {
             "kind": "answer", "label": "Your situation", "conflicting": state == "conflicting_matches",

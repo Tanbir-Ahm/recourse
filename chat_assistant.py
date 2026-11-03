@@ -614,6 +614,15 @@ _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE wi
 _PILOT_CONTEXT_MAX_CHARS_PER_CHUNK = 1200
 
 
+def _headnote_prompt(text) -> str:
+    """The 'Note by code' line to put under a pool passage that is a reporter's headnote (passage_notes.is_headnote); '' for any other passage and on any failure."""
+    try:
+        import passage_notes
+        return passage_notes.HEADNOTE_PROMPT if passage_notes.is_headnote(text) else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
     """Feed mode (staging; owner's decision 2026-10-14): the site's pilot cases are judgments of the wider index too (all 25 were found there), so they are handed to the model like every other
     wider-search passage: it may name one and describe ONLY what the passage says, attributed to the court, and code puts "(from a wider search, not independently verified)" after the name. A case on
@@ -621,6 +630,7 @@ def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
     blocks = []
     for m in pilot_matches:
         text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        text += _headnote_prompt(text)
         citation = f" ({m['citation']})" if m.get("citation") else ""
         facts = ""
         try:
@@ -676,6 +686,7 @@ def _format_pilot_context_for_prompt(pilot_matches) -> str:
     blocks = []
     for m in pilot_matches:
         text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        text += _headnote_prompt(text)
         citation = f" ({m['citation']})" if m.get("citation") else ""
         blocks.append(f"[WIDER POOL -- NOT INDEPENDENTLY VERIFIED: {m['case_name']}{citation}]\n{text}")
     return (
