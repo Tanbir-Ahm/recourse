@@ -877,6 +877,55 @@ def _statute_filter(results):
     return kept, dropped
 
 
+def _dedup_on():
+    """FEED_DEDUP (default ON; off/0/false/no switches it off): the same paragraph found in two judgments is handed over once."""
+    return _env("FEED_DEDUP", "on").lower() not in ("off", "0", "false", "no")
+
+
+def _passage_key(text):
+    """The words of a passage reduced to letters and digits, first 400 characters; None for a passage too short to compare (under 120 characters)."""
+    t = re.sub(r"^\s*\(?\d{1,3}(?:\.\d+)*[.)]?\s+(?=[A-Za-z\"'(\u2018\u201c])", "", text or "")           # a leading paragraph number ("45. What is ...") is not part of the words
+    t = re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+    return t[:400] if len(t) >= 120 else None
+
+
+def _dedupe_passages(results, flags):
+    """(kept, same): `results` (best first) without a passage whose words are the same as those of a better-ranked passage of ANOTHER judgment (owner's 2026-11-05 test: Jayanta Kumar Ghosh and Debashish Bhattacharjee, two
+    Gauhati High Court judgments of one day, carry the identical paragraph 45 and the answer presented them as two decisions; Nirmal Jeet Kaur and Adri Dharan Das are the same case). `same` maps id(kept result) -> [the
+    results left out], so the page can say where else the paragraph appears. A pair is left alone when either judgment is on the Overruled Register or has a warning card (the register's fact must reach the model), and when
+    FEED_DEDUP is off. Never raises."""
+    try:
+        if not _dedup_on():
+            return list(results), {}
+        first, same, kept = {}, {}, []
+        for r, f in zip(results, flags):
+            key = _passage_key(r.get("text") or "")
+            hit = first.get(key) if key else None
+            special = f.get("source") in ("register", "card")
+            if hit is not None and hit[0].get("doc") != r.get("doc") and not special and hit[1].get("source") not in ("register", "card"):
+                same.setdefault(id(hit[0]), []).append(r)
+                continue
+            if key and key not in first:
+                first[key] = (r, f)
+            kept.append(r)
+        return kept, same
+    except Exception:  # noqa: BLE001 -- fail open: nothing is merged
+        return list(results), {}
+
+
+SAME_PASSAGE_PROMPT = ("\n[Note by code: these exact words also appear in another judgment of the wider search, which is not shown to you. They are ONE passage, not two decisions: do not present them as the view of two courts "
+                       "or say that a second court said it too.]\n")
+
+
+def _same_passage_page_note(others):
+    """The page's sentence for a paragraph that also appears in another judgment of the wider search."""
+    names = []
+    for o in others:
+        d = o.get("date")
+        names.append((o.get("case_name") or "another judgment") + ((" (" + d + ")") if d else ""))
+    return "The same paragraph also appears word for word in " + "; ".join(names) + ". It is one passage, not two decisions."
+
+
 MAX_NAMED_FETCHES = 2        # second searches per question for a controlling case that a passage points to (a flagged case's own corrector is fetched without this cap)
 NAMED_NOTE = "\n[Overruled Register -- not optional: this passage names a case on our register; if you mention that case at all, state this fact in the same sentence]\n"
 
@@ -962,6 +1011,9 @@ def feed_block(question, exclude_names=None):
         res, left_out = _statute_filter(res)                              # a passage that cites the section the person named, of ANOTHER statute (owner's staging test 2026-10-19)
         if left_out:
             print("SCI_FEED_FILTER " + json.dumps({"dropped": [{"case": (r.get("case_name") or "")[:100], "para": r.get("paragraph"), "why": why[:160]} for r, why in left_out]}), flush=True)
+        res, same_text = _dedupe_passages(res, _flags(res))                 # the same paragraph in two judgments is ONE passage (owner's 2026-11-05 test; FEED_DEDUP=off switches this off)
+        if same_text:
+            print("SCI_FEED_SAME " + json.dumps({"merged": [{"kept": (r.get("case_name") or "")[:100], "also_in": [(o.get("case_name") or "")[:100] for o in same_text[id(r)]]} for r in res if id(r) in same_text]}), flush=True)
         flags = _flags(res)
         anchor_names = _anchor_case_names(question)
         anchor_docs = _anchor_doc_ids(question)
@@ -1076,6 +1128,8 @@ def feed_block(question, exclude_names=None):
                 headnote = False
             if fx:
                 body += authority_notes.prompt_line(fx)
+            if id(r) in same_text:
+                body += SAME_PASSAGE_PROMPT
             facts = ""
             try:
                 if court != SC_COURT:                                 # the register is about Supreme Court decisions (see register_hooks.result_flags)
@@ -1100,6 +1154,8 @@ def feed_block(question, exclude_names=None):
             case = {"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
                     "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
                     "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)}
+            if id(r) in same_text:
+                case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + _same_passage_page_note(same_text[id(r)])
             if headnote:
                 import passage_notes as _pn2
                 case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + _pn2.HEADNOTE_PAGE
