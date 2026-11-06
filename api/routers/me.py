@@ -80,7 +80,7 @@ def export_me(principal: Principal = Depends(current_user), db=Depends(get_db)):
     u = principal.user
     chats = []
     for ch in db.execute(select(M.Chat).where(M.Chat.user_id == u.id).order_by(M.Chat.created_at)).scalars():
-        chats.append({"id": str(ch.id), "title": ch.title, "audience": ch.audience, "archived": ch.archived, "created_at": _iso(ch.created_at),
+        chats.append({"id": str(ch.id), "title": ch.title, "audience": ch.audience, "archived": ch.archived, "matter_id": str(ch.matter_id) if ch.matter_id else None, "created_at": _iso(ch.created_at),
                       "messages": [{"seq": m.seq, "role": m.role, "content": m.content, "result": m.result, "state": m.state, "cost_inr": float(m.cost_inr) if m.cost_inr is not None else None,
                                     "created_at": _iso(m.created_at)} for m in ch.messages]})
     data = {
@@ -89,6 +89,8 @@ def export_me(principal: Principal = Depends(current_user), db=Depends(get_db)):
         "sign_in_methods": [{"provider": i.provider, "since": _iso(i.created_at)} for i in db.execute(select(M.Identity).where(M.Identity.user_id == u.id)).scalars()],
         "consents": [{"document": c.document, "version": c.version, "accepted_at": _iso(c.accepted_at)} for c in db.execute(select(M.Consent).where(M.Consent.user_id == u.id).order_by(M.Consent.accepted_at)).scalars()],
         "chats": chats,
+        "matters": [{"id": str(m.id), "title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": _iso(m.next_date), "facts": m.facts, "archived": m.archived,
+                     "created_at": _iso(m.created_at), "updated_at": _iso(m.updated_at)} for m in db.execute(select(M.Matter).where(M.Matter.user_id == u.id).order_by(M.Matter.created_at)).scalars()],
         "notes": [{"id": str(n.id), "body": n.body, "created_at": _iso(n.created_at), "updated_at": _iso(n.updated_at)} for n in db.execute(select(M.Note).where(M.Note.user_id == u.id)).scalars()],
         "feedback": [{"kind": f.kind, "comment": f.comment, "status": f.status, "created_at": _iso(f.created_at)} for f in db.execute(select(M.Feedback).where(M.Feedback.user_id == u.id)).scalars()],
         "usage": [{"kind": e.kind, "at": _iso(e.at), "cost_inr": float(e.cost_inr) if e.cost_inr is not None else None, "counted": e.counted} for e in db.execute(select(M.UsageEvent).where(M.UsageEvent.user_id == u.id).order_by(M.UsageEvent.at)).scalars()],

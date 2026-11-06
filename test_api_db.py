@@ -136,9 +136,9 @@ try:
     with eng.connect() as c:
         rev = c.execute(text("select version_num from alembic_version")).scalar()
         drift = compare_metadata(MigrationContext.configure(c, opts={"compare_type": True}), D.Base.metadata)
-    check(rev == "0002", f"the schema is at revision 0002 ({rev})")
+    check(rev == "0003", f"the schema is at revision 0003 ({rev})")
     check(drift == [], f"the migrated schema and the models do not differ ({drift[:2]})")
-    check(res == {"plans_added": 2, "entitlements_added": 10}, f"the seed added the two plans and their ten limits ({res})")
+    check(res == {"plans_added": 2, "entitlements_added": 11}, f"the seed added the two plans and their eleven limits ({res})")
     with Session(eng) as ss:
         plans = {p.code: p for p in ss.execute(select(D.Plan)).scalars()}
         ents = {(e.plan.code, e.feature): (e.period, e.limit_count, e.version) for e in ss.execute(select(D.Entitlement)).scalars()}
@@ -214,6 +214,20 @@ try:
     check(attempt(lambda s_: s_.add(D.UsageEvent(kind="mystery"))) is not None, "a usage event of an unknown kind is refused")
     check(attempt(lambda s_: s_.add(D.UsageEvent(kind="search"))) is None and attempt(lambda s_: s_.add(D.UsageEvent(kind="search_wider"))) is None, "usage events of the two search kinds are accepted (migration 0002)")
     attempt(lambda s_: s_.execute(text("delete from usage_events where kind in ('search', 'search_wider')")))      # keep the table as the later checks expect it
+    check(attempt(lambda s_: s_.add(D.Matter(user_id=uid, title="Bad stage", stage="hearing"))) is not None, "a matter with an unknown stage is refused (migration 0003)")
+    check(attempt(lambda s_: s_.add(D.Matter(user_id=uid, title="Good", stage="bail"))) is None and attempt(lambda s_: s_.add(D.Matter(user_id=uid, title="No stage"))) is None, "a matter with a known stage, or none, is accepted")
+    with Session(eng) as ss:
+        mid = ss.execute(select(D.Matter.id).where(D.Matter.title == "Good")).scalar_one()
+        ch = D.Chat(user_id=uid, title="filed", audience="lawyer", matter_id=mid)
+        ss.add(ch)
+        ss.commit()
+        chid = ch.id
+    attempt(lambda s_: s_.execute(text("delete from matters where title = 'Good'")))
+    with Session(eng) as ss:
+        left_chat = ss.execute(select(D.Chat.matter_id).where(D.Chat.id == chid)).one()
+    check(left_chat[0] is None, "deleting a matter leaves its conversation, unfiled (ON DELETE SET NULL)")
+    attempt(lambda s_: s_.execute(text("delete from chats where title = 'filed'")))
+    attempt(lambda s_: s_.execute(text("delete from matters where title = 'No stage'")))
 
     # ------------------------------------------------------------ "delete my data"
     now_expr = func.now()
@@ -313,7 +327,7 @@ try:
         npl = c.execute(text("select count(*) from plans")).scalar()
         nen = c.execute(text("select count(*) from entitlements")).scalar()
     e2.dispose()
-    check(not errs and len(out) == 4 and npl == 2 and nen == 10, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
+    check(not errs and len(out) == 4 and npl == 2 and nen == 11, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
     check(sum(r["plans_added"] for r in out) == 2, "...and exactly one of them did the seeding")
 
     # ------------------------------------------------------------ the migrate command
@@ -336,7 +350,7 @@ try:
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         rc = M.main()
-    check(rc == 0 and "schema at head; plans added 2, entitlements added 10" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
+    check(rc == 0 and "schema at head; plans added 2, entitlements added 11" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
     r = subprocess.run([sys.executable, "-m", "api.db.migrate"], cwd=HERE, env={**os.environ}, capture_output=True, text=True, timeout=120)
     check(r.returncode == 0 and "plans added 0, entitlements added 0" in r.stdout, f"`python -m api.db.migrate` as the start command would run it: exits 0 on an up-to-date database ({r.stdout.strip()})")
 

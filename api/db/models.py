@@ -28,6 +28,7 @@ FEEDBACK_STATUSES = ("new", "reviewed", "closed")
 USAGE_KINDS = ("answer_layman", "answer_lawyer", "draft", "doc_read", "anon_answer", "search", "search_wider")
 PERIODS = ("day", "month", "none")
 COUNTER_KINDS = ("device", "ip")
+MATTER_STAGES = ("fir", "arrest", "remand", "bail", "chargesheet", "trial", "appeal", "other")
 
 
 def _in(column, values):
@@ -123,6 +124,26 @@ class Consent(Base):
     text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
+class Matter(Base):
+    """A lawyer's case file (LAWYER_RETENTION_PLAN.md, 'the shift from a question to a matter'): a label, the court, the case number, the sections charged, the stage, the next hearing date and the facts, stated ONCE; conversations are filed under it
+    and every question asked inside it is read with these notes (api/chat_service.py). Every field is the lawyer's own words, free text; nothing here is checked against any record. Deleted with the person; deleting a matter leaves its conversations
+    (unfiled) unless the person asks to delete them too."""
+    __tablename__ = "matters"
+    __table_args__ = (CheckConstraint("stage IS NULL OR " + _in("stage", MATTER_STAGES), name="ck_matter_stage"), Index("ix_matters_user_updated", "user_id", "updated_at"))
+    id: Mapped[uuid.UUID] = _id()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    court: Mapped[str | None] = mapped_column(String(200))
+    case_number: Mapped[str | None] = mapped_column(String(100))
+    sections: Mapped[str | None] = mapped_column(String(300))
+    stage: Mapped[str | None] = mapped_column(String(20))
+    next_date: Mapped[datetime.date | None] = mapped_column(Date)
+    facts: Mapped[str | None] = mapped_column(Text)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime.datetime] = _created()
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class Chat(Base):
     __tablename__ = "chats"
     __table_args__ = (CheckConstraint(_in("audience", AUDIENCES), name="ck_chat_audience"), Index("ix_chats_user_updated", "user_id", "updated_at"))
@@ -131,6 +152,7 @@ class Chat(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False, server_default="")
     audience: Mapped[str] = mapped_column(String(10), nullable=False, server_default="layman")
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    matter_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("matters.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime.datetime] = _created()
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     messages: Mapped[list["Message"]] = relationship(back_populates="chat", cascade="all, delete-orphan", order_by="Message.seq")

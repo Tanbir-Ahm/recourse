@@ -42,6 +42,16 @@ def unclaim(chat_id, key):
         _INFLIGHT.discard((chat_id, key))
 
 
+def matter_notes(db, chat):
+    """The notes of the matter a chat is filed under, as the dict web_chat.matter_lines reads; None when it is not filed under one (or the matter is gone)."""
+    if chat.matter_id is None:
+        return None
+    m = db.execute(select(M.Matter).where(M.Matter.id == chat.matter_id, M.Matter.user_id == chat.user_id)).scalar_one_or_none()
+    if m is None:
+        return None
+    return {"title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": m.next_date.isoformat() if m.next_date else None, "facts": m.facts}
+
+
 def title_from(question):
     t = re.sub(r"\s+", " ", question or "").strip()
     if len(t) <= TITLE_CHARS:
@@ -89,6 +99,7 @@ class Turn:
     event_id: object
     usage: dict
     turns: list = field(default_factory=list)
+    matter: dict | None = None                  # the notes of the matter the chat is filed under (title, court, case_number, sections, stage, next_date, facts), read once when the question was accepted
 
 
 def _style():
@@ -116,7 +127,7 @@ def _release_only(event_id):
 def run_turn(on_step, c):
     """The worker-thread job. Returns the engine's reply plus chat_id, message_id, saved, usage."""
     try:
-        engine_q, info = web_chat.question_for_engine(c.turns, c.question)
+        engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter)
         web_chat.log_turn(engine_q, info)
         out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None)
     except BaseException:

@@ -24,6 +24,7 @@ from .. import ask as ask_mod
 from .. import chat_service, config, engine_adapter, quota, ratelimit
 from ..db import models as M
 from ..deps import Principal, get_db, ready_user
+from . import matters as matters_mod
 
 router = APIRouter()
 logger = logging.getLogger("api.chats")
@@ -35,8 +36,16 @@ def _iso(v):
     return v.isoformat() if v is not None else None
 
 
-def chat_view(c):
-    return {"id": str(c.id), "title": c.title, "audience": c.audience, "archived": c.archived, "created_at": _iso(c.created_at), "updated_at": _iso(c.updated_at)}
+def chat_view(c, matter_title=None):
+    return {"id": str(c.id), "title": c.title, "audience": c.audience, "archived": c.archived, "matter_id": str(c.matter_id) if c.matter_id else None, "matter_title": matter_title,
+            "created_at": _iso(c.created_at), "updated_at": _iso(c.updated_at)}
+
+
+def _matter_titles(db, chats):
+    ids = {c.matter_id for c in chats if c.matter_id}
+    if not ids:
+        return {}
+    return {mid: t for mid, t in db.execute(select(M.Matter.id, M.Matter.title).where(M.Matter.id.in_(ids))).all()}
 
 
 def message_view(m):
@@ -55,11 +64,13 @@ def _own_chat(db, user, chat_id):
 class CreateChat(BaseModel):
     audience: Literal["layman", "lawyer"] = "layman"
     title: str = Field(default="", max_length=200)
+    matter_id: Optional[uuid.UUID] = Field(default=None, description="File the conversation under one of the person's own matters (404 for anyone else's).")
 
 
 class PatchChat(BaseModel):
     title: Optional[str] = Field(default=None, max_length=200)
     archived: Optional[bool] = None
+    matter_id: Optional[uuid.UUID] = Field(default=None, description="Move the conversation under another of the person's matters; send null to take it out of its matter (only when the field is sent).")
 
 
 class AskChat(BaseModel):
@@ -67,15 +78,18 @@ class AskChat(BaseModel):
 
 
 @router.get("/api/chats", summary="My conversations, newest first")
-def list_chats(q: str = "", archived: bool = False, limit: int = 50, offset: int = 0, principal: Principal = Depends(ready_user), db=Depends(get_db)):
+def list_chats(q: str = "", archived: bool = False, limit: int = 50, offset: int = 0, matter: Optional[uuid.UUID] = None, principal: Principal = Depends(ready_user), db=Depends(get_db)):
     limit, offset = max(1, min(limit, 200)), max(0, offset)
     stmt = select(M.Chat).where(M.Chat.user_id == principal.user.id, M.Chat.archived.is_(archived))
+    if matter is not None:
+        stmt = stmt.where(M.Chat.matter_id == matter)
     q = (q or "").strip()[:100]
     if q:
         esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         stmt = stmt.where(M.Chat.title.ilike(f"%{esc}%", escape="\\"))
     rows = db.execute(stmt.order_by(M.Chat.updated_at.desc(), M.Chat.id).limit(limit).offset(offset)).scalars().all()
-    return {"chats": [chat_view(c) for c in rows]}
+    titles = _matter_titles(db, rows)
+    return {"chats": [chat_view(c, titles.get(c.matter_id)) for c in rows]}
 
 
 @router.post("/api/chats", status_code=201, summary="Start a conversation")
@@ -83,16 +97,17 @@ def create_chat(body: CreateChat, principal: Principal = Depends(ready_user), db
     n = db.execute(select(func.count()).select_from(M.Chat).where(M.Chat.user_id == principal.user.id)).scalar()
     if n >= MAX_CHATS:
         raise HTTPException(status_code=409, detail="chat_limit")
-    c = M.Chat(user_id=principal.user.id, audience=body.audience, title=" ".join(body.title.split()))
+    matter = matters_mod.own_matter_or_none(db, principal.user, body.matter_id)
+    c = M.Chat(user_id=principal.user.id, audience=body.audience, title=" ".join(body.title.split()), matter_id=matter.id if matter else None)
     db.add(c)
     db.commit()
-    return chat_view(c)
+    return chat_view(c, matter.title if matter else None)
 
 
 @router.get("/api/chats/{chat_id}", summary="One conversation with its messages and their results")
 def get_chat(chat_id: uuid.UUID, principal: Principal = Depends(ready_user), db=Depends(get_db)):
     c = _own_chat(db, principal.user, chat_id)
-    return {**chat_view(c), "messages": [message_view(m) for m in c.messages], "turn_limit": web_chat.MAX_TURNS}
+    return {**chat_view(c, _matter_titles(db, [c]).get(c.matter_id)), "messages": [message_view(m) for m in c.messages], "turn_limit": web_chat.MAX_TURNS}
 
 
 @router.patch("/api/chats/{chat_id}", summary="Rename or archive a conversation")
@@ -102,8 +117,11 @@ def patch_chat(chat_id: uuid.UUID, body: PatchChat, principal: Principal = Depen
         c.title = " ".join(body.title.split())
     if body.archived is not None:
         c.archived = body.archived
+    if "matter_id" in body.model_fields_set:
+        matter = matters_mod.own_matter_or_none(db, principal.user, body.matter_id)
+        c.matter_id = matter.id if matter else None
     db.commit()
-    return chat_view(c)
+    return chat_view(c, _matter_titles(db, [c]).get(c.matter_id))
 
 
 @router.delete("/api/chats/{chat_id}", summary="Delete a conversation and its messages, now")
@@ -131,6 +149,7 @@ def _prepare(db, principal, chat_id, key, question):
         ok, event_id, info = quota.reserve(db, user, quota.FEATURE_FOR_AUDIENCE[chat.audience])
         db.commit()                      # keeps the unit and releases the row lock before the engine runs
         turns = chat_service.turns_of(chat.messages) if ok else []
+        matter = chat_service.matter_notes(db, chat) if ok else None
     except BaseException:
         db.rollback()
         chat_service.unclaim(chat.id, key)
@@ -138,7 +157,7 @@ def _prepare(db, principal, chat_id, key, question):
     if not ok:
         chat_service.unclaim(chat.id, key)
         return "refused", info
-    return "run", chat_service.Turn(user_id=user.id, chat_id=chat.id, audience=chat.audience, question=question, request_id=key, event_id=event_id, usage=info, turns=turns)
+    return "run", chat_service.Turn(user_id=user.id, chat_id=chat.id, audience=chat.audience, question=question, request_id=key, event_id=event_id, usage=info, turns=turns, matter=matter)
 
 
 @router.post("/api/chats/{chat_id}/ask", summary="Ask in a conversation", description="Header Idempotency-Key is required. Send 'Accept: text/event-stream' for the live steps; otherwise one JSON reply. The answer is saved by the server.")

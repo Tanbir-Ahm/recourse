@@ -86,11 +86,30 @@ def earlier_messages(turns):
     return [_cut(q, MAX_MSG_CHARS) for q in picked]
 
 
-def fold(earlier, current):
-    """The engine's question string: the earlier messages in WhatsApp's format, then the marker, then the current message. No earlier messages: the current message alone (exactly today's input)."""
-    if not earlier:
+MATTER_HEADER = "The lawyer's own notes on the matter this question belongs to (written by the lawyer; they are not our answers and are not checked against any court record):"
+MATTER_FACTS_CHARS = 2000
+MATTER_STAGES = {"fir": "FIR stage", "arrest": "arrest", "remand": "remand", "bail": "bail", "chargesheet": "chargesheet", "trial": "trial", "appeal": "appeal", "other": "other"}
+
+
+def matter_lines(matter):
+    """The lines that carry a matter's notes into the engine's question (the lawyer's words only, one line each, so the marker can never appear inside them). [] for no matter or an empty one. `matter` is the dict chat_service keeps:
+    title, court, case_number, sections, stage, next_date (an ISO date or None), facts."""
+    if not isinstance(matter, dict):
+        return []
+    rows = (("Matter", matter.get("title"), 200), ("Court", matter.get("court"), 200), ("Case number", matter.get("case_number"), 100),
+            ("Sections charged, as the lawyer wrote them", matter.get("sections"), 300), ("Stage", MATTER_STAGES.get(matter.get("stage") or "", None), 40),
+            ("Next hearing date", matter.get("next_date"), 20), ("Facts, as the lawyer stated them", matter.get("facts"), MATTER_FACTS_CHARS))
+    out = [f"- {label}: {_cut(str(v), n)}" for label, v, n in rows if v and _flat(str(v))]
+    return out if len(out) > 1 or (out and not str(out[0]).startswith("- Matter:")) else []
+
+
+def fold(earlier, current, matter=None):
+    """The engine's question string: the matter's notes (when the conversation is filed under one), the earlier messages in WhatsApp's format, then the marker, then the current message. Nothing to fold in: the current message alone
+    (exactly today's input). The engine searches on the current message only; the notes and the earlier messages are read by the scope check and by the answer model."""
+    m_lines = matter_lines(matter)
+    if not earlier and not m_lines:
         return current
-    lines = [HEADER] + [f"- The person asked: {m}" for m in earlier]
+    lines = ([MATTER_HEADER] + m_lines if m_lines else []) + ([HEADER] + [f"- The person asked: {m}" for m in earlier] if earlier else [])
     return "\n".join(lines) + MARKER + current
 
 
@@ -244,11 +263,11 @@ def should_carry(outcome, current):
     return _leans_back(current)
 
 
-def question_for_engine(turns, current, call=None):
+def question_for_engine(turns, current, call=None, matter=None):
     """The string to hand answer_question for a follow-up, plus a record for the log. With no earlier turns: the message alone. The record's 'carry' lists the sections of the earlier answers to offer again
     ([{'act', 'section'}], carry_forward.py); it is handed to the engine as a separate argument, never as words of the question."""
     if not turns:
-        return current, {"turn": 1, "rewrite": "first", "folded": 0, "rewrite_inr": 0.0, "carry": []}
+        return fold([], current, matter), {"turn": 1, "rewrite": "first", "folded": 0, "rewrite_inr": 0.0, "carry": [], **({"matter": True} if matter_lines(matter) else {})}
     outcome, standalone, inr = rewrite(turns, current, call=call)
     earlier = earlier_messages(turns)
     if outcome == "new_topic" and not _leans_back(current):
@@ -261,7 +280,7 @@ def question_for_engine(turns, current, call=None):
             carry = carry_forward.refs_from_turns(turns)
     except Exception:  # noqa: BLE001 -- fail-open: the follow-up goes without the carried sections
         carry = []
-    return fold(earlier, message), {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4), "carry": carry}
+    return fold(earlier, message, matter), {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4), "carry": carry, **({"matter": True} if matter_lines(matter) else {})}
 
 
 def log_turn(question, info):

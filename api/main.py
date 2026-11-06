@@ -17,6 +17,7 @@ from .ratelimit import RateLimitMiddleware
 from .routers import anon as _anon_router
 from .routers import auth as _auth_router
 from .routers import chats as _chats_router
+from .routers import matters as _matters_router
 from .routers import me as _me_router
 from .routers import notes as _notes_router
 from .routers import search as _search_router
@@ -78,6 +79,7 @@ app.include_router(_ask.router)
 app.include_router(_auth_router.router)
 app.include_router(_me_router.router)
 app.include_router(_chats_router.router)
+app.include_router(_matters_router.router)
 app.include_router(_anon_router.router)
 app.include_router(_notes_router.router)
 app.include_router(_search_router.router)
