@@ -33,7 +33,7 @@ class E:
                         "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "grounding_notes": ["One quotation could not be matched to the sources."],
                         "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a><script>window.__xss=1</script>."},
                         "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2"}]}
-            return {"state": "single_match", "response_text": "Stub answer to: " + question[-70:], "matches": [], "audience": audience}
+            return {"state": "single_match", "response_text": "Stub answer to: " + question[-70:] + (" [read with the matter notes]" if "own notes on the matter" in question else ""), "matches": [], "audience": audience}
         finally:
             cost_log.finish(style="v1", audience=audience or "")
 engine_adapter.set_engine(E())
