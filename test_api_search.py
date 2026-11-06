@@ -84,8 +84,8 @@ try:
             s_.add(M.Entitlement(plan_id=free_id, feature=feature, period="day", limit_count=limit, version=versions[feature]))
             s_.commit()
 
-    def post(h, q, mode="library", **kw):
-        return c.post("/api/search", json={"q": q, "mode": mode}, headers=h(), **kw)
+    def post(h, q, mode="library", court=None, **kw):
+        return c.post("/api/search", json={"q": q, "mode": mode, **({"court": court} if court else {})}, headers=h(), **kw)
 
     def usage(h, feature):
         return c.get("/api/me", headers=h()).json()["usage"].get(feature)
@@ -148,6 +148,17 @@ try:
         for (t,) in conn.execute(text("select tablename from pg_tables where schemaname = 'public'")).all():
             dump += [str(row) for row in conn.execute(text(f'select * from "{t}"')).all()]
     check(len(events()) == before + 1 and not any("zqxjkwunique" in d for d in dump), "the query text is in no table of the database (only a counted event)")
+    # ------------------------------------------------------------ the court filter (2026-11-06)
+    check(post(A, "bail", court="everything").status_code == 422 and post(A, "bail", court="High Court").status_code == 422, "an unknown court: 422")
+    n0 = len(events("search"))
+    r = post(A, "Arnesh Kumar", court="sc")
+    check(r.status_code == 200 and r.json()["result"]["court_filter"] == "sc" and r.json()["result"]["cases"][0]["title"].startswith("Arnesh Kumar"), f"court=sc through the route: the Supreme Court case ({r.status_code})")
+    r = post(A, "Arnesh Kumar", court="hc")
+    check(r.status_code == 200 and r.json()["result"]["court_filter"] == "hc" and r.json()["result"]["cases"] == [] and all(m["court"] == "High Court" for m in r.json()["result"]["mentions"]), "court=hc through the route: no Supreme Court case, only High Court passages")
+    check(len(events("search")) == n0 + 2, "each court search counts one unit of the plan's search allowance, like any search")
+    r = post(A, "BNSS 187", court="hc")
+    check(r.status_code == 200 and r.json()["result"]["provisions"] == [] and "Search the law" in (r.json()["result"]["hint"] or ""), "a section typed under a court filter: no section, a pointer to Search the law")
+    check(post(A, "bail").json()["result"]["court_filter"] is None, "no court: the field is empty and the search is the one before the filter")
     records = []
 
     class Grab(logging.Handler):

@@ -7,7 +7,7 @@ only trace is the counted event (a kind, a time, no text). A flood guard per per
 """
 import logging
 import threading
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -26,6 +26,7 @@ _SLOTS = {"n": None, "sem": None}
 class SearchBody(BaseModel):
     q: str = Field(min_length=1, max_length=1000, description="What the person typed: a section, a case name, a citation or a few words. Only the first 300 characters are used.")
     mode: Literal["library", "wider"] = "library"
+    court: Optional[Literal["sc", "hc"]] = Field(default=None, description="A judgments search for one court: 'sc' = the Supreme Court, 'hc' = a High Court (the wider search reads the Gauhati High Court only). Sections and Acts are not part of a court search. Omit it for the search as before.")
 
 
 def _slot():
@@ -57,7 +58,7 @@ def search(body: SearchBody, principal: Principal = Depends(ready_user), db=Depe
         if not ok:
             return JSONResponse({"detail": info.get("reason", "limit_reached"), "usage": info}, status_code=429)
         try:
-            result = search_service.search(q, body.mode)
+            result = search_service.search(q, body.mode, court=body.court)
         except Exception as exc:  # noqa: BLE001 -- search() does not raise; this guards an import or a bug
             logger.error("search failed: %s", type(exc).__name__)
             quota.release(db, event_id)

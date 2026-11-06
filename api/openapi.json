@@ -245,6 +245,22 @@
       },
       "SearchBody": {
         "properties": {
+          "court": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sc",
+                  "hc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A judgments search for one court: 'sc' = the Supreme Court, 'hc' = a High Court (the wider search reads the Gauhati High Court only). Sections and Acts are not part of a court search. Omit it for the search as before.",
+            "title": "Court"
+          },
           "mode": {
             "default": "library",
             "enum": [

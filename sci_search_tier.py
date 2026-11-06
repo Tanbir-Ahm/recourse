@@ -53,8 +53,8 @@ def mode():
     return m
 
 
-def search(question, timeout=None, k=10, label="sci_search"):
-    """The service's answer dict, or None on any failure (never raises). The service's per-search token usage goes to the cost log under `label`."""
+def search(question, timeout=None, k=10, label="sci_search", court=None):
+    """The service's answer dict, or None on any failure (never raises). The service's per-search token usage goes to the cost log under `label`. `court` ("sc" or "hc"): ask the service for that court's passages only (a service that does not know the field answers with both; the caller keeps only the court it asked for)."""
     base = _env("SCI_SEARCH_URL").rstrip("/")
     if not base or not question:
         return None
@@ -63,7 +63,7 @@ def search(question, timeout=None, k=10, label="sci_search"):
         headers = {"Content-Type": "application/json"}
         if _env("SCI_SEARCH_TOKEN"):
             headers["X-Search-Token"] = _env("SCI_SEARCH_TOKEN")
-        req = urllib.request.Request(base + "/search", data=json.dumps({"question": question, "k": k}).encode("utf-8"), headers=headers, method="POST")
+        req = urllib.request.Request(base + "/search", data=json.dumps({"question": question, "k": k, **({"court": court} if court in ("sc", "hc") else {})}).encode("utf-8"), headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             body = json.loads(r.read().decode("utf-8"))
         if isinstance(body, dict) and body.get("ok") and isinstance(body.get("results"), list):

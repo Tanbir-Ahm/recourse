@@ -585,6 +585,42 @@ check(not asked, "wider: the service was not called for a number, a citation or 
 check(S.search("search seizure", mode="wider", sci_fn=lambda t: {"ok": True, "results": []})["wider"]["note"] == "The wider search found no passage for these words.", "wider: no passage: a note")
 check(S.search("x", mode="nonsense")["mode"] == "library", "an unknown mode is the library search")
 
+# ---- 9b. the court filter (2026-11-06): a judgments search for one court ----
+MIXED = {"ok": True, "as_of": "2026-10-16", "results": [
+    {"rank": 1, "doc": "s1", "court": "Supreme Court of India", "case_name": "Alpha v. State", "date": "2020-01-01", "paragraph": "4", "text": "supreme passage"},
+    {"rank": 2, "doc": "h1", "court": "Gauhati High Court", "case_name": "Beta v. State of Assam", "date": "2021-01-01", "paragraph": "5", "text": "high court passage"},
+    {"rank": 3, "doc": "u1", "court": "Court not recorded", "case_name": "Gamma v. State", "date": "2021-02-01", "paragraph": "6", "text": "unknown court passage"},
+    {"rank": 4, "doc": "s2", "case_name": "Delta v. State", "date": "2019-01-01", "paragraph": "7", "text": "no court field: the Supreme Court's, as before"},
+]}
+check(S.court_bucket("Supreme Court of India") == "sc" and S.court_bucket("Supreme Court") == "sc" and S.court_bucket("Gauhati High Court") == "hc" and S.court_bucket("High Court") == "hc"
+      and S.court_bucket(None) is None and S.court_bucket("") is None and S.court_bucket("Court not recorded") is None, "court_bucket: sc, hc, and None for a court that is not recorded")
+for want, titles in (("sc", ["Alpha v. State", "Delta v. State"]), ("hc", ["Beta v. State of Assam"]), (None, ["Alpha v. State", "Beta v. State of Assam", "Gamma v. State", "Delta v. State"])):
+    got = S.search("bail conditions", mode="wider", sci_fn=lambda t: MIXED, court=want)
+    check([i["title"] for i in got["wider"]["items"]] == titles and got["court_filter"] == want, f"wider, court={want}: {titles} (a service that ignores the filter is filtered here too)")
+check([i["title"] for i in S.search("bail conditions", mode="wider", sci_fn=lambda t: MIXED, court="bogus")["wider"]["items"]] == ["Alpha v. State", "Beta v. State of Assam", "Gamma v. State", "Delta v. State"]
+      and S.search("bail conditions", mode="wider", sci_fn=lambda t: MIXED, court="bogus")["court_filter"] is None, "an unknown court value is no filter")
+only_sc = {"ok": True, "results": [MIXED["results"][0]]}
+nh = S.search("bail conditions", mode="wider", sci_fn=lambda t: only_sc, court="hc")["wider"]
+check(nh["available"] and nh["items"] == [] and "High Court" in nh["note"] and "Gauhati" in nh["note"] and "not searchable yet" in nh["note"], f"wider, court=hc with no High Court passage: a note that says the Gauhati High Court only ({nh['note']})")
+check("Supreme Court" in S.search("bail conditions", mode="wider", sci_fn=lambda t: {"ok": True, "results": [MIXED["results"][1]]}, court="sc")["wider"]["note"], "wider, court=sc with no Supreme Court passage: a note")
+# the library side, on the real library
+a_all, a_sc, a_hc = (S.search("Arnesh Kumar", court=c) for c in (None, "sc", "hc"))
+check(any(x["title"].startswith("Arnesh Kumar") for x in a_sc["cases"]) and not a_hc["cases"] and a_sc["court_filter"] == "sc" and a_hc["court_filter"] == "hc", "library, a case name: the Supreme Court case under sc, not under hc")
+check(all(S.court_bucket(m["court"]) == "sc" for m in a_sc["mentions"]) and all(S.court_bucket(m["court"]) == "hc" for m in a_hc["mentions"]) and a_hc["mentions"] and any(S.court_bucket(m["court"]) == "hc" for m in a_all["mentions"]),
+      "library, passages: each court's tab holds only its own court's judgments, and the High Court judgments that cite Arnesh Kumar are found under hc")
+rm = (S.search("Rakhi Mitra", court="hc"), S.search("Rakhi Mitra", court="sc"))
+check(rm[0]["cases"] and rm[0]["cases"][0]["title"].startswith("Rakhi Mitra") and not rm[1]["cases"], "library, a High Court case by name: under hc, not under sc")
+c_hc = S.search("2014 INSC 463", court="hc")
+check(c_hc["cases"] == [] and c_hc["mentions"] == [] and S.search("2014 INSC 463", court="sc")["cases"], "library, a Supreme Court citation: under sc, nothing under hc")
+for q in ("BNSS 187", "IPC 420", "section 17 PC Act"):
+    r_ = S.search(q, court="sc")
+    check(r_["provisions"] == [] and r_["acts"] == [] and r_["suggestions"] == [] and "Search the law" in (r_["hint"] or ""), f"a court filter is a judgments search: {q!r} gives no sections and points to Search the law")
+w_ = S.search("bail conditions", court="hc")
+check(w_["provisions"] == [] and w_["hint"] and "section of an Act" not in w_["hint"], "a words search with a filter and no High Court match: no sections, and no claim that it was a section")
+check(all(k in S.search("bail", court=None) for k in ("court_filter",)) and S.search("bail", court=None)["court_filter"] is None, "no filter: the field is there and empty; everything else as before")
+unk = S.search("Deepa v S. Vijayalakshmi", court="sc")
+check(unk["cases"] == [] and any("no court recorded" in n for n in unk["notes"]), "a library judgment with no court recorded is in neither filter, and the page is told how many were left out")
+
 # ======================================================================================================================
 # 10. odd input, failures inside, JSON, logs, threads, scope
 # ======================================================================================================================

@@ -48,6 +48,7 @@ MAX_CASES = 12
 MAX_MENTIONS = 6
 MAX_PASSAGES_PER_CASE = 2
 MAX_WIDER = 8
+COURT_FILTERS = ("sc", "hc")                 # the optional court filter of a judgments search: "sc" = the Supreme Court, "hc" = a High Court (every court that is not the Supreme Court); None = both, as before
 TEXT_CAP_ASKED = 16000           # a section the person asked for by number (the page's own cap, answer_view.SHELF_EXCERPT_CHARS)
 TEXT_CAP_FOUND = 6000            # a section found by words or meaning
 EXCERPT_CAP = 700
@@ -954,7 +955,15 @@ def _merge_index_row(card, row):
     card["date"] = card.get("date") or row.get("decision_date")
 
 
-def case_cards(parsed, lex=None, sem=None, notes=None):
+def court_bucket(court):
+    """'sc' for the Supreme Court, 'hc' for any other court that is named, None when no court is recorded (a card whose court is not known belongs to neither filter: it is never guessed)."""
+    c = re.sub(r"\s+", " ", str(court or "")).strip().lower()
+    if not c or c.startswith("court not recorded"):
+        return None
+    return "sc" if "supreme" in c else "hc"
+
+
+def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
     """-> (cases, mentions): cases found by their citation or their name (library first), and library judgments whose paragraphs hold the words (not by name)."""
     notes = notes if notes is not None else []
     q, cit = parsed["q"], parsed["citation"]
@@ -1047,10 +1056,17 @@ def case_cards(parsed, lex=None, sem=None, notes=None):
                 c = by_lib.get(name)
                 if c is None or len(mentions) >= MAX_MENTIONS:
                     continue
+                if court and court_bucket(c.get("court")) != court:          # a court filter: this judgment is another court's, or its court is not recorded
+                    continue
                 card = _library_card(c, "passage")
                 mentions.append(card)
             if len(card["passages"]) < MAX_PASSAGES_PER_CASE:
                 card["passages"].append({"paragraph": _para_label(r.get("paragraph_number")), "text": _clean_passage(r.get("text"))})
+    if court:
+        unknown = sum(1 for x in cases if court_bucket(x.get("court")) is None)
+        cases = [x for x in cases if court_bucket(x.get("court")) == court]
+        if unknown:
+            notes.append(f"{unknown} judgment{' has' if unknown == 1 else 's have'} no court recorded in Recourse's list, so {'it is' if unknown == 1 else 'they are'} not shown under either court. \"Search the law\" lists {'it' if unknown == 1 else 'them'}.")
     cases, mentions = cases[:MAX_CASES], mentions[:MAX_MENTIONS]
     _status(cases + mentions)
     return cases, mentions
@@ -1059,7 +1075,7 @@ def case_cards(parsed, lex=None, sem=None, notes=None):
 # ======================================================================================================================
 # 4. the wider search
 # ======================================================================================================================
-def wider(parsed, sci_fn=None):
+def wider(parsed, sci_fn=None, court=None):
     """{'available': bool, 'items': [...], 'as_of': ..., 'note': str|None, 'label': ..., 'tier': ...}: the sci-search service's passages, each with its register verdict; never raises."""
     q = parsed["q"]
     out = {"available": False, "items": [], "as_of": None, "as_of_by_court": None, "scope": "Supreme Court", "court_tags": False, "note": None, "label": WIDER_LABEL, "tier": TIER_WIDER_LABEL}
@@ -1068,7 +1084,7 @@ def wider(parsed, sci_fn=None):
         return out
     try:
         import sci_search_tier as T
-        fn = sci_fn or (lambda text: T.search(text, timeout=float(os.environ.get("SEARCH_WIDER_TIMEOUT", "10") or 10), k=12, label="search_page"))
+        fn = sci_fn or (lambda text: T.search(text, timeout=float(os.environ.get("SEARCH_WIDER_TIMEOUT", "10") or 10), k=12, label="search_page", court=court))
         if not sci_fn and not T._env("SCI_SEARCH_URL"):
             out["note"] = WIDER_UNAVAILABLE
             return out
@@ -1085,6 +1101,8 @@ def wider(parsed, sci_fn=None):
         items, seen = [], set()
         for r, f in zip(res, flags):
             if r.get("name_to_review") or not r.get("case_name") or r.get("doc") in seen:
+                continue
+            if court and court_bucket(T.court_of(r)) != court:                # the service was asked for one court; a service that does not know the filter answers with both, and the other court's passages are left out here
                 continue
             seen.add(r.get("doc"))
             src, note = f.get("source") or "none", f.get("note")
@@ -1111,7 +1129,8 @@ def wider(parsed, sci_fn=None):
         out.update(available=True, items=items, as_of=found.get("as_of"), scope=T.scope_phrase(courts), court_tags=any(c != T.SC_COURT for c in courts),
                    as_of_by_court=by_court if (by_court and len(by_court) > 1) else None)           # the date of each court's newest judgment, said whenever the index holds more than one court's
         if not items:
-            out["note"] = "The wider search found no passage for these words."
+            out["note"] = ("The wider search found no passage from " + ("the Supreme Court" if court == "sc" else "a High Court") + " for these words. "
+                           + ("" if court == "sc" else "It reads the Gauhati High Court only; other High Courts' judgments are not searchable yet.")).strip() if court else "The wider search found no passage for these words."
     except Exception as exc:  # noqa: BLE001
         logger.warning("wider search failed: %s", type(exc).__name__)
         out["note"] = WIDER_UNAVAILABLE
@@ -1256,17 +1275,19 @@ def _guard(sink, message, fn, *args, default=None, **kw):
 PART_DOWN = "Part of the search could not be completed just now."
 
 
-def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
+def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None, court=None):
     """The whole result for one search: {'q','mode','intent','acts','provisions','cases','mentions','wider','suggestions','elsewhere','notes','meaning_used','scope_note','hint'}. Never raises: a failing part is left out with a note.
     embed_fn(text) -> vector and sci_fn(text) -> sci-search reply replace the Voyage call and the wider-search service (tests)."""
     parsed = parse_query(query)
+    court = court if court in COURT_FILTERS else None
     res = _empty_result(parsed, mode)
+    res["court_filter"] = court
     if not parsed["q"]:
         res["hint"] = "Type a section (for example \"section 17 PC Act\" or \"IPC 420\"), a case name, a citation or a few words."
         return res
     res["elsewhere"] = _elsewhere(parsed)
     if res["mode"] == "wider":
-        res["wider"] = wider(parsed, sci_fn)
+        res["wider"] = wider(parsed, sci_fn, court)
         return res
     if parsed["intent"] == "nothing":
         res["hint"] = _nothing_hint(parsed)
@@ -1297,7 +1318,7 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
                     res["meaning_used"] = True
         shelf_embed = (lambda _t: qv) if qv is not None else _no_embed
         if intent == "citation":
-            res["cases"], res["mentions"] = _guard(notes, PART_DOWN, case_cards, parsed, notes=notes, default=([], []))
+            res["cases"], res["mentions"] = _guard(notes, PART_DOWN, case_cards, parsed, notes=notes, court=court, default=([], []))
         elif intent == "number":
             res["provisions"] = _guard(notes, PART_DOWN, number_provisions, parsed, shelf, default=[])
             res["suggestions"] = _guard(notes, None, number_suggestions, parsed, default=[])
@@ -1319,7 +1340,11 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
                         res["provisions"].append(p)
             else:
                 res["provisions"] = _guard(notes, PART_DOWN, word_provisions, terms, qv, shelf, MAX_PROVISIONS, default=[])
-            res["cases"], res["mentions"] = _guard(notes, "The case list could not be searched just now.", case_cards, parsed, lex=lex, sem=sem, notes=notes, default=([], []))
+            res["cases"], res["mentions"] = _guard(notes, "The case list could not be searched just now.", case_cards, parsed, lex=lex, sem=sem, notes=notes, court=court, default=([], []))
+        looked_like_section = False
+        if court:                                           # a court filter is a search for judgments: sections and Acts are not part of it
+            looked_like_section = intent in ("section", "number", "act") and bool(res["provisions"] or res["acts"])
+            res["provisions"], res["acts"], res["suggestions"] = [], [], []
         res["provisions"] = _drop_shelf_duplicates(res["provisions"])[:MAX_PROVISIONS]
         if any(p["act"] in ("BNS", "BNSS") for p in res["provisions"]):
             notes.append(BNS_COMPARED_NOTE)
@@ -1327,7 +1352,8 @@ def search(query, mode="library", *, meaning=None, embed_fn=None, sci_fn=None):
             if not a["held"]:
                 notes.append(f"Recourse does not hold the text of the {a['short']}, so no section of it is shown. The official text is linked below.")
         if not (res["provisions"] or res["cases"] or res["mentions"] or res["acts"] or res["suggestions"]):
-            res["hint"] = _nothing_hint(parsed)
+            res["hint"] = ("That looks like a section of an Act, and this search finds judgments. Use \"Search the law\" for sections." if looked_like_section
+                           else _nothing_hint(parsed))
         elif intent == "act" and res["acts"] and not res["provisions"] and res["acts"][0]["held"]:
             res["hint"] = "Add a section number or a few words to look inside this Act, for example \"section 3\" or a word from the section you want."
     except Exception as exc:  # noqa: BLE001
