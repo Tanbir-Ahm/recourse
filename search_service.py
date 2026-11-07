@@ -949,10 +949,24 @@ def _status(cards):
             c["status"] = {"source": src if src in ("card_quiet", "not_checked") else "not_checked", "text": short.get(src) or short.get("not_checked") or NOT_CHECKED, "detail": note if src == "card_quiet" else None}
 
 
+def _read_link(case_id):
+    """The 'Read the judgment' link of a title-index case (case_links.py: the court's own address, else the open bucket's PDF) as a card link, or None."""
+    try:
+        import case_links
+        lk = case_links.link_for(case_id)
+    except Exception:  # noqa: BLE001 -- a link is a convenience; it never breaks a search
+        lk = None
+    return {"label": lk["label"], "url": lk["url"], "kind": lk["kind"]} if lk else None
+
+
 def _merge_index_row(card, row):
     card["neutral"] = card.get("neutral") or _neutral(row["case_id"])
     card["scr_citation"] = card.get("scr_citation") or (row.get("citation") or None)
     card["date"] = card.get("date") or row.get("decision_date")
+    if not any(str(l.get("label") or "").startswith("Read the judgment") for l in card.get("links") or []):      # a library judgment with no address of its own gets the index's
+        lk = _read_link(row["case_id"])
+        if lk:
+            card["links"] = [lk] + list(card.get("links") or [])
 
 
 def court_bucket(court):
@@ -1020,8 +1034,9 @@ def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
             card = next((x for x in cases if x["held"] == "index" and x["year"] == year and frozenset(_name_tokens(x["title"])) == frozenset(_name_tokens(title))), None)
             if card is not None:
                 continue
+            rl = _read_link(row["case_id"])
             cases.append(_case_card(title, year, row.get("citation") or None, "index", "close" if not exact else ("citation" if cit else "name"),
-                                    [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date")))
+                                    ([rl] if rl else []) + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date")))
             added_close = added_close or not exact
         if added_close:
             notes.append(CLOSE_NOTE)

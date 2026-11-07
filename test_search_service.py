@@ -269,7 +269,7 @@ for q in ("[2014] 8 S.C.R. 128", "2014 INSC 463", "2014_INSC_463"):
 r = run("2014 INSC 221")
 c = r["cases"][0]
 check(len(r["cases"]) == 1 and c["held"] == "index" and c["tier"] == S.TIER_INDEX_LABEL and c["neutral"] == "2014 INSC 221" and c["scr_citation"] == "[2014] 9 S.C.R. 283", "an index-only case: tier label, neutral and SCR citations")
-check(c["links"][0]["url"].startswith("https://indiankanoon.org/search/") and c["court"] == "Supreme Court of India", "an index-only case links to an Indian Kanoon search (no judgment link is held) and names its court")
+check(c["links"][0]["label"].startswith("Read the judgment") and c["links"][-1]["url"].startswith("https://indiankanoon.org/search/") and c["court"] == "Supreme Court of India", "an index-only case links to the judgment's PDF first (case_links.py, since 2026-11-07) and still to an Indian Kanoon search, and names its court")
 check(run("2014 INSC 99999")["cases"] == [] and "SCC or AIR citation" in run("2014 INSC 99999")["hint"], "a citation that is not found: no cases and a hint that says what can be found by citation")
 r = run("[2014] 18 S.C.R. 128")
 check(all(("scr", 2014, 18, 128) in S.citation_keys(c.get("scr_citation")) for c in r["cases"]) and not any(c["title"].startswith("Arnesh") for c in r["cases"]), "[2014] 18 S.C.R. 128 is not [2014] 8 S.C.R. 128 (no loose SQL match)")
@@ -728,6 +728,26 @@ check(len(sc["shelf"]) == 13 and sc["library_cases"] == 68 and sc["indexed_cases
 os.environ.pop("ACT_SHELF")
 check(S.scope()["shelf"] == [], "scope(): no shelf Acts while ACT_SHELF is off")
 check(S.warm() is None, "warm() runs and returns nothing")
+
+# ---- 11. the Judgments page: a title-index card carries a link to read the judgment (case_links.py, 2026-11-07) ----
+os.environ.pop("CASE_LINKS", None)
+_kmm = S.search("KESHAVAN MADHAVA MENON versus THE STATE OF BOMBAY")
+_kc = [c for c in _kmm["cases"] if c["held"] == "index"]
+check(len(_kc) == 1 and _kc[0]["links"][0]["label"] == "Read the judgment (PDF copy)" and _kc[0]["links"][0]["url"].startswith("https://indian-supreme-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1951/english/")
+      and _kc[0]["links"][0]["url"].endswith("_EN.pdf"), "a Supreme Court title-index card (Keshavan Madhava Menon, 1951) now carries a 'Read the judgment' link to the open bucket's PDF as its first link")
+check(_kc[0]["links"][-1]["label"] == "Search for it on Indian Kanoon" and _kc[0]["links"][0].get("kind") == "open_bucket_pdf", "the Indian Kanoon search link is still there, after it; the link says what kind it is")
+_kc2 = [c for c in S.search("SITA RAM versus BALBIR")["cases"] if c["held"] == "index" and c.get("year") == 2016]
+check(_kc2 and _kc2[0]["links"][0]["label"] == "Read the judgment (Supreme Court website)" and _kc2[0]["links"][0]["url"].startswith("https://api.sci.gov.in/") and _kc2[0]["links"][0]["kind"] == "court_site_pdf", "where the court's own address is known (Sita Ram v. Balbir, 2016) that is the first link")
+_lib = [c for c in S.search("Arnesh Kumar")["cases"] if c["held"] == "library"]
+check(_lib and _lib[0]["links"] == [{"label": "Read the judgment", "url": "https://indiankanoon.org/doc/2982624/"}], "a library judgment keeps its own link, unchanged")
+os.environ["CASE_LINKS"] = "off"
+_off = [c for c in S.search("KESHAVAN MADHAVA MENON versus THE STATE OF BOMBAY")["cases"] if c["held"] == "index"]
+check(len(_off) == 1 and [l["label"] for l in _off[0]["links"]] == ["Search for it on Indian Kanoon"], "CASE_LINKS=off: the card carries the Indian Kanoon search link only, as before")
+os.environ.pop("CASE_LINKS")
+import case_links as _CL
+_st = _CL.stats()
+check(_st["bucket"] > 37000 and _st["official"] > 3500, f"the shipped link table covers the title index ({_st})")
+check(all(c["links"] and all(l["url"].startswith("https://") for l in c["links"]) for c in S.search("State of Punjab v. Singh")["cases"]), "every card of a name search has at least one link and every link is https")
 
 print()
 print(f"{len(FAILURES)} FAILED" if FAILURES else "ALL PASSED")
