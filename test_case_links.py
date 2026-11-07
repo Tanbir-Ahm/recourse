@@ -98,11 +98,73 @@ check(off.get("1999_INSC_125") == "https://api.sci.gov.in/jonew/judis/16470.pdf"
 check("2003_INSC_9" not in off, "a title-index row that no court file resembles gets none")
 check(B.parties("A v. B") == ("a", "b") and B.parties("X versus Y & Ors") == ("x", "yors") and B.parties("no party word") is None, "parties(): split on versus / v. / vs; None without one")
 
+
+# ---- the extras: court-linked judgments the title index does not list
+left = []
+off2 = B.match_official(trows + [], names, leftovers=left)
+names_x = names + [N("Moijullah @ Puttan v. State of Rajasthan", "2003-12-19", "https://api.sci.gov.in/jonew/judis/25724.pdf", scr=[]),
+                   N("(Crlmp.No(S). 16406/2011) State of U.P v. Alok Verma", None, "https://api.sci.gov.in/jonew/judis/38431.pdf")]
+left = []
+B.match_official(trows, names_x, leftovers=left)
+nm_left = {r["name"] for r in left}
+check("Moijullah @ Puttan v. State of Rajasthan" in nm_left, "a court-linked judgment that resembles no title-index row is kept as an extra")
+check("Sarjoo Prasad v. The State of Uttar Pradesh" not in nm_left and "Munshi Ram and Others v. Delhi Administration" in nm_left, "a judgment that fits a title-index row is never an extra (no judgment gets two cards); one that is another case (Munshi Ram, though its Reports page is a title row's) is")
+check("Teja Singh v. State of Punjab and Others" in nm_left, "Teja Singh v. State of Punjab, which only shares a date and a respondent with Sodagar Singh's row, is its own judgment: an extra")
+check("Bucket v. State" not in nm_left and "Hc v. State" not in nm_left, "a bucket address and a High Court row are not extras")
+ex = B.make_extras(left)
+check(all(e["url"].startswith("https://api.sci.gov.in/") for e in ex) and any(e["name"] == "State of U.P v. Alok Verma" for e in ex) and B._strip_case_number("(@ SLP(Crl.) Nos. 1581-1598/2009) Imtiyaz Ahmad v. State") == "Imtiyaz Ahmad v. State" and B._strip_case_number("(Asha) v. State") == "(Asha) v. State", "extras carry the court's address; a case number written in front of the parties is dropped from the name")
+check(B.scr_text({"citations": {"scr": ["1961 SCR (3) 324"]}}) == "[1961] 3 S.C.R. 324" and B.air_text({"citations": {"air": ["1961 AIR 631"]}}) == "AIR 1961 SC 631", "citations are written in the forms the search page reads")
+import search_service as SS
+check(SS.citation_keys("[1961] 3 S.C.R. 324") == {("scr", 1961, 3, 324)} and SS.citation_keys("AIR 1961 SC 631") == {("air", 1961, 631)}, "...and the search page reads them")
+
+
+# ---- the Court's archive list: DateGuide and match_archive
+guide = B.DateGuide([(100, "2000-01-01"), (110, "2000-02-01"), (120, "2000-03-01"), (130, "2000-04-01"), (140, "2000-05-01"), (150, "2000-06-01"), (160, "2000-07-01")])
+check(str(guide.at(135)) in ("2000-04-01", "2000-03-01", "2000-05-01") and guide.at(135) is not None, "DateGuide: an id between known ids gets a date between theirs")
+check(guide.at_spread(135)[1] < 200, "DateGuide: the spread is small where ids run in the order of decision")
+wild = B.DateGuide([(i, d) for i, d in zip(range(200, 212), ["1951-01-01", "1955-01-01", "1952-06-01", "1958-01-01", "1950-03-01", "1957-01-01", "1953-05-01", "1956-02-01", "1951-09-01", "1959-01-01", "1954-04-01", "1952-01-01"])])
+check(wild.at_spread(205)[1] > 1000, "DateGuide: the spread is large where they do not (the 1950s)")
+check(B._words("http://JUDIS.NIC.IN SUPREME COURT OF INDIA Page 1 of 5 PETITIONER: A B Vs. RESPONDENT: C") == {"petitioner", "respondent"} | {w for w in ("")} and "supreme" not in B._words("http://JUDIS.NIC.IN SUPREME COURT OF INDIA Page 1 of 5 PETITIONER: WELFARE ASSOCIATION"), "the page header of an old file is not part of its words")
+trows2 = [("2000_INSC_1", "RAM LAL SHARMA versus STATE OF ORISSA", "2000-03-01", ""),
+          ("2000_INSC_2", "SUPREME COURT EMPLOYEES WELFARE ASSOCIATION versus UNION OF INDIA", "2000-03-05", ""),
+          ("2000_INSC_3", "HARYANA versus STATE OF PUNJAB", "2000-03-08", ""),
+          ("2000_INSC_4", "UNION OF INDIA THROUGH CBI versus NIRALA YADAV", "2000-03-09", ""),
+          ("2000_INSC_5", "TWIN NAME versus STATE OF GOA", "2000-03-10", ""), ("2005_INSC_6", "TWIN NAME versus STATE OF GOA", "2000-03-11", ""),
+          ("2000_INSC_7", "OTHER PERSON versus STATE OF KERALA", "2000-03-12", ""), ("1999_INSC_8", "ALREADY LINKED versus STATE OF GOA", "2000-03-13", "")]
+arch = [{"id": 118, "open": "http://JUDIS.NIC.IN SUPREME COURT OF INDIA Page 1 of 9 PETITIONER: RAM LAL SHARMA Vs. RESPONDENT: STATE OF ORISSA DATE OF JUDG"},
+        {"id": 119, "open": "http://JUDIS.NIC.IN SUPREME COURT OF INDIA Page 1 of 5 PETITIONER: WELFARE ASSOCIATION OF ABSORBED CENTRAL GOVERNMENT EMPLOYEES Vs. RESPONDENT: UNION OF INDIA"},
+        {"id": 121, "open": "CRIMINAL APPEAL NO. 5 OF 1999 In the High Court for the States of Punjab & Haryana at Chandigarh in Crimi"},
+        {"id": 122, "open": "CRIMINAL APPEAL NO. 786 OF 2010 Union of India through CBI … Appellant Versus Nirala Yadav @ Raja Ram Yadav @ Deepak"},
+        {"id": 123, "open": "CRIMINAL APPEAL NO. 9 OF 2000 NIRALA YADAV … Appellant Versus UNION OF INDIA THROUGH CBI … Respondent"},
+        {"id": 124, "open": "CRIMINAL APPEAL NO. 12 OF 2000 TWIN NAME … Appellant Versus STATE OF GOA … Respondent"},
+        {"id": 125, "open": "CRIMINAL APPEAL NO. 13 OF 2000 OTHER PERSON … Appellant Versus STATE OF KERALA … Respondent"},
+        {"id": 126, "open": "CRIMINAL APPEAL NO. 14 OF 2000 OTHER PERSON … Appellant Versus STATE OF KERALA … Respondent"},
+        {"id": 127, "open": "CRIMINAL APPEAL NO. 15 OF 2000 ALREADY LINKED … Appellant Versus STATE OF GOA … Respondent"},
+        {"id": 128, "open": "-If violative"}, {"id": 129, "open": "CRIMINAL APPEAL NO. 77 OF 2000 NO SUCH PARTY … Appellant Versus NOBODY … Respondent"}]
+got = B.match_archive(trows2, arch, guide, skip_ids={127})
+check(got.get(118) == "2000_INSC_1", "an archive judgment whose opening lines carry the title's parties, on a date the guide allows, is tied to its title row")
+check(119 not in got, "'Supreme Court' in the page header does not tie a judgment to 'Supreme Court Employees Welfare Association'")
+check(121 not in got, "'the High Court for the States of Punjab & Haryana' does not tie a judgment to 'Haryana v. State of Punjab' (a first party of one word, the words from elsewhere in the lines)")
+check(got.get(122) == "2000_INSC_4" and 123 not in got, "parties the other way round are not matched (Union of India through CBI v. Nirala Yadav is 122; 123 has them reversed)")
+check(125 not in got and 126 not in got, "a title row that two archive judgments fit gets neither")
+check(127 not in got, "an id in skip_ids (the names table has it already) is left out")
+check(128 not in got and 129 not in got, "unreadable opening lines and a party no title row has give nothing")
+got2 = B.match_archive(trows2, arch, guide, skip_ids={127}, skip_titles={"2000_INSC_1"})
+check(118 not in got2, "a title row in skip_titles (already linked) is not offered again")
+right, wrong, none = B.holdout_archive(trows2, arch, {118: "2000_INSC_1", 122: "2000_INSC_4", 119: "2000_INSC_2"}, guide)
+check((right, wrong, none) == (2, 0, 1), f"holdout_archive counts found, wrong and not matched on known pairs ({(right, wrong, none)})")
+import tempfile as _tf, gzip as _gz
+_p = os.path.join(_tf.mkdtemp(), "al.json.gz")
+json.dump({"schema": "archive-list-1", "rows": [[1, "Other", "x y z w"], [2, "Criminal", "a b c d"]]}, _gz.open(_p, "wt"))
+check(B.read_archive_list(_p) == [{"id": 1, "type": "Other", "open": "x y z w"}, {"id": 2, "type": "Criminal", "open": "a b c d"}], "read_archive_list reads the compact file")
+
 # ---- the runtime lookup
 tmp = tempfile.mkdtemp()
 good = os.path.join(tmp, "links.json.gz")
-doc = {"schema": "case-pdf-links-1", "built": "2026-11-07", "bucket_base": B.BUCKET, "links": {"2001_INSC_5": "data/pdf/year=2001/english/2001_1_1_9_EN.pdf", "2001_INSC_6": "data/pdf/year=2001/english/b_EN.pdf"},
-       "official": {"2001_INSC_6": "https://api.sci.gov.in/jonew/judis/77.pdf", "2001_INSC_7": "http://api.sci.gov.in/jonew/judis/78.pdf", "2001_INSC_8": "https://evil.example.com/x.pdf"}}
+doc = {"schema": "case-pdf-links-1", "built": "2026-11-07", "bucket_base": B.BUCKET, "links": {"2001_INSC_5": "data/pdf/year=2001/english/2001_1_1_9_EN.pdf", "2001_INSC_6": "data/pdf/year=2001/english/b_EN.pdf", "2001_INSC_11": "data/pdf/year=2001/english/c_EN.pdf"},
+       "official": {"2001_INSC_6": "https://api.sci.gov.in/jonew/judis/77.pdf", "2001_INSC_7": "http://api.sci.gov.in/jonew/judis/78.pdf", "2001_INSC_8": "https://evil.example.com/x.pdf"},
+       "official_list": {"2001_INSC_9": "https://api.sci.gov.in/jonew/judis/90.pdf", "2001_INSC_11": "https://api.sci.gov.in/jonew/judis/91.pdf", "2001_INSC_10": "http://api.sci.gov.in/jonew/judis/92.pdf"},
+       "extras": [{"name": "Good v. Extra", "date": "2003-01-01", "year": 2003, "scr": None, "air": None, "url": "https://api.sci.gov.in/jonew/judis/5.pdf"}, {"name": "Bad v. Host", "url": "https://evil.example.com/z.pdf"}, {"name": "", "url": "https://api.sci.gov.in/jonew/judis/6.pdf"}, {"url": "https://api.sci.gov.in/jonew/judis/7.pdf"}]}
 json.dump(doc, gzip.open(good, "wt", encoding="utf-8"))
 os.environ["CASE_LINKS_PATH"] = good
 os.environ.pop("CASE_LINKS", None)
@@ -110,10 +172,16 @@ a = CL.link_for("2001_INSC_5")
 check(a and a["kind"] == "open_bucket_pdf" and a["url"] == B.BUCKET + "data/pdf/year=2001/english/2001_1_1_9_EN.pdf" and a["label"] == CL.MIRROR_LABEL, "a bucket link is the bucket address plus the key")
 b = CL.link_for("2001_INSC_6")
 check(b and b["kind"] == "court_site_pdf" and b["url"] == "https://api.sci.gov.in/jonew/judis/77.pdf" and b["label"] == CL.OFFICIAL_LABEL, "the court's own address wins over the bucket's")
+lf = CL.links_for("2001_INSC_11")
+check([x["kind"] for x in lf] == ["court_site_pdf", "open_bucket_pdf"] and lf[0]["url"] == "https://api.sci.gov.in/jonew/judis/91.pdf", "a court address found from the Court's archive list is offered first, with the bucket PDF copy second, so that a reader can check it")
+check([x["kind"] for x in CL.links_for("2001_INSC_9")] == ["court_site_pdf"] and CL.links_for("2001_INSC_10") == [], "a list address alone is offered alone; one that is not https is never offered")
 check(CL.link_for("2001_INSC_7") is None and CL.link_for("2001_INSC_8") is None, "an address that is not https, or not on a known host, is never returned")
 check(CL.link_for("2001 INSC 5") == a and CL.link_for("") is None and CL.link_for(None) is None and CL.link_for("1900_INSC_1") is None, "a case id with spaces is read like the underscore form; unknown or empty ids give None")
+check([e["name"] for e in CL.extras()] == ["Good v. Extra"], "extras: only entries with a name and an https address on the court's host are kept")
 os.environ["CASE_LINKS"] = "off"
 check(CL.link_for("2001_INSC_5") is None, "CASE_LINKS=off gives no link")
+os.environ["CASE_LINKS"] = "off"
+check(CL.extras() == [], "CASE_LINKS=off gives no extras")
 os.environ.pop("CASE_LINKS")
 for name, content in (("wrong schema", {"schema": "other", "bucket_base": B.BUCKET, "links": {"x": "y"}}), ("foreign bucket", {"schema": "case-pdf-links-1", "bucket_base": "https://evil.example.com/", "links": {"2001_INSC_5": "k"}})):
     p = os.path.join(tmp, name.replace(" ", "_") + ".json.gz")
@@ -133,6 +201,8 @@ real = json.load(gzip.open(os.path.join(HERE, "case_pdf_links.json.gz"), "rt", e
 import sqlite3
 ids = {r[0] for r in sqlite3.connect("file:case_lookup_index.db?mode=ro", uri=True).execute("select case_id from cases")}
 check(real["schema"] == "case-pdf-links-1" and real["title_rows"] == len(ids) and set(real["links"]) <= ids and set(real["official"]) <= ids, "the shipped table is for this title index: every id in it is a row of case_lookup_index.db")
+check(len(real["official_list"]) > 10000 and real["archive_list_check"]["holdout_wrong"] <= 10 and set(real["official_list"]) <= ids and not (set(real["official_list"]) & set(real["official"])), f"the shipped table holds {len(real['official_list'])} court addresses found from the Court's archive list (hold-out: {real['archive_list_check']}), none of them also in `official`")
+check(len(real["extras"]) > 2800 and all(e["url"].startswith("https://api.sci.gov.in/") for e in real["extras"]), f"the shipped table holds {len(real['extras'])} extras, all with the court's own address")
 check(len(real["links"]) / len(ids) > 0.99 and len(real["official"]) > 5500, f"it ties {len(real['links'])} of {len(ids)} judgments to a PDF and {len(real['official'])} to the court's own address")
 check(all(k.startswith("data/pdf/year=") and k.endswith("_EN.pdf") for k in real["links"].values()) and all(u.startswith("https://api.sci.gov.in/") for u in real["official"].values()), "every key is a bucket PDF path and every official address is on api.sci.gov.in")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")

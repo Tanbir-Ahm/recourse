@@ -949,14 +949,13 @@ def _status(cards):
             c["status"] = {"source": src if src in ("card_quiet", "not_checked") else "not_checked", "text": short.get(src) or short.get("not_checked") or NOT_CHECKED, "detail": note if src == "card_quiet" else None}
 
 
-def _read_link(case_id):
-    """The 'Read the judgment' link of a title-index case (case_links.py: the court's own address, else the open bucket's PDF) as a card link, or None."""
+def _read_links(case_id):
+    """The 'Read the judgment' links of a title-index case (case_links.py: the court's own address first, then the open bucket's PDF copy) as card links; [] when there is none."""
     try:
         import case_links
-        lk = case_links.link_for(case_id)
+        return [{"label": lk["label"], "url": lk["url"], "kind": lk["kind"]} for lk in case_links.links_for(case_id)]
     except Exception:  # noqa: BLE001 -- a link is a convenience; it never breaks a search
-        lk = None
-    return {"label": lk["label"], "url": lk["url"], "kind": lk["kind"]} if lk else None
+        return []
 
 
 def _merge_index_row(card, row):
@@ -964,9 +963,9 @@ def _merge_index_row(card, row):
     card["scr_citation"] = card.get("scr_citation") or (row.get("citation") or None)
     card["date"] = card.get("date") or row.get("decision_date")
     if not any(str(l.get("label") or "").startswith("Read the judgment") for l in card.get("links") or []):      # a library judgment with no address of its own gets the index's
-        lk = _read_link(row["case_id"])
-        if lk:
-            card["links"] = [lk] + list(card.get("links") or [])
+        lks = _read_links(row["case_id"])
+        if lks:
+            card["links"] = lks + list(card.get("links") or [])
 
 
 def court_bucket(court):
@@ -975,6 +974,51 @@ def court_bucket(court):
     if not c or c.startswith("court not recorded"):
         return None
     return "sc" if "supreme" in c else "hc"
+
+
+_EXTRA_CACHE = {}
+
+
+def _extras_ready():
+    """[(entry, name tokens, normalised title)] of case_links.extras(), cached for the process (the file never changes while it runs)."""
+    try:
+        import case_links
+        ex = case_links.extras()
+    except Exception:  # noqa: BLE001
+        return []
+    hit = _EXTRA_CACHE.get("x")
+    if hit is not None and hit[0] is ex:
+        return hit[1]
+    built = [(e, frozenset(_name_tokens(e["name"])), frozenset(_name_tokens(e["name"]))) for e in ex]
+    _EXTRA_CACHE["x"] = (ex, built)
+    return built
+
+
+def _extra_cards(parsed, cit, existing):
+    """Cards for judgments that have the court's own address but are not in the title index (case_links.extras): found by every word of the name, or by a Supreme Court Reports / AIR citation. A judgment that already has a card (same
+    name, year within one) gets none. Each card says what it is: the Supreme Court's own file, name and (if known) citation only."""
+    out = []
+    q = parsed["q"]
+    by_cit = bool(cit and cit["kind"] in ("scr", "air"))
+    qt = frozenset(_name_tokens(q)) if not cit and not parsed["acts"] and not parsed["number_only"] and 1 <= len(_name_tokens(q)) <= 8 else None
+    if not by_cit and not qt:
+        return out
+    seen = {(frozenset(_name_tokens(x["title"])), x.get("year")) for x in existing}
+    for e, toks, _ in _extras_ready():
+        if by_cit:
+            if cit["key"] not in (citation_keys(e.get("scr") or "") | citation_keys(e.get("air") or "")):
+                continue
+        elif not qt <= toks:
+            continue
+        year = e.get("year")
+        if any(t == toks and (year is None or y is None or abs(year - y) <= 1) for t, y in seen):
+            continue
+        cite = e.get("scr") or e.get("air") or None
+        out.append((len(toks), _case_card(e["name"], year, cite, "index", "citation" if by_cit else "name",
+                                          [{"label": "Read the judgment (Supreme Court website)", "url": e["url"], "kind": "court_site_pdf"}, {"label": "Search for it on Indian Kanoon", "url": _ik_search(e["name"])}],
+                                          court="Supreme Court of India", date=e.get("date"), scr_citation=e.get("scr"))))
+    out.sort(key=lambda x: x[0])
+    return [c for _, c in out[:10]]
 
 
 def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
@@ -1034,15 +1078,19 @@ def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
             card = next((x for x in cases if x["held"] == "index" and x["year"] == year and frozenset(_name_tokens(x["title"])) == frozenset(_name_tokens(title))), None)
             if card is not None:
                 continue
-            rl = _read_link(row["case_id"])
+            rl = _read_links(row["case_id"])
             cases.append(_case_card(title, year, row.get("citation") or None, "index", "close" if not exact else ("citation" if cit else "name"),
-                                    ([rl] if rl else []) + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date")))
+                                    rl + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date")))
             added_close = added_close or not exact
         if added_close:
             notes.append(CLOSE_NOTE)
     except Exception as exc:  # noqa: BLE001
         logger.warning("case title index unavailable: %s", type(exc).__name__)
         notes.append("The Supreme Court title index is not available right now.")
+    try:
+        cases.extend(_extra_cards(parsed, cit, cases))                          # judgments with the court's own address that the title index does not list (case_links.extras)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("extra judgments unavailable: %s", type(exc).__name__)
     for card in cases:
         if card["held"] == "index" and card.get("scr_citation") is None and card.get("citation"):
             card["scr_citation"] = card["citation"]

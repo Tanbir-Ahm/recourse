@@ -733,9 +733,12 @@ check(S.warm() is None, "warm() runs and returns nothing")
 os.environ.pop("CASE_LINKS", None)
 _kmm = S.search("KESHAVAN MADHAVA MENON versus THE STATE OF BOMBAY")
 _kc = [c for c in _kmm["cases"] if c["held"] == "index"]
-check(len(_kc) == 1 and _kc[0]["links"][0]["label"] == "Read the judgment (PDF copy)" and _kc[0]["links"][0]["url"].startswith("https://indian-supreme-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1951/english/")
-      and _kc[0]["links"][0]["url"].endswith("_EN.pdf"), "a Supreme Court title-index card (Keshavan Madhava Menon, 1951) now carries a 'Read the judgment' link to the open bucket's PDF as its first link")
-check(_kc[0]["links"][-1]["label"] == "Search for it on Indian Kanoon" and _kc[0]["links"][0].get("kind") == "open_bucket_pdf", "the Indian Kanoon search link is still there, after it; the link says what kind it is")
+check(len(_kc) == 1 and _kc[0]["links"][0]["label"] == "Read the judgment (Supreme Court website)" and _kc[0]["links"][0]["url"] == "https://api.sci.gov.in/jonew/judis/1217.pdf" and _kc[0]["links"][0]["kind"] == "court_site_pdf",
+      "a Supreme Court title-index card (Keshavan Madhava Menon, 1951) now carries the court's own address (archive id 1217, found from the Court's list of its archive) as its first link")
+check(_kc[0]["links"][1]["label"] == "Read the judgment (PDF copy)" and _kc[0]["links"][1]["url"].startswith("https://indian-supreme-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1951/english/") and _kc[0]["links"][1]["kind"] == "open_bucket_pdf"
+      and _kc[0]["links"][-1]["label"] == "Search for it on Indian Kanoon", "...then the open bucket's PDF copy, then the Indian Kanoon search link")
+_bk = [c for c in S.search("Adamji Umar Dalal versus State of Bombay")["cases"] if c["held"] == "index"]
+check(_bk and _bk[0]["links"][0]["label"] in ("Read the judgment (Supreme Court website)", "Read the judgment (PDF copy)") and _bk[0]["links"][-1]["label"] == "Search for it on Indian Kanoon", "another 1950s judgment has a 'Read the judgment' link first")
 _kc2 = [c for c in S.search("SITA RAM versus BALBIR")["cases"] if c["held"] == "index" and c.get("year") == 2016]
 check(_kc2 and _kc2[0]["links"][0]["label"] == "Read the judgment (Supreme Court website)" and _kc2[0]["links"][0]["url"].startswith("https://api.sci.gov.in/") and _kc2[0]["links"][0]["kind"] == "court_site_pdf", "where the court's own address is known (Sita Ram v. Balbir, 2016) that is the first link")
 _lib = [c for c in S.search("Arnesh Kumar")["cases"] if c["held"] == "library"]
@@ -748,6 +751,17 @@ import case_links as _CL
 _st = _CL.stats()
 check(_st["bucket"] > 37000 and _st["official"] > 3500, f"the shipped link table covers the title index ({_st})")
 check(all(c["links"] and all(l["url"].startswith("https://") for l in c["links"]) for c in S.search("State of Punjab v. Singh")["cases"]), "every card of a name search has at least one link and every link is https")
+
+_mp = S.search("Moijullah @ Puttan v. State of Rajasthan")
+_mc = [c for c in _mp["cases"] if "MOIJULLAH" in c["title"].upper()]
+check(len(_mc) == 1 and _mc[0]["year"] == 2003 and _mc[0]["held"] == "index" and _mc[0]["links"][0]["url"] == "https://api.sci.gov.in/jonew/judis/25724.pdf" and _mc[0]["links"][0]["label"] == "Read the judgment (Supreme Court website)",
+      "a Supreme Court judgment that the title index does not list (Moijullah @ Puttan v. State of Rajasthan, 2003) is found by name and links to the court's own file")
+check(len([c for c in S.search("Kim Wansoo v. State of Uttar Pradesh")["cases"] if "WANSOO" in c["title"].upper()]) == 1, "a judgment that is in the title index gets one card, not a second one from the extras")
+os.environ["CASE_LINKS"] = "off"
+check(not [c for c in S.search("Moijullah Puttan")["cases"] if "MOIJULLAH" in c["title"].upper()], "CASE_LINKS=off: the extras are not searched")
+os.environ.pop("CASE_LINKS")
+check(_CL.stats()["extras"] > 2800, "the extras are loaded")
+
 
 print()
 print(f"{len(FAILURES)} FAILED" if FAILURES else "ALL PASSED")
