@@ -15,6 +15,10 @@ from urllib.parse import urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HOSTS = {"api.sci.gov.in", "indian-supreme-court-judgments.s3.ap-south-1.amazonaws.com"}
+HC_COURT_HOSTS = {"ghconline.gov.in", "ghcservices.assam.gov.in"}
+HC_BUCKET_HOST = "indian-high-court-judgments.s3.ap-south-1.amazonaws.com"
+HC_OFFICIAL_LABEL = "Read the judgment (Gauhati High Court website)"
+HC_MIRROR_LABEL = "Read the judgment (PDF copy)"
 OFFICIAL_LABEL = "Read the judgment (Supreme Court website)"
 MIRROR_LABEL = "Read the judgment (PDF copy)"
 _LOCK = threading.Lock()
@@ -57,6 +61,70 @@ def _load():
             pass
         _STATE[p] = out
         return out
+
+
+def hc_path():
+    return (os.environ.get("HC_LINKS_PATH") or "").strip().strip("\"'") or os.path.join(HERE, "hc_links.json.gz")
+
+
+def _hc_ok(url, hosts):
+    try:
+        u = urlparse(url)
+    except ValueError:
+        return False
+    return u.scheme == "https" and u.hostname in hosts
+
+
+def _hc_load():
+    """The Gauhati High Court list written by build_hc_links.py: [{'name', 'date', 'year', 'case_no', 'neutral', 'court_url', 'copy_url'}]. An address on any other host is dropped; an entry with neither address is dropped."""
+    p = hc_path()
+    st = _STATE.get(("hc", p))
+    if st is not None:
+        return st
+    with _LOCK:
+        st = _STATE.get(("hc", p))
+        if st is not None:
+            return st
+        out = []
+        try:
+            with gzip.open(p, "rt", encoding="utf-8") as fh:
+                d = json.load(fh)
+            if d.get("schema") == "case-hc-links-1" and isinstance(d.get("fields"), list):
+                f = d["fields"]
+                for row in d.get("entries") or []:
+                    if not isinstance(row, list) or len(row) != len(f):
+                        continue
+                    e = dict(zip(f, row))
+                    if not isinstance(e.get("name"), str) or not e["name"].strip():
+                        continue
+                    cu = e.get("court_url") if e.get("court_url") and _hc_ok(e["court_url"], HC_COURT_HOSTS) else None
+                    mu = e.get("copy_url") if e.get("copy_url") and _hc_ok(e["copy_url"], {HC_BUCKET_HOST}) else None
+                    if not (cu or mu):
+                        continue
+                    date = e.get("date") if isinstance(e.get("date"), str) else None
+                    year = int(date[:4]) if date and date[:4].isdigit() else None
+                    out.append({"name": e["name"].strip(), "date": date, "year": year, "case_no": e.get("case_no") or None, "neutral": e.get("neutral") or None, "court_url": cu, "copy_url": mu})
+        except Exception:  # noqa: BLE001 -- a missing or unreadable file means no list, never an error
+            out = []
+        _STATE[("hc", p)] = out
+        return out
+
+
+def hc_entries():
+    """The Gauhati High Court judgments of the wide index with the court's own address and/or the open bucket's copy (empty when CASE_LINKS=off or the file is unusable)."""
+    if not enabled():
+        return []
+    return _hc_load()
+
+
+def hc_links(entry):
+    """Card links for one hc_entries() item: the court's own address first, then the bucket copy."""
+    out = []
+    if entry.get("court_url"):
+        out.append({"url": entry["court_url"], "kind": "high_court_site_pdf", "label": HC_OFFICIAL_LABEL})
+    if entry.get("copy_url"):
+        out.append({"url": entry["copy_url"], "kind": "high_court_bucket_pdf", "label": HC_MIRROR_LABEL})
+    return out
 
 
 def _official(st, cid):
@@ -103,4 +171,6 @@ def extras():
 
 def stats():
     st = _load()
-    return {"bucket": len(st["links"]), "official": len(st["official"]), "official_list": len(st["official_list"]), "extras": len(st["extras"]), "built": st["built"]}
+    hc = _hc_load() if enabled() else []
+    return {"bucket": len(st["links"]), "official": len(st["official"]), "official_list": len(st["official_list"]), "extras": len(st["extras"]), "built": st["built"],
+            "hc": len(hc), "hc_court_address": sum(1 for e in hc if e["court_url"]), "hc_copy": sum(1 for e in hc if e["copy_url"])}

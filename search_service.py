@@ -1021,6 +1021,79 @@ def _extra_cards(parsed, cit, existing):
     return [c for _, c in out[:10]]
 
 
+_HC_NEUTRAL = re.compile(r"(?<![A-Za-z0-9])((?:19|20)\d\d)\s*:\s*GAU\s*-\s*([A-Za-z]{2})\s*:\s*(\d{1,6})(?![A-Za-z0-9])", re.I)
+_HC_CASENO = re.compile(r"^\s*((?:[A-Za-z][A-Za-z.()\- ]{0,30}?)\s*[A-Za-z.()]*)[\s./\-]*?(\d{1,6})\s*/\s*((?:19|20)\d\d)\s*$")
+HC_COURT = "Gauhati High Court"
+TIER_HC_LABEL = "Gauhati High Court list (title, case number and link only)"
+_HC_CACHE = {}
+
+
+def _hc_ready():
+    """[(entry, name tokens, neutral key, case-number key)] of case_links.hc_entries(), cached for the process."""
+    try:
+        import case_links
+        ex = case_links.hc_entries()
+    except Exception:  # noqa: BLE001
+        return []
+    hit = _HC_CACHE.get("x")
+    if hit is not None and hit[0] is ex:
+        return hit[1]
+    built = []
+    for e in ex:
+        nk = None
+        m = _HC_NEUTRAL.search(e.get("neutral") or "")
+        if m:
+            nk = (int(m.group(1)), m.group(2).upper(), int(m.group(3)))
+        built.append((e, frozenset(_name_tokens(e["name"])), nk, re.sub(r"[^a-z0-9]", "", (e.get("case_no") or "").lower())))
+    _HC_CACHE["x"] = (ex, built)
+    return built
+
+
+def _hc_cards(parsed, existing):
+    """Cards for the Gauhati High Court judgments of the wide index (case_links.hc_entries): found by a neutral citation ('2019:GAU-AS:4861'), by a case number with its type ('Crl.A. 289/2013'), or by every word of the name. Each carries the
+    court's own address where Recourse holds one and the open bucket's copy where it is listed. A judgment that already has a card (same name, year within one) gets none."""
+    q = parsed["q"]
+    out = []
+    ready = _hc_ready()
+    if not ready:
+        return out
+    nm = _HC_NEUTRAL.search(q)
+    nkey = (int(nm.group(1)), nm.group(2).upper(), int(nm.group(3))) if nm else None
+    cm = None if nkey else _HC_CASENO.match(q)
+    ckey = None
+    if cm and re.search(r"[A-Za-z]", cm.group(1)):
+        ckey = re.sub(r"[^a-z0-9]", "", (cm.group(1) + cm.group(2) + cm.group(3)).lower())
+    qt = None
+    if not nkey and not ckey and not parsed["citation"] and not parsed["acts"] and not parsed["number_only"] and 1 <= len(_name_tokens(q)) <= 8:
+        qt = frozenset(_name_tokens(q))
+    if not nkey and not ckey and not qt:
+        return out
+    seen = {(frozenset(_name_tokens(x["title"])), x.get("year")) for x in existing}
+    for e, toks, nk, ck_ in ready:
+        how = None
+        if nkey:
+            if nk != nkey:
+                continue
+            how = "citation"
+        elif ckey:
+            if ck_ != ckey:
+                continue
+            how = "citation"
+        elif not qt <= toks:
+            continue
+        else:
+            how = "name"
+        year = e.get("year")
+        if any(t == toks and (year is None or y is None or abs(year - y) <= 1) for t, y in seen):
+            continue
+        import case_links
+        out.append((len(toks), _case_card(e["name"], year, e.get("case_no"), "index", how,
+                                          [{"label": lk["label"], "url": lk["url"], "kind": lk["kind"]} for lk in case_links.hc_links(e)] + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(e["name"])}],
+                                          court=HC_COURT, date=e.get("date"), neutral=e.get("neutral"), tier=TIER_HC_LABEL)))
+    out.sort(key=lambda x: x[0])
+    return [c for _, c in out[:10]]
+
+
 def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
     """-> (cases, mentions): cases found by their citation or their name (library first), and library judgments whose paragraphs hold the words (not by name)."""
     notes = notes if notes is not None else []
@@ -1091,8 +1164,12 @@ def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
         cases.extend(_extra_cards(parsed, cit, cases))                          # judgments with the court's own address that the title index does not list (case_links.extras)
     except Exception as exc:  # noqa: BLE001
         logger.warning("extra judgments unavailable: %s", type(exc).__name__)
+    try:
+        cases.extend(_hc_cards(parsed, cases))                                  # Gauhati High Court judgments of the wide index with the court's own address and/or the bucket's copy (case_links.hc_entries)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Gauhati High Court list unavailable: %s", type(exc).__name__)
     for card in cases:
-        if card["held"] == "index" and card.get("scr_citation") is None and card.get("citation"):
+        if card["held"] == "index" and card.get("scr_citation") is None and card.get("citation") and card.get("court") != HC_COURT:
             card["scr_citation"] = card["citation"]
     # 3. paragraphs of the library judgments that hold the words
     mentions = []
