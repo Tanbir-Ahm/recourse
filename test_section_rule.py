@@ -261,11 +261,13 @@ os.environ.pop("CHAT_MODE", None)
 MS1 = S.search(T1, [{"id": PC}], embed_fn=like("PCACT", "17A"))["matches"]
 MS4 = S.search(Q4, ACTS, embed_fn=like("PCACT", "17A"))["matches"]
 check(any(m["section_number"] == "17" and m["retrieval"] == "named" for m in MS1) and any(m["section_number"] == "17A" and m["retrieval"] == "meaning" for m in MS1), "turn 1's material: section 17 named, 17A by meaning")
-n1 = R.notes(ANS1, MS1)
+n1_all = R.notes(ANS1, MS1)
+n1 = [n for n in n1_all if not n.get("relied")]          # the notes for the section the person named; sections nobody named but the answer relies on have their own (kind provisos, relied=True)
 check(len(n1) == 1 and n1[0]["kind"] == "not_mentioned" and n1[0]["section"] == "17" and n1[0]["texts"][0] == SH["acts"][PC]["by_num"]["17"]["text"].strip(),
       f"answer 1 (about 17A, never says 'section 17'): the note gives section 17 whole ({[(n['kind'], n['section']) for n in n1]})")
 check("does not set that section out by its number" in n1[0]["lead"] and "Provided further that an offence referred to in" in n1[0]["texts"][0] and n1[0]["cut"] is False and n1[0]["source_url"], "...with its official words, second proviso included, a link and nothing cut")
-n2 = R.notes(ANS2, MS1)
+n2_all = R.notes(ANS2, MS1)
+n2 = [n for n in n2_all if not n.get("relied")]
 check(len(n2) == 1 and n2[0]["kind"] == "provisos" and len(n2[0]["provisos"]) == 2 and "Superintendent of Police." in n2[0]["provisos"][1] and n2[0]["texts"] == [SH["acts"][PC]["by_num"]["17"]["text"].strip()],
       f"answer 2 (no second proviso): the note gives the whole section, and lists its two provisos ({[(n['kind'], len(n['provisos'])) for n in n2]})")
 check("has two provisos" in n2[0]["lead"] and "does not clearly set them out" in n2[0]["lead"] and "the whole section" in n2[0]["lead"], f"...in plain words ({n2[0]['lead']})")
@@ -355,7 +357,7 @@ check("## The section the person asked about" not in p and "section_note" not in
       "SECTION_RULE=off: the prompt has no clause, there is no note, and BNS 17 is in the material, exactly as before")
 os.environ.pop("SECTION_RULE")
 res, out = ask(Q1e, like("PCACT", "17A"), ANS1)
-check(res["state"] == "single_match" and len(res.get("section_note") or []) == 1 and res["section_note"][0]["kind"] == "not_mentioned", "turn 1 end to end with the owner's answer 1: the note gives section 17")
+check(res["state"] == "single_match" and len([x for x in res.get("section_note") or [] if not x.get("relied")]) == 1 and res["section_note"][0]["kind"] == "not_mentioned", "turn 1 end to end with the owner's answer 1: the note gives section 17")
 os.environ.pop("ACT_SHELF")
 res, out = ask(Q1e, like("PCACT", "17A"), ANS1)
 check("section_note" not in res and "SECTION_NOTE" not in out and not any(m.get("source") == "act_shelf" for m in res.get("matches") or []), "ACT_SHELF off (the default): no shelf, no note: nothing changes")

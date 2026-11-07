@@ -296,6 +296,17 @@ def _prompt_unused(group):
             f"punishment, procedure or route of appeal of {it} from memory, say in one sentence that the material does not contain a provision of {it} on this point, and keep to what the material does show.\n")
 
 
+def _prompt_relied(group):
+    """For an Act whose shelf text reached the answer: the rule about provisos applies to EVERY section of it that the answer relies on, not only to a section the person named (2026-11-07: the answer to a question on
+    arrest in a disproportionate-assets case gave the main rule of section 17 of the Prevention of Corruption Act and left out its second proviso). Outside the Hard rules block."""
+    it = "those Acts" if len(group) > 1 else "that Act"
+    return ("\n\n## Every section you rely on\n"
+            f"For each section of {it} that you rely on in the answer, whether or not the person named it: give its main rule and EVERY proviso and Explanation it has in the material, each in your own words, and introduce each "
+            "proviso as the section's first, second (and so on) proviso. Never give the main rule of a section as if it were the whole of it when the material shows a proviso: a proviso is often the part that decides "
+            "the person's case, so say which cases it covers. If the material holds two sections whose numbers differ only by a letter (for example 17 and 17A), they are different provisions: keep them apart and say, from their "
+            "words, how they differ.\n")
+
+
 def _sections_phrase(nums):
     nums = [str(n).upper() for n in nums][:3]
     return ("section " + nums[0]) if len(nums) == 1 else ("sections " + ", ".join(nums[:-1]) + " and " + nums[-1])
@@ -341,6 +352,14 @@ def _prompt_named(items, cited=None):
             + "".join(_cited_clause(a, n, (cited or {}).get(a["id"])) for a, n in items))
 
 
+def _relied_on():
+    try:
+        import section_rule
+        return section_rule.enabled()
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def prompt_block(acts, held=None):
     """The blocks for the answer prompt when the question names an Act ('' otherwise). They repeat the Hard rules for this case; they do not replace them.  held (see notice): an Act whose shelf text reached the
     answer gets the block that says so and forbids going beyond the sections given; an Act the shelf holds but nothing of which reached the answer gets the block that says nothing close enough was found;
@@ -354,6 +373,7 @@ def prompt_block(acts, held=None):
         cited = {a["id"]: (held.get(a["id"]) or {}).get("cited") for a in used}            # SECTION_XREF: the sections those cite, also in the material
         used = [a for a in used if a not in used_full]
         return ((_prompt_plain(plain) if plain else "") + (_prompt_used(used) if used else "") + (_prompt_used_whole(used_full) if used_full else "")
+                + (_prompt_relied(used + used_full) if (used or used_full) and _relied_on() else "")
                 + (_prompt_unused(unused) if unused else "") + _prompt_named(named, cited))
     except Exception:  # noqa: BLE001
         return ""

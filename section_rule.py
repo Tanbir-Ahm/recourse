@@ -21,6 +21,7 @@ import os
 import re
 
 MAX_NOTES = 2                 # sections noted under one answer
+MAX_RELIED = 2                # further sections, nobody named, that the answer relies on and whose provisos it leaves out (2026-11-07)
 OFFICIAL_CHARS = 8000         # the official text given under the answer for a named section: cut at a line end beyond this (all but the longest sections of the nine Acts are under it)
 
 _NUMBER_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
@@ -91,6 +92,17 @@ def provisos_covered(answer, count):
     if count == 1:
         return bool(_PROVISO_WORD.search(a))
     return all(p.search(a) for p in _ORDINAL[:min(count, len(_ORDINAL))])
+
+
+def _paragraphs_about(answer, num):
+    """The paragraphs of the answer that use section number `num` (as 'section 17', 'sections 13 and 17', 'section 17(1)'), joined; '' when none does. A proviso is judged by what is said about ITS section: an answer that
+    talks about the second proviso of one section has not covered the provisos of another."""
+    import act_shelf
+    keep = []
+    for para in re.split(r"\n\s*\n|\n(?=\s*(?:[-*\u2022]|\d+[.)])\s)", answer or ""):
+        if str(num).upper() in {str(n).upper() for n in act_shelf.section_numbers_in(para)}:
+            keep.append(para)
+    return "\n".join(keep)
 
 
 # ----- the notes ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -173,6 +185,47 @@ def notes(answer, matches):
             if cites:
                 item["cites"] = cites
             out.append(item)
+        out += _relied_notes(answer, matches, mentioned, seen)
         return out
     except Exception:  # noqa: BLE001
         return []
+
+
+def _relied_notes(answer, matches, mentioned, seen):
+    """Sections of a shelf Act that NOBODY NAMED (the system found them by meaning, or as a companion) but that the answer itself uses by number, and whose provisos the answer does not clearly set out: the whole official
+    text, under one sentence that says so (kind 'provisos'). Added 2026-11-07 after the owner's question about arrest in a disproportionate-assets case: the answer gave the main rule of section 17 of the Prevention of
+    Corruption Act and left out its second proviso, the one for exactly that case, and no note appeared because the person had not typed 'section 17'. Only a section the answer uses by number, with provisos, and not covered
+    in the paragraphs about it: nothing is added for a section the answer never mentions or one without provisos. At most MAX_RELIED."""
+    out = []
+    for m in matches or []:
+        if len(out) >= MAX_RELIED:
+            break
+        if not (isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("retrieval") not in ("named", "implied", "cited") and (m.get("text") or "").strip()):
+            continue
+        num = str(m.get("section_number") or "").upper()
+        sh = m.get("shelf") if isinstance(m.get("shelf"), dict) else {}
+        key = (m.get("act"), num)
+        if not num or key in seen or sh.get("omitted"):
+            continue
+        if m.get("companion") and num not in {str(n).upper() for n in mentioned}:          # shelf_companions: a section read together with the others for this kind of question, never mentioned by the answer
+            seen.add(key)
+            act = m.get("act_display") or m.get("act") or "the Act"
+            title = " ".join(str(m.get("title") or "").split()).rstrip(".")
+            body, cut = _cut_lines(m["text"].strip(), OFFICIAL_CHARS)
+            out.append({"act": act, "section": num, "loaded_on": sh.get("loaded_on"), "source_url": sh.get("source_url"), "texts": [body], "cut": cut, "provisos": provisos(m["text"]), "kind": "companion", "relied": False,
+                        "lead": (f"Your question is about an enquiry or an investigation. The material also held section {num} of the {act}" + (f", headed \u201c{title}\u201d" if title else "") +
+                                 ". The answer above does not mention it, so here is its official text. Whether it applies to a particular case is for a lawyer to say:")})
+            continue
+        if num not in {str(n).upper() for n in mentioned}:
+            continue
+        ps = provisos(m["text"])
+        if not ps or provisos_covered(_paragraphs_about(answer, num), len(ps)):
+            continue
+        seen.add(key)
+        act = m.get("act_display") or m.get("act") or "the Act"
+        body, cut = _cut_lines(m["text"].strip(), OFFICIAL_CHARS)
+        k = len(ps)
+        out.append({"act": act, "section": num, "loaded_on": sh.get("loaded_on"), "source_url": sh.get("source_url"), "texts": [body], "cut": cut, "provisos": ps, "kind": "provisos", "relied": True,
+                    "lead": (f"The answer above relies on section {num} of the {act}. That section has {_words(k)} proviso{'s' if k > 1 else ''} (an exception or condition added to the section's main rule), at the end of the text below, "
+                             f"and the answer does not clearly set {'it' if k == 1 else 'them'} out. A proviso can decide a person's case, so here is the whole section in the official words:")})
+    return out

@@ -300,9 +300,10 @@ check("Explanation 1.--A person shall be presumed to have intentionally enriched
 check("- Section 17 refers to section 13 of the same Act" in p and "## Hard rules (never break)" in p and p.index("## Hard rules (never break)") < p.index("- Section 17 refers to section 13"), "the prompt carries the bullet, after the unchanged Hard rules block")
 check(len([l for l in p.split("\n") if l.startswith("[Prevention of Corruption Act, 1988 Section 13,")]) == 1, "section 13 is in the prompt once")
 sn = res.get("section_note") or []
+sn = [x for x in sn if not x.get("relied") and x.get("kind") != "companion"]          # the notes for the named section; the companion note for 17A (shelf_companions) is tested in test_shelf_companions.py
 check(len(sn) == 1 and sn[0].get("cites") and sn[0]["cites"][0]["section"] == "13", "the result carries section 17's note with section 13 under it")
 lines = [l for l in out.splitlines() if l.startswith("SECTION_NOTE ")]
-check(len(lines) == 1 and json.loads(lines[0][len("SECTION_NOTE "):]) == {"sections": ["Prevention of Corruption Act, 1988 s.17: official +cites 13"]}, f"the SECTION_NOTE log line says so, without text ({lines})")
+check(len(lines) == 1 and json.loads(lines[0][len("SECTION_NOTE "):])["sections"][0] == "Prevention of Corruption Act, 1988 s.17: official +cites 13", f"the SECTION_NOTE log line says so, without text ({lines})")
 lines = [l for l in out.splitlines() if l.startswith("ACT_SHELF ")]
 check(len(lines) == 1 and json.loads(lines[0][len("ACT_SHELF "):])["per_act"][PC]["cited"] == [{"s": "13", "by": "17"}], "the ACT_SHELF log line records the cited section")
 os.environ.pop("SECTION_XREF")

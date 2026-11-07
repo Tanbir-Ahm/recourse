@@ -298,7 +298,7 @@ check("## Act text in the material" in pb and "not in the material above" not in
 pb = AD.prompt_block(PM, held=HN)
 check("its text is loaded, but nothing close enough was found" in pb and "from memory" in pb and "not in the material above" not in pb, "prompt_block, text loaded but nothing found: say so in one sentence, nothing from memory")
 pb = AD.prompt_block(MIX, held=HM)
-check(pb.count("\n\n## ") == 2 and "## Act text in the material" in pb and "## Acts named in the question that are not in the material" in pb and "Juvenile Justice" in pb.split("## Acts named")[1], "prompt_block for two Acts: one block for each group")
+check(pb.count("\n\n## ") == 3 and "## Every section you rely on" in pb and "## Act text in the material" in pb and "## Acts named in the question that are not in the material" in pb and "Juvenile Justice" in pb.split("## Acts named")[1], "prompt_block for two Acts: one block for each group")
 
 # ---------------------------------------------------------------- the pipeline, end to end, with a stub model
 sent = {}
@@ -626,7 +626,11 @@ check("That Act is short, so the answer below was written from all of its sectio
 pb = AD.prompt_block(acts_mw, held=hs)
 check("includes EVERY section of that Act" in pb and "only the sections our search found" not in pb and "any rules made under that Act, or what the courts have held" in pb and "from memory" in pb,
       "the prompt block for a whole Act says the material holds every section, not what the courts have held, and still forbids anything from memory")
-check(AD.prompt_block(acts_mw, held={MW: {"state": "used", "loaded_on": LOADED[MW]}}) == AD._prompt_used(acts_mw), "...and an Act that is not whole still gets the block it had before, word for word")
+_held_mw = {MW: {"state": "used", "loaded_on": LOADED[MW]}}
+check(AD.prompt_block(acts_mw, held=_held_mw) == AD._prompt_used(acts_mw) + AD._prompt_relied(acts_mw), "...and an Act that is not whole still gets the block it had before, word for word, plus the 'sections you rely on' block")
+os.environ["SECTION_RULE"] = "off"
+check(AD.prompt_block(acts_mw, held=_held_mw) == AD._prompt_used(acts_mw), "...and with SECTION_RULE=off it gets exactly the block it had before")
+os.environ.pop("SECTION_RULE", None)
 
 Q_MW = "My husband gave me triple talaq on WhatsApp. What is the punishment under the Muslim Women Act, 2019?"
 res, out = ask(Q_MW, boom, "Under Section 4 of the Muslim Women Act, 2019, a Muslim husband who pronounces talaq can be imprisoned for up to three years and fined.")

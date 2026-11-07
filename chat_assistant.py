@@ -4068,13 +4068,22 @@ def _carried_matches(have):
 
 
 def _companion_shelf_matches(question, matches):
-    """`matches` plus the companion sections of evidence_companions.py (EVIDENCE_COMPANIONS=on, circumstantial-evidence questions); `matches` unchanged when the switch is off or on any failure."""
+    """`matches` plus the companion sections of evidence_companions.py (EVIDENCE_COMPANIONS=on, circumstantial-evidence questions) and of shelf_companions.py (SHELF_COMPANIONS, default on: sections 17 and 17A of the
+    Prevention of Corruption Act for a question about an enquiry or investigation); `matches` unchanged when both are off or on any failure."""
+    base = list(matches or [])
     try:
         import evidence_companions
-        extra = evidence_companions.shelf_matches(question, already={m.get("chunk_id") for m in matches or [] if isinstance(m, dict)})
-        return list(matches or []) + extra if extra else (matches or [])
+        extra = evidence_companions.shelf_matches(question, already={m.get("chunk_id") for m in base if isinstance(m, dict)})
+        base = base + extra if extra else base
     except Exception:  # noqa: BLE001
-        return matches or []
+        pass
+    try:
+        import shelf_companions
+        more = shelf_companions.add(_extract_current_message(question), base)
+        base = base + more if more else base
+    except Exception:  # noqa: BLE001
+        pass
+    return base
 
 
 _FULL_ACT_BASE = {"NIACTFULL": "NIACT", "ITACTFULL": "ITACT"}
