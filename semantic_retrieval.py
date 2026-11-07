@@ -140,6 +140,12 @@ def _load_corpus_embeddings():
     # Precompute the embedding matrix once, since dot-product against a
     # numpy matrix is far faster than looping in Python per query.
     matrix = np.array([r["embedding"] for r in records])
+    # The vectors now live in `matrix` (a float64 array, 13.6 MB). Each record also held the same 1,024 numbers as a Python list of floats, about 55 to 70 MB for the 1,666 records in every process;
+    # nothing reads them from the records (every reader of a record drops the key before returning it), so they are released (2026-11-07, FOLLOW_UPS 2dq).
+    # The matrix, and so every score, is unchanged. KEEP_RECORD_VECTORS=on keeps the lists (the way back).
+    if (os.environ.get("KEEP_RECORD_VECTORS") or "").strip().strip("\"'").lower() not in ("1", "on", "true", "yes"):
+        for r in records:
+            r.pop("embedding", None)
     _corpus_cache = {"records": records, "matrix": matrix, "model": data.get("model")}
     return _corpus_cache
 

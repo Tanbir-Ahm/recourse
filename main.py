@@ -1,4 +1,3 @@
-import fitz
 import os
 import json
 import typing
@@ -88,6 +87,7 @@ def build_analysis_summary(days_remaining):
 
 
 def extract_text_from_pdf(filepath):
+    import fitz        # PyMuPDF is imported here, where it is used, not at the top of the module: this module is pulled in by the whole engine (chat_assistant -> main), and the import alone costs about 100 MB in every process, used or not (2026-11-07, FOLLOW_UPS 2dq)
     doc = fitz.open(filepath)
     text = ""
     for page in doc:

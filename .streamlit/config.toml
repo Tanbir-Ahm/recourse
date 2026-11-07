@@ -12,6 +12,8 @@ font = "serif"
 headless = true
 enableCORS = false
 enableXsrfProtection = true
+# Largest upload the page accepts, in MB (Streamlit's own default is 200, and it holds the whole file in memory before the page's own 8 MB check can refuse it: recourse_upload._MAX_BYTES). 2026-11-07, FOLLOW_UPS 2dq.
+maxUploadSize = 10
 # Railway/Render inject $PORT; the start command passes it explicitly.
 
 [browser]
