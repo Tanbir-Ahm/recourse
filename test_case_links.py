@@ -66,16 +66,37 @@ check("2020_INSC_4" not in links, "a row with the same title but another date an
 check("1999_INSC_99" not in links and why["no row in the bucket's metadata"] == 1, "a case the bucket does not list gets no link")
 check(B.pick_key(["data/pdf/year=1952/english/x_EN.pdf", "data/pdf/year=1950/english/x_EN.pdf"], "1951", "1952") == "data/pdf/year=1952/english/x_EN.pdf", "no key in the decision year: the citation year's, then the first by name")
 
-# ---- the court's own addresses
-names = [{"name": "Sarjoo Prasad v. The State of Uttar Pradesh", "date": "1960-12-16", "court": "Supreme Court of India", "link_kind": "court_archive_pdf", "link": "https://api.sci.gov.in/jonew/judis/3.pdf"},
-         {"name": "Twin v. State", "date": "2001-01-01", "court": "Supreme Court of India", "link_kind": "court_archive_pdf", "link": "https://api.sci.gov.in/jonew/judis/10.pdf"},
-         {"name": "Twin v. State", "date": "2001-01-01", "court": "Supreme Court of India", "link_kind": "court_archive_pdf", "link": "https://api.sci.gov.in/jonew/judis/11.pdf"},
-         {"name": "Bucket v. State", "date": "2002-02-02", "court": "Supreme Court of India", "link_kind": "open_bucket_pdf", "link": "https://x/y.pdf"},
-         {"name": "Hc v. State", "date": "2003-03-03", "court": "Gauhati High Court", "link_kind": "court_archive_pdf", "link": "https://api.sci.gov.in/jonew/judis/12.pdf"}]
+# ---- the court's own addresses (three guarded passes)
+def N(name, date, link, scr=None, kind="court_archive_pdf", court="Supreme Court of India"):
+    return {"name": name, "date": date, "court": court, "link_kind": kind, "link": link, "citations": {"scr": scr or []}}
+
+
+names = [N("Sarjoo Prasad v. The State of Uttar Pradesh", "1960-12-16", "https://api.sci.gov.in/jonew/judis/3.pdf"),
+         N("Twin v. State", "2001-01-01", "https://api.sci.gov.in/jonew/judis/10.pdf"), N("Twin v. State", "2001-01-01", "https://api.sci.gov.in/jonew/judis/11.pdf"),
+         N("Bucket v. State", "2002-02-02", "https://x/y.pdf", kind="open_bucket_pdf"), N("Hc v. State", "2003-03-03", "https://api.sci.gov.in/jonew/judis/12.pdf", court="Gauhati High Court"),
+         N("Teja Singh v. State of Punjab and Others", "1997-01-24", "https://api.sci.gov.in/jonew/judis/20.pdf"),
+         N("Munshi Ram and Others v. Delhi Administration", "1967-11-27", "https://api.sci.gov.in/jonew/judis/2217.pdf", scr=["1968 SCR (2) 408"]),
+         N("Shyamlal Mohanlal v. State of Gujarat", "1964-12-14", "https://api.sci.gov.in/jonew/judis/30.pdf", scr=["1965 SCR (1) 99"]),
+         N("Vijayan @ Vijayakumar v. State Rep.By Inspector of Police", "2000-03-22", "https://api.sci.gov.in/jonew/judis/16470.pdf"),
+         N("Rajiv Kumar & Ors v. Raksha Kumari", "2003-09-17", "https://api.sci.gov.in/jonew/judis/40.pdf")]
 trows = [("1960_INSC_1", "SARJOO PRASAD versus THE STATE OF UTTAR PRADESH", "1960-12-16", ""), ("2001_INSC_1", "TWIN versus STATE", "2001-01-01", ""), ("2002_INSC_1", "BUCKET versus STATE", "2002-02-02", ""),
-         ("2003_INSC_1", "HC versus STATE", "2003-03-03", ""), ("1960_INSC_2", "SARJOO PRASAD versus THE STATE OF UTTAR PRADESH", "1961-01-01", "")]
+         ("2003_INSC_1", "HC versus STATE", "2003-03-03", ""), ("1960_INSC_2", "SARJOO PRASAD versus THE STATE OF UTTAR PRADESH", "1961-01-01", ""),
+         ("1997_INSC_54", "SODAGAR SINGH versus STATE OF PUNJAB AND ORS.", "1997-01-24", "[1997] 1 S.C.R. 1"),
+         ("1967_INSC_272", "STATE OF GUJARAT versus JASWANTLAL NATHALAL", "1967-11-23", "[1968] 2 S.C.R. 408"),
+         ("1964_INSC_285", "SHYAMLAL MOBANLAL versus STATE OF GUJARAT", "1964-12-14", "[1965] 1 S.C.R. 99"),
+         ("1999_INSC_125", "VIJAYAN @ VIJAYA KUMAR versus STATE REP. BY INSPECTOR OF POLICE", "1999-03-22", "[1999] 2 S.C.R. 89"),
+         ("2003_INSC_9", "A COMPLETELY OTHER CASE versus SOMEONE ELSE", "2003-09-17", "")]
 off = B.match_official(trows, names)
-check(off == {"1960_INSC_1": "https://api.sci.gov.in/jonew/judis/3.pdf"}, f"the court's own address is taken only for the same name and date, one address, a court-site link of a Supreme Court row ({off})")
+check(off.get("1960_INSC_1") == "https://api.sci.gov.in/jonew/judis/3.pdf", "same date and the same parties: the court's address is taken")
+check("1960_INSC_2" not in off, "a second title-index row with the same name (another date) is not given the address too")
+check("2001_INSC_1" not in off, "a title-index row that two different court files fit gets none")
+check("2002_INSC_1" not in off and "2003_INSC_1" not in off, "a bucket address, or a High Court row, is not a court address of a Supreme Court judgment")
+check("1997_INSC_54" not in off, "same date, same respondent, another FIRST party (Sodagar Singh v. State of Punjab, Teja Singh v. State of Punjab and Others): two cases, no address")
+check("1967_INSC_272" not in off, "the same Reports page (1968) 2 SCR 408 for two judgments (State of Gujarat v. Jaswantlal Nathalal, Munshi Ram v. Delhi Administration): no address")
+check(off.get("1964_INSC_285") == "https://api.sci.gov.in/jonew/judis/30.pdf", "the same Reports citation and parties that read alike through a spelling slip (Mobanlal, Mohanlal): the address is taken (pass 1)")
+check(off.get("1999_INSC_125") == "https://api.sci.gov.in/jonew/judis/16470.pdf", "a header date misread by a year (2000 for 1999) with a near-identical name and no other row of that name: the address is taken (pass 3)")
+check("2003_INSC_9" not in off, "a title-index row that no court file resembles gets none")
+check(B.parties("A v. B") == ("a", "b") and B.parties("X versus Y & Ors") == ("x", "yors") and B.parties("no party word") is None, "parties(): split on versus / v. / vs; None without one")
 
 # ---- the runtime lookup
 tmp = tempfile.mkdtemp()
@@ -112,7 +133,7 @@ real = json.load(gzip.open(os.path.join(HERE, "case_pdf_links.json.gz"), "rt", e
 import sqlite3
 ids = {r[0] for r in sqlite3.connect("file:case_lookup_index.db?mode=ro", uri=True).execute("select case_id from cases")}
 check(real["schema"] == "case-pdf-links-1" and real["title_rows"] == len(ids) and set(real["links"]) <= ids and set(real["official"]) <= ids, "the shipped table is for this title index: every id in it is a row of case_lookup_index.db")
-check(len(real["links"]) / len(ids) > 0.99 and len(real["official"]) > 3500, f"it ties {len(real['links'])} of {len(ids)} judgments to a PDF and {len(real['official'])} to the court's own address")
+check(len(real["links"]) / len(ids) > 0.99 and len(real["official"]) > 5500, f"it ties {len(real['links'])} of {len(ids)} judgments to a PDF and {len(real['official'])} to the court's own address")
 check(all(k.startswith("data/pdf/year=") and k.endswith("_EN.pdf") for k in real["links"].values()) and all(u.startswith("https://api.sci.gov.in/") for u in real["official"].values()), "every key is a bucket PDF path and every official address is on api.sci.gov.in")
 print("\nALL PASSED" if not FAILURES else f"\n{len(FAILURES)} FAILED: {FAILURES}")
 sys.exit(1 if FAILURES else 0)

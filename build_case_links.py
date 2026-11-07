@@ -11,7 +11,8 @@ How a row is tied to a PDF (all of it must hold, else the row gets no link):
   * the bucket's metadata (metadata/parquet/year=YYYY/metadata.parquet) has a row with the same case_id (INSC number), the same title (letters and digits only) and the same decision date;
     or, for a row whose id is not an INSC number (2015_SCR_14_269), a row with the same citation, title and date;
   * all such rows name ONE path, and the bucket's listing holds a key for that path (a path may be listed under two year folders: the folder of the decision year is taken, else of the citation year, else the first by name).
-  * an official address needs the same date and the same normalised name (versus / v. / vs the same), and exactly one address.
+  * an official address is tied in three guarded passes (see match_official): the same Supreme Court Reports citation; or the same date and parties that read alike, the FIRST party above all; or, for a header whose date was
+    misread, a near-identical name inside 400 days; a row that two candidates fit, or that two different court files claim, gets none.
 It is run by a PERSON, offline, when the title index or the bucket changes (the bucket's monthly refresh adds judgments; the title index would need extending first, extend_index_from_bucket.py):
     python build_case_links.py --cache DIR [--names-table ../recourse-sci-pool/names_table/names_table_d8811a9.json.gz] [--out case_pdf_links.json.gz]
   DIR holds the downloaded bucket metadata and the key listing (downloaded on the first run, politely: about 80 small requests, 50 MB, 80 listing pages). Nothing here says anything about whether a case is good law.
@@ -114,17 +115,135 @@ def match_bucket(title_rows, meta_rows, keys):
     return links, why
 
 
-def match_official(title_rows, names_rows):
-    """{case_id: court address} from the names table (the wide index's): a Supreme Court row whose link is the court's own, with the same date and the same normalised name, and one address only."""
-    idx = collections.defaultdict(set)
-    for r in names_rows:
-        if r.get("link_kind") in ("court_archive_pdf", "court_site_pdf") and r.get("court") == "Supreme Court of India" and r.get("date") and r.get("name") and r.get("link"):
-            idx[(norm_name(r["name"]), r["date"])].add(r["link"])
+_SPLIT = re.compile(r"\s+(?:versus|vs?\.?)\s+", re.I)
+_STOP = frozenset("versus state union india others another and the ors anr etc through secretary".split())
+
+
+def parties(name):
+    """('petitioner', 'respondent') of a case name written 'X versus Y', 'X v. Y' or 'X vs Y', each normalised; None when the name has no such word."""
+    parts = _SPLIT.split(_SP.sub(" ", str(name or "")).strip(), maxsplit=1)
+    if len(parts) != 2:
+        return None
+    a, b = norm_name(parts[0]), norm_name(parts[1])
+    return (a, b) if a and b else None
+
+
+def _ratio(a, b):
+    import difflib
+    return difflib.SequenceMatcher(None, a, b).ratio()
+
+
+def _same_parties(p, q, first, second):
+    """True when the first parties read alike (at least `first`) and the second parties too (at least `second`). The first party decides: 'Sodagar Singh v. State of Punjab' and 'Teja Singh v. State of Punjab and Others'
+    share a date and most of their letters, and are two cases."""
+    return bool(p and q) and _ratio(p[0], q[0]) >= first and _ratio(p[1], q[1]) >= second
+
+
+def _scr_key_names(r):
+    out = set()
+    for s_ in (r.get("citations") or {}).get("scr", []) or []:
+        m = re.search(r"(\d{4})\s+SCR\s*(?:\(Supp\.?\)\s*)?\((\d+)\)\s*(\d+)", s_) or re.search(r"(\d{4})\s+SCR\s*(?:Supp\.?\s*)?(\d+)\s+(\d+)", s_)
+        if m:
+            out.add((m.group(1), m.group(2), m.group(3)))
+    return out
+
+
+def _scr_key_title(cit):
+    m = re.search(r"\[(\d{4})\]\s*(?:Suppl?\.?\s*)?(\d+)\s*(?:Suppl?\.?\s*)?S\.?\s?C\.?\s?R\.?\s*(\d+)", str(cit or ""), re.I)
+    return (m.group(1), m.group(2), m.group(3)) if m else None
+
+
+def _day(s_):
+    import datetime
+    try:
+        return datetime.date.fromisoformat(s_)
+    except (TypeError, ValueError):
+        return None
+
+
+def match_official(title_rows, names_rows, log=None):
+    """{case_id: the court's own address} from the names table (the wide index's). A Supreme Court row of the names table whose link is the court's own is tied to a title-index row in three passes, each only when it
+    gives ONE candidate (a pass that gives two leaves the row to the next pass, and a row that is still ambiguous gets nothing):
+      1. the same Supreme Court Reports citation (year, volume, page), a date within 400 days (a date the header parse got wrong is forgiven) and parties that read alike, loosely (two judgments can begin on one page of a volume);
+      2. the same date and parties that read alike (first party at least 0.85 alike, second at least 0.75), the best candidate clearly ahead of the next (by 0.05 on the first party);
+      3. no usable date, or a date that differs: first party at least 0.93 and second at least 0.85 alike, within 400 days when both dates are known, the name used by no other title-index row.
+    Then a title-index row claimed by two different court files gets none (connected appeals decided together share names)."""
+    official = [r for r in names_rows if r.get("link_kind") in ("court_archive_pdf", "court_site_pdf") and r.get("court") == "Supreme Court of India" and r.get("name") and r.get("link")]
+    by_scr, by_date, by_tok = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(set)
+    prepared = {}
+    namecount = collections.Counter()
+    for t in title_rows:
+        cid, title, date, cit = t
+        pt = parties(title)
+        prepared[cid] = (t, pt)
+        namecount[norm_name(title)] += 1
+        k = _scr_key_title(cit)
+        if k:
+            by_scr[k].append(cid)
+        by_date[date].append(cid)
+        for w in re.findall(r"[a-z]{3,}", str(title).lower()):
+            if w not in _STOP:
+                by_tok[w].add(cid)
+    claims = collections.defaultdict(dict)       # case_id -> {url: pass}
+    stats = collections.Counter()
+    for r in official:
+        pn = parties(r["name"])
+        dd = _day(r.get("date"))
+        cand = {}
+        for k in _scr_key_names(r):
+            for cid in by_scr.get(k, []):
+                t, pt = prepared[cid]
+                td = _day(t[2])
+                if dd and td and abs((td - dd).days) > 400:
+                    continue
+                # two judgments can begin on the same page of a Reports volume (State of Gujarat v. Jaswantlal Nathalal and Munshi Ram v. Delhi Administration, [1968] 2 S.C.R. 408): the parties must read alike too, loosely
+                if pn and pt:
+                    if not _same_parties(pn, pt, 0.6, 0.5):
+                        continue
+                elif _ratio(norm_name(r["name"]), norm_name(t[1])) < 0.6:
+                    continue
+                cand[cid] = 1
+        if not cand and r.get("date") and pn:
+            scored = []
+            for cid in by_date.get(r["date"], []):
+                pt = prepared[cid][1]
+                if _same_parties(pn, pt, 0.85, 0.75):
+                    scored.append((_ratio(pn[0], pt[0]) + _ratio(pn[1], pt[1]), cid, _ratio(pn[0], pt[0])))
+            scored.sort(reverse=True)
+            if scored and (len(scored) == 1 or scored[0][2] - scored[1][2] >= 0.05):
+                cand[scored[0][1]] = 2
+        if not cand and pn:
+            toks = [w for w in re.findall(r"[a-z]{3,}", r["name"].lower()) if w not in _STOP]
+            cnt = collections.Counter(cid for w in toks for cid in by_tok.get(w, ()))
+            scored = []
+            for cid, k in cnt.most_common(60):
+                if k < 2 and len(toks) >= 2:
+                    continue
+                t, pt = prepared[cid]
+                td = _day(t[2])
+                if dd and td and abs((dd - td).days) > 400:
+                    continue
+                if _same_parties(pn, pt, 0.93, 0.85) and namecount[norm_name(t[1])] == 1:
+                    scored.append((_ratio(pn[0], pt[0]) + _ratio(pn[1], pt[1]), cid, _ratio(pn[0], pt[0])))
+            scored.sort(reverse=True)
+            if scored and (len(scored) == 1 or scored[0][2] - scored[1][2] >= 0.05):
+                cand[scored[0][1]] = 3
+        if len(cand) == 1:
+            cid, which = next(iter(cand.items()))
+            claims[cid][r["link"]] = which
+            stats[f"pass {which}"] += 1
+        elif len(cand) > 1:
+            stats["ambiguous"] += 1
+        else:
+            stats["no title-index row"] += 1
     out = {}
-    for cid, title, date, _cit in title_rows:
-        urls = idx.get((norm_name(title), date))
-        if urls and len(urls) == 1:
+    for cid, urls in claims.items():
+        if len(urls) == 1:
             out[cid] = next(iter(urls))
+        else:
+            stats["a title-index row claimed by two court files"] += 1
+    if log:
+        log(f"  court addresses: {dict(stats)}")
     return out
 
 
@@ -198,7 +317,7 @@ def build(db, cache, names_table=None, out=None, log=print):
     official = {}
     if names_table:
         nd = json.load(gzip.open(names_table, "rt", encoding="utf-8"))
-        official = match_official(rows, nd["rows"])
+        official = match_official(rows, nd["rows"], log=log)
     doc = {"schema": SCHEMA, "built": time.strftime("%Y-%m-%d", time.gmtime()), "title_rows": len(rows), "bucket_base": BUCKET, "bucket_keys_listed": len(keys), "bucket_metadata_rows": len(meta),
            "names_table_commit": (nd.get("index_commit") if names_table else None), "not_linked": {k: v for k, v in why.items() if k != "linked"},
            "source": "open Supreme Court bucket (CC-BY-4.0, Dattam Labs): metadata and listing; the court's own addresses from the names table of the wide search index", "links": links, "official": official}
