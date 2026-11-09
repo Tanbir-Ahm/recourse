@@ -31,7 +31,9 @@ none = lambda t: []
 
 cs = C.candidates(FACTS, search=none)
 keys = [f"{c['act']} {c['section']}" for c in cs]
-check(keys == ["BNS 77", "ITACT 66E", "ITACT 67", "ITACT 67A", "BNS 70", "BNS 3", "BNS 61", "BNS 49"], f"the molestation facts give the table's sections in its order ({keys})")
+check(keys == ["BNS 77", "ITACT 66E", "ITACT 67", "ITACT 67A", "BNS 70", "BNS 3", "BNS 61", "BNS 45", "BNS 49"], f"the molestation facts give the table's sections in its order ({keys})")
+c45 = next(c for c in cs if c["section"] == "45")
+check(c45["pattern"] == "present_at_rape" and "intentionally aids" in c45["why"] and c45["class"] is None, "BNS 45 (the definition of abetment) is its own candidate, with no Schedule row invented (the punishment is in 49)")
 c77 = next(c for c in cs if c["section"] == "77")
 check(c77["source"] == "pattern" and c77["pattern"] == "recording_sexual" and c77["class"] and "Voyeurism" in c77["class"]["lines"][0] and c77["class"]["lines"][0].startswith("BNS 77:"), "BNS 77 carries its reason and the Schedule's row")
 check(next(c for c in cs if c["section"] == "66E")["class"] is None and next(c for c in cs if c["section"] == "3")["class"] is None, "an IT Act section and BNS 3 (a rule, not an offence) have no Schedule row: no classification is invented")
@@ -75,7 +77,7 @@ secs = [(m["act"], str(m["section_number"])) for m in ms]
 check(("BNS", "77") not in secs and ("BNS", "70") in secs and ("BNS", "49") in secs and ("ITACT", "67A") in secs and all(m["retrieval"] == "charge_map" and m["charge_why"] for m in ms), f"the candidates become statute matches marked charge_map, a section already present is not added twice ({secs})")
 blk = CA._charge_block()
 check("## Sections the facts may bring in" in blk and "BNS section 70" in blk and "Schedule: BNS 70(1): Gang rape." in blk and "the list is NOT complete" in blk and "Do not add a section that is not in the material" in blk, "the block lists them with their reasons and Schedule lines and says the list is not complete")
-check(len(CA._CASE.charge_candidates) == 8, "the candidates are remembered for the page's table")
+check(len(CA._CASE.charge_candidates) == 9, "the candidates are remembered for the page's table")
 txt = CA.format_retrieved_text_for_prompt(ms)
 check("(A section the facts may bring in, chosen by a program:" in txt, "each match is introduced as a section the facts may bring in")
 
@@ -112,7 +114,7 @@ import answer_view as AV
 res = {"state": "single_match", "audience": "lawyer", "response_text": "**Bottom line**\n\nx", "matches": [], "charge_candidates": cs}
 v = AV.build(res)
 ct = v["charge_table"]
-check(ct and len(ct["items"]) == 8 and ct["items"][0]["section"] == "BNS section 77" and ct["items"][1]["section"] == "IT Act section 66E" and ct["items"][0]["class_lines"] and "not been read by a lawyer" in ct["note"], "the view carries the table with plain section names and the Schedule lines")
+check(ct and len(ct["items"]) == 9 and ct["items"][0]["section"] == "BNS section 77" and ct["items"][1]["section"] == "IT Act section 66E" and ct["items"][0]["class_lines"] and "not been read by a lawyer" in ct["note"], "the view carries the table with plain section names and the Schedule lines")
 check(AV.build({"state": "single_match", "response_text": "x", "matches": []})["charge_table"] is None, "none without candidates")
 blocks = AE._answer_blocks(v, True)
 t = " ".join(" ".join(r.get("text", "") for r in b.get("runs", [])) + " " + str(b.get("text", "")) for b in blocks)
