@@ -39,12 +39,40 @@ _STALK = re.compile(r"\b(?:stalk\w*|follow\w*|keeps? (?:calling|messaging|textin
 _DOWRY = re.compile(r"\b(?:dowry|cruelty|harass\w* (?:by|for) (?:her )?(?:husband|in-laws)|in-laws)\b", re.I)
 _HARBOUR = re.compile(r"\b(?:harbou?r\w*|shelter\w*|hid(?:e|ing) (?:the )?(?:accused|wanted|absconding)|absconding|wanted (?:man|person|accused)|gave (?:him )?a lift|lift to)\b", re.I)
 
+# breach of trust: property was put in someone's hands and then misappropriated (word lists written by Claude, not read by a lawyer)
+_CBT_STRONG = re.compile(r"\b(?:embezzl\w*|misappropriat\w*|siphon\w*|defalcat\w*|divert(?:ed|ing)?|own use|personal use|(?:did not|failed to|never|not) (?:account|return|returned|remit|hand over)\w*)\b", re.I)
+_CBT_WEAK = re.compile(r"\b(?:sold|pocket\w*|transferred|withdr[ae]w\w*|used|kept|opened|received|collect\w*|took)\b", re.I)
+_CBT_ENTRUST = re.compile(r"\b(?:entrusted|custody|on behalf of|in trust|trustee|executor|caretaker|treasurer|cashier|custodian|secretary|collections?|collected|stored|safekeeping|(?:received|held|collected)\b.{0,50}\b(?:to (?:buy|invest|deposit|remit)|for (?:safekeeping|investment)))\b", re.I)
+_CBT_ROLE = re.compile(r"\b(?:bank|co-?operative|society|trust|trustee|company|firm|employer|cashier|accountant|accounts manager|clerk|treasurer|manager|director|partner|agent|broker|employee|servant|driver|custodian|secretary|supervisor|caretaker|executor|administrator|officer|official|guardian|warehouse|courier|office)\b", re.I)
+_CBT_THING = re.compile(r"\b(?:rs\.?\s?[\d,]+|rupees|lakhs?|crores?|funds?|money|cash|deposits?|proceeds|premium|goods|property|amount|ornaments?|jewel\w*|gold|parcels?|stock|grain|shares|donations?|rent|collections?|advances?|fees?|sum)\b", re.I)
+
+
+def _breach_of_trust(t):
+    """Property was put in his hands (entrusted, in his custody, collected on behalf of another, or held for him by his role) and then misappropriated: a clear verb of misappropriation, or a plain verb (sold, took, transferred ...) together with a sign of entrustment, with a role and a thing."""
+    return bool((_CBT_STRONG.search(t) or (_CBT_WEAK.search(t) and _CBT_ENTRUST.search(t))) and _CBT_ROLE.search(t) and _CBT_THING.search(t))
+
+
+# an ask sentence in which a lawyer asks which offences, charges or sections apply (the first answer then gets the table's sections too, as the button would give them)
+_ASK_OFFENCES = re.compile(r"\b(?:(?:what|which)\s+(?:all\s+|other\s+|more\s+|likely\s+|possible\s+)*(?:offences?|offenses?|sections?|charges?|penal provisions?|provisions?)\b|(?:what|which)\s+(?:are|is|will be|would be)\s+the\s+(?:likely\s+|possible\s+)*(?:offences?|charges?|sections?)\b|charged\s+(?:with|under)|booked\s+under|liable\s+(?:for|under)|likely\s+to\s+face|(?:what|which)\s+offences?\s+does\b)", re.I)
+
+
+def asks_offences(ask_text):
+    """True when an ask sentence asks which offences, charges or sections apply ('What offences is he likely to face?'); False for questions about bail, arrest, the punishment of a named section and the like. Words, not understanding."""
+    try:
+        t = re.sub(r"\s+", " ", ask_text or "")
+        if not _ASK_OFFENCES.search(t):
+            return False
+        return not re.search(r"\b(?:section|sec\.?|s\.)\s*\d", t, re.I)          # a named section ('which offences are covered by section 318?') is a question about that section
+    except Exception:  # noqa: BLE001
+        return False
+
+
 # more than one person in the offence itself (the companion rule below); words written by Claude, not read by a lawyer. "and his wife" is left out on purpose (it is as often the victim's wife as the accused's).
 _OTHERS = re.compile(r"\b(?:co-?accused|co-?conspirators?|accomplices?|associates?|gang|group of|others|(?:two|three|four|five|six|several|some|many) (?:men|persons|people|boys|girls|friends|accused|others|youths)|(?:along|together) with"
                      r"|and (?:(?:two|three|four|several|some) )?(?:of )?(?:his|her|their) (?:friends?|brothers?|cousins?|partners?|parents?|family|relatives?|helpers?|associates?|accomplices?|colleagues?|mother|father|sons?|men|in-laws)"
                      r"|with (?:his|her|their) (?:friends|brothers?|associates|accomplices|colleagues|cousins?|men))\b", re.I)
 # the patterns where the offence itself can be shared by several persons; NOT evidence_deleted and harbouring, which are about what happens after the offence (abetment of the earlier offence needs help given in it)
-COMPANION_PATTERNS = frozenset({"recording_sexual", "sharing_sexual", "threat_with_material", "cheating_forgery", "hurt_weapon", "stalking", "dowry_cruelty"})
+COMPANION_PATTERNS = frozenset({"recording_sexual", "sharing_sexual", "threat_with_material", "cheating_forgery", "hurt_weapon", "stalking", "dowry_cruelty", "breach_of_trust"})
 COMPANIONS = [
     ("BNS", "61", "Criminal conspiracy: an agreement between two or more persons to do an illegal act (the section's own words); the facts speak of more than one person, which does not by itself show an agreement."),
     ("BNS", "45", "Abetment is defined here: a person abets a thing who instigates it, engages with others in a conspiracy for it (an act or illegal omission must follow), or intentionally aids it by an act or illegal omission; the facts speak of more than one person."),
@@ -80,6 +108,8 @@ PATTERNS = [
      [("BNS", "85", "Husband or his relative subjecting a married woman to cruelty (the Dowry Prohibition Act, 1961 is separate and on the Act shelf).")]),
     ("harbouring", lambda t: bool(_HARBOUR.search(t)),
      [("BNS", "249", "Harbouring an offender: the facts speak of help given to a wanted person."), ("BNS", "253", "Harbouring an offender (other cases).")]),
+    ("breach_of_trust", _breach_of_trust,
+     [("BNS", "316", "Criminal breach of trust: dishonestly misappropriating, or converting to one's own use, property one has been entrusted with. Sub-section (4) is for a clerk or servant, (5) for a public servant, banker, merchant, agent, broker or attorney; which one fits depends on his role and on what he was entrusted with.")]),
 ]
 
 

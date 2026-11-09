@@ -305,7 +305,7 @@ def question_for_engine(turns, current, call=None, matter=None, case_file=None):
     return fold(earlier, message, matter, case_file if use_file else None), info
 
 
-def engine_case_file(case_file, info, turns, current, intent=None):
+def engine_case_file(case_file, info, turns, current, intent=None, audience=None):
     """The separate argument handed to the engine for a question of a conversation with a case file (never part of the question string): {'search_hint': the facts as a search text (a follow-up only), 'victim_minor': True/False/None,
     'age_gate': bool, 'delta': 'pocso' or None, 'cases': library judgments the earlier answers relied on (a follow-up only)}; None when CASE_FILE is off. `info` is question_for_engine's record."""
     try:
@@ -319,6 +319,17 @@ def engine_case_file(case_file, info, turns, current, intent=None):
                "charges": {"facts": CF.search_hint(case_file, limit=1500)} if intent == "charges" else None}
         if intent == "charges":
             out["search_hint"] = CF.search_hint(case_file) or None
+        elif intent is None and audience == "lawyer":                       # a lawyer ASKS which offences apply (the first answer of the bank-accountant test named only BNS 344): the table's sections are handed over with the first answer, as the button would give them
+            try:
+                import charge_map
+                if charge_map.enabled():
+                    cur_facts, cur_asks = CF.split_message(current)
+                    if any(charge_map.asks_offences(a) for a in cur_asks):
+                        facts = " ".join(x for x in [CF.search_hint(case_file, limit=1500)] + list(cur_facts) if x)[:2500]
+                        if facts.strip():
+                            out["charges"] = {"facts": facts, "implicit": True}
+            except Exception:  # noqa: BLE001
+                pass
         if follow:
             try:
                 out["cases"] = carry_forward.cases_from_turns(turns)

@@ -72,7 +72,8 @@ def case_file_view(cf, turns, audience=None):
     import charge_map
     asked = any((t.get("q") or "").strip() == charge_map.CHARGES_QUESTION for t in turns or [])
     last = (turns or [])[-1] if turns else None
-    offer = bool(charge_map.enabled() and audience == "lawyer" and facts and not asked and last and (last.get("answer") or {}).get("state") in ANSWER_STATES)
+    shown = any((t.get("answer") or {}).get("charge_candidates") for t in turns or [])                 # the table already came with an answer (the person asked which offences apply): the button would give the same sections again
+    offer = bool(charge_map.enabled() and audience == "lawyer" and facts and not asked and not shown and last and (last.get("answer") or {}).get("state") in ANSWER_STATES)
     return {"enabled": True, "facts": facts, "limit": CF.MAX_FACTS, "max_chars": CF.MAX_FACT_CHARS, "relied_on": relied, "card": CF.card_for(cf, person_text),
             "charges": {"offer": True, "text": "What else could he be charged with?", "note": "Sections the facts may bring in, chosen by a program from your case file; not complete and not read by a lawyer."} if offer else None}
 
@@ -156,7 +157,7 @@ def run_turn(on_step, c):
     try:
         engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter, case_file=c.case_file)
         web_chat.log_turn(engine_q, info)
-        ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent) if c.case_file is not None or CF.enabled() else None
+        ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent, audience=c.audience) if c.case_file is not None or CF.enabled() else None
         out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf)
     except BaseException:
         _release_only(c.event_id)

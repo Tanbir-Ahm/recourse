@@ -48,6 +48,14 @@ check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("He and his friends gave 
 check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("My client and his brother deleted the CCTV footage from the shop's system after the police registered the FIR.")), "...nor does evidence deleted")
 check(keys_of("My client and his friends were arrested for selling liquor without a licence.") == [], "several persons but no pattern fires: nothing")
 check(keys_of(FACTS).count("BNS 45") == 1 and keys_of(FACTS).count("BNS 61") == 1, "a section the rape pattern already brought is not listed twice")
+# breach of trust (BNS 316) and the offence-ask detector (owner's go 2026-11-09, after the bank-accountant test whose first answer named only BNS 344)
+cbt = keys_of("The treasurer of the housing society embezzled the maintenance fund of Rs 8 lakh.")
+check(cbt[0] == "BNS 316" and C.candidates("The treasurer of the housing society embezzled the maintenance fund of Rs 8 lakh.", search=none)[0]["class"]["lines"][0].startswith("BNS 316(2)"), f"embezzlement by an office-bearer: BNS 316 with its Schedule rows ({cbt})")
+check("BNS 316" not in keys_of("An agent sold my client's plot of land for Rs 40 lakh and my client received the full price."), "a sale with no entrustment is not a breach of trust")
+check("BNS 316" in keys_of("The estate agent collected Rs 9 lakh as advance from buyers on behalf of the builder and spent it on his own business.") and "BNS 316" not in keys_of("The bank refused to release the funds in my client's account because of a court order."), "a plain verb needs a sign of entrustment")
+check({"BNS 316", "BNS 61", "BNS 45", "BNS 49"} <= set(keys_of("The cashier and his friends diverted Rs 14 lakh of the members' deposits to a private firm.")), "breach of trust with several persons: the companions follow")
+check(all(C.asks_offences(a) for a in ["What offences is he likely to face?", "Which sections can he be charged under?", "What charges will the police add?"]), "asks about offences are recognised")
+check(not any(C.asks_offences(a) for a in ["What are the grounds to seek bail?", "What is the punishment under section 318?", "Is section 316 of the BNS bailable?", "What does section 344 say?", "", None]), "asks about bail, a named section and nothing are not")
 check(next(c for c in cs if c["section"] == "66E")["class"] is None and next(c for c in cs if c["section"] == "3")["class"] is None, "an IT Act section and BNS 3 (a rule, not an offence) have no Schedule row: no classification is invented")
 check(next(c for c in cs if c["section"] == "70")["class"]["summary"][0] == "cognizable, non-bailable", "BNS 70: the Schedule's classification")
 
@@ -90,6 +98,12 @@ check(("BNS", "77") not in secs and ("BNS", "70") in secs and ("BNS", "49") in s
 blk = CA._charge_block()
 check("## Sections the facts may bring in" in blk and "BNS section 70" in blk and "Schedule: BNS 70(1): Gang rape." in blk and "the list is NOT complete" in blk and "Do not add a section that is not in the material" in blk, "the block lists them with their reasons and Schedule lines and says the list is not complete")
 check(len(CA._CASE.charge_candidates) == 9, "the candidates are remembered for the page's table")
+CA._CASE.arg = {"charges": {"facts": FACTS, "implicit": True}, "victim_minor": None}
+CA._charge_matches(have)
+_blk2 = CA._charge_block()
+check("which offences the client may face" in _blk2 and "what else the client can be charged with" not in _blk2 and "the list is NOT complete" in _blk2, "a first-question hand-over words the block as 'which offences', not 'what else'")
+CA._CASE.arg = {"charges": {"facts": FACTS}, "victim_minor": None}
+CA._charge_matches(have)
 txt = CA.format_retrieved_text_for_prompt(ms)
 check("(A section the facts may bring in, chosen by a program:" in txt, "each match is introduced as a section the facts may bring in")
 
@@ -119,6 +133,11 @@ cf = CF.add_from_message(None, FACTS)
 ecf = W.engine_case_file(cf, {"turn": 2, "rewrite": "used", "carry": []}, [], "x", intent="charges")
 check(ecf["charges"]["facts"] and "present at the crime spot" in ecf["charges"]["facts"] and ecf["search_hint"], "the 'charges' intent hands the engine the facts")
 check(W.engine_case_file(cf, {"turn": 2, "rewrite": "used", "carry": []}, [], "x")["charges"] is None, "any other turn: no charges argument")
+_ic = W.engine_case_file(None, {"turn": 1}, [], "My client is the cashier of a society and diverted Rs 14 lakh of deposits. He was arrested yesterday. What offences is he likely to face?", audience="lawyer")
+check(_ic and _ic["charges"] and _ic["charges"].get("implicit") and "diverted Rs 14 lakh" in _ic["charges"]["facts"], "a lawyer's first question that asks which offences hands the engine the facts of the message itself")
+check(W.engine_case_file(None, {"turn": 1}, [], "My client is the cashier of a society and diverted Rs 14 lakh of deposits. What are the grounds to seek bail?", audience="lawyer")["charges"] is None, "...not when the ask is about bail")
+check(W.engine_case_file(None, {"turn": 1}, [], "My client is the cashier of a society and diverted Rs 14 lakh of deposits. What offences is he likely to face?", audience="layman")["charges"] is None, "...and not for the layman")
+
 
 # the page and the file
 import answer_export as AE

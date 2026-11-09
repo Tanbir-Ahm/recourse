@@ -4287,7 +4287,7 @@ def _charge_block():
         for l in (cd.get("class") or {}).get("lines", []):
             lines.append("    Schedule: " + l)
     return ("\n\n## Sections the facts may bring in (chosen by a program from the facts the person has told us; the list is NOT complete and was not read by a lawyer)\n"
-            "The person asked what else the client can be charged with on these facts. These sections are the starting point; their official text is in the material above.\n" + "\n".join(lines) + "\n"
+            + ("The person asked which offences the client may face on these facts. Cover these sections in the answer to that ask, together with any others the material supports; their official text is in the material above.\n" if (_case_arg("charges") or {}).get("implicit") else "The person asked what else the client can be charged with on these facts. These sections are the starting point; their official text is in the material above.\n") + "\n".join(lines) + "\n"
             "For each of these that the facts may fit, say in your own words, using ONLY the material: what the section requires; which of the person's facts may match it; what the prosecution would still have to show; the classification (cognizable or not, bailable or not, the court) from its Schedule line, "
             "in the Schedule's order where there is more than one entry; and the points the defence can raise, each tied to the section's text or to a case in the material. Say plainly where the facts do not meet a section's words. Do not add a section that is not in the material. "
             "Say once that this list is not complete and that whether any of these is pressed against the client is for the investigating agency and the court.\n")
