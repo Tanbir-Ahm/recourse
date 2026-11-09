@@ -3,6 +3,7 @@ import logging
 import re
 from anthropic import Anthropic
 
+import answer_shape
 import answer_style
 import grounding_checks
 
@@ -1966,6 +1967,15 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question), held=_shelf_held(matches, question))
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # the 'what else could he be charged with' turn: the candidates and the clause (_charge_block); '' for every other turn
+            retrieved_text = retrieved_text + _charge_block()
+        except Exception:  # pragma: no cover -- fail-open
+            pass
+        try:                                       # OFFENCE_CLASS=on (offence_class.py): the BNSS First Schedule's row for each BNS offence among the sections, so the answer can state cognizable / bailable / court from the Schedule's words; '' otherwise
+            import offence_class
+            retrieved_text = retrieved_text + offence_class.prompt_block(matches)
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         try:                                       # case_file.py: the person tapped 'under 18'; POCSO is in the material; answer only what changes (_case_delta_block); '' for every other turn
             retrieved_text = retrieved_text + _case_delta_block()
         except Exception:  # pragma: no cover -- fail-open
@@ -1977,6 +1987,15 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
+        try:                                       # ANSWER_SHAPE (default off; answer_shape.py): the lawyers' note takes its headings and its length from what the person asked; the Hard rules are untouched
+            if answer_shape.enabled() and answer_style.template_key() == "v3-lawyer" and answer_style.get_channel() != "whatsapp":
+                _shape = answer_shape.shape_block(_person_message(question))
+                if _shape:
+                    conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _shape
+                    _m = _person_message(question)
+                    print("ANSWER_SHAPE " + json.dumps({"asks": len(answer_shape.asks(_m)), "tier": answer_shape.tier(_m)}), flush=True)
+        except Exception as exc:  # noqa: BLE001 -- fail-open
+            logger.warning("answer shape failed: %s", type(exc).__name__)
         pilot_context = _format_pilot_context_for_prompt(pilot_matches, question)
         prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
@@ -2823,6 +2842,8 @@ def format_retrieved_text_for_prompt(matches):
         block = f"[{source}, Section/Para {label}]\n{m['text']}"
         if m.get("retrieval") == "carried":                                          # carry_forward.py: relied on in an earlier answer of this same conversation
             block = f"[{source}, Section/Para {label}]\n(Relied on in your earlier answer in this same conversation. It is given again because a follow-up carries no subject of its own: use it only if it bears on the new question, and say nothing about it otherwise.)\n{m['text']}"
+        if m.get("retrieval") == "charge_map":                                      # charge_map.py: a section the facts may bring in
+            block = f"[{source}, Section/Para {label}]\n(A section the facts may bring in, chosen by a program: {m.get('charge_why') or ''})\n{m['text']}"
         if m.get("retrieval") == "cited" and m.get("cited_by"):                       # SECTION_XREF: a section handed over because the section the person asked about refers to it
             block = f"[{source}, Section/Para {label}]\n(Cited by section {m['cited_by']} of the same Act, the section the person asked about.)\n{m['text']}"
 
@@ -3737,6 +3758,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # a follow-up: the sections the earlier answers of this conversation relied on (carry_forward.py), unless the question already has them
     overrides = overrides + _carried_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
     overrides = overrides + _carried_case_matches({str(o.get("case_name") or "").lower() for o in overrides if isinstance(o, dict)})
+    overrides = overrides + _charge_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
 
     # Search on the CURRENT message first, falling back to the full
     # history-included question only if that narrow search finds nothing
@@ -3746,7 +3768,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     result = _find_relevant_sections_for_turn(current_message, question)
     _progress_library(result)
     _lib = {((m.get("act") or "").upper(), str(m.get("section_number")).upper()) for m in (result.get("matches") or []) if isinstance(m, dict)}
-    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") in ("carried", "alias") and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
+    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") in ("carried", "alias", "charge_map") and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
     overrides = _drop_full_act_duplicates(overrides, (result.get("matches") or []) + statute_overrides)       # the NI Act / IT Act shelf copies (detection on since 2026-11-02): a section the library already supplies is not handed over twice
 
     if result["state"] == "unavailable":
@@ -4171,6 +4193,53 @@ def _carried_matches(have):
     return out
 
 
+def _charge_matches(have):
+    """CHARGE_MAP (charge_map.py): for the turn the person asked 'what else could he be charged with' (intent 'charges'), the candidate sections chosen by code from the conversation's facts, as statute matches marked retrieval 'charge_map' with their reason; those the question already has are
+    not added twice. [] for every other turn. The candidates are remembered for the page's table (result['charge_candidates']). One log line CHARGE_MAP {...} (patterns and sections; never the facts)."""
+    c = _case_arg("charges")
+    _CASE.charge_candidates = None
+    if not isinstance(c, dict):
+        return []
+    try:
+        import charge_map
+        cands = charge_map.candidates(c.get("facts"), _case_arg("victim_minor"))
+        out, used = [], []
+        for cd in cands:
+            m = _bns_section_as_match(cd["section"]) if cd["act"] == "BNS" else (_itact_section_as_match(cd["section"]) if cd["act"] == "ITACT" else None)
+            if not m:
+                continue
+            used.append(cd)
+            key = ((m.get("act") or "").upper(), str(m.get("section_number")).upper().split("(")[0])
+            if key in {(h[0], h[1].split("(")[0]) for h in have}:
+                continue
+            m["retrieval"] = "charge_map"
+            m["charge_why"] = cd["why"]
+            out.append(m)
+        _CASE.charge_candidates = used
+        print("CHARGE_MAP " + json.dumps({"patterns": sorted({cd["pattern"] for cd in used if cd.get("pattern")}), "sections": [f"{cd['act']} {cd['section']}" for cd in used], "searched": sum(1 for cd in used if cd.get("source") == "search")}), flush=True)
+        return out
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("charge map failed: %s", type(exc).__name__)
+        return []
+
+
+def _charge_block():
+    """The prompt block of a 'what else could he be charged with' turn: the candidates with their reasons and the BNSS First Schedule's rows, and the clause that says the list is not complete. '' for every other turn."""
+    cands = getattr(_CASE, "charge_candidates", None)
+    if not cands or not isinstance(_case_arg("charges"), dict):
+        return ""
+    lines = []
+    for cd in cands:
+        lines.append(f"- {cd['act']} section {cd['section']}: {cd['why']}" + (" (chosen by a program from the facts)" if cd.get("source") == "pattern" else " (found by a search by meaning)"))
+        for l in (cd.get("class") or {}).get("lines", []):
+            lines.append("    Schedule: " + l)
+    return ("\n\n## Sections the facts may bring in (chosen by a program from the facts the person has told us; the list is NOT complete and was not read by a lawyer)\n"
+            "The person asked what else the client can be charged with on these facts. These sections are the starting point; their official text is in the material above.\n" + "\n".join(lines) + "\n"
+            "For each of these that the facts may fit, say in your own words, using ONLY the material: what the section requires; which of the person's facts may match it; what the prosecution would still have to show; the classification (cognizable or not, bailable or not, the court) from its Schedule line, "
+            "in the Schedule's order where there is more than one entry; and the points the defence can raise, each tied to the section's text or to a case in the material. Say plainly where the facts do not meet a section's words. Do not add a section that is not in the material. "
+            "Say once that this list is not complete and that whether any of these is pressed against the client is for the investigating agency and the court.\n")
+
+
 def _companion_shelf_matches(question, matches):
     """`matches` plus the companion sections of evidence_companions.py (EVIDENCE_COMPANIONS=on, circumstantial-evidence questions) and of shelf_companions.py (SHELF_COMPANIONS, default on: sections 17 and 17A of the
     Prevention of Corruption Act for a question about an enquiry or investigation); `matches` unchanged when both are off or on any failure."""
@@ -4497,7 +4566,8 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     answer_style.set_audience(audience)
     answer_style.set_channel(channel)
     _CARRIED.refs = list(carried_sections) if carried_sections else None          # carry_forward.py: sections the earlier answers of this conversation relied on (a follow-up only); cleared in the finally below
-    _CASE.arg = dict(case_file) if isinstance(case_file, dict) else None          # case_file.py: the conversation's case file as a separate argument (a follow-up's search text, the victim's age, the POCSO delta); cleared in the finally below
+    _CASE.arg = dict(case_file) if isinstance(case_file, dict) else None
+    _CASE.charge_candidates = None          # case_file.py: the conversation's case file as a separate argument (a follow-up's search text, the victim's age, the POCSO delta); cleared in the finally below
     try:
         import cost_log
         cost_log.begin(question)
@@ -4534,6 +4604,9 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
                 if result["audience"] == "lawyer":
                     result["response_text"] = _ensure_bottom_line(result.get("response_text"))
                     result["authorities"] = _build_authorities(result)
+                    result = _attach_ask_check(result, question)
+                    if getattr(_CASE, "charge_candidates", None):
+                        result["charge_candidates"] = list(_CASE.charge_candidates)
         except Exception as exc:  # fail-open: the answer always goes out
             logger.warning("authorities table failed: %s", exc)
         return result
@@ -4549,6 +4622,34 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         answer_style.set_channel(None)
         _CARRIED.refs = None
         _CASE.arg = None
+
+
+def _person_message(question):
+    """The person's own words of the CURRENT message (web_chat's folded earlier messages and the rewrite line are cut off)."""
+    try:
+        from web_chat import REWRITE_LEAD as lead
+    except Exception:  # noqa: BLE001
+        lead = _FOLLOW_UP_REWRITE_FALLBACK
+    cur = _extract_current_message(question) or ""
+    cut = cur.find("\n" + lead)
+    return (cur[:cut] if cut != -1 else cur).strip()
+
+
+def _attach_ask_check(result, question):
+    """ANSWER_SHAPE: result['ask_check'] = the checklist of what the person asked and where the note answers it (answer_shape.checklist), and one log line about the Bottom line. Never changes the text; never raises."""
+    try:
+        if not answer_shape.enabled() or not isinstance(result, dict) or result.get("audience") != "lawyer":
+            return result
+        msg = _person_message(question)
+        text = result.get("response_text") or ""
+        cl = answer_shape.checklist(msg, text)
+        if cl:
+            result["ask_check"] = cl
+        words, longest = answer_shape.bottom_line_stats(text)
+        print("BOTTOM_LINE_CHECK " + json.dumps({"words": words, "longest_sentence": longest, "asks": len(answer_shape.asks(msg)), "answered": (cl or {}).get("answered"), "total": (cl or {}).get("total")}), flush=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ask check failed: %s", type(exc).__name__)
+    return result
 
 
 def _ensure_bottom_line(text):

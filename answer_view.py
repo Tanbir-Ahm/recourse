@@ -399,6 +399,41 @@ def _strings(v):
     return [str(x) for x in v] if isinstance(v, list) else []
 
 
+ASK_CHECK_LABELS = {"answered": "answered", "material_lacks": "the material does not show it", "not_found": "not found in the note"}
+
+
+def _ask_check(v):
+    """ANSWER_SHAPE's checklist for the page: {'items': [{'ask', 'status', 'label', 'heading'}], 'answered', 'total'} or None (answer_shape.checklist, built by code)."""
+    try:
+        if not isinstance(v, dict) or not isinstance(v.get("items"), list) or not v["items"]:
+            return None
+        items = [{"ask": str(i.get("ask") or ""), "status": str(i.get("status") or ""), "label": ASK_CHECK_LABELS.get(str(i.get("status")), ""), "heading": _s(i.get("heading"))} for i in v["items"] if isinstance(i, dict)]
+        return {"items": items, "answered": int(v.get("answered") or 0), "total": int(v.get("total") or len(items))}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+CHARGE_TABLE_NOTE = "Chosen by a program from the facts in your case file (a table of fact patterns written by Recourse and a search by meaning). The list is not complete and has not been read by a lawyer. The classification is the BNSS First Schedule's own wording, extracted from the Gazette PDF by a program. Nothing here says anyone will be charged."
+
+
+def _charge_table(v):
+    """CHARGE_MAP's table for the page: {'note', 'items': [{'section', 'why', 'how', 'class_lines', 'summary'}]} or None (charge_map.candidates, stored with the answer)."""
+    try:
+        if not isinstance(v, list) or not v:
+            return None
+        items = []
+        for c in v:
+            if not isinstance(c, dict):
+                continue
+            act = "IT Act" if str(c.get("act")).upper() == "ITACT" else str(c.get("act") or "")
+            cl = c.get("class") if isinstance(c.get("class"), dict) else {}
+            items.append({"section": f"{act} section {c.get('section')}", "why": str(c.get("why") or ""), "how": "chosen from the facts by a table of patterns" if c.get("source") == "pattern" else "found by a search by meaning",
+                          "class_lines": [str(x) for x in (cl.get("lines") or [])], "summary": [str(x) for x in (cl.get("summary") or []) if x]})
+        return {"note": CHARGE_TABLE_NOTE, "items": items} if items else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def build(result):
     """The presentation data for one engine result, or None. For an answer: the pieces in the order the page draws them. For anything else: the shared refusal wording plus the notes the page shows under it."""
     try:
@@ -464,6 +499,8 @@ def build(result):
             "section_notes": section_notes(result.get("section_note")) if isinstance(result.get("section_note"), list) else [],
             "authorities": authorities, "statutes": statutes, "judgments": cases, "cited_links": cited, "register": register,
             "grounding_notes": _strings(result.get("grounding_notes")), "sci_related": sci, "anchors": anchors, "unverified": unverified,
+            "ask_check": _ask_check(result.get("ask_check")),
+            "charge_table": _charge_table(result.get("charge_candidates")),
         }
     except Exception:  # noqa: BLE001 -- the view is a convenience for the front end; the engine's own result is still sent
         logger.exception("answer view failed")

@@ -18,6 +18,7 @@ from sqlalchemy import func, select
 import answer_export
 import answer_view
 import case_file as CF
+import charge_map
 import refusal_text
 import web_chat
 
@@ -77,7 +78,7 @@ class PatchChat(BaseModel):
 
 class AskChat(BaseModel):
     question: str = Field(min_length=1, description="The person's own words.")
-    intent: Optional[Literal["age_minor"]] = Field(default=None, description="'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file).")
+    intent: Optional[Literal["age_minor", "charges"]] = Field(default=None, description="'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question.")
 
 
 class CaseFileFact(BaseModel):
@@ -125,7 +126,7 @@ def create_chat(body: CreateChat, principal: Principal = Depends(ready_user), db
 def get_chat(chat_id: uuid.UUID, principal: Principal = Depends(ready_user), db=Depends(get_db)):
     c = _own_chat(db, principal.user, chat_id)
     return {**chat_view(c, _matter_titles(db, [c]).get(c.matter_id)), "messages": [message_view(m) for m in c.messages], "turn_limit": web_chat.MAX_TURNS,
-            "case_file": chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))}
+            "case_file": chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages), c.audience)}
 
 
 @router.patch("/api/chats/{chat_id}", summary="Rename or archive a conversation")
@@ -155,7 +156,7 @@ def patch_case_file(chat_id: uuid.UUID, body: PutCaseFile, principal: Principal 
     _case_file_or_404(c)
     c.case_file = CF.apply_edit(c.case_file, [{"id": f.id, "text": f.text} for f in body.facts])
     db.commit()
-    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))
+    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages), c.audience)
 
 
 @router.post("/api/chats/{chat_id}/case_file/answer", summary="Tap an answer on a card (the victim's age)")
@@ -168,7 +169,7 @@ def post_case_file_answer(chat_id: uuid.UUID, body: CaseFileAnswer, principal: P
         raise HTTPException(status_code=404, detail="not_found")
     c.case_file = CF.set_answer(c.case_file, body.key, body.value)
     db.commit()
-    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))
+    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages), c.audience)
 
 
 @router.delete("/api/chats/{chat_id}", summary="Delete a conversation and its messages, now")
@@ -191,6 +192,8 @@ def _prepare(db, principal, chat_id, key, question, intent=None):
     if chat_service.user_message_count(db, chat.id) >= web_chat.MAX_TURNS:
         raise HTTPException(status_code=409, detail="turn_limit")
     if intent == "age_minor" and not (CF.enabled() and CF.victim_minor(chat.case_file)):
+        raise HTTPException(status_code=409, detail="intent_not_ready")
+    if intent == "charges" and not (charge_map.enabled() and chat.audience == "lawyer" and CF.fact_texts(chat.case_file)):
         raise HTTPException(status_code=409, detail="intent_not_ready")
     if not chat_service.claim(chat.id, key):
         raise HTTPException(status_code=409, detail="in_progress")
@@ -219,6 +222,8 @@ async def ask_in_chat(chat_id: uuid.UUID, body: AskChat, request: Request, idemp
     question = body.question.strip()
     if body.intent == "age_minor":
         question = AGE_MINOR_QUESTION                  # the person tapped; the words are ours, and they are shown to the person as the question they asked
+    elif body.intent == "charges":
+        question = charge_map.CHARGES_QUESTION
     if not question:
         raise HTTPException(status_code=422, detail="question is empty")
     if len(question) > config.max_question_chars():

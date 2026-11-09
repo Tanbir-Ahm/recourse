@@ -33,6 +33,10 @@ class E:
                         "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "grounding_notes": ["One quotation could not be matched to the sources."],
                         "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a><script>window.__xss=1</script>."},
                         "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2"}]}
+            if case_file and case_file.get("charges"):        # the 'what else could he be charged with' button: the real candidate table, no model
+                import charge_map
+                cands = charge_map.candidates(case_file["charges"]["facts"], case_file.get("victim_minor"), search=lambda t: [])
+                return {"state": "single_match", "audience": audience, "response_text": "**Bottom line**\n\nStub answer on other charges.", "matches": [], "charge_candidates": cands}
             if "MOLEST" in question.rsplit("Now the person says:", 1)[-1] or "under 18 years old" in question.rsplit("Now the person says:", 1)[-1]:        # a case that mentions a sexual offence (the case file's age card), and the 'under 18' question
                 tail = (" [case file: " + ("delta " + str(case_file.get("delta")) + ", minor " + str(case_file.get("victim_minor")) + ", hint " + str(bool(case_file.get("search_hint")))) + "]") if case_file else ""
                 return {"state": "single_match", "audience": audience, "response_text": "Section 77 of the BNS may apply to the clip." + tail + ("" if "own notes on the matter" not in question else " [read with the matter notes]"),

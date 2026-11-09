@@ -179,6 +179,28 @@ try:
     g3 = c.get(f"/api/chats/{chat3}", headers=A()).json()
     check(len(g3["case_file"]["facts"]) == 1, "small talk (state 'unrelated') adds no fact")
 
+    # ------------------------------------------------------------ the 'what else could he be charged with' button (CHARGE_MAP)
+    import charge_map
+    check(c.get(f"/api/chats/{chat}", headers=A()).json()["case_file"]["charges"] is None and ask(A, chat, "x", intent="charges").status_code == 409, "CHARGE_MAP off: no offer, and the intent is refused (409)")
+    os.environ["CHARGE_MAP"] = "on"
+    chat5 = new_chat(A)
+    r = ask(A, chat5, Q1)
+    off = r.json()["case_file"]["charges"]
+    check(off and off["offer"] is True and "not complete" in off["note"], "CHARGE_MAP on, a lawyer's conversation with facts and an answer: the offer is made")
+    chat6 = new_chat(A, "layman")
+    r6 = ask(A, chat6, Q1)
+    check(r6.json()["case_file"]["charges"] is None and ask(A, chat6, "x", intent="charges").status_code == 409, "a layman's conversation: no offer, the intent is refused (lawyers first)")
+    r = ask(A, chat5, "anything", intent="charges")
+    call = FakeEngine.calls[-1]
+    check(r.status_code == 200 and call["q"].endswith("Now the person says: " + charge_map.CHARGES_QUESTION), "the server writes the question's words")
+    check(call["case_file"]["charges"] and "present at the crime spot" in call["case_file"]["charges"]["facts"], "the engine is given the facts for the charge map")
+    check(r.json()["case_file"]["charges"] is None, "after it is asked the offer is not made again")
+    g5 = c.get(f"/api/chats/{chat5}", headers=A()).json()
+    check([m["content"] for m in g5["messages"] if m["role"] == "user"][-1] == charge_map.CHARGES_QUESTION and len(g5["case_file"]["facts"]) == 3, "the person sees that question in the conversation and it adds no fact")
+    chat7 = new_chat(A)
+    check(ask(A, chat7, "x", intent="charges").status_code == 409, "no facts yet: refused")
+    os.environ["CHARGE_MAP"] = "off"
+
     # ------------------------------------------------------------ AGE_CARD off: no card, no tap
     os.environ["AGE_CARD"] = "off"
     check(c.get(f"/api/chats/{chat}", headers=A()).json()["case_file"]["card"] is None and c.post(f"/api/chats/{chat2}/case_file/answer", json={"key": "victim_age", "value": "minor"}, headers=A()).status_code == 404, "AGE_CARD off: no card and the tap is 404")

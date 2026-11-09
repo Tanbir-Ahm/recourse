@@ -356,6 +356,19 @@ def _answer_blocks(view, lawyer):
         B += md_blocks(view["answer_markdown"])
     else:
         B += [_p(FALLBACK_LEAD), {"t": "quote", "runs": [R(view.get("fallback_text") or "")]}]
+    ac = view.get("ask_check")
+    if isinstance(ac, dict) and ac.get("items"):                 # ANSWER_SHAPE: what the person asked and where the note answers it (built by code)
+        B.append({"t": "h3", "text": "What you asked, and where it is answered"})
+        for it in ac["items"]:
+            B.append(_p("•  " + str(it.get("ask") or "") + "  —  " + (("under “" + str(it["heading"]) + "”: ") if it.get("heading") else "") + str(it.get("label") or ""), muted=True))
+    ct = view.get("charge_table")
+    if isinstance(ct, dict) and ct.get("items"):                 # CHARGE_MAP: the sections considered, with the Schedule's classification (code-built)
+        B.append({"t": "h3", "text": "Sections considered for the question of other charges"})
+        B.append(_p(ct.get("note") or "", muted=True))
+        for it in ct["items"]:
+            B.append({"t": "p", "runs": [R(str(it.get("section") or ""), b=True), R("  —  " + str(it.get("why") or "") + " (" + str(it.get("how") or "") + ")")]})
+            for l in it.get("class_lines") or []:
+                B.append(_official(l))
     if not lawyer:
         try:
             cl = answer_pdf.unclear_checklist(view.get("copy_text") or "") if view.get("answer_markdown") else {"items": [], "documents": [], "from_answer": ""}

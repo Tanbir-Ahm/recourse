@@ -57,7 +57,7 @@ def matter_notes(db, chat):
 FACT_LABELS = {"typed": "From your message", "edited": "You edited this", "added": "You added this", "button": "You tapped this"}
 
 
-def case_file_view(cf, turns):
+def case_file_view(cf, turns, audience=None):
     """What the page draws as the conversation's case file (case_file.py): the facts (id, text, kind, label, whether the text can be changed), what the earlier answers relied on (display only), and the age card when it is due. None when
     CASE_FILE is off. `turns`: [{'q', 'answer'}] of the saved conversation."""
     if not CF.enabled():
@@ -69,7 +69,12 @@ def case_file_view(cf, turns):
     except Exception:  # noqa: BLE001
         relied = {"sections": [], "cases": []}
     person_text = " ".join(t.get("q") or "" for t in turns or [])
-    return {"enabled": True, "facts": facts, "limit": CF.MAX_FACTS, "max_chars": CF.MAX_FACT_CHARS, "relied_on": relied, "card": CF.card_for(cf, person_text)}
+    import charge_map
+    asked = any((t.get("q") or "").strip() == charge_map.CHARGES_QUESTION for t in turns or [])
+    last = (turns or [])[-1] if turns else None
+    offer = bool(charge_map.enabled() and audience == "lawyer" and facts and not asked and last and (last.get("answer") or {}).get("state") in ANSWER_STATES)
+    return {"enabled": True, "facts": facts, "limit": CF.MAX_FACTS, "max_chars": CF.MAX_FACT_CHARS, "relied_on": relied, "card": CF.card_for(cf, person_text),
+            "charges": {"offer": True, "text": "What else could he be charged with?", "note": "Sections the facts may bring in, chosen by a program from your case file; not complete and not read by a lawyer."} if offer else None}
 
 
 def title_from(question):
@@ -211,7 +216,7 @@ def _save(c, out, info):
             with dbs.session() as db:
                 chat = db.execute(select(M.Chat).where(M.Chat.id == c.chat_id, M.Chat.user_id == c.user_id)).scalar_one_or_none()
                 if chat is not None:
-                    reply["case_file"] = case_file_view(chat.case_file, turns_of(chat.messages))
+                    reply["case_file"] = case_file_view(chat.case_file, turns_of(chat.messages), chat.audience)
     except Exception as exc:  # noqa: BLE001 -- the answer is returned without the panel's data
         logger.warning("could not read the case file back: %s", type(exc).__name__)
     return reply

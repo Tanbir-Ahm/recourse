@@ -58,14 +58,17 @@
           "intent": {
             "anyOf": [
               {
-                "const": "age_minor",
+                "enum": [
+                  "age_minor",
+                  "charges"
+                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file).",
+            "description": "'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question.",
             "title": "Intent"
           },
           "question": {

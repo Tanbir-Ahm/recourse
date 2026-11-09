@@ -315,7 +315,10 @@ def engine_case_file(case_file, info, turns, current, intent=None):
             return None
         follow = bool(info) and info.get("turn", 1) > 1 and (info.get("rewrite") != "new_topic" or _leans_back(current))          # when in doubt (no rewrite was made) a later question is a follow-up, as the rewrite step itself says
         out = {"search_hint": CF.search_hint(case_file) or None if follow else None, "victim_minor": CF.victim_minor(case_file), "age_gate": CF.age_card_enabled(),
-               "delta": "pocso" if intent == "age_minor" and CF.victim_minor(case_file) else None, "cases": []}
+               "delta": "pocso" if intent == "age_minor" and CF.victim_minor(case_file) else None, "cases": [],
+               "charges": {"facts": CF.search_hint(case_file, limit=1500)} if intent == "charges" else None}
+        if intent == "charges":
+            out["search_hint"] = CF.search_hint(case_file) or None
         if follow:
             try:
                 out["cases"] = carry_forward.cases_from_turns(turns)
