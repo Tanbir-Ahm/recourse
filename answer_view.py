@@ -15,6 +15,8 @@ import refusal_text
 logger = logging.getLogger("answer_view")
 ANSWER_STATES = ("single_match", "conflicting_matches")
 SHELF_EXCERPT_CHARS = 16000
+LIBRARY_FULL_CHARS = 8000          # a BNS / BNSS / IT / NI section of the library is shown whole up to this length (988 library sections: 98% are under 4,700 characters, 10 are over 6,000). Until 2026-11-09 it was cut at 900, which hid
+                                   # Explanation 1 of BNS 77 and sub-section (1)(b) of BNSS 35 in a staging answer that rested on both
 
 
 # ------------------------------------------------------------------ copies of the page's helpers (recourse_app.py)
@@ -95,6 +97,40 @@ def case_is_named(m, reply_lc):
     return False
 
 
+_PARTY_HEAD = _re.compile(r"^(?:the |sri |shri |smt\.? |smti\.? |dr\.? |mr\.? |mrs\.? |ms\.? |m/s\.? |messrs\.? )+")
+_PARTY_TAIL = _re.compile(r"\s*(?:,|&|\band\b)\s*(?:anr|ors|another|others)\b.*$")
+_PARTY_NOISE = frozenset("represented through versus inspector police secretary".split())
+
+
+def sci_named(case_name, reply_lc):
+    """True when the answer NAMES a wider-search case. The stored form is 'Samar Chiring v. The State of Assam'; the answer writes 'Samar Chiring' or 'Gurmit Singh', so each party is reduced to its distinctive words
+    (honorifics, 'and Anr', one-letter initials and generic parties such as the State or the Union dropped) and a case is named when ALL the distinctive words of one party stand in the answer as whole words. A party the State
+    or the Union alone never counts. Never raises; False when in doubt (an unused-looking case is only moved to a collapsed list, never hidden)."""
+    try:
+        name = _re.sub(r"\(.*?\)", " ", str(case_name or "")).lower()
+        reply_lc = str(reply_lc or "").lower()
+        for party in _re.split(r"\s+(?:v\.?|vs\.?|versus)\s+", name):
+            p = _re.sub(r"\s+", " ", party).strip(" .,")
+            for _ in range(2):
+                p = _PARTY_HEAD.sub("", p)
+            p = _PARTY_TAIL.sub("", p).strip(" .,")
+            if not p or any(p.startswith(g) for g in _CASE_GENERIC_PARTY):
+                continue
+            first = p.split(",")[0]
+            words = [w for w in _re.findall(r"[a-z]+", first) if len(w) >= 3 and w not in _PARTY_NOISE]
+            seen, dist = set(), []
+            for w in words:
+                if w not in seen:
+                    seen.add(w)
+                    dist.append(w)
+            dist = dist[:4]
+            if len(dist) >= 1 and sum(len(w) for w in dist) >= 6 and all(_re.search(r"\b" + _re.escape(w) + r"\b", reply_lc) for w in dist):
+                return True
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def sources_worth_showing(matches, reply_text, cap=16, strict=False):
     """The judgments to show under 'the sections and judgments this answer rests on': those the reply names; when it names none, every one handed over (the layman's box, which keeps its sources even when the answer
     does not name a case), or, with `strict` (the lawyers' note, 2026-11-02: 'Arnesh Kumar' was listed under two answers about anticipatory bail that never named it), none."""
@@ -170,11 +206,19 @@ def _head_has_words(head, question):
         return True
 
 
+def _opening(text):
+    """The section's opening for a long section's cut view: up to 300 characters of whole words (the old first LINE was a wrapped line of the source, about 80 characters: 'Any police officer may without an order from a Magistrate and without a ...')."""
+    flat = text[:300]
+    if len(text) > 300 and " " in flat:
+        flat = flat[:flat.rfind(" ")]
+    return flat
+
+
 def statute_excerpt(m, reply="", question=""):
-    """The text of a statute section as 'the sections and judgments this answer rests on' shows it: a shelf section whole, any other statute cut at 900 characters. NEW (2026-11-03, owner's A): when the answer cites a
+    """The text of a statute section as 'the sections and judgments this answer rests on' shows it: a shelf section whole (up to 16,000 characters), any other statute whole up to LIBRARY_FULL_CHARS (8,000; it was cut at 900 until 2026-11-09). NEW (2026-11-03, owner's A): when the answer cites a
     sub-section that the cut leaves out (both anticipatory-bail answers rested on BNSS 483(3), and the box stopped inside the provisos of 483(1)), the section's first line is shown, then a gap marked '...', then each
     cited sub-section (up to CITED_SUBSECTION_CHARS each). Without such a citation, or when the cited sub-section is inside the plain excerpt, the excerpt is what it always was."""
-    limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
+    limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else LIBRARY_FULL_CHARS
     text = clean_excerpt(m.get("text") or "")
     plain = text[:limit]
     if len(text) <= limit:
@@ -182,7 +226,7 @@ def statute_excerpt(m, reply="", question=""):
     if question and not isinstance(m.get("shelf"), dict) and not (reply and cited_subsections(reply, m.get("section_number"))) and not _head_has_words(plain, question):
         # PASSAGE_WINDOW: the section's first line, a marked gap and the stretch that holds the question's words, ONLY when the first 900 characters hold none of them (a statute's opening states the rule, so it is kept
         # whenever it holds a word of the question; a sub-section the answer cites by number keeps the older rule below)
-        first = text.split("\n", 1)[0][:300]
+        first = _opening(text)
         w = _window_on(text[len(first):].lstrip(), question, max(limit - len(first) - 20, 300), skip_heading=False)
         if w and w.startswith("... "):
             return first + " ...\n\n[...]\n\n" + w[4:].rstrip()
@@ -203,8 +247,7 @@ def statute_excerpt(m, reply="", question=""):
                 break
         if not parts:
             return plain
-        first = text.split("\n", 1)[0]
-        return first[:300] + " ...\n\n[...]\n\n" + "\n\n".join(parts)
+        return _opening(text) + " ...\n\n[...]\n\n" + "\n\n".join(parts)
     except Exception:  # noqa: BLE001
         return plain
 
@@ -401,7 +444,8 @@ def build(result):
             sci = {"fed": fed, "as_of": _s(result.get("sci_as_of")), "as_of_by_court": {str(k): str(v) for k, v in by_court.items() if v} if by_court else None,
                    "scope": _SCI.scope_phrase(_SCI.courts_of(rel)), "court_tags": _SCI.mixed(rel), "items": [
                 {"case_name": str(j.get("case_name") or ""), "link": _s(j.get("link")), "date": _s(j.get("date")), "paragraph": _s(j.get("paragraph")), "link_kind": _s(j.get("link_kind")), "court": _SCI.court_of(j),
-                 "register_note": _s(j.get("register_note")), "passage_note": _s(j.get("passage_note")), "names_register_note": _s(j.get("names_register_note")), "excerpt": _s(j.get("excerpt"))} for j in rel]}
+                 "register_note": _s(j.get("register_note")), "passage_note": _s(j.get("passage_note")), "names_register_note": _s(j.get("names_register_note")), "excerpt": _s(j.get("excerpt")),
+                 "used": sci_named(j.get("case_name"), reply.lower())} for j in rel]}
         anchors = None
         if result.get("anchor_excerpts"):
             items = [a for a in result["anchor_excerpts"] if isinstance(a, dict)]

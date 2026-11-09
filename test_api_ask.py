@@ -193,8 +193,18 @@ ENG.mode = "slow"
 ENG.gate.clear()
 _orig = config.ask_timeout_seconds
 config.ask_timeout_seconds = lambda: 0.3
+import logging as _logging
+class _Grab(_logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.lines = []
+    def emit(self, rec):
+        self.lines.append(rec.getMessage())
+_grab = _Grab()
+_logging.getLogger("recourse.api").addHandler(_grab)
 r = c.post("/api/ask", json={"question": "slow one"}, headers=SSE)
 ev = sse(r)
+check(any(l.startswith("ask timed out after") and "may still be saved" in l for l in _grab.lines), f"the site's giving up is written to the log ({_grab.lines})")
 check([n for n, _ in ev][-2:] == ["error", "done"] and [d for n, d in ev if n == "error"][0]["code"] == "timeout", "SSE: a slow question ends with a 'timeout' error and 'done'")
 r = c.post("/api/ask", json={"question": "slow one"}, headers=H)
 check(r.status_code == 504, f"JSON mode: 504 on timeout ({r.status_code})")

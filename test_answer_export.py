@@ -109,7 +109,7 @@ check(_T.box_title([], True) == X.H_SCI_FED and _T.box_title([], False) == X.H_S
 check(_T.credit_for("open_bucket_pdf") == X.OPEN_BUCKET == _T.OPEN_BUCKET_CREDIT, "the export's OPEN_BUCKET is the page's own wording")
 
 # ---------------------------------------------------------------- 3. a rich layman answer
-TEXT = ("**Your situation**\nYou were arrested on a *bailable* charge.\n\n**What the law says**\nUnder section 35 of the BNSS an arrest is limited. In *Arnesh Kumar v. State of Bihar* (2014) the Supreme Court said arrest is not routine.\n\n"
+TEXT = ("**Your situation**\nYou were arrested on a *bailable* charge.\n\n**What the law says**\nUnder section 35 of the BNSS an arrest is limited. Mohan Verma (2020) adds to this. In *Arnesh Kumar v. State of Bihar* (2014) the Supreme Court said arrest is not routine.\n\n"
         "**What you can do**\n1. Ask for the grounds of arrest.\n2. Call a lawyer.\n\nWhat's unclear: whether you were told the reason, and whether a notice was issued.")
 MATCHES = [{"case_name": "Arnesh Kumar v. State of Bihar", "citation": "(2014) 8 SCC 273", "paragraph_number": "7_a", "text": "Arrest is not to be made routinely.", "source": "curated", "type": "judgment"},
            {"section_number": "35", "act": "BNSS", "act_display": "BNSS", "text": "Arrest without warrant, with notice of appearance.", "source": "curated_statute", "type": "statute"}]
@@ -118,7 +118,7 @@ RES = {
     "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a>."},
     "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "register_possible": ["A possible later case."], "register_not_checked": "Not checked by us.", "grounding_notes": ["One quotation could not be matched to the sources."],
     "cited_judgment_links": [{"case_name": "Arnesh Kumar v. State of Bihar", "url": "https://example.org/a", "source_label": "Indian Kanoon"}, {"case_name": "Bad Link v. State", "url": "javascript:alert(1)", "source_label": "x"}],
-    "sci_related_judgments": [{"case_name": "X v. Y", "link": "https://sci.gov.in/x", "date": "2020-01-01", "paragraph": "4", "excerpt": "passage text of x", "passage_note": "a reading note", "register_note": "X was reported as doubted.", "link_kind": "open_bucket_pdf"}],
+    "sci_related_judgments": [{"case_name": "Mohan Verma v. Y", "link": "https://sci.gov.in/x", "date": "2020-01-01", "paragraph": "4", "excerpt": "passage text of x", "passage_note": "a reading note", "register_note": "X was reported as doubted.", "link_kind": "open_bucket_pdf"}],
     "sci_fed": True, "sci_as_of": "2026-10-01",
     "anchor_excerpts": [{"case_name": "P. Ramachandra Rao", "status": "machine_checked", "year": 2002, "link": "https://sci.gov.in/pr", "excerpts": [{"label": "Held", "paragraph": 29, "text": "word for word text", "note": "an anchor note"}]}],
     "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2", "procedural_disposal": True}],
@@ -140,7 +140,7 @@ DT = docx_text(dx)
 MUST = ["My brother was arrested. What now?", "You were arrested on a bailable charge.", "Ask for the grounds of arrest.", "Bharatiya Nagarik Suraksha Sanhita", "Section 17 in full", "The text of 17.", "Second line.", "Section 13", "The text of 13.", "not yet read by our reviewer",
         "BNSS Section 35", "Arrest without warrant, with notice of appearance.", "Arnesh Kumar v. State of Bihar", "(2014) 8 SCC 273", "paragraph 7", "Arrest is not to be made routinely.",
         X.H_RELIED, "Indian Kanoon", X.H_CURRENCY, "Reported as overruled; not yet confirmed by our reviewer.", "A possible later case.", "Not checked by us.",
-        X.H_GROUNDING, "One quotation could not be matched to the sources.", X.H_SCI_FED, X.SCI_FOOT_EXPORT, "The collection ends 2026-10-01.", "X v. Y", "paragraph 4", "passage text of x",
+        X.H_GROUNDING, "One quotation could not be matched to the sources.", X.H_SCI_FED, X.SCI_FOOT_EXPORT, "The collection ends 2026-10-01.", "Mohan Verma v. Y", "paragraph 4", "passage text of x",
         "a reading note", "X was reported as doubted.", "open Supreme Court judgments bucket", X.H_ANCHORS + X.ANCHORS_UNCONFIRMED, "P. Ramachandra Rao", "Held", "word for word text", "an anchor note",
         X.H_UNVERIFIED, "Z v. W", "may be a procedural/bail order, not a full judgment", "Facts to find out or bring to a lawyer", "Whether you were told the reason", "Notes for my lawyer", "Bad Link v. State"]
 for needle in MUST:
@@ -291,7 +291,7 @@ check(not X.uncovered_characters(doc), "an English answer with curly quotes, das
 rupee = X.build_document([dict(ENTRY, view=V.build(dict(RES, response_text="The fine is ₹5,000 — “quoted” → next ☐.")))], generated_at=WHEN)
 check(not X.uncovered_characters(rupee) and X.export(rupee, "pdf")[1]["ok"] is True, "rupee sign, dashes, curly quotes, arrows and check boxes print")
 
-ctrl = dict(RES, sci_related_judgments=[{"case_name": "Scan v. Text", "excerpt": "page one\x0cpage two \x00 bad \x08 chars", "link": "https://sci.gov.in/s"}])
+ctrl = dict(RES, response_text=RES["response_text"] + " Scanlon is also relevant.", sci_related_judgments=[{"case_name": "Scanlon v. Text", "excerpt": "page one\x0cpage two \x00 bad \x08 chars", "link": "https://sci.gov.in/s"}])
 cview = V.build(ctrl)
 cdoc2 = X.build_document([dict(ENTRY, view=cview)], generated_at=WHEN)
 check("\x00" not in X.all_text(cdoc2) and "\x0c" not in X.all_text(cdoc2) and "page one\npage two" in X.all_text(cdoc2), "control characters are removed and a form feed becomes a line break")

@@ -18,6 +18,7 @@ os.environ.pop("HEADNOTE_NOTE", None)
 
 import answer_export as X
 import answer_view as V
+V.LIBRARY_FULL_CHARS = 900          # since 2026-11-09 a library section is shown whole up to 8,000 characters; the cut logic below is unchanged and still serves a longer one, so these short test sections lower the limit to keep exercising it (test_statute_full.py tests the new limit)
 import chat_assistant as CA
 import passage_notes as PN
 import sci_search_tier as T

@@ -149,6 +149,7 @@ check(res.get("items") and "gave lift" in ex[0] and "BEFORE HONOURABLE" not in e
 # ---- 9. the pool passages ("other real court cases"): the model's text and the box under the answer
 import chat_assistant as CA
 import answer_view as AV
+AV.LIBRARY_FULL_CHARS = 900          # since 2026-11-09 a library section is shown whole up to 8,000 characters; the cut logic below is unchanged and still serves a longer one, so these short test sections lower the limit to keep exercising it (test_statute_full.py tests the new limit)
 POOL = {"source": "pilot_wider_tier", "case_name": "Papu Das @ Sanjoy Das v. The State of Assam", "citation": None, "text": PAPU, "ik_search_url": "https://x/papu.pdf"}
 for mode_name, mode_val in (("feed", "feed"), ("not feed", "off")):
     os.environ["SCI_SEARCH_MODE"] = mode_val

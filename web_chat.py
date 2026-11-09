@@ -256,9 +256,9 @@ def rewrite(turns, current, call=None):
 
 
 def should_carry(outcome, current):
-    """Whether the sections the earlier answers relied on are offered again to this message (carry_forward.py): the rewrite judged it a follow-up ('used', 'unchanged'), or it is a short message that points back
+    """Whether the sections the earlier answers relied on are offered again to this message (carry_forward.py): the rewrite judged it a follow-up ('used', 'unchanged', or a rewrite the guard dropped), or it is a short message that points back
     ("what about him?") whatever the rewrite said. A message judged a new topic that does not point back carries nothing."""
-    if outcome in ("used", "unchanged"):
+    if outcome in ("used", "unchanged") or str(outcome).startswith("dropped_guard:"):       # a rewrite the guard dropped was still judged a follow-up by the model (rewrite() returns 'new_topic' before the guard runs otherwise); staging 2026-11-09: such a follow-up lost the earlier sections
         return True
     return _leans_back(current)
 

@@ -8,6 +8,7 @@ and is not touched (WhatsApp work is on hold).
 
 OUT_OF_SCOPE_LABEL = "Out of scope"
 DAILY_LIMIT_LABEL = "Daily limit reached"
+TROUBLE_LABEL = "A problem on our side"       # the technical-failure box (staging 2026-11-09: it was labelled "Out of scope", which it is not)
 
 TOPIC_LABELS = {"freeze": "a frozen bank account", "cheque_bounce": "a bounced cheque", "domestic_violence": "domestic violence"}
 
@@ -51,4 +52,4 @@ def notice(result):
         return {**base, "title": "That doesn't look like a legal question", "body": _UNRELATED_BODY, "body_template": _UNRELATED_BODY}
     if state == "no_match":
         return {**base, "title": "Not enough to go on yet", "body": _NO_MATCH_BODY, "body_template": _NO_MATCH_BODY}
-    return {**base, "title": "Something isn't working right now", "body": _TROUBLE_BODY, "body_template": _TROUBLE_BODY}      # classifier_unavailable, retrieval_unavailable, anything unexpected
+    return {**base, "label": TROUBLE_LABEL, "title": "Something isn't working right now", "body": _TROUBLE_BODY, "body_template": _TROUBLE_BODY}      # classifier_unavailable, retrieval_unavailable, anything unexpected

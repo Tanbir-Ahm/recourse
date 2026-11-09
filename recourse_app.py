@@ -889,7 +889,7 @@ def _statute_excerpt(m: dict, reply: str = "", question: str = "") -> str:
         import answer_view
         return answer_view.statute_excerpt(m, reply, question)
     except Exception:  # noqa: BLE001
-        limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
+        limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 8000
         return _clean_excerpt(m.get("text") or "")[:limit]
 
 
@@ -1183,6 +1183,7 @@ def render_answer(result: dict):
         # The wider Supreme Court pool (sci_search_tier.py, off unless SCI_SEARCH_MODE=show): its own box, never mixed with the verified sources above.
         sci_rel = result.get("sci_related_judgments")
         if sci_rel:
+            import answer_view
             import sci_search_tier as _SCI
             _tag = _SCI.mixed(sci_rel)                                    # a court is named beside a passage only when some passage of the list is not the Supreme Court's
             with st.expander(_SCI.box_title(sci_rel, result.get("sci_fed")), expanded=bool(result.get("sci_fed"))):
@@ -1190,7 +1191,15 @@ def render_answer(result: dict):
                 st.markdown('<p class="r-foot">These passages came from a search of a much wider judgment database. Nobody at Recourse has read '
                             'and confirmed them, and this search does not say whether a decision is still good law. Read the real judgment yourself, or with a lawyer, '
                             f'before relying on it.{esc(_SCI.COURT_FOOT) if _tag else ""}{asof}</p>', unsafe_allow_html=True)
-                for j in sci_rel:
+                _reply_lc = str(result.get("response_text") or "").lower()
+                _flags = {id(j): answer_view.sci_named(j.get("case_name"), _reply_lc) for j in sci_rel}
+                _ordered = [j for j in sci_rel if _flags[id(j)]] + [j for j in sci_rel if not _flags[id(j)]]       # the cases the answer names first; the rest under a line of their own (answer_view.sci_named, 2026-11-09)
+                _unused_said = False
+                for j in _ordered:
+                    if not _flags[id(j)]:
+                        if not _unused_said:
+                            _unused_said = True
+                            st.markdown('<p class="r-foot"><b>Also read, but not named in the answer.</b> The answer does not name these cases; they are listed so that you can see everything it was given.</p>', unsafe_allow_html=True)
                     para = f" &mdash; paragraph {esc(str(j['paragraph']))}" if j.get("paragraph") else ""
                     when = f" ({esc(str(j['date']))})" if j.get("date") else ""
                     link = (f'[{esc(j["case_name"])}]({esc(j["link"])})' if j.get("link") else esc(j["case_name"]))

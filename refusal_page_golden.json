@@ -82,7 +82,7 @@
   "<p class=\"r-foot\">Recourse gives legal information, not legal advice. It cannot see anything beyond what you type. For a real case, take this to a lawyer or your nearest District Legal Services Authority, which provides that help free.</p>"
  ],
  "classifier_unavailable": [
-  "<div class=\"r-label\">Out of scope</div>",
+  "<div class=\"r-label\">A problem on our side</div>",
   "## Something isn't working right now",
   "<div class=\"r-oos\">This is a technical problem on Recourse's side, not your question. Try again in a moment.</div>",
   "Type a case with both party names and the year, or its reported citation. This reads only our Overruled Register and an automatic check of 76 library cases. It does not use the language model.",
@@ -91,7 +91,7 @@
   "<p class=\"r-foot\">Recourse gives legal information, not legal advice. It cannot see anything beyond what you type. For a real case, take this to a lawyer or your nearest District Legal Services Authority, which provides that help free.</p>"
  ],
  "retrieval_unavailable": [
-  "<div class=\"r-label\">Out of scope</div>",
+  "<div class=\"r-label\">A problem on our side</div>",
   "## Something isn't working right now",
   "<div class=\"r-oos\">This is a technical problem on Recourse's side, not your question. Try again in a moment.</div>",
   "Type a case with both party names and the year, or its reported citation. This reads only our Overruled Register and an automatic check of 76 library cases. It does not use the language model.",
@@ -100,7 +100,7 @@
   "<p class=\"r-foot\">Recourse gives legal information, not legal advice. It cannot see anything beyond what you type. For a real case, take this to a lawyer or your nearest District Legal Services Authority, which provides that help free.</p>"
  ],
  "weird": [
-  "<div class=\"r-label\">Out of scope</div>",
+  "<div class=\"r-label\">A problem on our side</div>",
   "## Something isn't working right now",
   "<div class=\"r-oos\">This is a technical problem on Recourse's side, not your question. Try again in a moment.</div>",
   "Type a case with both party names and the year, or its reported citation. This reads only our Overruled Register and an automatic check of 76 library cases. It does not use the language model.",

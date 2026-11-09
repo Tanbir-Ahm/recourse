@@ -79,6 +79,7 @@ async def _sse(q, rid, loop, timeout):
     while True:
         remaining = deadline - loop.time()
         if remaining <= 0:
+            logger.warning("ask timed out after %ss (request %s); the engine keeps working and the answer may still be saved", timeout, rid)       # staging 2026-11-09: the site gave up at 120 s and nothing in the log said so
             yield _ev("error", {"code": "timeout", "message": "The answer is taking too long. Please try again."})
             yield _ev("done", {})
             return
@@ -138,10 +139,12 @@ async def deliver(request, q, loop, rid):
     while True:
         remaining = end - loop.time()
         if remaining <= 0:
+            logger.warning("ask timed out after %ss (request %s); the engine keeps working and the answer may still be saved", timeout, rid)
             raise HTTPException(status_code=504, detail="timeout", headers={"X-Request-Id": rid})
         try:
             kind, data = await asyncio.wait_for(q.get(), remaining)
         except asyncio.TimeoutError:
+            logger.warning("ask timed out after %ss (request %s); the engine keeps working and the answer may still be saved", timeout, rid)
             raise HTTPException(status_code=504, detail="timeout", headers={"X-Request-Id": rid})
         if kind == "step":
             continue

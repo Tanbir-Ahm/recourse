@@ -33,6 +33,7 @@ for st_ in states:
     n = RT.notice({"state": st_, "redirect_domain": "freeze", "reasoning": "A civil suit."})
     check(n["state"] == st_ and n["body"] and "{" not in n["body"] and "<" not in n["body"] and "&" not in n["body"] and (n["title"] or st_ == "budget_paused"), f"{st_}: a plain-text body, no HTML, no placeholder left, a title")
 check(RT.notice({"state": "budget_paused"})["label"] == "Daily limit reached" and RT.notice({"state": "no_match"})["label"] == "Out of scope", "the two labels")
+check(all(RT.notice({"state": x})["label"] == "A problem on our side" for x in ("classifier_unavailable", "retrieval_unavailable", "something_new")) and RT.notice({"state": "unrelated"})["label"] == "Out of scope", "a technical failure is not labelled 'Out of scope' (staging 2026-11-09)")
 n = RT.notice({"state": "covered_elsewhere_in_tool", "redirect_domain": "cheque_bounce"})
 check(n["topic"] == "a bounced cheque" and n["body"].startswith("This looks like it is about a bounced cheque. ") and "{topic}" in n["body_template"], "a redirect names its topic (and the template keeps the place for it)")
 check(RT.notice({"state": "covered_elsewhere_in_tool", "redirect_domain": "ndps"})["topic"] == "this" and RT.notice({"state": "covered_elsewhere_in_tool"})["topic"] == "this", "an unlisted or missing topic says 'this'")

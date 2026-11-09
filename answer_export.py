@@ -448,16 +448,23 @@ def _answer_blocks(view, lawyer):
         scope = sci.get("scope") or "Supreme Court"
         B.append({"t": "h2", "text": (H_SCI_FED if sci.get("fed") else H_SCI_SHOWN) if scope == "Supreme Court" else _SCI.box_title(None, bool(sci.get("fed")), scope)})
         B.append(_p(SCI_FOOT_EXPORT + (_SCI.COURT_FOOT if tagged else "") + _SCI.asof_sentence(sci.get("as_of"), sci.get("as_of_by_court")), muted=True))
-        for j in sci["items"]:
+        shown_unused_head = False
+        for j in [x for x in sci["items"] if x.get("used") is not False] + [x for x in sci["items"] if x.get("used") is False]:       # the cases the answer names first
+            unused = j.get("used") is False                            # the answer does not name this case (answer_view.sci_named): its passage is not reproduced, the name and any warning are (2026-11-09)
+            if unused and not shown_unused_head:
+                shown_unused_head = True
+                B.append(_p("Also read, but not named in the answer (the passages are not reproduced here):", muted=True))
             head = link_runs(j.get("case_name") or "", j.get("link"), b=True)
             if not head:
                 head = [R(j.get("case_name") or "", b=True)]
             credit = _SCI.credit_for(j.get("link_kind"))
-            tail = ((" (" + j["date"] + ")") if j.get("date") else "") + ((" · " + j["court"]) if tagged and j.get("court") else "") + ((" — paragraph " + para_text(j["paragraph"])) if j.get("paragraph") else "") + ((" · " + credit) if credit else "")
+            tail = ((" (" + j["date"] + ")") if j.get("date") else "") + ((" · " + j["court"]) if tagged and j.get("court") else "") + ((" — paragraph " + para_text(j["paragraph"])) if j.get("paragraph") and not unused else "") + ((" · " + credit) if credit else "")
             B.append({"t": "p", "runs": head + ([R(tail)] if tail else [])})
             rn = _new_sentences(j.get("register_note"), table_norm)          # a note the table above already holds is not printed again (2026-11-02)
             if rn:
                 B.append(_box([R(rn)]))
+            if unused:
+                continue
             pn = _new_sentences(j.get("passage_note"), table_norm)
             if pn:
                 B.append(_p(pn, muted=True))

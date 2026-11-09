@@ -400,7 +400,7 @@ check(len(full17) > 900 and sum(1 for v in vals if "Superintendent of Police." i
 check(any("shortened here" in v for v in vals) is False, "page: a section that fits is not described as shortened")
 at, vals = page({"state": "single_match", "response_text": "Section 17 of the BNS has nothing to do with this.", "matches": [bns], "situation_detected": False})
 bns_blocks = [v for v in vals if "General exceptions apply to every offence" in v]
-check(bns_blocks and all(len(re.sub(r"<[^>]+>", "", b)) < 1000 for b in bns_blocks), f"page: a BNS section is still cut at 900 characters ({[len(b) for b in bns_blocks]})")
+check(bns_blocks and any(len(re.sub(r"<[^>]+>", "", b)) > 1500 for b in bns_blocks), f"page: a BNS section is shown whole since 2026-11-09 (it was cut at 900 before) ({[len(b) for b in bns_blocks]})")
 at, vals = page(res_page)
 at, vals = page({"state": "single_match", "response_text": reply, "matches": MS1, "situation_detected": False})
 check(not at.exception and not any("The answer above does not set that section out" in v for v in vals), "page: with no section_note key nothing extra is drawn")
