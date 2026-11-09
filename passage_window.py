@@ -95,15 +95,24 @@ def _fit(t, a, limit, spans, k):
     return end, False
 
 
-def window(text, question, limit):
-    """-> (shown text, {'moved': bool, 'heading': bool}). Never raises."""
+def has_words(text, question):
+    """True when `text` holds at least one content word of the question that is not a common legal word (court, state, accused ...). Never raises."""
+    try:
+        t = _norm(text)
+        return any(w >= 1.0 and rx.search(t) for rx, w in _terms(question))
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def window(text, question, limit, skip_heading=True):
+    """-> (shown text, {'moved': bool, 'heading': bool}). skip_heading=False for text that has no court heading (a statute). Never raises."""
     t = _norm(text)
     if not t:
         return "", {"moved": False, "heading": False}
     try:
         spans = _sentences(t)
         h = 0
-        while h < len(spans) - 1 and h < 3 and _is_heading(t[spans[h][0]:spans[h][1]]):
+        while skip_heading and h < len(spans) - 1 and h < 3 and _is_heading(t[spans[h][0]:spans[h][1]]):
             h += 1
         if h and len(t) - spans[h][0] < 80:
             h = 0                                                   # skipping the heading would leave almost nothing

@@ -883,14 +883,23 @@ SHELF_EXCERPT_CHARS = 16000      # a section of the Act shelf is shown whole (th
                                  # second proviso of section 17 of the Prevention of Corruption Act (the last 450 characters of a 1,354-character section); BNS and BNSS sections keep the 900
 
 
-def _statute_excerpt(m: dict, reply: str = "") -> str:
+def _statute_excerpt(m: dict, reply: str = "", question: str = "") -> str:
     """The text of a statute match as 'Read the source' shows it: a shelf section whole, any other statute cut at 900 characters; with `reply`, a sub-section that the answer cites beyond the cut is shown too (answer_view.statute_excerpt)."""
     try:
         import answer_view
-        return answer_view.statute_excerpt(m, reply)
+        return answer_view.statute_excerpt(m, reply, question)
     except Exception:  # noqa: BLE001
         limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
         return _clean_excerpt(m.get("text") or "")[:limit]
+
+
+def _judgment_excerpt(text: str, question: str = "") -> str:
+    """The excerpt of a reviewed-library judgment under 'Read the source': the window with the question's words (answer_view.judgment_excerpt), else the first 1,100 characters."""
+    try:
+        import answer_view
+        return answer_view.judgment_excerpt(text, question)
+    except Exception:  # noqa: BLE001
+        return _clean_excerpt(text or "")[:1100]
 
 
 def _shelf_caption_html(m: dict) -> str:
@@ -1116,7 +1125,7 @@ def render_answer(result: dict):
                     _cap = _shelf_caption_html(m)
                     if _cap:                                  # an Act-shelf section: where the text comes from, and that no reviewer has read it
                         st.markdown(_cap, unsafe_allow_html=True)
-                    st.markdown(f'<div class="r-mono">{esc(_statute_excerpt(m, reply))}</div>',
+                    st.markdown(f'<div class="r-mono">{esc(_statute_excerpt(m, reply, str(result.get("question_asked") or "")))}</div>',
                                 unsafe_allow_html=True)
                 if judgments:
                     st.markdown('<div class="r-label" style="margin-top:1rem">Judgments</div>',
@@ -1132,7 +1141,7 @@ def render_answer(result: dict):
                         if para_head.isdigit():
                             st.markdown(f'<span class="r-src">paragraph {esc(para_head)}</span>',
                                         unsafe_allow_html=True)
-                        st.markdown(f'<div class="r-mono">{esc(_clean_excerpt(m.get("text") or "")[:1100])}</div>',
+                        st.markdown(f'<div class="r-mono">{esc(_judgment_excerpt(m.get("text") or "", str(result.get("question_asked") or "")))}</div>',
                                     unsafe_allow_html=True)
 
         # The WIDER, honestly UNVERIFIED judgment pool (vaquill_search.py --

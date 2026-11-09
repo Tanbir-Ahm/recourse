@@ -4548,6 +4548,8 @@ def _answer_question_inner(question, inline_domains=frozenset()):
             result = excerpt_anchors.attach(question, result)     # off by default (ANCHORS); labels the anchor cases in the answer and lists the excerpts; fail-open
         except Exception:  # pragma: no cover
             pass
+        if isinstance(result, dict) and result.get("state") in ("single_match", "conflicting_matches"):          # answers only: a refusal or a notice is returned exactly as before
+            result.setdefault("question_asked", question)         # the words the page boxes are windowed on (answer_view: PASSAGE_WINDOW)
         return result
     except Exception:  # pragma: no cover -- _attach already fails open; belt and braces
         return result

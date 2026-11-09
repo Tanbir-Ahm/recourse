@@ -140,14 +140,53 @@ def cited_subsections(reply, number):
         return []
 
 
-def statute_excerpt(m, reply=""):
+def _window_on(text, question, limit, skip_heading=True):
+    """The stretch of `text` that holds the question's words (passage_window.py, PASSAGE_WINDOW on by default) or None: switch off, no question, nothing matches, the window is the head, or any failure."""
+    try:
+        import passage_window
+        if not question or not passage_window.enabled():
+            return None
+        shown, info = passage_window.window(text, question, limit, skip_heading=skip_heading)
+        return shown if shown and not info.get("error") and (info.get("moved") or info.get("heading")) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def judgment_excerpt(text, question="", limit=1100):
+    """The excerpt of a reviewed-library judgment as 'the sections and judgments this answer rests on' shows it: with the question, the window of `limit` characters that holds its words (heading skipped, '...' at the cut
+    ends); else the first `limit` characters, as before."""
+    t = clean_excerpt(text or "")
+    if len(t) <= limit and not question:
+        return t
+    w = _window_on(t, question, limit)
+    return w if w else t[:limit]
+
+
+def _head_has_words(head, question):
+    try:
+        import passage_window
+        return passage_window.has_words(head, question)
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def statute_excerpt(m, reply="", question=""):
     """The text of a statute section as 'the sections and judgments this answer rests on' shows it: a shelf section whole, any other statute cut at 900 characters. NEW (2026-11-03, owner's A): when the answer cites a
     sub-section that the cut leaves out (both anticipatory-bail answers rested on BNSS 483(3), and the box stopped inside the provisos of 483(1)), the section's first line is shown, then a gap marked '...', then each
     cited sub-section (up to CITED_SUBSECTION_CHARS each). Without such a citation, or when the cited sub-section is inside the plain excerpt, the excerpt is what it always was."""
     limit = SHELF_EXCERPT_CHARS if isinstance(m.get("shelf"), dict) else 900
     text = clean_excerpt(m.get("text") or "")
     plain = text[:limit]
-    if len(text) <= limit or not reply:
+    if len(text) <= limit:
+        return plain
+    if question and not isinstance(m.get("shelf"), dict) and not (reply and cited_subsections(reply, m.get("section_number"))) and not _head_has_words(plain, question):
+        # PASSAGE_WINDOW: the section's first line, a marked gap and the stretch that holds the question's words, ONLY when the first 900 characters hold none of them (a statute's opening states the rule, so it is kept
+        # whenever it holds a word of the question; a sub-section the answer cites by number keeps the older rule below)
+        first = text.split("\n", 1)[0][:300]
+        w = _window_on(text[len(first):].lstrip(), question, max(limit - len(first) - 20, 300), skip_heading=False)
+        if w and w.startswith("... "):
+            return first + " ...\n\n[...]\n\n" + w[4:].rstrip()
+    if not reply:
         return plain
     try:
         marks = [(x.start(), x.group(1)) for x in _SUB_MARK.finditer(text)]
@@ -258,7 +297,7 @@ def _sources(result, reply):
             continue
         seen.add(k)
         cap = shelf_caption(m)
-        statutes.append({"heading": f'{m.get("act_display") or m.get("act")} Section {m.get("section_number")}', "caption": cap["text"] if cap else None, "caption_url": cap["url"] if cap else None, "text": statute_excerpt(m, reply)})
+        statutes.append({"heading": f'{m.get("act_display") or m.get("act")} Section {m.get("section_number")}', "caption": cap["text"] if cap else None, "caption_url": cap["url"] if cap else None, "text": statute_excerpt(m, reply, str(result.get("question_asked") or ""))})
     judgments = sources_worth_showing([m for m in all_matches if m.get("case_name")], reply, strict=(result.get("audience") == "lawyer"))
     by_case, order = {}, []
     for m in judgments:
@@ -272,7 +311,7 @@ def _sources(result, reply):
         excerpts = []
         for m in by_case[(name, cite)]:
             head = str(m.get("paragraph_number") or "").split("_")[0]
-            excerpts.append({"paragraph": head if head.isdigit() else None, "text": clean_excerpt(m.get("text") or "")[:1100]})
+            excerpts.append({"paragraph": head if head.isdigit() else None, "text": judgment_excerpt(m.get("text") or "", str(result.get("question_asked") or ""))})
         cases.append({"name": name, "citation": cite or None, "caveats": currency_notes(name), "excerpts": excerpts})
     return statutes, cases
 

@@ -169,6 +169,52 @@ pc = CA._format_pilot_context_for_prompt([m])
 check("BEFORE HONOURABLE" in pc and "model_view" not in m, "pool, no question given: the head, as before")
 os.environ.pop("SCI_SEARCH_MODE", None)
 
+# ---- 10. curated library judgments and statutes (answer_view; the page box under "the sections and judgments this answer rests on")
+LONG_J = ("The appellant was convicted under section 302 and sentenced to imprisonment for life by the trial court after a long trial. " * 12) + "The Court held that a person who merely gave a lift to the absconding accused, without knowledge of the crime, cannot be held liable as an accessory. " + ("The appeal was heard on several dates and the record was examined at length. " * 12)
+je = AV.judgment_excerpt(LONG_J, "I gave a lift to an absconding accused without knowing", 1100)
+check("gave a lift to the absconding accused" in je and je.startswith("... ") and len(je) <= 1108, "library judgment: the excerpt is the window that holds the question's words")
+check(AV.judgment_excerpt(LONG_J, "", 1100) == AV.clean_excerpt(LONG_J)[:1100], "library judgment: with no question, the first 1,100 characters as before")
+check(AV.judgment_excerpt("A short paragraph.", "lift", 1100) == "A short paragraph.", "library judgment: a short excerpt is left whole")
+os.environ["PASSAGE_WINDOW"] = "off"
+check(AV.judgment_excerpt(LONG_J, "gave a lift absconding accused", 1100) == AV.clean_excerpt(LONG_J)[:1100], "library judgment, switch off: the head as before")
+os.environ.pop("PASSAGE_WINDOW")
+
+STAT = "483. Special powers of High Court or Court of Session regarding bail.\n" + ("(1) A High Court or Court of Session may direct that any person accused of an offence and in custody be released on bail, and if the offence is of the nature specified in sub-section (3) of section 480, may impose any condition which it considers necessary for the purposes mentioned in that sub-section. " * 4) + "\n(3) The conditions of release on bail for a person who has been granted bail in anticipation of arrest include that he shall make himself available for interrogation by a police officer as and when required and shall not leave India without the previous permission of the Court."
+m_s = {"act": "BNSS", "section_number": "483", "text": STAT, "source": "curated_override"}
+plain = AV.clean_excerpt(STAT)[:900]
+se = AV.statute_excerpt(m_s, "", "may I leave India and must I make myself available for interrogation")
+check(se.startswith("483. Special powers of High Court") and "\n\n[...]\n\n" in se and "shall not leave India" in se and len(se) <= 900, f"statute: the section's first line, a gap, and the stretch with the question's words ({len(se)} characters)")
+check(AV.statute_excerpt(m_s, "", "") == plain and AV.statute_excerpt(m_s, "") == plain, "statute: with no question the first 900 characters as before")
+check(AV.statute_excerpt(m_s, "", "High Court may direct that a person accused be released on bail") == plain and AV.statute_excerpt(m_s, "", "can I leave India; the High Court may direct bail") == plain, "statute: a word of the question (not a common legal word) is already in the first 900 characters -> the head as before, even if a later stretch holds more of them")
+cited = AV.statute_excerpt(m_s, "The court can impose conditions under section 483(3) of the BNSS.", "can I leave India while on bail")
+check("(3) The conditions of release" in cited and "[...]" in cited, "statute: a sub-section the answer cites by number keeps the older rule (first line, gap, the cited sub-section)")
+m_sh = dict(m_s, shelf={"source_url": "https://x"})
+check(AV.statute_excerpt(m_sh, "", "leave India interrogation") == AV.clean_excerpt(STAT), "statute: a shelf section is still shown whole")
+os.environ["PASSAGE_WINDOW"] = "off"
+check(AV.statute_excerpt(m_s, "", "leave India interrogation") == plain, "statute, switch off: the head as before")
+os.environ.pop("PASSAGE_WINDOW")
+
+res = {"matches": [m_s, {"case_name": "Xyz v. State", "citation": "(2020) 1 SCC 1", "text": LONG_J, "paragraph_number": "12_1", "source": "library"}], "question_asked": "may I leave India and must I make myself available for interrogation; I gave a lift to an absconding accused", "audience": "layman"}
+sts, cs = AV._sources(res, "Section 483 of the BNSS applies. Xyz v. State says a person who gave a lift is not an accessory.")
+check(sts and "shall not leave India" in sts[0]["text"], "answer_view._sources: the statute box carries the window")
+check(cs and "gave a lift to the absconding accused" in cs[0]["excerpts"][0]["text"], "answer_view._sources: the library judgment box carries the window")
+res2 = dict(res); res2.pop("question_asked")
+sts2, cs2 = AV._sources(res2, "Section 483 of the BNSS applies. Xyz v. State says a person who gave a lift is not an accessory.")
+check(sts2[0]["text"] == plain and cs2[0]["excerpts"][0]["text"] == AV.clean_excerpt(LONG_J)[:1100], "answer_view._sources: with no question in the result, the heads as before")
+
+# the question is added to an answer's result only
+REAL2 = (CA.classify_scope, CA._fetch_pilot_related_judgments, CA._answer_question_core)
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        CA._answer_question_core = lambda q, **k: {"state": "single_match", "matches": [], "response_text": "x"}
+        r_ans = CA.answer_question("gave a lift to an absconding accused")
+        CA._answer_question_core = lambda q, **k: {"state": "refused", "message": "no"}
+        r_ref = CA.answer_question("gave a lift to an absconding accused")
+    check(isinstance(r_ans, dict) and r_ans.get("question_asked") == "gave a lift to an absconding accused", "an answer's result carries the question it was asked")
+    check(isinstance(r_ref, dict) and "question_asked" not in r_ref, "a refusal is returned exactly as before, without the key")
+finally:
+    CA.classify_scope, CA._fetch_pilot_related_judgments, CA._answer_question_core = REAL2
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED")
