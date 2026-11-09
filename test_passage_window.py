@@ -132,6 +132,43 @@ check("gave a lift" in blk3 and "Learned counsel for the petitioner submitted" n
 check(c_off[0].get("passage_kinds") == ["submission"] and c_on[0].get("passage_kinds") == ["submission"] and "Note by code" in blk3, f"PASSAGE_NOTES: the submission note is kept although the window left the head ({c_on[0].get('passage_kinds')})")
 os.environ.pop("PASSAGE_NOTES")
 
+# ---- 8. the Judgments page (search_service)
+import search_service as S
+Qj = "gave a lift to an absconding accused"
+page = S._clean_passage(PAPU, Qj)
+check("gave lift" in page and "BEFORE HONOURABLE" not in page and page.startswith("... ") and len(page) <= S.EXCERPT_CAP + 8, "Judgments page: a passage is shown as the window with the query's words, no heading, an opening ellipsis")
+old_page = S._clean_passage(PAPU)
+check(old_page.startswith("BEFORE HONOURABLE") and "lift" not in old_page, "Judgments page: with no query the head is cut as before")
+os.environ["PASSAGE_WINDOW"] = "off"
+check(S._clean_passage(PAPU, Qj) == old_page, "Judgments page, switch off: the old head cut")
+os.environ.pop("PASSAGE_WINDOW")
+res = S.wider(S.parse_query(Qj), sci_fn=lambda text: {"ok": True, "as_of": "2026-10-16", "index_commit": "abc", "results": [R]})
+ex = [i["excerpt"] for i in res.get("items") or []]
+check(res.get("items") and "gave lift" in ex[0] and "BEFORE HONOURABLE" not in ex[0], f"Judgments page: the wider search card carries the window ({res.get('note')})")
+
+# ---- 9. the pool passages ("other real court cases"): the model's text and the box under the answer
+import chat_assistant as CA
+import answer_view as AV
+POOL = {"source": "pilot_wider_tier", "case_name": "Papu Das @ Sanjoy Das v. The State of Assam", "citation": None, "text": PAPU, "ik_search_url": "https://x/papu.pdf"}
+for mode_name, mode_val in (("feed", "feed"), ("not feed", "off")):
+    os.environ["SCI_SEARCH_MODE"] = mode_val
+    m = dict(POOL)
+    pc = CA._format_pilot_context_for_prompt([m], Q)
+    check("gave lift" in pc and "BEFORE HONOURABLE" not in pc, f"pool, {mode_name}: the model's text is the window, without the heading")
+    check(m.get("model_view", "").startswith("By this application") and m["model_view"] in pc, f"pool, {mode_name}: the window (the passage after its skipped heading, 1,200 characters fit nearly all of it) is kept on the match")
+    ex = AV._unverified_excerpt(m, "the answer names papu das @ sanjoy das v. the state of assam here")
+    check(ex == AV.clean_excerpt(m["model_view"]) and "BEFORE HONOURABLE" not in ex, f"pool, {mode_name}: the box under the answer shows the very text the model read")
+    check(AV._unverified_excerpt(m, "nothing named") is None, f"pool, {mode_name}: a pool case the answer does not name is still not shown")
+os.environ["PASSAGE_WINDOW"] = "off"
+m = dict(POOL)
+pc = CA._format_pilot_context_for_prompt([m], Q)
+check("BEFORE HONOURABLE" in pc and "model_view" not in m and AV._unverified_excerpt(m, "papu das @ sanjoy das v. the state of assam").startswith("BEFORE HONOURABLE"), "pool, switch off: the first 1,200 characters, as before, for the model and for the box")
+os.environ.pop("PASSAGE_WINDOW")
+m = dict(POOL)
+pc = CA._format_pilot_context_for_prompt([m])
+check("BEFORE HONOURABLE" in pc and "model_view" not in m, "pool, no question given: the head, as before")
+os.environ.pop("SCI_SEARCH_MODE", None)
+
 print()
 if FAILURES:
     print(f"{len(FAILURES)} FAILED")

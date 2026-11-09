@@ -287,6 +287,10 @@ def _unverified_excerpt(j, reply_lc):
         raw = str(j.get("text") or "")
         if not raw.strip() or not case_is_named(j, reply_lc):
             return None
+        view = str(j.get("model_view") or "")                       # PASSAGE_WINDOW: the stretch of the passage the answer model was shown (chat_assistant._pool_view): the box shows the same words
+        if view.strip():
+            t = clean_excerpt(view)
+            return t or None
         t = clean_excerpt(raw[:UNVERIFIED_EXCERPT_CHARS])
         return (t + " ...") if t and len(raw) > UNVERIFIED_EXCERPT_CHARS else (t or None)
     except Exception:  # noqa: BLE001
@@ -298,7 +302,7 @@ def _unverified_note(j, reply_lc):
     try:
         import passage_notes
         raw = str(j.get("text") or "")
-        if raw.strip() and case_is_named(j, reply_lc) and passage_notes.is_headnote(raw[:UNVERIFIED_EXCERPT_CHARS]):
+        if raw.strip() and case_is_named(j, reply_lc) and (passage_notes.is_headnote(raw[:UNVERIFIED_EXCERPT_CHARS]) or passage_notes.is_headnote(str(j.get("model_view") or ""))):
             return passage_notes.HEADNOTE_PAGE
         return None
     except Exception:  # noqa: BLE001

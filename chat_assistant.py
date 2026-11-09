@@ -614,6 +614,29 @@ _CONFLICT_INSTRUCTION = """- IMPORTANT: the sections below genuinely DISAGREE wi
 _PILOT_CONTEXT_MAX_CHARS_PER_CHUNK = 1200
 
 
+def _pool_view(m, question):
+    """What the model is shown of a pool passage (and what the page shows under the answer): with PASSAGE_WINDOW on (the default; passage_window.py) the stretch of the passage that holds the question's words, a heading at its start
+    skipped and '...' at the cut ends; the first _PILOT_CONTEXT_MAX_CHARS_PER_CHUNK characters as before when the switch is off, no word matches or anything fails. The window is kept on the match (m['model_view']) so that the
+    box under the answer shows exactly the text the model read."""
+    raw = m.get("text") or ""
+    head = raw[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+    try:
+        import passage_window
+        if question and passage_window.enabled():
+            shown, info = passage_window.window(raw, question, _PILOT_CONTEXT_MAX_CHARS_PER_CHUNK)
+            if shown and not info.get("error"):
+                try:
+                    m["model_view"] = shown
+                except Exception:  # noqa: BLE001
+                    pass
+                return shown
+    except Exception:  # noqa: BLE001
+        pass
+    if isinstance(m, dict):
+        m.pop("model_view", None)
+    return head
+
+
 def _headnote_prompt(text) -> str:
     """The 'Note by code' line to put under a pool passage that is a reporter's headnote (passage_notes.is_headnote); '' for any other passage and on any failure."""
     try:
@@ -623,14 +646,15 @@ def _headnote_prompt(text) -> str:
         return ""
 
 
-def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
+def _format_pilot_context_as_wider_search(pilot_matches, T, question=None) -> str:
     """Feed mode (staging; owner's decision 2026-10-14): the site's pilot cases are judgments of the wider index too (all 25 were found there), so they are handed to the model like every other
     wider-search passage: it may name one and describe ONLY what the passage says, attributed to the court, and code puts "(from a wider search, not independently verified)" after the name. A case on
     the Overruled Register carries its REGISTER FACT line."""
     blocks = []
     for m in pilot_matches:
-        text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
-        text += _headnote_prompt(text)
+        head = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        text = _pool_view(m, question)
+        text += _headnote_prompt(head) or _headnote_prompt(text)
         citation = f" ({m['citation']})" if m.get("citation") else ""
         facts = ""
         try:
@@ -654,7 +678,7 @@ def _format_pilot_context_as_wider_search(pilot_matches, T) -> str:
             "ignore them.\n\n" + "\n\n".join(blocks) + "\n")
 
 
-def _format_pilot_context_for_prompt(pilot_matches) -> str:
+def _format_pilot_context_for_prompt(pilot_matches, question=None) -> str:
     """ADDED 2026-09-24, at the user's explicit request after reviewing the alternative (a pilot-
     tier case shown only as a separate, un-integrated 'you might also want to check' link): lets
     generate_grounded_response DESCRIBE one of these wider-pool cases in its own prose ("a similar
@@ -680,13 +704,14 @@ def _format_pilot_context_for_prompt(pilot_matches) -> str:
     try:
         import sci_search_tier as _T
         if _T.mode() == "feed":
-            return _format_pilot_context_as_wider_search(pilot_matches, _T)
+            return _format_pilot_context_as_wider_search(pilot_matches, _T, question)
     except Exception:  # noqa: BLE001
         pass
     blocks = []
     for m in pilot_matches:
-        text = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
-        text += _headnote_prompt(text)
+        head = (m.get("text") or "")[:_PILOT_CONTEXT_MAX_CHARS_PER_CHUNK]
+        text = _pool_view(m, question)
+        text += _headnote_prompt(head) or _headnote_prompt(text)
         citation = f" ({m['citation']})" if m.get("citation") else ""
         blocks.append(f"[WIDER POOL -- NOT INDEPENDENTLY VERIFIED: {m['case_name']}{citation}]\n{text}")
     return (
@@ -1948,7 +1973,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         conflict_instruction = _CONFLICT_INSTRUCTION if is_conflict else ""
         if answer_style.template_key() == "v3" and answer_style.get_channel() == "whatsapp":
             conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _WHATSAPP_NOTE
-        pilot_context = _format_pilot_context_for_prompt(pilot_matches)
+        pilot_context = _format_pilot_context_for_prompt(pilot_matches, question)
         prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
             conflict_instruction=conflict_instruction, pilot_context=pilot_context,

@@ -881,13 +881,24 @@ def _neutral(case_id):
     return f"{m.group(1)} INSC {m.group(2)}" if m else None
 
 
-def _clean_passage(text):
+def _clean_passage(text, q=None):
+    """A passage as the page shows it. With the typed query `q` (PASSAGE_WINDOW on, the default; passage_window.py) the stretch of the passage that holds the query's words, a court / bench / counsel heading at its start
+    skipped and '...' at the cut ends; without `q`, when the switch is off, when no word matches or on any failure, the first EXCERPT_CAP characters as before."""
     try:
         import answer_view
         t = answer_view.clean_excerpt(text or "")
     except Exception:  # noqa: BLE001
         t = (text or "").strip()
     t = re.sub(r"\s+", " ", t).strip()
+    if q:
+        try:
+            import passage_window
+            if passage_window.enabled():
+                shown, info = passage_window.window(t, q, EXCERPT_CAP)
+                if shown and not info.get("error"):
+                    return shown
+        except Exception:  # noqa: BLE001
+            pass
     return t if len(t) <= EXCERPT_CAP else t[:EXCERPT_CAP].rstrip() + " ..."
 
 
@@ -1201,7 +1212,7 @@ def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
                 card = _library_card(c, "passage")
                 mentions.append(card)
             if len(card["passages"]) < MAX_PASSAGES_PER_CASE:
-                card["passages"].append({"paragraph": _para_label(r.get("paragraph_number")), "text": _clean_passage(r.get("text"))})
+                card["passages"].append({"paragraph": _para_label(r.get("paragraph_number")), "text": _clean_passage(r.get("text"), q)})
     if court:
         unknown = sum(1 for x in cases if court_bucket(x.get("court")) is None)
         cases = [x for x in cases if court_bucket(x.get("court")) == court]
@@ -1259,7 +1270,7 @@ def wider(parsed, sci_fn=None, court=None):
             except Exception:  # noqa: BLE001
                 q = None
             items.append({"title": r["case_name"], "date": r.get("date"), "year": _year_of(r.get("date")), "paragraph": q["within"] if q else _s(r.get("paragraph")), "link": link, "link_kind": _s(r.get("link_kind")) if link else None,
-                          "court": T.court_of(r), "excerpt": _clean_passage(r.get("text")), "status": status})
+                          "court": T.court_of(r), "excerpt": _clean_passage(r.get("text"), parsed["q"]), "status": status})
             if q:
                 items[-1]["passage_note"] = quote_notes.page_note(q)
             if len(items) >= MAX_WIDER:
