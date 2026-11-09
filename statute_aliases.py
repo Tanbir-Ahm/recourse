@@ -12,6 +12,10 @@ WHAT IT IS NOT. It is NOT measured on unseen questions: the two entries were wri
 compounding. They are tested by hand-written cases (test_statute_aliases.py). The word groups are Claude's, not a lawyer's, and nobody has checked that every question that fires one of them is about that section. A new entry needs
 a miss that was MEASURED, its word groups written before the question set is looked at, a negative list, and a test. Do not grow this into a general dictionary without a held-out measurement.
 
+HARBOURING (2026-11-09): BNS 249, 253 and 254, version 1 and 2 of the word groups, measured on pre-registered question sets (research repository review_results/2026-11-09_harbouring_alias/). The library search already brought the section
+when a question used a word such as harbour, hide or shelter (20 of 24 on set 1); the entries are for the phrasings without such a word (lift, drove, took, staying at my house, rented a room).
+Known limits, left as written: his/her/their before the person, 'the wanted man', 'the absconding accused', 'dropped him at'; and three declared false fires (the police taking an absconder to the station; accompanying a wanted relative to surrender).
+
 SWITCH: STATUTE_ALIASES = off (default; nothing changes) | on. One log line (STATUTE_ALIAS) when an entry fires.
 """
 import hashlib
@@ -44,6 +48,53 @@ ENTRIES = [
         ],
     },
 ]
+
+# ---- harbouring (added 2026-11-09, FOLLOW_UPS 2dw; word groups written before the question set was run: review_results/2026-11-09_harbouring_alias/PREREGISTRATION.md). Version 1, unchanged since.
+# The library search already finds BNS 249/253/254 when the question uses a word such as harbour, hide or shelter (20 of 24, 8 of 8 and 4 of 4 on the pre-registered set); the alias is for the other phrasings.
+NOUN = (r"(?:him|her|them|someone|somebody|the (?:accused|offender|man|boy|woman|person|fugitive|culprit|absconder)|"
+        r"my (?:brother|son|friend|husband|cousin|relative|nephew|uncle|neighbou?r|employee|worker|father|driver)|"
+        r"a (?:friend|relative|man|person|stranger|colleague|fugitive|accused|offender)|an (?:accused|offender|absconder|acquaintance))")
+HIDE = r"\b(?:hid|hide|hiding|hidden|conceal\w*|shelter\w*|harbou?r\w*)\s+" + NOUN + r"\b"
+GIVE = r"\b(?:gave|give|giving|given|offered|offering|provided|providing)\b[^.?!]{0,40}?\b(?:lift|ride|shelter|refuge|hiding place|place to stay|accommodation|food and (?:money|shelter)|money and (?:food|shelter))\b"
+LET = r"\b(?:let|allowed|letting|allowing)\s+" + NOUN + r"\s+(?:stay|sleep|live|hide)\b"
+HELPFLEE = r"\bhelp\w*\s+" + NOUN + r"\s+(?:to\s+)?(?:hide|flee|abscond|run away|go into hiding|stay hidden|evade)\b"
+WANTED = (r"(?:abscond\w*|fugitive|on the run|running (?:away )?from (?:the )?police|wanted (?:by|for|in)\b|wanted (?:man|person)|proclaimed offender|"
+          r"\bpolice (?:was|were|are|is) (?:looking|searching|hunting|after)\b|sought by (?:the )?police|evading (?:arrest|the police)|prime accused|main accused|principal accused|"
+          r"\b(?:fled|escaped|flee|fleeing)\b|jumped bail)")
+ESCAPED_OR_ORDERED = (r"(?:escap\w+\s+(?:from\s+)?(?:lawful\s+|police\s+|judicial\s+)?(?:custody|jail|prison|lock-?up)|jail\s?break|prison\s?break|"
+                      r"(?:warrant|order)\w*\b[^.?!]{0,40}\b(?:arrest|apprehen\w+)|(?:arrest|apprehension)\b[^.?!]{0,40}\b(?:ordered|warrant)|ordered\s+(?:his|her|their|the)\s+arrest|police\s+ordered)")
+ROBBERS = r"\b(?:robber\w*|dacoit\w*|decoit\w*|robbed)\b"
+
+HARBOUR_ENTRIES = [
+    {"id": "bns_249_harbour", "act": "BNS", "section": "249", "groups": [
+        [r"\bharbou?r\w*", r"\b(?:offenders?|accused|criminals?|fugitives?|absconders?|culprits?)\b"],
+        [HIDE, WANTED],
+        [GIVE, WANTED],
+        [LET, WANTED],
+        [HELPFLEE],
+        [r"\bscreen\w*\s+(?:an?\s+|the\s+)?(?:offender|accused|person|him|her)\s+from\s+(?:legal\s+)?(?:punishment|arrest|the police)"],
+        [r"\baccessory after the fact\b"],
+    ]},
+    {"id": "bns_253_harbour_escaped_or_ordered", "act": "BNS", "section": "253", "groups": [
+        [HIDE, ESCAPED_OR_ORDERED], [GIVE, ESCAPED_OR_ORDERED], [LET, ESCAPED_OR_ORDERED], [HELPFLEE, ESCAPED_OR_ORDERED],
+        [r"\b(?:harbou?r\w*|conceal\w*)", ESCAPED_OR_ORDERED],
+    ]},
+    {"id": "bns_254_harbour_robbers", "act": "BNS", "section": "254", "groups": [
+        [HIDE, ROBBERS], [GIVE, ROBBERS], [LET, ROBBERS], [HELPFLEE, ROBBERS],
+        [r"\bharbou?r\w*", ROBBERS],
+    ]},
+]
+ENTRIES = ENTRIES + HARBOUR_ENTRIES
+
+# ---- harbouring, version 2 (added 2026-11-09 after version 1 was measured; word groups written before the new question set was run: review_results/2026-11-09_harbouring_alias/PREREGISTRATION_V2.md)
+# three groups for the phrasings with no word of harbouring: taking an accused somewhere, an accused staying at my premises, renting a room to a wanted man. Added to the 249 entry only.
+NOUN_ACC = (r"(?:him|her|them|the (?:prime |main |principal )?(?:accused|offender|man|fugitive|absconder|culprit)|(?:an? )?(?:absconding|wanted) \w+|"
+            r"my (?:brother|son|friend|husband|cousin|relative|nephew|uncle|neighbou?r|employee|worker|father)|a (?:friend|relative|man|person|stranger|colleague|fugitive|accused|offender))")
+TRANSPORT = r"\b(?:drove|driven|driving|took|taken|taking|dropped|dropping|carried|carrying|transported|ferried|escorted|accompanied)\s+" + NOUN_ACC + r"\b[^.?!]{0,30}?\b(?:to|away|across|out of|from)\b"
+STAY = r"\b(?:staying|stayed|stays|lodged|lodging|living|lived|residing|resided|sleeping|slept|put up|putting up)\s+(?:at|in|with|inside)\s+(?:my|our|his|her)\s+(?:house|home|guest ?house|farm\w*|shop|room|flat|hotel|lodge|property|place|godown|office)\b"
+RENT = r"\b(?:rented|let out|leased|gave on rent|sublet)\s+(?:a|my|the|one)\s+(?:room|flat|house|shop|godown|portion)\s+to\s+"
+V2_GROUPS_249 = [[TRANSPORT, WANTED], [STAY, WANTED], [RENT, WANTED]]
+HARBOUR_ENTRIES[0]["groups"] = HARBOUR_ENTRIES[0]["groups"] + V2_GROUPS_249
 _COMPILED = [dict(e, groups=[[re.compile(p) for p in g] for g in e["groups"]]) for e in ENTRIES]
 
 
