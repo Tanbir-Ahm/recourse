@@ -16,6 +16,9 @@ HARBOURING (2026-11-09): BNS 249, 253 and 254, version 1 and 2 of the word group
 when a question used a word such as harbour, hide or shelter (20 of 24 on set 1); the entries are for the phrasings without such a word (lift, drove, took, staying at my house, rented a room).
 Known limits, left as written: his/her/their before the person, 'the wanted man', 'the absconding accused', 'dropped him at'; and three declared false fires (the police taking an absconder to the station; accompanying a wanted relative to surrender).
 
+BAIL (2026-11-09): BNSS 478, 480 and 483 for a person who says someone has been arrested or is in custody, or that bail was refused (research repository review_results/2026-11-09_bail_alias/). Known false fires, left as written:
+'the police took my phone' reads as an arrest, and a general question that says 'kept in custody' fires. A question that merely mentions an arrest gets the two sections (about 6,000 characters) even when it is not about release.
+
 SWITCH: STATUTE_ALIASES = off (default; nothing changes) | on. One log line (STATUTE_ALIAS) when an entry fires.
 """
 import hashlib
@@ -95,6 +98,25 @@ STAY = r"\b(?:staying|stayed|stays|lodged|lodging|living|lived|residing|resided|
 RENT = r"\b(?:rented|let out|leased|gave on rent|sublet)\s+(?:a|my|the|one)\s+(?:room|flat|house|shop|godown|portion)\s+to\s+"
 V2_GROUPS_249 = [[TRANSPORT, WANTED], [STAY, WANTED], [RENT, WANTED]]
 HARBOUR_ENTRIES[0]["groups"] = HARBOUR_ENTRIES[0]["groups"] + V2_GROUPS_249
+
+# ---- bail for a person who has been arrested (added 2026-11-09, FOLLOW_UPS 2dx; word groups written before the question set was run: review_results/2026-11-09_bail_alias/PREREGISTRATION.md).
+# BNSS 478 (bail in a bailable offence), 480 (non-bailable), 483 (High Court / Sessions Court) for a person who says someone has been arrested or is in custody, or that bail was refused. Baseline: both 478 and 480 reached the prompt for only 4 of 30 such questions.
+ARRESTED = (r"(?:\b(?:i|we|he|she|they)\s+(?:was|were|got|am|is|are|have been|has been|had been)\s+(?:arrested|detained|taken into custody|taken to (?:the )?(?:police station|lock-?up))\b|"
+            r"\b(?:was|were|got|been|get)\s+(?:arrested|detained)\b|"
+            r"\barrested\s+(?:me|my \w+|him|her|them|us)\b|"
+            r"\bpolice\s+(?:arrested|detained|picked up|took|have taken|has taken|have arrested|has arrested)\s+(?:me|my \w+|him|her|them|us)\b|"
+            r"\b(?:is|am|was|are|were|been|remains?|kept|held|lying)\s+(?:\w+\s+)?(?:in|into)\s+(?:police\s+|judicial\s+)?custody\b|"
+            r"\b(?:is|am|was|are|were|been|remains?|kept|held|lying)\s+(?:\w+\s+)?(?:in|inside)\s+(?:the\s+)?(?:jail|lock-?up|prison)\b|"
+            r"\bremanded\b)")
+BAIL_REFUSED = (r"(?:\bbail\b[^.?!]{0,50}\b(?:refused|rejected|denied|dismissed|declined)\b|\b(?:refused|rejected|denied|dismissed|declined)\b[^.?!]{0,30}\bbail\b)")
+HIGHER = r"\b(?:high court|sessions court|session court|sessions judge)\b"
+
+BAIL_ENTRIES = [
+    {"id": "bnss_478_bail_bailable", "act": "BNSS", "section": "478", "groups": [[ARRESTED]]},
+    {"id": "bnss_480_bail_nonbailable", "act": "BNSS", "section": "480", "groups": [[ARRESTED]]},
+    {"id": "bnss_483_bail_higher_court", "act": "BNSS", "section": "483", "groups": [[BAIL_REFUSED], [r"\bbail\b", HIGHER]]},
+]
+ENTRIES = ENTRIES + BAIL_ENTRIES
 _COMPILED = [dict(e, groups=[[re.compile(p) for p in g] for g in e["groups"]]) for e in ENTRIES]
 
 
