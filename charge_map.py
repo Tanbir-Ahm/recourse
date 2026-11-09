@@ -33,11 +33,23 @@ _CRIME = re.compile(r"\b(?:accused|case|FIR|police|arrest\w*|offence|investigat\
 _THREAT = re.compile(r"\b(?:threat\w*|blackmail\w*|extort\w*|demand\w* (?:money|rs|rupees)|intimidat\w*)\b", re.I)
 _CHEAT = re.compile(r"\b(?:cheat\w*|fraud\w*|forg\w+|fake|forged|bogus|duped|dishonest\w*|false document)\b", re.I)
 _FORGE = re.compile(r"\b(?:forg\w+|fake|forged|bogus|false document|appointment letter|certificate|signature)\b", re.I)
-_HURT = re.compile(r"\b(?:hit|beat|beaten|assault\w*|injur\w*|hurt|wound\w*|stabb\w*|struck|rod|stick|knife|weapon)\b", re.I)
-_WEAPON = re.compile(r"\b(?:rod|stick|knife|weapon|iron|blade|axe|acid|gun|pistol|sword|dagger)\b", re.I)
+_HURT = re.compile(r"\b(?:hit|beat|beaten|assault\w*|injur\w*|hurt|wound\w*|stabb\w*|struck|rods?|sticks?|knife|knives|weapons?)\b", re.I)
+_WEAPON = re.compile(r"\b(?:rods?|sticks?|knife|knives|weapons?|iron|blades?|axes?|acid|guns?|pistols?|swords?|daggers?)\b", re.I)
 _STALK = re.compile(r"\b(?:stalk\w*|follow\w*|keeps? (?:calling|messaging|texting)|sends? (?:her )?messages)\b", re.I)
 _DOWRY = re.compile(r"\b(?:dowry|cruelty|harass\w* (?:by|for) (?:her )?(?:husband|in-laws)|in-laws)\b", re.I)
 _HARBOUR = re.compile(r"\b(?:harbou?r\w*|shelter\w*|hid(?:e|ing) (?:the )?(?:accused|wanted|absconding)|absconding|wanted (?:man|person|accused)|gave (?:him )?a lift|lift to)\b", re.I)
+
+# more than one person in the offence itself (the companion rule below); words written by Claude, not read by a lawyer. "and his wife" is left out on purpose (it is as often the victim's wife as the accused's).
+_OTHERS = re.compile(r"\b(?:co-?accused|co-?conspirators?|accomplices?|associates?|gang|group of|others|(?:two|three|four|five|six|several|some|many) (?:men|persons|people|boys|girls|friends|accused|others|youths)|(?:along|together) with"
+                     r"|and (?:(?:two|three|four|several|some) )?(?:of )?(?:his|her|their) (?:friends?|brothers?|cousins?|partners?|parents?|family|relatives?|helpers?|associates?|accomplices?|colleagues?|mother|father|sons?|men|in-laws)"
+                     r"|with (?:his|her|their) (?:friends|brothers?|associates|accomplices|colleagues|cousins?|men))\b", re.I)
+# the patterns where the offence itself can be shared by several persons; NOT evidence_deleted and harbouring, which are about what happens after the offence (abetment of the earlier offence needs help given in it)
+COMPANION_PATTERNS = frozenset({"recording_sexual", "sharing_sexual", "threat_with_material", "cheating_forgery", "hurt_weapon", "stalking", "dowry_cruelty"})
+COMPANIONS = [
+    ("BNS", "61", "Criminal conspiracy: an agreement between two or more persons to do an illegal act (the section's own words); the facts speak of more than one person, which does not by itself show an agreement."),
+    ("BNS", "45", "Abetment is defined here: a person abets a thing who instigates it, engages with others in a conspiracy for it (an act or illegal omission must follow), or intentionally aids it by an act or illegal omission; the facts speak of more than one person."),
+    ("BNS", "49", "Punishment of abetment where the act abetted is committed and no express provision is made for it (the definition is in section 45)."),
+]
 
 # (id, test(text) -> bool, [(act, section, why)])  -- written by Claude from the library's BNS text; not read by a lawyer
 PATTERNS = [
@@ -59,7 +71,7 @@ PATTERNS = [
      [("BNS", "351", "Criminal intimidation."), ("BNS", "308", "Extortion (a threat used to obtain property or a valuable thing).")]),
     ("cheating_forgery", lambda t: bool(_CHEAT.search(t) and _FORGE.search(t)),
      [("BNS", "318", "Cheating and dishonestly inducing delivery of property."), ("BNS", "336", "Forgery, in particular for the purpose of cheating."),
-      ("BNS", "340", "Using as genuine a document known to be forged."), ("BNS", "61", "Criminal conspiracy, where more than one person acted together.")]),
+      ("BNS", "340", "Using as genuine a document known to be forged.")]),
     ("hurt_weapon", lambda t: bool(_HURT.search(t) and _WEAPON.search(t)),
      [("BNS", "115", "Voluntarily causing hurt."), ("BNS", "117", "Voluntarily causing grievous hurt, where the injury is grievous."), ("BNS", "118", "Voluntarily causing hurt or grievous hurt by dangerous weapons or means.")]),
     ("stalking", lambda t: bool(_STALK.search(t) and re.search(r"\b(?:woman|girl|daughter|her|she|wife)\b", t, re.I)),
@@ -115,14 +127,19 @@ def candidates(facts_text, victim_minor=None, search=None, limit=MAX_CANDIDATES)
             seen.add(key)
             out.append({"act": act, "section": str(sec), "why": why, "source": source, "pattern": pattern, "class": _row_info(act, sec)})
 
+        fired = set()
         for pid, test, secs in PATTERNS:
             try:
                 hit = test(t)
             except Exception:  # noqa: BLE001
                 hit = False
             if hit:
+                fired.add(pid)
                 for act, sec, why in secs:
                     add(act, sec, why, "pattern", pid, limit)
+        if fired & COMPANION_PATTERNS and _OTHERS.search(t):          # several persons in the offence itself: conspiracy, the definition of abetment, its punishment
+            for act, sec, why in COMPANIONS:
+                add(act, sec, why, "pattern", "companion", limit)
         n = 0
         for m in (search or _default_search)(t):
             if n >= MAX_SEARCHED:

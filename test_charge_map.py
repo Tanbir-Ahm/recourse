@@ -36,6 +36,18 @@ c45 = next(c for c in cs if c["section"] == "45")
 check(c45["pattern"] == "present_at_rape" and "intentionally aids" in c45["why"] and c45["class"] is None, "BNS 45 (the definition of abetment) is its own candidate, with no Schedule row invented (the punishment is in 49)")
 c77 = next(c for c in cs if c["section"] == "77")
 check(c77["source"] == "pattern" and c77["pattern"] == "recording_sexual" and c77["class"] and "Voyeurism" in c77["class"]["lines"][0] and c77["class"]["lines"][0].startswith("BNS 77:"), "BNS 77 carries its reason and the Schedule's row")
+# the companion rule: abetment (45, 49) and conspiracy (61) when more than one person is in the offence itself
+def keys_of(t):
+    return [f"{c['act']} {c['section']}" for c in C.candidates(t, search=none)]
+multi = keys_of("My client and two of his friends beat the complainant with sticks and fractured his arm.")
+check(multi == ["BNS 115", "BNS 117", "BNS 118", "BNS 61", "BNS 45", "BNS 49"] and all(c["pattern"] == "companion" for c in C.candidates("My client and two of his friends beat the complainant with sticks and fractured his arm.", search=none) if c["section"] in ("61", "45", "49")), f"several persons + a hurt pattern: the companions come after the pattern's own sections ({multi})")
+check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("My client beat the complainant with an iron rod during a quarrel.")), "one person: no abetment or conspiracy")
+check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("My uncle cheated a widow of her savings using a forged signature.")), "a single-actor cheating case no longer carries conspiracy (it moved from the cheating pattern to the companion rule)")
+check({"BNS 45", "BNS 49", "BNS 61"} <= set(keys_of("My uncle and his partner cheated a widow of her savings with a forged sale deed.")), "...and a cheating case with a partner does")
+check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("He and his friends gave a lift to a man who was absconding in a murder case.")), "after-the-fact patterns (harbouring) get no abetment or conspiracy from this rule")
+check(not {"BNS 45", "BNS 49", "BNS 61"} & set(keys_of("My client and his brother deleted the CCTV footage from the shop's system after the police registered the FIR.")), "...nor does evidence deleted")
+check(keys_of("My client and his friends were arrested for selling liquor without a licence.") == [], "several persons but no pattern fires: nothing")
+check(keys_of(FACTS).count("BNS 45") == 1 and keys_of(FACTS).count("BNS 61") == 1, "a section the rape pattern already brought is not listed twice")
 check(next(c for c in cs if c["section"] == "66E")["class"] is None and next(c for c in cs if c["section"] == "3")["class"] is None, "an IT Act section and BNS 3 (a rule, not an offence) have no Schedule row: no classification is invented")
 check(next(c for c in cs if c["section"] == "70")["class"]["summary"][0] == "cognizable, non-bailable", "BNS 70: the Schedule's classification")
 
