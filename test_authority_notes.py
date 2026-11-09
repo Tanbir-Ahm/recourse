@@ -15,6 +15,7 @@ import sys
 os.environ["SCI_SEARCH_MODE"] = "feed"
 os.environ["SCI_SEARCH_URL"] = "http://127.0.0.1:9"
 os.environ.pop("PASSAGE_NOTES", None)
+os.environ["PASSAGE_WINDOW"] = "off"        # this file pins the block byte for byte against the head cut of before 2026-11-09; the window has its own tests (test_passage_window.py)
 os.environ["FEED_DEDUP"] = "off"                # this file pins the feed block byte for byte; its Alpha and Gamma passages share their first 400 characters (one is a cut of the other), which FEED_DEDUP (2026-11-05, test_feed_dedup.py) would merge
 
 import answer_view

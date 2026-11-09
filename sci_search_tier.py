@@ -279,6 +279,24 @@ def _cut(text, n):
     return head.rstrip() + " ..."
 
 
+def _win(text, limit, question):
+    """What a person or the answer model should read of a passage (passage_window.py, PASSAGE_WINDOW=on by default): the stretch of the passage that holds most of the question's words, a heading at its start skipped,
+    '...' at the cut ends; the old head cut (_cut) when the switch is off, when no word matches, or on any failure."""
+    try:
+        import passage_window
+        if passage_window.enabled():
+            shown, info = passage_window.window(text, question, limit)
+            if shown and not info.get("error"):
+                _LOCAL.win = info
+                return shown
+    except Exception:  # noqa: BLE001
+        pass
+    return _cut(text, limit)
+
+
+_WIN_COUNT = [0, 0]                                                   # [passages whose window moved off the head, passages whose heading was skipped] since the last feed_block log line
+
+
 _NUMBER_MARK = re.compile(r"\s*\((?:I{1,3}|IV|V|[1-9])\)\s*$")
 
 
@@ -1077,6 +1095,13 @@ def feed_block(question, exclude_names=None):
             except Exception:  # noqa: BLE001
                 return FEED_PASSAGE_CHARS
 
+        def _view(r, f, n=None):
+            """The part of a passage the model (n=None) or the page (n=EXCERPT) is shown: a pointer passage (a longer cut, written for the head) keeps the old head cut; every other passage is windowed on the question."""
+            lim = _limit(r, f) if n is None else n
+            if _pointer(r, f):
+                return _cut(r.get("text") or "", lim)
+            return _win(r.get("text") or "", lim, question)
+
         def _split():
             special = {p[0]["doc"] for p in flagged} | {p[0]["doc"] for p in correcting}
             return [p for p in pairs if p[0]["doc"] not in special], max(FEED_MAX_CASES - len(flagged) - len(correcting), 2)
@@ -1084,7 +1109,7 @@ def feed_block(question, exclude_names=None):
         plain, room = _split()
         named, n_fetch, tried = {}, 0, set()                          # doc -> the register cases its passage names; names already looked up by a second search
         for r, f in plain[:room]:
-            men = _named_register(_cut(r.get("text") or "", _limit(r, f)))
+            men = _named_register(_view(r, f))
             if not men["lines"]:
                 continue
             named[r["doc"]] = men
@@ -1106,7 +1131,12 @@ def feed_block(question, exclude_names=None):
             court = court_of(r)
             head = (f"[WIDER SEARCH -- NOT INDEPENDENTLY VERIFIED: {r['case_name']}" + (f" ({r['date']})" if r.get("date") else "") + (f", {court}" if any_other else "")
                     + (f", paragraph {r['paragraph']}" if r.get("paragraph") else "") + "]")
-            body = _cut(r.get("text") or "", _limit(r, f))
+            _LOCAL.win = None
+            head_body = _cut(r.get("text") or "", _limit(r, f))         # the head of the passage, as before: the voice and headnote tests read it too, so that a cue that sits in the head ('the case of the petitioner is that ...') is not lost when the window moves
+            body = _view(r, f)
+            _wi = getattr(_LOCAL, "win", None) or {}
+            _WIN_COUNT[0] += 1 if _wi.get("moved") else 0
+            _WIN_COUNT[1] += 1 if _wi.get("heading") else 0
             fx = _pointer(r, f)                                       # the service's authority facts (SCI_AUTHORITY=on there): only a pointer passage gets a line, a longer cut and a page note
             if fx:
                 import authority_notes
@@ -1114,14 +1144,14 @@ def feed_block(question, exclude_names=None):
             try:                                                      # PASSAGE_NOTES=on: whose voice the visible words are in (a lower court's view, one judge's opinion, a party's submission): passage_notes.py
                 import passage_notes
                 if passage_notes.enabled():
-                    voices = passage_notes.kinds(body, r.get("passage_type"))
+                    voices = list(dict.fromkeys(passage_notes.kinds(head_body, r.get("passage_type")) + passage_notes.kinds(body, r.get("passage_type"))))
                     body += passage_notes.prompt_note(voices)
             except Exception:  # noqa: BLE001
                 voices = []
             headnote = False
             try:                                                      # a reporter's headnote (page markers such as [419 C-E]) is not the Court's own words: said to the model and on the page (owner's B, 2026-11-03)
                 import passage_notes as _pn
-                headnote = _pn.is_headnote(body)
+                headnote = _pn.is_headnote(body) or _pn.is_headnote(head_body)
                 if headnote:
                     body += _pn.HEADNOTE_PROMPT
             except Exception:  # noqa: BLE001
@@ -1152,7 +1182,7 @@ def feed_block(question, exclude_names=None):
                 facts += NAMED_NOTE + "\n".join(men["lines"])
             blocks.append(head + "\n" + body + facts)
             case = {"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court,
-                    "excerpt": _cut(r.get("text") or "", EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
+                    "excerpt": _view(r, f, EXCERPT), "register_note": f["note"] if f["source"] in ("register", "card") else None,
                     "names_register_note": (" ".join(men["clauses"]) if men else None), "passage_kinds": voices, "passage_note": (passage_notes.page_note(voices, court) if voices else None)}
             if id(r) in same_text:
                 case["passage_note"] = ((case["passage_note"] + " ") if case["passage_note"] else "") + _same_passage_page_note(same_text[id(r)])
@@ -1168,6 +1198,9 @@ def feed_block(question, exclude_names=None):
             print("SCI_FEED no passages: nothing usable came back", flush=True)
             return ""
         print("SCI_FEED fed %d case(s): %s" % (len(cases), "; ".join(c["case_name"] for c in cases)), flush=True)
+        if _WIN_COUNT[0] or _WIN_COUNT[1]:
+            print("PASSAGE_WINDOW " + json.dumps({"passages": len(cases), "moved_off_the_head": _WIN_COUNT[0], "heading_skipped": _WIN_COUNT[1]}), flush=True)
+        _WIN_COUNT[0] = _WIN_COUNT[1] = 0
         if named:
             print("SCI_FEED passages naming register cases: %s" % "; ".join(c["case_name"] for c, (r, _f) in zip(cases, chosen) if r["doc"] in named), flush=True)
         extra = ""
@@ -1252,7 +1285,7 @@ def attach(question, result, background=True):
             if r.get("name_to_review") or not r.get("case_name") or r["doc"] in seen:
                 continue                                        # a judgment with no readable name is not shown to a person
             seen.add(r["doc"])
-            txt = _cut(r.get("text") or "", EXCERPT)
+            txt = _win(r.get("text") or "", EXCERPT, question)
             shown.append({"case_name": r["case_name"], "date": r.get("date"), "paragraph": r.get("paragraph"), "link": r.get("link"), "link_kind": r.get("link_kind"), "court": court_of(r),
                           "excerpt": txt, "register_note": f["note"] if f["source"] in ("register", "card") else None})
             if len(shown) >= MAX_SHOWN:
