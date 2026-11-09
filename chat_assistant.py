@@ -1498,6 +1498,29 @@ def _gather_offence_variants(matches, extra_text: str = None) -> dict:
     return merged
 
 
+_SENT_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z(\[*|\-])|\n")
+_BACKREF = re.compile(r"^[\s\-*>|#]*(?:it|its|this|that|these|those|both|neither|also|the (?:offence|section|classification|charge)|(?:non-?)?cognizable|(?:non-?)?bailable|not (?:cognizable|bailable))\b", re.I)
+
+
+def _claim_window(response_text: str, start: int, hard_end: int) -> str:
+    """The stretch of the answer that speaks about the section mentioned just before `start` (2026-11-09; staging: an answer was withheld twice because 'cognizable' in a sentence about ANOTHER offence, within 300 characters of 'Section 344', was read as a claim about section 344).
+    It is the rest of the sentence (or line) the section is mentioned in, plus ONE following sentence or line when that one carries on about the same section: it begins with a pronoun or a status word ('It is bailable', 'Non-cognizable.', 'Both ...') or is an indented sub-line, and names no other section.
+    Never longer than the old window (300 characters, or up to the next 'Section N')."""
+    limit = min(hard_end, start + 300)
+    text = response_text[start:limit]
+    m = _SENT_END.search(text)
+    if not m:
+        return text
+    first = text[:m.start()]
+    rest = text[m.end():]
+    m2 = _SENT_END.search(rest)
+    second = rest[:m2.start()] if m2 else rest
+    indented = response_text[start + m.end() - 1: start + m.end() + 1].startswith((" ", "\t")) and "\n" in text[m.start():m.end()]
+    if second and not _SECTION_WITH_SUBSECTION_PAT.search(second) and (_BACKREF.match(second) or indented):
+        return first + " " + second
+    return first
+
+
 def _claimed_status(window: str, negative_words, positive_word) -> "bool | None":
     """What does this stretch of the model's own answer claim -- True,
     False, or nothing stated? negative_words (e.g. 'non-cognizable') are
@@ -1567,7 +1590,7 @@ def _find_cognizable_bailable_mismatches(response_text: str, variants: dict) -> 
             continue
 
         window_end = section_hits[i + 1].start() if i + 1 < len(section_hits) else len(response_text)
-        window = response_text[m.end(): min(window_end, m.end() + 300)]
+        window = _claim_window(response_text, m.end(), window_end)
 
         valid_cognizable = {data.get("cognizable")}
         valid_bailable = {data.get("bailable")}
@@ -1579,12 +1602,12 @@ def _find_cognizable_bailable_mismatches(response_text: str, variants: dict) -> 
         claimed_cog = _claimed_status(window, ["non-cognizable", "not cognizable"], "cognizable")
         if claimed_cog is not None and claimed_cog not in valid_cognizable:
             problems.append({"section": key, "field": "cognizable", "claimed": claimed_cog,
-                             "valid": sorted((v for v in valid_cognizable if v is not None), reverse=True)})
+                             "valid": sorted((v for v in valid_cognizable if v is not None), reverse=True), "text": (m.group(0) + window).strip()[:220]})
 
         claimed_bail = _claimed_status(window, ["non-bailable", "not bailable"], "bailable")
         if claimed_bail is not None and claimed_bail not in valid_bailable:
             problems.append({"section": key, "field": "bailable", "claimed": claimed_bail,
-                             "valid": sorted((v for v in valid_bailable if v is not None), reverse=True)})
+                             "valid": sorted((v for v in valid_bailable if v is not None), reverse=True), "text": (m.group(0) + window).strip()[:220]})
 
     return problems
 
@@ -1619,6 +1642,31 @@ def _looks_like_situation(response_text: str) -> bool:
         return True
     # v2 puts a "Right now" part after its opening answer, and v3 headed its steps "What you can do right now" (2026-10-14): a heading line of that kind anywhere counts.
     return bool(re.search(r"(?im)^[ \t#*]*(?:what you can do )?right now\b[^\n]{0,25}$", response_text))
+
+
+def _classification_note(problems: list, variants: dict) -> str:
+    """The note written by code when the answer still contradicts our table of cognizable / bailable after the second try (instead of withholding the answer, 2026-11-09): for each section, what the table says. '' when there is nothing to say."""
+    lines, seen = [], set()
+    for p in problems or []:
+        key = p.get("section")
+        if key in seen or key not in (variants or {}):
+            continue
+        seen.add(key)
+        d = variants[key]
+        vals = {"cognizable": {d.get("cognizable")}, "bailable": {d.get("bailable")}}
+        if d.get("has_multiple_conditions"):
+            for c in d.get("all_conditions", []):
+                vals["cognizable"].add(c.get("cognizable")); vals["bailable"].add(c.get("bailable"))
+        parts = []
+        for f in ("cognizable", "bailable"):
+            v = [x for x in sorted(vals[f], key=lambda z: (z is None, not z)) if x is not None]
+            if v:
+                parts.append(" or ".join(f if x else "non-" + f for x in v))
+        if parts:
+            lines.append(f"BNS section {key}: " + ", ".join(parts))
+    if not lines:
+        return ""
+    return ("\n\n**Classification check** *(written by our program from its table of the BNS, not by the model; where the text above says otherwise about these sections, go by this line and confirm it against the BNSS First Schedule)*: " + "; ".join(lines) + ".")
 
 
 def _format_mismatch(problem: dict) -> str:
@@ -1669,7 +1717,7 @@ def _find_cognizable_bailable_omissions(response_text: str, variants: dict) -> l
             continue
 
         window_end = section_hits[i + 1].start() if i + 1 < len(section_hits) else len(response_text)
-        window = response_text[m.end(): min(window_end, m.end() + 300)]
+        window = _claim_window(response_text, m.end(), window_end)
 
         claimed_cog = _claimed_status(window, ["non-cognizable", "not cognizable"], "cognizable")
         claimed_bail = _claimed_status(window, ["non-bailable", "not bailable"], "bailable")
@@ -2131,6 +2179,11 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 if not _find_sections_missing_act(_fixed, section_act_map, acts_all):
                     print("ACT_NAME_ADDED_BY_CODE sections=" + ",".join(_still["missing_act"]), flush=True)
                     retry_text, _still = _fixed, {}
+            if list(k for k in _still if k != "pilot_sentences") == ["section_mismatch"]:             # the only thing left is a cognizable / bailable claim that differs from our table: keep the answer and add what the table says, written by code (2026-11-09; staging: an answer was withheld after two tries, Rs 22, for this alone)
+                _note = _classification_note(_still["section_mismatch"], variants)
+                if _note:
+                    print("CLASSIFICATION_NOTE_ADDED_BY_CODE " + __import__("json").dumps(_still["section_mismatch"], default=str)[:600], flush=True)
+                    retry_text, _still = retry_text + _note, {}
             if _still:
                 try:                                   # the answer is withheld: say which check, and on what, so that the cause can be read in the log (staging 2026-10-14: two of seven answers were withheld without a trace)
                     print("ANSWER_WITHHELD after the second try: reasons=" + ",".join(_still) + " detail=" + __import__("json").dumps(_still, default=str)[:600], flush=True)
