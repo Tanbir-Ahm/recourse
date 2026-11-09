@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 
 import answer_export
 import answer_view
+import case_file as CF
 import refusal_text
 import web_chat
 
@@ -29,6 +30,7 @@ from . import matters as matters_mod
 router = APIRouter()
 logger = logging.getLogger("api.chats")
 MAX_CHATS = 500
+AGE_MINOR_QUESTION = "The victim was under 18 years old. What changes in this case?"
 _EXPORT_SLOTS = {"n": None, "sem": None}
 
 
@@ -75,6 +77,21 @@ class PatchChat(BaseModel):
 
 class AskChat(BaseModel):
     question: str = Field(min_length=1, description="The person's own words.")
+    intent: Optional[Literal["age_minor"]] = Field(default=None, description="'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file).")
+
+
+class CaseFileFact(BaseModel):
+    id: Optional[str] = Field(default=None, max_length=40, description="The id of a fact the person already sees; omit for a line they have just written.")
+    text: str = Field(default="", max_length=2000)
+
+
+class PutCaseFile(BaseModel):
+    facts: list[CaseFileFact] = Field(default_factory=list, max_length=80, description="The whole list as the person now sees it, in order. A fact missing from it is removed.")
+
+
+class CaseFileAnswer(BaseModel):
+    key: Literal["victim_age"]
+    value: Literal["minor", "adult", "unknown"]
 
 
 @router.get("/api/chats", summary="My conversations, newest first")
@@ -107,7 +124,8 @@ def create_chat(body: CreateChat, principal: Principal = Depends(ready_user), db
 @router.get("/api/chats/{chat_id}", summary="One conversation with its messages and their results")
 def get_chat(chat_id: uuid.UUID, principal: Principal = Depends(ready_user), db=Depends(get_db)):
     c = _own_chat(db, principal.user, chat_id)
-    return {**chat_view(c, _matter_titles(db, [c]).get(c.matter_id)), "messages": [message_view(m) for m in c.messages], "turn_limit": web_chat.MAX_TURNS}
+    return {**chat_view(c, _matter_titles(db, [c]).get(c.matter_id)), "messages": [message_view(m) for m in c.messages], "turn_limit": web_chat.MAX_TURNS,
+            "case_file": chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))}
 
 
 @router.patch("/api/chats/{chat_id}", summary="Rename or archive a conversation")
@@ -124,6 +142,35 @@ def patch_chat(chat_id: uuid.UUID, body: PatchChat, principal: Principal = Depen
     return chat_view(c, _matter_titles(db, [c]).get(c.matter_id))
 
 
+def _case_file_or_404(c):
+    if not CF.enabled():
+        raise HTTPException(status_code=404, detail="not_found")
+
+
+@router.patch("/api/chats/{chat_id}/case_file", summary="Edit the case file of a conversation (what the person has told us)")
+def patch_case_file(chat_id: uuid.UUID, body: PutCaseFile, principal: Principal = Depends(ready_user), db=Depends(get_db)):
+    c = db.execute(select(M.Chat).where(M.Chat.id == chat_id, M.Chat.user_id == principal.user.id).with_for_update()).scalar_one_or_none()
+    if c is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    _case_file_or_404(c)
+    c.case_file = CF.apply_edit(c.case_file, [{"id": f.id, "text": f.text} for f in body.facts])
+    db.commit()
+    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))
+
+
+@router.post("/api/chats/{chat_id}/case_file/answer", summary="Tap an answer on a card (the victim's age)")
+def post_case_file_answer(chat_id: uuid.UUID, body: CaseFileAnswer, principal: Principal = Depends(ready_user), db=Depends(get_db)):
+    c = db.execute(select(M.Chat).where(M.Chat.id == chat_id, M.Chat.user_id == principal.user.id).with_for_update()).scalar_one_or_none()
+    if c is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    _case_file_or_404(c)
+    if not CF.age_card_enabled():
+        raise HTTPException(status_code=404, detail="not_found")
+    c.case_file = CF.set_answer(c.case_file, body.key, body.value)
+    db.commit()
+    return chat_service.case_file_view(c.case_file, chat_service.turns_of(c.messages))
+
+
 @router.delete("/api/chats/{chat_id}", summary="Delete a conversation and its messages, now")
 def delete_chat(chat_id: uuid.UUID, principal: Principal = Depends(ready_user), db=Depends(get_db)):
     c = _own_chat(db, principal.user, chat_id)
@@ -132,7 +179,7 @@ def delete_chat(chat_id: uuid.UUID, principal: Principal = Depends(ready_user), 
     return {"deleted": True}
 
 
-def _prepare(db, principal, chat_id, key, question):
+def _prepare(db, principal, chat_id, key, question, intent=None):
     """Runs in a thread (database work). -> ('replay', out) | ('refused', info) | ('run', Turn); raises HTTPException for the plain refusals."""
     user = principal.user
     chat = _own_chat(db, user, chat_id)
@@ -143,6 +190,8 @@ def _prepare(db, principal, chat_id, key, question):
         return "replay", out
     if chat_service.user_message_count(db, chat.id) >= web_chat.MAX_TURNS:
         raise HTTPException(status_code=409, detail="turn_limit")
+    if intent == "age_minor" and not (CF.enabled() and CF.victim_minor(chat.case_file)):
+        raise HTTPException(status_code=409, detail="intent_not_ready")
     if not chat_service.claim(chat.id, key):
         raise HTTPException(status_code=409, detail="in_progress")
     try:
@@ -157,7 +206,8 @@ def _prepare(db, principal, chat_id, key, question):
     if not ok:
         chat_service.unclaim(chat.id, key)
         return "refused", info
-    return "run", chat_service.Turn(user_id=user.id, chat_id=chat.id, audience=chat.audience, question=question, request_id=key, event_id=event_id, usage=info, turns=turns, matter=matter)
+    return "run", chat_service.Turn(user_id=user.id, chat_id=chat.id, audience=chat.audience, question=question, request_id=key, event_id=event_id, usage=info, turns=turns, matter=matter,
+                                    case_file=chat.case_file if CF.enabled() else None, intent=intent)
 
 
 @router.post("/api/chats/{chat_id}/ask", summary="Ask in a conversation", description="Header Idempotency-Key is required. Send 'Accept: text/event-stream' for the live steps; otherwise one JSON reply. The answer is saved by the server.")
@@ -167,11 +217,13 @@ async def ask_in_chat(chat_id: uuid.UUID, body: AskChat, request: Request, idemp
     if not chat_service.KEY_RE.match(key):
         raise HTTPException(status_code=400, detail="idempotency_key_required")
     question = body.question.strip()
+    if body.intent == "age_minor":
+        question = AGE_MINOR_QUESTION                  # the person tapped; the words are ours, and they are shown to the person as the question they asked
     if not question:
         raise HTTPException(status_code=422, detail="question is empty")
     if len(question) > config.max_question_chars():
         raise HTTPException(status_code=413, detail="question is too long")
-    kind, payload = await asyncio.to_thread(_prepare, db, principal, chat_id, key, question)
+    kind, payload = await asyncio.to_thread(_prepare, db, principal, chat_id, key, question, body.intent)
     if kind == "refused":
         return JSONResponse({"detail": payload.get("reason", "limit_reached"), "usage": payload}, status_code=429)
     rid = uuid.uuid4().hex[:16]

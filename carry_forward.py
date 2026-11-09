@@ -50,3 +50,62 @@ def refs_from_turns(turns, limit=MAX_CARRIED):
             if len(out) >= limit:
                 return out
     return out
+
+
+MAX_CARRIED_CASES = 2
+
+
+def _named_cases(a):
+    """The library judgments an answer's own text names, from its stored matches: [match dict] with a passage, in the order handed over. Wider-search passages are not among them (they are not in `matches`)."""
+    try:
+        import answer_view
+    except Exception:  # noqa: BLE001
+        return []
+    text = (a.get("response_text") or "").lower()
+    out = []
+    for m in a.get("matches") or []:
+        if not isinstance(m, dict) or not m.get("case_name") or not str(m.get("text") or "").strip() or m.get("retrieval") in ("cited", "carried"):
+            continue
+        if answer_view.case_is_named(m, text):
+            out.append(m)
+    return out
+
+
+def cases_from_turns(turns, limit=MAX_CARRIED_CASES):
+    """Copies of the library judgment passages the earlier answers NAMED, marked retrieval 'carried', latest answer first, one per case, at most `limit`: they are offered again to a follow-up exactly as they were first handed over (the passage the answer
+    saw), so the model can check them again; our conclusions about them are not carried. [] when none."""
+    out, seen = [], set()
+    for t in reversed(turns or []):
+        a = t.get("answer") if isinstance(t, dict) else None
+        if not isinstance(a, dict) or a.get("state") not in STATES:
+            continue
+        for m in _named_cases(a):
+            key = str(m.get("case_name") or "").lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            c = dict(m)
+            c["retrieval"] = "carried"
+            out.append(c)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def relied_on(turns, section_limit=8, case_limit=6):
+    """What the earlier answers rested on, for the case-file panel: {'sections': [{'act','section'}], 'cases': [{'name','paragraph'}]} (the library cases an answer named). Display only."""
+    sections = refs_from_turns(turns, limit=section_limit)
+    cases, seen = [], set()
+    for t in reversed(turns or []):
+        a = t.get("answer") if isinstance(t, dict) else None
+        if not isinstance(a, dict) or a.get("state") not in STATES:
+            continue
+        for m in _named_cases(a):
+            key = str(m.get("case_name") or "").lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cases.append({"name": str(m.get("case_name")), "paragraph": str(m.get("paragraph_number") or "") or None})
+            if len(cases) >= case_limit:
+                return {"sections": sections, "cases": cases}
+    return {"sections": sections, "cases": cases}

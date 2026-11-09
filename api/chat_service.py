@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import func, select
 
+import carry_forward
+import case_file as CF
 import web_chat
 
 from . import engine_adapter, quota
@@ -50,6 +52,24 @@ def matter_notes(db, chat):
     if m is None:
         return None
     return {"title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": m.next_date.isoformat() if m.next_date else None, "facts": m.facts}
+
+
+FACT_LABELS = {"typed": "From your message", "edited": "You edited this", "added": "You added this", "button": "You tapped this"}
+
+
+def case_file_view(cf, turns):
+    """What the page draws as the conversation's case file (case_file.py): the facts (id, text, kind, label, whether the text can be changed), what the earlier answers relied on (display only), and the age card when it is due. None when
+    CASE_FILE is off. `turns`: [{'q', 'answer'}] of the saved conversation."""
+    if not CF.enabled():
+        return None
+    cf = cf if isinstance(cf, dict) else CF.new_file()
+    facts = [{"id": f["id"], "text": f["text"], "kind": f.get("kind", "typed"), "label": FACT_LABELS.get(f.get("kind", "typed"), ""), "editable": f.get("kind") != "button"} for f in cf.get("facts") or [] if isinstance(f, dict) and f.get("text")]
+    try:
+        relied = carry_forward.relied_on(turns)
+    except Exception:  # noqa: BLE001
+        relied = {"sections": [], "cases": []}
+    person_text = " ".join(t.get("q") or "" for t in turns or [])
+    return {"enabled": True, "facts": facts, "limit": CF.MAX_FACTS, "max_chars": CF.MAX_FACT_CHARS, "relied_on": relied, "card": CF.card_for(cf, person_text)}
 
 
 def title_from(question):
@@ -100,6 +120,8 @@ class Turn:
     usage: dict
     turns: list = field(default_factory=list)
     matter: dict | None = None                  # the notes of the matter the chat is filed under (title, court, case_number, sections, stage, next_date, facts), read once when the question was accepted
+    case_file: dict | None = None               # the chat's case file (case_file.py) as it was when the question was accepted; None when CASE_FILE is off
+    intent: str | None = None                   # 'age_minor': the question is the person's tap on 'under 18' (the server wrote its words)
 
 
 def _style():
@@ -127,9 +149,10 @@ def _release_only(event_id):
 def run_turn(on_step, c):
     """The worker-thread job. Returns the engine's reply plus chat_id, message_id, saved, usage."""
     try:
-        engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter)
+        engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter, case_file=c.case_file)
         web_chat.log_turn(engine_q, info)
-        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None)
+        ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent) if c.case_file is not None or CF.enabled() else None
+        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf)
     except BaseException:
         _release_only(c.event_id)
         unclaim(c.chat_id, c.request_id)
@@ -161,6 +184,8 @@ def _save(c, out, info):
                     chat.updated_at = now
                     if not chat.title:
                         chat.title = title_from(c.question)
+                    if CF.enabled() and c.intent is None and state != "unrelated":          # the sentences the person typed join the case file (a tap's own words are not facts; small talk is not part of the matter)
+                        chat.case_file = CF.add_from_message(chat.case_file, c.question)
                     db.flush()
                     message_id, saved = am.id, True
             quota.settle(db, c.event_id, cost, message_id)
@@ -180,4 +205,13 @@ def _save(c, out, info):
                 db.commit()
         except Exception as exc2:  # noqa: BLE001
             logger.warning("could not settle a use: %s", type(exc2).__name__)
-    return {**out, "chat_id": str(c.chat_id), "message_id": str(message_id) if message_id else None, "saved": saved, "usage": usage, "turn": info.get("turn")}
+    reply = {**out, "chat_id": str(c.chat_id), "message_id": str(message_id) if message_id else None, "saved": saved, "usage": usage, "turn": info.get("turn")}
+    try:
+        if CF.enabled() and saved:
+            with dbs.session() as db:
+                chat = db.execute(select(M.Chat).where(M.Chat.id == c.chat_id, M.Chat.user_id == c.user_id)).scalar_one_or_none()
+                if chat is not None:
+                    reply["case_file"] = case_file_view(chat.case_file, turns_of(chat.messages))
+    except Exception as exc:  # noqa: BLE001 -- the answer is returned without the panel's data
+        logger.warning("could not read the case file back: %s", type(exc).__name__)
+    return reply

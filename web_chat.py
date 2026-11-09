@@ -103,14 +103,24 @@ def matter_lines(matter):
     return out if len(out) > 1 or (out and not str(out[0]).startswith("- Matter:")) else []
 
 
-def fold(earlier, current, matter=None):
+def fold(earlier, current, matter=None, case_file=None):
     """The engine's question string: the matter's notes (when the conversation is filed under one), the earlier messages in WhatsApp's format, then the marker, then the current message. Nothing to fold in: the current message alone
     (exactly today's input). The engine searches on the current message only; the notes and the earlier messages are read by the scope check and by the answer model."""
     m_lines = matter_lines(matter)
-    if not earlier and not m_lines:
+    f_lines = _case_file_lines(case_file)
+    if not earlier and not m_lines and not f_lines:
         return current
-    lines = ([MATTER_HEADER] + m_lines if m_lines else []) + ([HEADER] + [f"- The person asked: {m}" for m in earlier] if earlier else [])
+    lines = (([MATTER_HEADER] + m_lines) if m_lines else []) + f_lines + (([HEADER] + [f"- The person asked: {m}" for m in earlier]) if earlier else [])
     return "\n".join(lines) + MARKER + current
+
+
+def _case_file_lines(case_file):
+    """The case file's facts as lines of the engine's question (case_file.py), [] when the switch is off or the file is empty."""
+    try:
+        import case_file as CF
+        return CF.fold_lines(case_file) if CF.enabled() else []
+    except Exception:  # noqa: BLE001
+        return []
 
 
 # ------------------------------------------------------------------ the follow-up rewrite
@@ -263,15 +273,24 @@ def should_carry(outcome, current):
     return _leans_back(current)
 
 
-def question_for_engine(turns, current, call=None, matter=None):
+def question_for_engine(turns, current, call=None, matter=None, case_file=None):
     """The string to hand answer_question for a follow-up, plus a record for the log. With no earlier turns: the message alone. The record's 'carry' lists the sections of the earlier answers to offer again
-    ([{'act', 'section'}], carry_forward.py); it is handed to the engine as a separate argument, never as words of the question."""
+    ([{'act', 'section'}], carry_forward.py); it is handed to the engine as a separate argument, never as words of the question.
+    With the case file on (case_file.py, CASE_FILE) and a file that holds facts: the earlier QUESTIONS are folded in as before, and the facts (the person's own sentences, as they have edited them) take the place of the earlier statements."""
     if not turns:
         return fold([], current, matter), {"turn": 1, "rewrite": "first", "folded": 0, "rewrite_inr": 0.0, "carry": [], **({"matter": True} if matter_lines(matter) else {})}
     outcome, standalone, inr = rewrite(turns, current, call=call)
     earlier = earlier_messages(turns)
+    use_file = bool(_case_file_lines(case_file))
+    if use_file:
+        try:
+            import case_file as CF
+            earlier = CF.asks_of([t.get("q") or "" for t in turns if (t.get("answer") or {}).get("state") not in NOT_FOLDED_STATES])
+        except Exception:  # noqa: BLE001
+            use_file = False
     if outcome == "new_topic" and not _leans_back(current):
         earlier = []
+        use_file = False
     message = current + "\n" + REWRITE_LEAD + standalone + ")" if outcome == "used" else current
     carry = []
     try:
@@ -280,7 +299,31 @@ def question_for_engine(turns, current, call=None, matter=None):
             carry = carry_forward.refs_from_turns(turns)
     except Exception:  # noqa: BLE001 -- fail-open: the follow-up goes without the carried sections
         carry = []
-    return fold(earlier, message, matter), {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4), "carry": carry, **({"matter": True} if matter_lines(matter) else {})}
+    info = {"turn": len(turns) + 1, "rewrite": outcome, "folded": len(earlier), "rewrite_inr": round(inr, 4), "carry": carry, **({"matter": True} if matter_lines(matter) else {})}
+    if use_file:
+        info["facts"] = len(CF.fact_texts(case_file))
+    return fold(earlier, message, matter, case_file if use_file else None), info
+
+
+def engine_case_file(case_file, info, turns, current, intent=None):
+    """The separate argument handed to the engine for a question of a conversation with a case file (never part of the question string): {'search_hint': the facts as a search text (a follow-up only), 'victim_minor': True/False/None,
+    'age_gate': bool, 'delta': 'pocso' or None, 'cases': library judgments the earlier answers relied on (a follow-up only)}; None when CASE_FILE is off. `info` is question_for_engine's record."""
+    try:
+        import carry_forward
+        import case_file as CF
+        if not CF.enabled():
+            return None
+        follow = bool(info) and info.get("turn", 1) > 1 and (info.get("rewrite") != "new_topic" or _leans_back(current))          # when in doubt (no rewrite was made) a later question is a follow-up, as the rewrite step itself says
+        out = {"search_hint": CF.search_hint(case_file) or None if follow else None, "victim_minor": CF.victim_minor(case_file), "age_gate": CF.age_card_enabled(),
+               "delta": "pocso" if intent == "age_minor" and CF.victim_minor(case_file) else None, "cases": []}
+        if follow:
+            try:
+                out["cases"] = carry_forward.cases_from_turns(turns)
+            except Exception:  # noqa: BLE001
+                out["cases"] = []
+        return out
+    except Exception:  # noqa: BLE001 -- fail-open: the question goes without the file
+        return None
 
 
 def log_turn(question, info):

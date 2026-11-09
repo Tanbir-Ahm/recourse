@@ -17,7 +17,7 @@ import os, sys, time
 sys.path.insert(0, %(here)r)
 from api import engine_adapter
 class E:
-    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None):
+    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None):
         import cost_log, progress
         cost_log.begin(question)
         try:
@@ -33,6 +33,10 @@ class E:
                         "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "grounding_notes": ["One quotation could not be matched to the sources."],
                         "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a><script>window.__xss=1</script>."},
                         "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2"}]}
+            if "MOLEST" in question.rsplit("Now the person says:", 1)[-1] or "under 18 years old" in question.rsplit("Now the person says:", 1)[-1]:        # a case that mentions a sexual offence (the case file's age card), and the 'under 18' question
+                tail = (" [case file: " + ("delta " + str(case_file.get("delta")) + ", minor " + str(case_file.get("victim_minor")) + ", hint " + str(bool(case_file.get("search_hint")))) + "]") if case_file else ""
+                return {"state": "single_match", "audience": audience, "response_text": "Section 77 of the BNS may apply to the clip." + tail + ("" if "own notes on the matter" not in question else " [read with the matter notes]"),
+                        "matches": [{"type": "statute", "act": "BNS", "section_number": "77", "text": "Whoever watches, or captures the image of a woman engaging in a private act shall be punished."}]}
             return {"state": "single_match", "response_text": "Stub answer to: " + question[-70:] + (" [read with the matter notes]" if "own notes on the matter" in question else ""), "matches": [], "audience": audience}
         finally:
             cost_log.finish(style="v1", audience=audience or "")

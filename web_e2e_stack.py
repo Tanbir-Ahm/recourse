@@ -87,7 +87,7 @@ def main(argv=None):
         srv = api_harness.start({"DATABASE_URL": pg.url("webe2e"), "ACCOUNTS_OPEN": "on", "ACCOUNTS_ALLOW_PLACEHOLDER_LEGAL": "on", "GOOGLE_CLIENT_ID": CLIENT_ID, "API_COOKIE_SECURE": "off",
                                  "CORS_ALLOW_ORIGINS": a.web_origin, "FRONTEND_PROXY_SECRET": PROXY_SECRET, "API_RATE_LIMIT_PER_MINUTE": "0", "API_AUTH_RATE_PER_MINUTE": "0",
                                  "HARNESS_FAKE_GOOGLE_DIR": a.dir, "API_PURGE": "off", "ANON_TRIAL": "on", "IP_HASH_SECRET": "h" * 40, "ANON_DAILY_BUDGET_INR": "1000", "API_ANON_RATE_PER_MINUTE": "0",
-                                 "SEARCH_MEANING": "off", "ACT_SHELF": "on", "SCI_SEARCH_URL": f"http://127.0.0.1:{sci.server_address[1]}", "API_SEARCH_RATE_PER_MINUTE": "0"})
+                                 "SEARCH_MEANING": "off", "ACT_SHELF": "on", "CASE_FILE": "on", "AGE_CARD": "on", "SCI_SEARCH_URL": f"http://127.0.0.1:{sci.server_address[1]}", "API_SEARCH_RATE_PER_MINUTE": "0"})
         print(json.dumps({"api": srv.url, "key_pem": os.path.join(a.dir, "private.pem"), "client_id": CLIENT_ID, "proxy_secret": PROXY_SECRET}), flush=True)
         while not stop["now"] and os.getppid() == parent:
             time.sleep(0.5)

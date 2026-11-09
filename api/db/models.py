@@ -153,6 +153,7 @@ class Chat(Base):
     audience: Mapped[str] = mapped_column(String(10), nullable=False, server_default="layman")
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     matter_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("matters.id", ondelete="SET NULL"), index=True)
+    case_file: Mapped[dict | None] = mapped_column(JSONType)                  # case_file.py: what the person has told us in this conversation, as they have edited it (NULL: none yet)
     created_at: Mapped[datetime.datetime] = _created()
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     messages: Mapped[list["Message"]] = relationship(back_populates="chat", cascade="all, delete-orphan", order_by="Message.seq")

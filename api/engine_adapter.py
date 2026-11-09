@@ -69,7 +69,7 @@ def jsonable(obj):
     return _scrub(json.loads(json.dumps(obj, default=_default, ensure_ascii=False)))
 
 
-def work(question, audience, on_step, carried=None):
+def work(question, audience, on_step, carried=None, case_file=None):
     """Runs in a worker thread: one question, start to finish. on_step(step_id, detail) hears the engine's live steps (this thread only)."""
     import cost_log
     import progress
@@ -78,6 +78,8 @@ def work(question, audience, on_step, carried=None):
     progress.set_listener(on_step)
     try:
         kw = {"carried_sections": carried} if carried else {}          # the sections the earlier answers of the chat relied on (carry_forward.py); not passed at all when there are none, so an engine without the argument still works
+        if case_file:
+            kw["case_file"] = case_file                                  # the chat's case file as a separate argument (case_file.py, CASE_FILE); not passed when there is none
         result = eng.answer_question(question, inline_domains=INLINE_DOMAINS, audience=audience, channel=None, **kw)
     finally:
         progress.clear()

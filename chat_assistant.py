@@ -1966,6 +1966,10 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             retrieved_text = retrieved_text + act_directory.prompt_block(_acts_named(question), held=_shelf_held(matches, question))
         except Exception:  # pragma: no cover -- fail-open
             pass
+        try:                                       # case_file.py: the person tapped 'under 18'; POCSO is in the material; answer only what changes (_case_delta_block); '' for every other turn
+            retrieved_text = retrieved_text + _case_delta_block()
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         try:                                       # the person PAID (or was made to pay) a public servant: section 8 of the Prevention of Corruption Act is in the material; say what it says about the payer (_payer_block); "" otherwise
             retrieved_text = retrieved_text + _payer_block(matches)
         except Exception:  # pragma: no cover -- fail-open
@@ -3054,7 +3058,7 @@ def _find_relevant_sections_for_turn(current_message: str, full_question: str, *
     back unconditionally would undo the fix."""
     from semantic_retrieval import find_relevant_sections
 
-    result = find_relevant_sections(current_message, **kwargs)
+    result = find_relevant_sections(_hinted(current_message), **kwargs)
     if result.get("state") == "no_match" and current_message != full_question:
         result = find_relevant_sections(full_question, **kwargs)
     return _add_own_words_search(result, current_message, find_relevant_sections, **kwargs)
@@ -3082,7 +3086,7 @@ def _follow_up_own_words(current_message: str) -> str:
     msg = current_message or ""
     cut = msg.find("\n" + lead)
     if cut == -1:
-        return ""
+        return msg.strip() if _case_arg("search_hint") else ""          # case file: the ordinary search ran on the message plus the facts, so the message alone is searched too and merged in (own words first)
     return msg[:cut].strip()
 
 
@@ -3732,6 +3736,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     overrides = statute_overrides + judgment_overrides + shelf_overrides
     # a follow-up: the sections the earlier answers of this conversation relied on (carry_forward.py), unless the question already has them
     overrides = overrides + _carried_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
+    overrides = overrides + _carried_case_matches({str(o.get("case_name") or "").lower() for o in overrides if isinstance(o, dict)})
 
     # Search on the CURRENT message first, falling back to the full
     # history-included question only if that narrow search finds nothing
@@ -3962,7 +3967,7 @@ import threading
 _ACTS_CACHE = threading.local()                  # per thread (a Streamlit session or a WhatsApp request): the Acts found for the question being answered, so the ACT_DETECT passes run once, not six times
 
 
-def _acts_named(question):
+def _acts_named_core(question):
     """The Acts of the Act Directory (act_directory.py) that the QUESTION names or clearly describes: [{'id','short','how'}], [] when none, when ACT_DIRECTORY=off, or on any failure.
 
     With ACT_DETECT set (act_detect.py, added 2026-10-17; off by default, so nothing changes until the owner sets it) a SECOND pass is added for a question that names no Act but plainly describes one
@@ -3985,6 +3990,7 @@ def _acts_named(question):
         hits, rec = act_detect.more(question, found, entries)
         by_id = {e["id"]: e for e in entries}
         acts = (found + [{"id": h["id"], "short": by_id[h["id"]]["short"], "how": h["how"]} for h in hits if h["id"] in by_id])[:act_directory.MAX_ACTS]
+        _ACTS_CACHE.ai = (question, {h["id"] for h in hits if isinstance(h, dict) and h.get("why") == "ai"})          # which Acts only the Haiku pass named (case_file: a guess that a question 'looks like' POCSO does not hand over the Act)
         if rec.get("pass") not in (None, "none"):
             import hashlib
             print("ACT_DETECT " + json.dumps({"q": hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], "named": [a["id"] for a in found], **rec}), flush=True)
@@ -3993,6 +3999,51 @@ def _acts_named(question):
     except Exception as exc:  # noqa: BLE001 -- fail-open
         logger.warning("act_detect pass failed: %s", type(exc).__name__)
         return found
+
+
+POCSO_ID = "pocso_act_2012"
+
+
+def _acts_named(question):
+    """_acts_named_core's Acts, adjusted by the case file when the question belongs to a conversation with one (CASE_FILE; web_chat.engine_case_file): with AGE_CARD on, POCSO named ONLY by the Haiku pass (a guess about a child the
+    person never mentioned) is dropped unless the person's own words clearly say the victim is a child; a tapped 'under 18' hands POCSO over (how = 'likely', so the page says it looks like it is about the Act); a tapped '18 or over'
+    drops a POCSO match that was only a likeness. Unchanged for every other question."""
+    acts = _acts_named_core(question)
+    try:
+        if not isinstance(getattr(_CASE, "arg", None), dict):
+            return acts
+        minor = _case_arg("victim_minor")
+        out = list(acts)
+        if _case_arg("age_gate") and minor is not True:
+            ai = getattr(_ACTS_CACHE, "ai", None)
+            ai_ids = ai[1] if isinstance(ai, tuple) and ai[0] == question else set()
+            import case_file
+            if POCSO_ID in ai_ids and not case_file.minor_signal(question):
+                out = [a for a in out if a.get("id") != POCSO_ID]
+        if minor is False:
+            out = [a for a in out if not (a.get("id") == POCSO_ID and a.get("how") != "named")]
+        if minor is True and not any(a.get("id") == POCSO_ID for a in out):
+            import act_directory
+            e = next((x for x in (act_directory.load().get("acts") or []) if x.get("id") == POCSO_ID), None)
+            if e:
+                out = ([{"id": POCSO_ID, "short": e.get("short") or "POCSO", "how": "likely"}] + out)[:act_directory.MAX_ACTS]
+        if [a.get("id") for a in out] != [a.get("id") for a in acts]:
+            print("CASE_FILE_ACTS " + json.dumps({"before": [a.get("id") for a in acts], "after": [a.get("id") for a in out], "minor": minor}), flush=True)
+        return out
+    except Exception as exc:  # noqa: BLE001 -- fail-open
+        logger.warning("case-file act adjustment failed: %s", type(exc).__name__)
+        return acts
+
+
+def _case_delta_block():
+    """A turn the person asked by tapping 'under 18' (case_file.py): the POCSO sections are in the material because of that tap. A short clause asks for ONLY what changes, from the material, without deciding anything. '' for every other turn."""
+    if _case_arg("delta") != "pocso":
+        return ""
+    return ("\n\n## The person has told us the victim was under 18\n"
+            "The person tapped an answer saying the victim was under 18 years old; the Protection of Children from Sexual Offences Act, 2012 (POCSO) sections in the material above are there for that reason. Answer ONLY what changes because of it, "
+            "in your own words and using ONLY what the material shows: whether the Act's own definition of a child fits the person's age statement, which of the Act's offences the facts described earlier in this conversation may touch (name each "
+            "section with its number), and what the Act's sections say about reporting, presumptions, the special court and bail or procedure, IF the material shows those sections. Do not repeat the earlier answer. Do not decide whether the Act "
+            "applies or whether anyone committed an offence; say what the sections say. If the material does not show a provision you would need, say so in one sentence. Keep the whole answer short.\n")
 
 
 def _payer_block(matches):
@@ -4050,6 +4101,34 @@ def _drop_sections_claimed_by_shelf(explicit, question, current_message):
 import threading as _threading_carry
 
 _CARRIED = _threading_carry.local()                 # per thread: [{'act','section','act_key'?}] handed to answer_question for a follow-up (carry_forward.py)
+
+_CASE = _threading_carry.local()                   # per thread: the case file's separate argument for the question being answered (case_file.py, web_chat.engine_case_file): search_hint, victim_minor, age_gate, delta, cases
+
+
+def _case_arg(name, default=None):
+    c = getattr(_CASE, "arg", None)
+    return c.get(name, default) if isinstance(c, dict) else default
+
+
+def _hinted(text):
+    """`text` followed by the case file's facts as a search text, for the ordinary search and the Act shelf's meaning search of a FOLLOW-UP (CASE_FILE); `text` unchanged otherwise. The question string itself (the person's words, for
+    the grounding checks, the register and the Act Directory) is never touched."""
+    hint = _case_arg("search_hint")
+    return f"{text}\n{hint}" if hint and text else text
+
+
+def _carried_case_matches(have_names):
+    """The library judgment passages the earlier answers of this conversation NAMED (carry_forward.cases_from_turns), handed to the engine as copies marked retrieval 'carried'; those already among the matches are not added twice."""
+    out = []
+    for m in _case_arg("cases") or []:
+        try:
+            if isinstance(m, dict) and str(m.get("case_name") or "").lower() not in have_names:
+                out.append(m)
+        except Exception:  # noqa: BLE001
+            pass
+    if out:
+        print("CARRY_CASES " + json.dumps({"cases": [str(m.get("case_name")) for m in out]}), flush=True)
+    return out
 
 
 def _carried_matches(have):
@@ -4141,7 +4220,7 @@ def _act_shelf_matches(question, current_message):
         acts = _acts_named(question)
         if not acts:
             return _companion_shelf_matches(question, [])               # EVIDENCE_COMPANIONS (default off): sections the question needs although it names no Act
-        res = act_shelf.search(question, acts, current_message=current_message)
+        res = act_shelf.search(question, acts, current_message=_hinted(current_message))
         info = res.get("info") or {}
         try:                                       # the wider search must not hand over a passage that cites the section the person named of ANOTHER statute (sci_search_tier._statute_filter)
             import sci_search_tier
@@ -4412,12 +4491,13 @@ def _progress_wider(result):
         pass
 
 
-def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None):
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
     answer_style.set_audience(audience)
     answer_style.set_channel(channel)
     _CARRIED.refs = list(carried_sections) if carried_sections else None          # carry_forward.py: sections the earlier answers of this conversation relied on (a follow-up only); cleared in the finally below
+    _CASE.arg = dict(case_file) if isinstance(case_file, dict) else None          # case_file.py: the conversation's case file as a separate argument (a follow-up's search text, the victim's age, the POCSO delta); cleared in the finally below
     try:
         import cost_log
         cost_log.begin(question)
@@ -4468,6 +4548,7 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         answer_style.set_audience(None)
         answer_style.set_channel(None)
         _CARRIED.refs = None
+        _CASE.arg = None
 
 
 def _ensure_bottom_line(text):

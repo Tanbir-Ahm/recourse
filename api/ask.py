@@ -100,7 +100,7 @@ async def _sse(q, rid, loop, timeout):
             return
 
 
-EXTRA_KEYS = ("chat_id", "message_id", "saved", "usage", "trial", "turn", "replayed")      # what a saving route adds to the engine's reply
+EXTRA_KEYS = ("chat_id", "message_id", "saved", "usage", "trial", "turn", "replayed", "case_file")      # what a saving route adds to the engine's reply
 
 
 def _payload(out):

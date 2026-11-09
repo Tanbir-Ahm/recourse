@@ -136,7 +136,7 @@ try:
     with eng.connect() as c:
         rev = c.execute(text("select version_num from alembic_version")).scalar()
         drift = compare_metadata(MigrationContext.configure(c, opts={"compare_type": True}), D.Base.metadata)
-    check(rev == "0003", f"the schema is at revision 0003 ({rev})")
+    check(rev == "0004", f"the schema is at revision 0004 ({rev})")
     check(drift == [], f"the migrated schema and the models do not differ ({drift[:2]})")
     check(res == {"plans_added": 2, "entitlements_added": 11}, f"the seed added the two plans and their eleven limits ({res})")
     with Session(eng) as ss:
