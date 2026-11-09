@@ -67,6 +67,7 @@ check(not ids(None), "None fires nothing")
 check(AL.mode() == "off" and AL.matches("I hid my friend who is absconding.") == [], "STATUTE_ALIASES unset: nothing is returned")
 os.environ["STATUTE_ALIASES"] = "on"
 ms, out = quiet(AL.matches, "Police arrested me since I gave a lift to the prime accused who was absconding. I never knew.")
+ms = [m for m in ms if m["act"] == "BNS"]          # the sentence also says "Police arrested me", which since 2026-11-09 brings the bail entries (BNSS 478 and 480) as well
 check(len(ms) == 1 and ms[0]["act"] == "BNS" and ms[0]["section_number"] == "249" and ms[0]["retrieval"] == "alias" and ms[0]["source"] == "statute_alias", "on: BNS 249 is returned, marked alias")
 check("harbours or conceals a person whom he knows or has reason to believe" in " ".join(ms[0]["text"].split()) and "context_note" not in ms[0], "on: the text is the library's own official wording, no commentary attached")
 check("bns_249_harbour" in out and out.startswith("STATUTE_ALIAS {"), "on: one STATUTE_ALIAS log line")
