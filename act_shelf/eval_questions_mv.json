@@ -1,0 +1,397 @@
+{
+ "written": "2026-11-10",
+ "by": "Claude (AI), before any retrieval number for the Motor Vehicles Act, 1988 existed (the text was loaded and machine-checked and embedded first; no question was run against it). The expected sections were chosen by reading the titles of the loaded sections, not by seeing a search result.",
+ "about": "30 questions (20 layman, 10 lawyer) written from the Act's own sections. AI-marked, NOT a lawyer's list: 'expected' = the section(s) Claude judges answer the question; 'also_ok' = other sections that would be a reasonable first look. 'hard' = Claude expected retrieval to struggle (a guess made before the run). Never edit a question after a run to improve a score; a mistake in the key is corrected only with a note in 'corrections_log'.",
+ "corrections_log": [],
+ "questions": [
+  {
+   "id": "M01",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "A truck hit my brother on the road and the driver sped away without stopping. What was the driver supposed to do under the law?",
+   "expected": [
+    "132",
+    "134"
+   ],
+   "also_ok": [
+    "159",
+    "161",
+    "187"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M02",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "What is the punishment for a driver who fails to stop and give information after an accident?",
+   "expected": [
+    "187"
+   ],
+   "also_ok": [
+    "132",
+    "134"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M03",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "I was caught driving after drinking. What is the penalty?",
+   "expected": [
+    "185"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M04",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "What is the punishment for driving a vehicle at a dangerous speed?",
+   "expected": [
+    "184"
+   ],
+   "also_ok": [
+    "183"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M05",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "My 16-year-old son was caught riding a scooter. Who is liable?",
+   "expected": [
+    "199A"
+   ],
+   "also_ok": [
+    "4",
+    "181"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M06",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Is it an offence to drive without a driving licence?",
+   "expected": [
+    "3",
+    "181"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M07",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "What is the minimum age to get a licence for a motorcycle with gear?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "8"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M08",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "The police fined me for not having insurance on my car. Is it compulsory?",
+   "expected": [
+    "146",
+    "196"
+   ],
+   "also_ok": [
+    "147"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M09",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Is a helmet compulsory for the person sitting behind on a two-wheeler?",
+   "expected": [
+    "129"
+   ],
+   "also_ok": [
+    "194D"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M10",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "What fine do I pay for not wearing a seat belt?",
+   "expected": [
+    "194B"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M11",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "Can a tribunal award compensation for a road accident without proof of negligence?",
+   "expected": [
+    "164"
+   ],
+   "also_ok": [
+    "165",
+    "166"
+   ],
+   "hard": true
+  },
+  {
+   "id": "M12",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "Where do I file a claim for compensation for a death in a road accident and within what time?",
+   "expected": [
+    "166"
+   ],
+   "also_ok": [
+    "165"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M13",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "Can the insurer refuse to pay the third party on the ground that the policy conditions were breached?",
+   "expected": [
+    "149"
+   ],
+   "also_ok": [
+    "147",
+    "150"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M14",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "A hit-and-run victim died and the vehicle is unknown. Is there any compensation from the government?",
+   "expected": [
+    "161"
+   ],
+   "also_ok": [
+    "164B"
+   ],
+   "hard": true
+  },
+  {
+   "id": "M15",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "If I help an injured accident victim at the roadside, can the police harass me?",
+   "expected": [
+    "134A"
+   ],
+   "also_ok": [
+    "134"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M16",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "Can a court cancel a driving licence after convicting the driver of drunk driving?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [
+    "19",
+    "21",
+    "185"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M17",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "My licence was suspended by the RTO. On what grounds can the authority disqualify me?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M18",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "I bought a used car from another state. How do I transfer ownership?",
+   "expected": [
+    "50"
+   ],
+   "also_ok": [
+    "47"
+   ],
+   "hard": true
+  },
+  {
+   "id": "M19",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "My truck carried more load than allowed and I was fined. What is the rule on weight limits?",
+   "expected": [
+    "113",
+    "194"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M20",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Can a bus carry standing passengers beyond its seating capacity? What is the penalty?",
+   "expected": [
+    "194A"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M21",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Is a permit needed to run a goods vehicle for hire?",
+   "expected": [
+    "66"
+   ],
+   "also_ok": [
+    "192A"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M22",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "What is the penalty for using a transport vehicle without a permit?",
+   "expected": [
+    "192A"
+   ],
+   "also_ok": [
+    "66"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M23",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Do I have to show my licence and registration papers to the police when stopped?",
+   "expected": [
+    "130"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M24",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Can the traffic police take away my vehicle if I don't have registration papers?",
+   "expected": [
+    "207"
+   ],
+   "also_ok": [
+    "130"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M25",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "After an accident, what information must the driver give to the police and the insurer?",
+   "expected": [
+    "134",
+    "159"
+   ],
+   "also_ok": [
+    "132"
+   ],
+   "hard": true
+  },
+  {
+   "id": "M26",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "What is the speed limit enforced under the Act and the penalty for exceeding it?",
+   "expected": [
+    "112",
+    "183"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M27",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "Does a commercial vehicle need a fitness certificate?",
+   "expected": [
+    "56"
+   ],
+   "also_ok": [],
+   "hard": false
+  },
+  {
+   "id": "M28",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "Is the 'golden hour' cashless treatment of accident victims in the law?",
+   "expected": [
+    "162"
+   ],
+   "also_ok": [
+    "134A"
+   ],
+   "hard": true
+  },
+  {
+   "id": "M29",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "q": "What is the validity of a learner's licence and when can the holder apply for a permanent licence?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "9"
+   ],
+   "hard": false
+  },
+  {
+   "id": "M30",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "q": "I used my vehicle without registering it. What is the fine?",
+   "expected": [
+    "192"
+   ],
+   "also_ok": [
+    "39"
+   ],
+   "hard": false
+  }
+ ],
+ "questions_sha256": "6f3d30411dd921e73c8e35c2f6958002458bcf5d81f3aba51b0fae57c9a91c5f"
+}
