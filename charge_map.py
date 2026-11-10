@@ -52,6 +52,32 @@ def _breach_of_trust(t):
     return bool((_CBT_STRONG.search(t) or (_CBT_WEAK.search(t) and _CBT_ENTRUST.search(t))) and _CBT_ROLE.search(t) and _CBT_THING.search(t))
 
 
+# a road accident: a vehicle, a collision, and a death or an injury (word lists written by Claude, not read by a lawyer); a deliberate killing with a vehicle is not a negligence case
+_VEHICLE = re.compile(r"\b(?:trucks?|lorry|lorries|cars?|bus(?:es)?|tempos?|tractors?|trolley|scooters?|scooty|motorcycles?|motorbikes?|bikes?|auto-?rickshaws?|autos?|jeeps?|vans?|carriers?|suvs?|pick-?ups?|e-?rickshaws?|rickshaws?|ambulances?|minibus|trailers?|rollers?|taxis?|cabs?|vehicles?|tankers?|dumpers?|jcb|drivers?|driving|drove|driven|riding|rode)\b", re.I)
+_COLLIDE = re.compile(r"\b(?:hit|knocked(?: down)?|ran over|run over|rammed|collided|collision|crashed|struck|crushed|mowed|overturned|skidded|reversed (?:into|over)|backed (?:into|over)|clipped|sideswiped|side-?swiped|ran into|rolled into|toppled|pinned|dashed|slammed|lost control|jumped a signal|thrown off|accident)\b", re.I)
+_RT_DEATH = re.compile(r"\b(?:died|dies|death|dead|killed|fatal|fatally|succumbed|lost (?:his|her|their) life|crushed to death|did not survive|passed away|declared dead|dead on arrival|killing|on the spot)\b", re.I)
+_RT_HURT = re.compile(r"\b(?:injur\w*|fractur\w*|hurt|wound\w*|hospitali[sz]ed|grievous|bleeding|head injuries|broke|broken|surgery|serious(?:ly)? (?:injur\w*|hurt))\b", re.I)
+_DELIBERATE = re.compile(r"\b(?:deliberately|intentionally|on purpose|wilfully|willfully|murder\w*|with intent to kill)\b", re.I)
+
+
+_ROAD_CUE = re.compile(r"\b(?:smashed|bumped|brushed|touched|fell under|under the wheels?|wheels?|brakes?|braking|speeding|(?:high |full |excessive )?speed|overtak\w*|handlebar|divider|highway|road|footpath|pavement|crossing|signal|junction|lane|bend|slope|reversing|backed|swerv\w*|tyre|bonnet|windshield|collid\w*)\b", re.I)
+_ATTACK = re.compile(r"\b(?:hijack\w*|robber\w*|dacoit\w*|assault\w*|attack\w*|beat|beaten|stabb?\w*|shot|firing|fired|mob)\b", re.I)
+_CLAIM = re.compile(r"\b(?:insurance|insurer|claims?|compensation|mact|premium|reimburse\w*)\b", re.I)
+
+
+def _road_accident(t):
+    """A vehicle, a sign of an accident (a collision verb or a road word), and no sign of a deliberate act, a weapon, an attack or a claim for compensation (the person is then not the one who drove)."""
+    return bool(_VEHICLE.search(t) and (_COLLIDE.search(t) or _ROAD_CUE.search(t)) and not (_DELIBERATE.search(t) or _WEAPON.search(t) or _ATTACK.search(t) or _CLAIM.search(t)))
+
+
+def _road_death(t):
+    return _road_accident(t) and bool(_RT_DEATH.search(t))
+
+
+def _road_hurt(t):
+    return _road_accident(t) and bool(_RT_HURT.search(t)) and not _RT_DEATH.search(t)
+
+
 # an ask sentence in which a lawyer asks which offences, charges or sections apply (the first answer then gets the table's sections too, as the button would give them)
 _ASK_OFFENCES = re.compile(r"\b(?:(?:what|which)\s+(?:all\s+|other\s+|more\s+|likely\s+|possible\s+)*(?:offences?|offenses?|sections?|charges?|penal provisions?|provisions?)\b|(?:what|which)\s+(?:are|is|will be|would be)\s+the\s+(?:likely\s+|possible\s+)*(?:offences?|charges?|sections?)\b|charged\s+(?:with|under)|booked\s+under|liable\s+(?:for|under)|likely\s+to\s+face|(?:what|which)\s+offences?\s+does\b)", re.I)
 
@@ -110,6 +136,12 @@ PATTERNS = [
      [("BNS", "249", "Harbouring an offender: the facts speak of help given to a wanted person."), ("BNS", "253", "Harbouring an offender (other cases).")]),
     ("breach_of_trust", _breach_of_trust,
      [("BNS", "316", "Criminal breach of trust: dishonestly misappropriating, or converting to one's own use, property one has been entrusted with. Sub-section (4) is for a clerk or servant, (5) for a public servant, banker, merchant, agent, broker or attorney; which one fits depends on his role and on what he was entrusted with.")]),
+    ("road_accident_death", _road_death,
+     [("BNS", "106", "Causing death by a rash or negligent act: sub-section (1) is the general offence; sub-section (2) is for a driver who causes death by rash and negligent driving of a vehicle and escapes without reporting it to a police officer or a Magistrate soon after the incident (a lawyer should confirm that sub-section (2) is in force for the date of the incident)."),
+      ("BNS", "281", "Rash driving or riding on a public way, in a manner so rash or negligent as to endanger human life; it is commonly charged together with section 106.")]),
+    ("road_accident_hurt", _road_hurt,
+     [("BNS", "281", "Rash driving or riding on a public way, in a manner so rash or negligent as to endanger human life."),
+      ("BNS", "125", "Doing an act so rashly or negligently as to endanger human life or the personal safety of others; sub-sections cover hurt and grievous hurt caused by such an act.")]),
 ]
 
 
