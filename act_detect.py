@@ -71,6 +71,11 @@ _OFFICIAL_WORK = r"(?:file|files|bill|bills|licen[cs]e|permit|tender|certificate
 # A word that makes a question about a PUBLIC servant (stricter than _ROLE: a bare "officer" or "clerk" can work in a private firm)
 _PUBLIC_ROLE = r"\b(?:public servants?|govern?ment (?:officer|official|servant|employee|staff|clerk|hospital|school|doctor|teacher|department|office)|govt\.? (?:officer|official|servant|employee|staff|clerk|hospital|school|office)|sarkari|police(?:man|men|woman)?|constable|sub-?inspector|inspector|tehsildar|patwari|talathi|revenue (?:officer|department)|municipal|municipality|corporation officer|panchayat|customs officer|excise officer|income[- ]tax officer|registrar|sub-?registrar|babu|vigilance|anti[- ]corruption)\b"
 
+# ---- words for the Motor Vehicles Act, 1988 (added 2026-11-10) ----
+_MV_VEH = r"\b(?:truck|lorry|lorries|car|bus|tempo|tractor|scooter|scooty|motorcycle|motorbike|bike|auto(?:-?rickshaw)?|rickshaw|jeep|van|suv|pick-?up|taxi|cab|vehicle|tanker|dumper|driver|driving|drove|rider|riding|rode)\b"
+_MV_HIT = r"\b(?:hit|knocked|ran over|run over|rammed|collided|collision|struck|crushed|accident|crash(?:ed)?)\b"
+_MV_FLEE = r"\b(?:did not stop|didn't stop|not stop(?:ped)?|without stopping|sped away|speeding away|(?:drove|rode|sped|slipped|made) (?:on|away|off)|fled|ran away|ran off|absconded|escaped|left the (?:spot|scene)|leaving the (?:injured|victim))\b"
+
 # ---- words for the Muslim Women (Protection of Rights on Marriage) Act, 2019 and the Prevention of Damage to Public Property Act, 1984 (added 2026-10-17 on the owner's "Yes, build the Muslim Women and Public Property patterns") ----
 # Both are MINE, not the workbook's: Machine Spec v2 has no anchors for these two Acts. The ideas come from the "Layperson Trigger Additions" and "Revised Trigger Map" sheets, whose false-positive notes are why every
 # pattern below needs a second cue. First version scored 16/16 and 18/18 on its own question set and then 14/16, 13/17 and 3 false alarms of 27 on a harder one (research FOLLOW_UPS 2at); this is the tightened version.
@@ -220,9 +225,30 @@ ACTS = {
         "not_when": "",
     },
     "mv_act_1988": {
-        "about": "motor-vehicle offences: drunk driving, dangerous driving, hit and run, driving without a licence or insurance.",
-        "wide": [r"\bdrunk(?:en)? driving\b", r"\bdrink[- ]and[- ]driv\w+", r"\bhit[- ]and[- ]run\b", r"\bdangerous driving\b", r"\bdriving (?:without (?:a )?(?:valid )?(?:licen[cs]e|insurance)|under the influence|after drinking)\b"],
-        # DEVIATION: the workbook's N2 also has a bare "rash (and negligent) driving"; rash driving is itself a BNS offence, so on its own it would put a Motor Vehicles Act notice on an ordinary BNS question
+        "about": "motor-vehicle law: drunk driving, dangerous driving, a driver who does not stop after an accident, driving licences, registration, insurance, permits, helmets and seat belts, and compensation for road accidents.",
+        "wide": [r"\bdrunk(?:en)? driving\b", r"\bdrink[- ]and[- ]driv\w+", r"\bhit[- ]and[- ]run\b", r"\bdangerous driving\b", r"\bdriving (?:without (?:a )?(?:valid )?(?:licen[cs]e|insurance)|under the influence|after drinking)\b",
+                 # added 2026-11-10 (owner: "Put it on the Act shelf, so the answer can state its sections"); my words, not the workbook's, written after reading the Act's section titles; see acts/mv_detect_questions.json
+                 near(near(_MV_VEH, _MV_HIT, 120), _MV_FLEE, 200),                                                    # a vehicle hit someone and the driver did not stop / drove away (no "hit and run" in the words)
+                 near(r"\b(?:road|motor|vehicle|traffic|highway)\s+accident\b|\bkilled by (?:a|the) (?:bus|truck|car|lorry|vehicle|tempo)\b", r"\b(?:compensation|tribunal|MACT|insur\w+)\b", 140),
+                 r"\bclaims?\s+tribunal\b", r"\bMACT\b", r"\bthird[- ]party\s+(?:claim|insurance|risk)\w*",
+                 r"\bseat[- ]?belts?\b", near(r"\bhelmets?\b", r"\b(?:wear\w*|worn|ride\w*|rid(?:er|ing)|fine\w*|challan\w*|police|compulsory|pillion|two-?wheeler|without|mandatory)\b", 60), r"\bprotective\s+headgear\b",
+                 r"\b(?:driving|learner'?s?)\s+licen[cs]e\b", r"\blearner'?s?\s+licen[cs]e\b",
+                 r"\bRTO\b", r"\bregional\s+transport\s+(?:office|authority)\b", r"\b(?:registration\s+certificate|RC\s+book)\b", r"\bpollution\s+under\s+control\b", r"\bPUC\b", r"\bfitness\s+certificate\b",
+                 near(r"\bpermit\b", _MV_VEH, 80), near(r"\b(?:traffic\s+police|RTO)\b", r"\b(?:detain\w*|seiz\w+|impound\w*|challan\w*|fined?)\b", 100), r"\bchallan(?:ed|s)?\b",
+                 r"\boverload\w*\b", r"\bexcess\s+passengers\b", r"\bcarrying\s+(?:\w+\s+){0,2}passengers\s+in\s+a\s+(?:vehicle|tempo|auto|jeep|van)\b",
+                 r"\bover-?speeding\b", r"\bexcessive\s+speed\b", r"\bspeed\s+limit\b",
+                 near(near(r"\b(?:minor|juvenile|\d{1,2}[- ]year[- ]old)\b", r"\b(?:drove|driving|rode|riding)\b", 80), _MV_VEH, 100),
+                 r"\bgood\s+samaritans?\b",
+                 r"\b(?:driving|drove|driver)\b[^.]{0,40}\b(?:after|while)\s+(?:consuming|drinking|having)\s+(?:alcohol|liquor|drinks?)\b", r"\bdriving\b[^.]{0,30}\bdrunk\b",
+                 near(near(r"\btransfer\w*", r"\bregistration\b", 100), _MV_VEH, 120),
+                 # widened 2026-11-10 after the first held-out set (7 of 16): an accident or crash with a vehicle and a death or an injury; intoxicated driving; a roadside check of papers; insurance of a vehicle; overcrowding
+                 near(near(_MV_VEH, r"\b(?:accident|crash(?:ed)?|overturned|toppled|skidded|reversed over|met with an accident)\b", 120), r"\b(?:died|dead|death|killed|fatal|injur\w+|hurt|wounded|hospitali[sz]ed)\b", 200),
+                 r"\broad\s+(?:crash|accident|mishap)s?\b",
+                 near(r"\b(?:driv\w+|drove|driver|riding|rode)\b", r"\b(?:intoxicat\w+|drunk|alcohol|liquor|tipsy)\b", 60),
+                 near(near(r"\blicen[cs]e\b", _MV_VEH, 100), r"\b(?:police|stopped|fined|checked|RTO)\b", 120),
+                 near(r"\binsur\w+|\bpolicy\b", _MV_VEH, 80),
+                 r"\bovercrowd\w+", r"\bpassengers?\s+beyond\s+(?:the\s+)?(?:seating\s+)?capacity\b"],
+        # the bare "rash (and negligent) driving" is NOT a pattern: it is itself a BNS offence, and on its own it would put a Motor Vehicles Act notice on an ordinary BNS question (the workbook's N2 has it; a deliberate deviation, 2026-10-17)
         "not_when": "",
     },
     # ---- added 2026-10-17: two more Directory Acts that now have a word pass (the Child Marriage and Civil Rights Acts still have none: POCSO and the SC/ST Act overlap them too much) ----

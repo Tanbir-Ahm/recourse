@@ -724,7 +724,7 @@ threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
 check(not errs and all(out[(i, q)] == expected[q] for i in range(8) for q in qs), "eight threads searching at once get the same results as one thread")
 sc = S.scope()
 check({s["act"]: s["sections"] for s in sc["statutes"]} == {"BNS": 358, "BNSS": 531, "ITACT": 10, "NIACT": 19}, "scope(): the sections held of BNS, BNSS, the IT Act and the NI Act")
-check(len(sc["shelf"]) == 13 and sc["library_cases"] == 68 and sc["indexed_cases"] and sc["indexed_cases"] > 30000, "scope(): thirteen shelf Acts, 68 library cases, the Supreme Court index")
+check(len(sc["shelf"]) == 14 and sc["library_cases"] == 68 and sc["indexed_cases"] and sc["indexed_cases"] > 30000, "scope(): fourteen shelf Acts, 68 library cases, the Supreme Court index")
 os.environ.pop("ACT_SHELF")
 check(S.scope()["shelf"] == [], "scope(): no shelf Acts while ACT_SHELF is off")
 check(S.warm() is None, "warm() runs and returns nothing")

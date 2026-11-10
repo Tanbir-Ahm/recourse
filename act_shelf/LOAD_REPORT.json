@@ -1,5 +1,5 @@
 {
- "written": "2026-11-01",
+ "written": "2026-11-10",
  "reports": {
   "pc_act_1988": {
    "key": "pc_act_1988",
@@ -1407,6 +1407,385 @@
      "55": 0.8,
      "78": 0.885,
      "84": 0.865
+    }
+   }
+  },
+  "mv_act_1988": {
+   "key": "mv_act_1988",
+   "act_id": "AC_CEN_30_42_00009_198859_1517807326286",
+   "loaded_on": "2026-11-10",
+   "sections": 257,
+   "omitted_sections": [
+    "140",
+    "141",
+    "142",
+    "143",
+    "144",
+    "191",
+    "195"
+   ],
+   "record_last_modified": {
+    "min": "2026-07-10T22:20:42.762886Z",
+    "max": "2026-10-12T10:52:13.495151Z"
+   },
+   "pdf": {
+    "name": "A1988-59.pdf",
+    "sha256": "c619755eabb2085ec5ef8068777724223f3ec7e1cc1170aee0dd1608216dc482",
+    "pages": 176,
+    "as_on": "15th August, 2026",
+    "toc": {
+     "toc_entries": 257,
+     "loaded": 257,
+     "only_in_pdf": [],
+     "only_in_loaded": [],
+     "toc_absent_seen": [],
+     "toc_absent_unused": [],
+     "same_order": true,
+     "title_differences": [],
+     "ok": true
+    }
+   },
+   "tidy": {
+    "heading_repeated_removed": 35,
+    "state_amendments_set_aside": [
+     "41",
+     "65",
+     "71",
+     "103",
+     "192",
+     "207"
+    ]
+   },
+   "corrections": [
+    {
+     "section": "1",
+     "from": "for different State and any",
+     "to": "for different States and any",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "1",
+     "from": "in relation to a States, be construed",
+     "to": "in relation to a State, be construed",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "2",
+     "from": "or [adapted carriage];",
+     "to": "or [adapted vehicle];",
+     "count": 1,
+     "why": "India Code's database reads 'adapted carriage' in clause (26); the PDF reads 'adapted vehicle' (Act 32 of 2019, s. 2 substituted 'adapted vehicle' for 'invalid carriage', its footnote 8)."
+    },
+    {
+     "section": "2",
+     "from": "is superimposed on",
+     "to": "is super-imposed on",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "4",
+     "from": "No learners licence",
+     "to": "No learner's licence",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "8",
+     "from": "a learners licence limited",
+     "to": "a learner's licence limited",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "9",
+     "from": "between thed ate of expiry",
+     "to": "between the date of expiry",
+     "count": 1,
+     "why": "India Code's database runs 'the' and 'date' together with a stray space ('thed ate'); the PDF prints 'the date'."
+    },
+    {
+     "section": "15",
+     "from": "a learners licence. (2)",
+     "to": "a learner's licence. (2)",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "16",
+     "from": "reasonable grounds to belive that",
+     "to": "reasonable grounds to believe that",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "19",
+     "from": "[or subsection (1A)]",
+     "to": "[or sub-section (1A)]",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "29",
+     "from": "effective conductors licence",
+     "to": "effective conductor's licence",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "36",
+     "from": "a conductors licence,",
+     "to": "a conductor's licence,",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "55",
+     "from": "within fourteen days or as soon as may be",
+     "to": "within thirty days or as soon as may be",
+     "count": 1,
+     "why": "India Code's database text has not been brought up to date with Act 8 of 2026 (w.e.f. 15-08-2026), which the PDF 'as on 15th August, 2026' shows. The database's own footnote 1 on this section says the words 'fourteen days' were substituted by Act 8 of 2026, but its text still reads 'fourteen days'."
+    },
+    {
+     "section": "64",
+     "from": "under subsection (2) of section 52",
+     "to": "under sub-section (2) of section 52",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "71",
+     "from": "amend the timetable so as",
+     "to": "amend the time-table so as",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "80",
+     "from": "routes of a new area",
+     "to": "routes or a new area",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "96",
+     "from": "plates; (vii) the exemption",
+     "to": "plates; (viii) the exemption",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording). The database numbers two consecutive clauses (vii)."
+    },
+    {
+     "section": "96",
+     "from": "inspection and disinfection of such carriage; if",
+     "to": "inspection and disinfection of such carriages; if",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "110",
+     "from": "(m) standardsfor emission",
+     "to": "(m) standards for emission",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "110",
+     "from": "tape recorder type of device in public",
+     "to": "tape recorder type of devices in public",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "114",
+     "from": "Department authorized in this behalf by the State Government shall",
+     "to": "Department [or any other person authorised in this behalf by the State Government] shall",
+     "count": 1,
+     "why": "India Code's database text has not been brought up to date with a later amendment, which the PDF 'as on 15th August, 2026' shows. The PDF prints these words, in square brackets as an amendment; the database lacks them."
+    },
+    {
+     "section": "115",
+     "from": "may be specified in notification,",
+     "to": "may be specified in the notification,",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "119",
+     "from": "circular disc diplaying a device",
+     "to": "circular disc displaying a device",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "132",
+     "from": "will become, unmanageable, or\n* * * * *\nand he shall give",
+     "to": "will become, unmanageable,\n* * * * *\nand he shall give",
+     "count": 1,
+     "why": "India Code's database text has not been brought up to date with Act 8 of 2026, whose footnote on this section says the words 'or' after clause (c) (w.e.f. 15-08-2026), which the PDF 'as on 15th August, 2026' shows. The database keeps the dangling 'or' after the omitted clause (c)."
+    },
+    {
+     "section": "134A",
+     "from": "medical or nonmedical care",
+     "to": "medical or non-medical care",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "139",
+     "from": "authorisations to person employed",
+     "to": "authorisations to persons employed",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "143",
+     "from": "] mitted by the Motor Vehicles",
+     "to": "] Omitted by the Motor Vehicles",
+     "count": 1,
+     "why": "India Code's database loses the first letter of 'Omitted'; the PDF prints it."
+    },
+    {
+     "section": "151",
+     "from": "the companys business",
+     "to": "the company's business",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "151",
+     "from": "deceased debtors rights",
+     "to": "deceased debtor's rights",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "152",
+     "from": "the companys business",
+     "to": "the company's business",
+     "count": 1,
+     "why": "India Code's database drops the apostrophe; the PDF prints it."
+    },
+    {
+     "section": "186",
+     "from": "phycically",
+     "to": "physically",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording).",
+     "field": "title"
+    },
+    {
+     "section": "192",
+     "from": "this subsection. [Vide",
+     "to": "this sub-section. [Vide",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "192A",
+     "from": "or thepurpose for",
+     "to": "or the purpose for",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "192B",
+     "from": "or twothird the lifetime",
+     "to": "or two-third the lifetime",
+     "count": 1,
+     "why": "India Code's database drops the hyphen or the space of the compound; the PDF prints it."
+    },
+    {
+     "section": "194",
+     "from": "113 orsection 114",
+     "to": "113 or section 114",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "206",
+     "from": "driver of amotor vehicle",
+     "to": "driver of a motor vehicle",
+     "count": 1,
+     "why": "India Code's database has a typing slip here (the PDF prints the correct wording)."
+    },
+    {
+     "section": "26",
+     "from": "\n(2) Each State Government shall supply to the Central Government a [printed copy or copy in such other form as the Central Government may require] of the State Register of Driving Licences and shall inform the Central Government without delay of all additions to and other amendments in such register made from time to time.\n(3) The State Register of Driving Licences shall be maintained in such manner as may be prescribed by the State Government.",
+     "to": "",
+     "count": 1,
+     "why": "Act 32 of 2019, s. 13 substituted the whole of section 26 (w.e.f. 1-4-2021; the PDF's footnote 2: 'Subs. by s. 13, ibid., for s. 26'). The PDF prints the new section 26 with no sub-sections (2) and (3); the database keeps the superseded sub-sections (2) and (3) after the substituted text. They are no longer law, and are removed."
+    },
+    {
+     "section": "63",
+     "from": "\n(2) Each State Government shall supply to the Central Government [if so desired by it] a printed copy of the State Register of Motor Vehicles and shall also inform the Central Government without delay of all additions to and other amendments in such register made from time to time.\n(3) The State Register of Motor Vehicles shall be maintained in such manner as may be prescribed by the State Government.]",
+     "to": "",
+     "count": 1,
+     "why": "Act 32 of 2019, s. 26 substituted the whole of section 63 (w.e.f. 1-4-2021; the PDF's footnote 2: 'Subs. by s. 26, ibid., for s. 63'). The PDF prints the new section 63 with no sub-section (2); the database keeps the superseded sub-section (2) after the substituted text. It is no longer law, and is removed."
+    },
+    {
+     "section": "164",
+     "from": "such amount of compensation shall be reduced from the amount of compensation payable under this section.]",
+     "to": "such amount of compensation shall be reduced from the amount of compensation payable under this section.\n[(4) Notwithstanding anything contained in sub-section (3), ex gratia payments received in respect of death or grievous hurt due to an accident arising out of the use of motor vehicle, shall not be liable to be reduced from the amount of compensation payable under this section.\nExplanation.—For the purposes of section 163 and this section, the expression “grievous hurt” shall be as referred to in section 116 of the Bharatiya Nyaya Sanhita, 2023 (45 of 2023).]",
+     "count": 1,
+     "why": "The PDF as on 15th August, 2026 prints a sub-section (4) and an Explanation after sub-section (3), with the footnote 'Ins. by Act 8 of 2026, s. 2 and Sch., (w.e.f. 15-8-2026)'; the database text ends at sub-section (3)."
+    }
+   ],
+   "accepted": [
+    {
+     "section": "8",
+     "word": "provisos",
+     "why": "A word of India Code's own footnote 7 on section 8 ('The Provisos ins. by Act 32 of 2019'); the PDF's footnote reads differently. A footnote, not the provision."
+    },
+    {
+     "section": "26",
+     "word": "printed",
+     "why": "A word of India Code's footnote ('Subs. ... for \"printed copy\"') that refers to the superseded sub-section (2) of section 26, removed above; a footnote, not the provision."
+    },
+    {
+     "section": "65",
+     "word": "amendmentharyana",
+     "why": "The label 'STATE AMENDMENT' run into the State's name (see the ordered accepted entry); the Haryana amendment applies only in Haryana."
+    },
+    {
+     "section": "105",
+     "word": "ya",
+     "why": "The compensation formula 'Y×A/R' of section 105 is set in the database as 'YA/ R' (the multiplication sign is lost); the PDF prints the formula as a figure."
+    },
+    {
+     "section": "145",
+     "word": "xiinsurance",
+     "why": "The chapter heading 'CHAPTER XI' runs into 'INSURANCE OF MOTOR VEHICLES AGAINST THIRD PARTY RISKS' inside section 145 of the database (the heading is printed before the section in the PDF); not a word of the provision."
+    },
+    {
+     "section": "192",
+     "word": "amendmentrajasthan",
+     "why": "The label 'STATE AMENDMENT' run into the State's name (see the ordered accepted entry); the Rajasthan amendment applies only in Rajasthan."
+    }
+   ],
+   "absent_words_unresolved": [],
+   "accepted_not_needed": [],
+   "ordered_check": {
+    "sections_compared": 250,
+    "words_compared": 67527,
+    "bare_numbers_ignored": 24,
+    "differences": 48,
+    "accepted_in_manifest": 48,
+    "unexplained": [],
+    "accepted_unused": []
+   },
+   "pdf_run_coverage": {
+    "measure": "share of 4-word runs of a section's body found in the PDF (soft; footnote numbers and page breaks lower it)",
+    "min": 0.765,
+    "below_0.90": {
+     "128": 0.765,
+     "182B": 0.882,
+     "191": 0.871,
+     "192": 0.898,
+     "193": 0.896,
+     "195": 0.84,
+     "201": 0.888
     }
    }
   }

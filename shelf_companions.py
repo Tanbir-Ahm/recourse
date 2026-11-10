@@ -23,6 +23,13 @@ RULES = [
      "act_key": "pc_act_1988",
      "when": re.compile(r"\b(?:en|in)quir(?:y|ies|ed|e|ing)\b|\binvestigat\w*|\bapprov\w*|\bsanction\w*|\bpermission\b|\bauthori[sz]\w*", re.I),
      "add": ["17", "17A"]},
+    # added 2026-11-10 (Motor Vehicles Act on the shelf; owner: "Put it on the Act shelf, so the answer can state its sections"): a question about an accident in which a vehicle hit someone. Section 134 is the driver's duty after
+    # an accident (to take the injured person to a doctor and to report it to the police) and section 187 is its punishment; a search by meaning on a long case narrative reached 134 for 5 of 6 unseen narratives and 187 for none.
+    # The Act is on the shelf only when the Act Directory has found it in the question, so the rule cannot reach a question that has nothing to do with a motor vehicle.
+    {"id": "mv_accident_duty",
+     "act_key": "mv_act_1988",
+     "when": re.compile(r"\b(?:accident|crash\w*|collid\w*|collision|hit|knocked|ran over|run over|rammed|struck|crushed|mowed)\b", re.I),
+     "add": ["134", "187"]},
 ]
 MAX_ADDED = 2
 

@@ -1,0 +1,1424 @@
+{
+ "run_on": "2026-11-10",
+ "model": "voyage-law-2",
+ "questions_sha256": "6f3d30411dd921e73c8e35c2f6958002458bcf5d81f3aba51b0fae57c9a91c5f",
+ "question_tokens_billed_this_run": 725,
+ "note": "AI-marked gold set (Claude's, written and committed before this run); 30 questions; measures where the search puts the expected section, not answer quality.",
+ "overall": {
+  "semantic": {
+   "n": 30,
+   "hit@1": 0.667,
+   "hit@3": 0.9,
+   "hit@5": 0.933,
+   "hit@8": 0.967,
+   "mrr": 0.792
+  },
+  "keyword_bm25": {
+   "n": 30,
+   "hit@1": 0.367,
+   "hit@3": 0.567,
+   "hit@5": 0.6,
+   "hit@8": 0.7,
+   "mrr": 0.493
+  },
+  "fused_rrf": {
+   "n": 30,
+   "hit@1": 0.467,
+   "hit@3": 0.8,
+   "hit@5": 0.833,
+   "hit@8": 0.9,
+   "mrr": 0.63
+  }
+ },
+ "overall_lenient": {
+  "semantic": {
+   "n": 30,
+   "hit@1": 0.767,
+   "hit@3": 1.0,
+   "hit@5": 1.0,
+   "hit@8": 1.0,
+   "mrr": 0.878
+  },
+  "keyword_bm25": {
+   "n": 30,
+   "hit@1": 0.467,
+   "hit@3": 0.633,
+   "hit@5": 0.733,
+   "hit@8": 0.767,
+   "mrr": 0.586
+  },
+  "fused_rrf": {
+   "n": 30,
+   "hit@1": 0.567,
+   "hit@3": 0.9,
+   "hit@5": 0.933,
+   "hit@8": 0.967,
+   "mrr": 0.719
+  }
+ },
+ "by_act": {
+  "mv_act_1988": {
+   "semantic": {
+    "n": 30,
+    "hit@1": 0.667,
+    "hit@3": 0.9,
+    "hit@5": 0.933,
+    "hit@8": 0.967,
+    "mrr": 0.792
+   },
+   "keyword_bm25": {
+    "n": 30,
+    "hit@1": 0.367,
+    "hit@3": 0.567,
+    "hit@5": 0.6,
+    "hit@8": 0.7,
+    "mrr": 0.493
+   },
+   "fused_rrf": {
+    "n": 30,
+    "hit@1": 0.467,
+    "hit@3": 0.8,
+    "hit@5": 0.833,
+    "hit@8": 0.9,
+    "mrr": 0.63
+   }
+  }
+ },
+ "by_kind": {
+  "layman": {
+   "semantic": {
+    "n": 21,
+    "hit@1": 0.714,
+    "hit@3": 1.0,
+    "hit@5": 1.0,
+    "hit@8": 1.0,
+    "mrr": 0.849
+   },
+   "keyword_bm25": {
+    "n": 21,
+    "hit@1": 0.333,
+    "hit@3": 0.524,
+    "hit@5": 0.571,
+    "hit@8": 0.667,
+    "mrr": 0.463
+   },
+   "fused_rrf": {
+    "n": 21,
+    "hit@1": 0.429,
+    "hit@3": 0.857,
+    "hit@5": 0.857,
+    "hit@8": 0.952,
+    "mrr": 0.629
+   }
+  },
+  "lawyer": {
+   "semantic": {
+    "n": 9,
+    "hit@1": 0.556,
+    "hit@3": 0.667,
+    "hit@5": 0.778,
+    "hit@8": 0.889,
+    "mrr": 0.658
+   },
+   "keyword_bm25": {
+    "n": 9,
+    "hit@1": 0.444,
+    "hit@3": 0.667,
+    "hit@5": 0.667,
+    "hit@8": 0.778,
+    "mrr": 0.561
+   },
+   "fused_rrf": {
+    "n": 9,
+    "hit@1": 0.556,
+    "hit@3": 0.667,
+    "hit@5": 0.778,
+    "hit@8": 0.778,
+    "mrr": 0.633
+   }
+  }
+ },
+ "by_hard": {
+  "False": {
+   "semantic": {
+    "n": 25,
+    "hit@1": 0.68,
+    "hit@3": 0.92,
+    "hit@5": 0.96,
+    "hit@8": 0.96,
+    "mrr": 0.805
+   },
+   "keyword_bm25": {
+    "n": 25,
+    "hit@1": 0.28,
+    "hit@3": 0.52,
+    "hit@5": 0.56,
+    "hit@8": 0.68,
+    "mrr": 0.428
+   },
+   "fused_rrf": {
+    "n": 25,
+    "hit@1": 0.4,
+    "hit@3": 0.8,
+    "hit@5": 0.84,
+    "hit@8": 0.92,
+    "mrr": 0.593
+   }
+  },
+  "True": {
+   "semantic": {
+    "n": 5,
+    "hit@1": 0.6,
+    "hit@3": 0.8,
+    "hit@5": 0.8,
+    "hit@8": 1.0,
+    "mrr": 0.725
+   },
+   "keyword_bm25": {
+    "n": 5,
+    "hit@1": 0.8,
+    "hit@3": 0.8,
+    "hit@5": 0.8,
+    "hit@8": 0.8,
+    "mrr": 0.814
+   },
+   "fused_rrf": {
+    "n": 5,
+    "hit@1": 0.8,
+    "hit@3": 0.8,
+    "hit@5": 0.8,
+    "hit@8": 0.8,
+    "mrr": 0.818
+   }
+  }
+ },
+ "thresholds": [
+  {
+   "threshold": 0.3,
+   "k": 3,
+   "found": 27,
+   "of": 30,
+   "avg_sections_returned": 3.0
+  },
+  {
+   "threshold": 0.3,
+   "k": 5,
+   "found": 28,
+   "of": 30,
+   "avg_sections_returned": 4.97
+  },
+  {
+   "threshold": 0.34,
+   "k": 3,
+   "found": 27,
+   "of": 30,
+   "avg_sections_returned": 2.93
+  },
+  {
+   "threshold": 0.34,
+   "k": 5,
+   "found": 28,
+   "of": 30,
+   "avg_sections_returned": 4.77
+  },
+  {
+   "threshold": 0.38,
+   "k": 3,
+   "found": 27,
+   "of": 30,
+   "avg_sections_returned": 2.8
+  },
+  {
+   "threshold": 0.38,
+   "k": 5,
+   "found": 28,
+   "of": 30,
+   "avg_sections_returned": 4.0
+  },
+  {
+   "threshold": 0.42,
+   "k": 3,
+   "found": 25,
+   "of": 30,
+   "avg_sections_returned": 2.17
+  },
+  {
+   "threshold": 0.42,
+   "k": 5,
+   "found": 25,
+   "of": 30,
+   "avg_sections_returned": 2.97
+  },
+  {
+   "threshold": 0.46,
+   "k": 3,
+   "found": 22,
+   "of": 30,
+   "avg_sections_returned": 1.77
+  },
+  {
+   "threshold": 0.46,
+   "k": 5,
+   "found": 22,
+   "of": 30,
+   "avg_sections_returned": 2.17
+  },
+  {
+   "threshold": 0.5,
+   "k": 3,
+   "found": 17,
+   "of": 30,
+   "avg_sections_returned": 1.13
+  },
+  {
+   "threshold": 0.5,
+   "k": 5,
+   "found": 17,
+   "of": 30,
+   "avg_sections_returned": 1.2
+  }
+ ],
+ "offtopic": [
+  {
+   "id": "OT11",
+   "act_key": "muslim_women_act_2019",
+   "q": "What is the punishment for domestic violence under the Muslim Women (Protection of Rights on Marriage) Act?",
+   "top3": [
+    "1",
+    "4",
+    "7"
+   ],
+   "top3_scores": [
+    0.6033,
+    0.5486,
+    0.4747
+   ]
+  },
+  {
+   "id": "OT12",
+   "act_key": "muslim_women_act_2019",
+   "q": "Can a Muslim woman get a divorce by khula under the Muslim Women Act, 2019?",
+   "top3": [
+    "1",
+    "2",
+    "8"
+   ],
+   "top3_scores": [
+    0.5627,
+    0.5248,
+    0.507
+   ]
+  },
+  {
+   "id": "OT13",
+   "act_key": "muslim_women_act_2019",
+   "q": "What does the Muslim Women Act, 2019 say about a daughter's share in her father's property?",
+   "top3": [
+    "1",
+    "8",
+    "6"
+   ],
+   "top3_scores": [
+    0.5811,
+    0.5103,
+    0.4131
+   ]
+  },
+  {
+   "id": "OT14",
+   "act_key": "pdpp_act_1984",
+   "q": "What is the punishment for rioting under the Prevention of Damage to Public Property Act?",
+   "top3": [
+    "1",
+    "3",
+    "7"
+   ],
+   "top3_scores": [
+    0.5518,
+    0.5463,
+    0.5269
+   ]
+  },
+  {
+   "id": "OT15",
+   "act_key": "pdpp_act_1984",
+   "q": "Does the Prevention of Damage to Public Property Act let the government recover the cost of the damage from the accused?",
+   "top3": [
+    "7",
+    "1",
+    "2"
+   ],
+   "top3_scores": [
+    0.5207,
+    0.5022,
+    0.4738
+   ]
+  },
+  {
+   "id": "OT16",
+   "act_key": "pdpp_act_1984",
+   "q": "My private shop was set on fire by a mob. What does the Prevention of Damage to Public Property Act give me?",
+   "top3": [
+    "1",
+    "7",
+    "2"
+   ],
+   "top3_scores": [
+    0.482,
+    0.476,
+    0.4488
+   ]
+  }
+ ],
+ "whole_path": [],
+ "rows": [
+  {
+   "id": "M01",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "A truck hit my brother on the road and the driver sped away without stopping. What was the driver supposed to do under the law?",
+   "expected": [
+    "132",
+    "134"
+   ],
+   "also_ok": [
+    "159",
+    "161",
+    "187"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "134",
+    "132",
+    "161",
+    "126",
+    "125"
+   ],
+   "top5_scores": [
+    0.4454,
+    0.4358,
+    0.3795,
+    0.3424,
+    0.339
+   ],
+   "expected_score": 0.4454,
+   "n_sections": 250
+  },
+  {
+   "id": "M02",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the punishment for a driver who fails to stop and give information after an accident?",
+   "expected": [
+    "187"
+   ],
+   "also_ok": [
+    "132",
+    "134"
+   ],
+   "rank_sem": 4,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 1,
+   "rank_fused": 4,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "132",
+    "134",
+    "133",
+    "187",
+    "160"
+   ],
+   "top5_scores": [
+    0.5267,
+    0.4495,
+    0.4333,
+    0.4095,
+    0.3973
+   ],
+   "expected_score": 0.4095,
+   "n_sections": 250
+  },
+  {
+   "id": "M03",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "I was caught driving after drinking. What is the penalty?",
+   "expected": [
+    "185"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 102,
+   "rank_lex_lenient": 102,
+   "rank_fused": 23,
+   "rank_fused_lenient": 23,
+   "top5_sem": [
+    "185",
+    "205",
+    "186",
+    "20",
+    "208"
+   ],
+   "top5_scores": [
+    0.4889,
+    0.4207,
+    0.3991,
+    0.3741,
+    0.3694
+   ],
+   "expected_score": 0.4889,
+   "n_sections": 250
+  },
+  {
+   "id": "M04",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the punishment for driving a vehicle at a dangerous speed?",
+   "expected": [
+    "184"
+   ],
+   "also_ok": [
+    "183"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "184",
+    "183",
+    "190",
+    "186",
+    "22"
+   ],
+   "top5_scores": [
+    0.6238,
+    0.5437,
+    0.5214,
+    0.4666,
+    0.4586
+   ],
+   "expected_score": 0.6238,
+   "n_sections": 250
+  },
+  {
+   "id": "M05",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "My 16-year-old son was caught riding a scooter. Who is liable?",
+   "expected": [
+    "199A"
+   ],
+   "also_ok": [
+    "4",
+    "181"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 19,
+   "rank_lex_lenient": 19,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "199A",
+    "123",
+    "4",
+    "126",
+    "5"
+   ],
+   "top5_scores": [
+    0.386,
+    0.3386,
+    0.3029,
+    0.3005,
+    0.2999
+   ],
+   "expected_score": 0.386,
+   "n_sections": 250
+  },
+  {
+   "id": "M06",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is it an offence to drive without a driving licence?",
+   "expected": [
+    "3",
+    "181"
+   ],
+   "also_ok": [],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 19,
+   "rank_lex_lenient": 19,
+   "rank_fused": 6,
+   "rank_fused_lenient": 6,
+   "top5_sem": [
+    "182",
+    "3",
+    "9",
+    "6",
+    "5"
+   ],
+   "top5_scores": [
+    0.5338,
+    0.4839,
+    0.4757,
+    0.475,
+    0.4593
+   ],
+   "expected_score": 0.4839,
+   "n_sections": 250
+  },
+  {
+   "id": "M07",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the minimum age to get a licence for a motorcycle with gear?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "8"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 5,
+   "rank_lex_lenient": 5,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "7",
+    "4",
+    "14",
+    "31",
+    "10"
+   ],
+   "top5_scores": [
+    0.5225,
+    0.5026,
+    0.3964,
+    0.3877,
+    0.3871
+   ],
+   "expected_score": 0.5026,
+   "n_sections": 250
+  },
+  {
+   "id": "M08",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "The police fined me for not having insurance on my car. Is it compulsory?",
+   "expected": [
+    "146",
+    "196"
+   ],
+   "also_ok": [
+    "147"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 23,
+   "rank_lex_lenient": 15,
+   "rank_fused": 6,
+   "rank_fused_lenient": 5,
+   "top5_sem": [
+    "146",
+    "196",
+    "147",
+    "158",
+    "130"
+   ],
+   "top5_scores": [
+    0.4169,
+    0.4075,
+    0.3634,
+    0.3558,
+    0.3452
+   ],
+   "expected_score": 0.4169,
+   "n_sections": 250
+  },
+  {
+   "id": "M09",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is a helmet compulsory for the person sitting behind on a two-wheeler?",
+   "expected": [
+    "129"
+   ],
+   "also_ok": [
+    "194D"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "128",
+    "129",
+    "123",
+    "194B",
+    "125"
+   ],
+   "top5_scores": [
+    0.4973,
+    0.4348,
+    0.4106,
+    0.3939,
+    0.3501
+   ],
+   "expected_score": 0.4348,
+   "n_sections": 250
+  },
+  {
+   "id": "M10",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "What fine do I pay for not wearing a seat belt?",
+   "expected": [
+    "194B"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "194B",
+    "178",
+    "194D",
+    "183",
+    "192B"
+   ],
+   "top5_scores": [
+    0.5524,
+    0.3994,
+    0.3959,
+    0.3577,
+    0.3508
+   ],
+   "expected_score": 0.5524,
+   "n_sections": 250
+  },
+  {
+   "id": "M11",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "Can a tribunal award compensation for a road accident without proof of negligence?",
+   "expected": [
+    "164"
+   ],
+   "also_ok": [
+    "165",
+    "166"
+   ],
+   "rank_sem": 8,
+   "rank_sem_lenient": 2,
+   "rank_lex": 14,
+   "rank_lex_lenient": 4,
+   "rank_fused": 11,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "168",
+    "166",
+    "159",
+    "165",
+    "161"
+   ],
+   "top5_scores": [
+    0.4781,
+    0.4089,
+    0.4003,
+    0.3725,
+    0.3602
+   ],
+   "expected_score": 0.3527,
+   "n_sections": 250
+  },
+  {
+   "id": "M12",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Where do I file a claim for compensation for a death in a road accident and within what time?",
+   "expected": [
+    "166"
+   ],
+   "also_ok": [
+    "165"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "166",
+    "159",
+    "164",
+    "168",
+    "161"
+   ],
+   "top5_scores": [
+    0.5674,
+    0.4969,
+    0.4707,
+    0.4553,
+    0.4509
+   ],
+   "expected_score": 0.5674,
+   "n_sections": 250
+  },
+  {
+   "id": "M13",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can the insurer refuse to pay the third party on the ground that the policy conditions were breached?",
+   "expected": [
+    "149"
+   ],
+   "also_ok": [
+    "147",
+    "150"
+   ],
+   "rank_sem": 21,
+   "rank_sem_lenient": 1,
+   "rank_lex": 185,
+   "rank_lex_lenient": 1,
+   "rank_fused": 49,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "150",
+    "151",
+    "153",
+    "147",
+    "170"
+   ],
+   "top5_scores": [
+    0.4758,
+    0.4178,
+    0.4177,
+    0.3524,
+    0.3482
+   ],
+   "expected_score": 0.1845,
+   "n_sections": 250
+  },
+  {
+   "id": "M14",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": true,
+   "q": "A hit-and-run victim died and the vehicle is unknown. Is there any compensation from the government?",
+   "expected": [
+    "161"
+   ],
+   "also_ok": [
+    "164B"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "161",
+    "160",
+    "164B",
+    "164",
+    "164A"
+   ],
+   "top5_scores": [
+    0.5401,
+    0.3886,
+    0.3877,
+    0.3783,
+    0.3515
+   ],
+   "expected_score": 0.5401,
+   "n_sections": 250
+  },
+  {
+   "id": "M15",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "If I help an injured accident victim at the roadside, can the police harass me?",
+   "expected": [
+    "134A"
+   ],
+   "also_ok": [
+    "134"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 3,
+   "rank_lex_lenient": 1,
+   "rank_fused": 2,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "134A",
+    "134",
+    "132",
+    "194E",
+    "127"
+   ],
+   "top5_scores": [
+    0.4612,
+    0.3991,
+    0.3645,
+    0.3442,
+    0.324
+   ],
+   "expected_score": 0.4612,
+   "n_sections": 250
+  },
+  {
+   "id": "M16",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "Can a court cancel a driving licence after convicting the driver of drunk driving?",
+   "expected": [
+    "20"
+   ],
+   "also_ok": [
+    "19",
+    "21",
+    "185"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 7,
+   "rank_lex_lenient": 3,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "22",
+    "20",
+    "23",
+    "19",
+    "35"
+   ],
+   "top5_scores": [
+    0.5772,
+    0.4971,
+    0.4696,
+    0.4643,
+    0.4601
+   ],
+   "expected_score": 0.4971,
+   "n_sections": 250
+  },
+  {
+   "id": "M17",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "My licence was suspended by the RTO. On what grounds can the authority disqualify me?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": [
+    "21"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 8,
+   "rank_lex_lenient": 5,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "19",
+    "34",
+    "31",
+    "20",
+    "32"
+   ],
+   "top5_scores": [
+    0.5006,
+    0.4855,
+    0.481,
+    0.4552,
+    0.449
+   ],
+   "expected_score": 0.5006,
+   "n_sections": 250
+  },
+  {
+   "id": "M18",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": true,
+   "q": "I bought a used car from another state. How do I transfer ownership?",
+   "expected": [
+    "50"
+   ],
+   "also_ok": [
+    "47"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "47",
+    "50",
+    "40",
+    "157",
+    "44"
+   ],
+   "top5_scores": [
+    0.4711,
+    0.4488,
+    0.3915,
+    0.3707,
+    0.3518
+   ],
+   "expected_score": 0.4488,
+   "n_sections": 250
+  },
+  {
+   "id": "M19",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "My truck carried more load than allowed and I was fined. What is the rule on weight limits?",
+   "expected": [
+    "113",
+    "194"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "194",
+    "113",
+    "114",
+    "194A",
+    "183"
+   ],
+   "top5_scores": [
+    0.5628,
+    0.5138,
+    0.484,
+    0.4448,
+    0.4125
+   ],
+   "expected_score": 0.5628,
+   "n_sections": 250
+  },
+  {
+   "id": "M20",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can a bus carry standing passengers beyond its seating capacity? What is the penalty?",
+   "expected": [
+    "194A"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 8,
+   "rank_lex_lenient": 8,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "194A",
+    "178",
+    "123",
+    "125",
+    "194"
+   ],
+   "top5_scores": [
+    0.5135,
+    0.4388,
+    0.4286,
+    0.38,
+    0.367
+   ],
+   "expected_score": 0.5135,
+   "n_sections": 250
+  },
+  {
+   "id": "M21",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Is a permit needed to run a goods vehicle for hire?",
+   "expected": [
+    "66"
+   ],
+   "also_ok": [
+    "192A"
+   ],
+   "rank_sem": 2,
+   "rank_sem_lenient": 2,
+   "rank_lex": 2,
+   "rank_lex_lenient": 2,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "77",
+    "66",
+    "79",
+    "88",
+    "83"
+   ],
+   "top5_scores": [
+    0.5858,
+    0.5713,
+    0.533,
+    0.4724,
+    0.4604
+   ],
+   "expected_score": 0.5713,
+   "n_sections": 250
+  },
+  {
+   "id": "M22",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the penalty for using a transport vehicle without a permit?",
+   "expected": [
+    "192A"
+   ],
+   "also_ok": [
+    "66"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "192A",
+    "66",
+    "86",
+    "113",
+    "192"
+   ],
+   "top5_scores": [
+    0.6237,
+    0.5911,
+    0.5529,
+    0.5296,
+    0.5199
+   ],
+   "expected_score": 0.6237,
+   "n_sections": 250
+  },
+  {
+   "id": "M23",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Do I have to show my licence and registration papers to the police when stopped?",
+   "expected": [
+    "130"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 10,
+   "rank_lex_lenient": 10,
+   "rank_fused": 3,
+   "rank_fused_lenient": 3,
+   "top5_sem": [
+    "130",
+    "158",
+    "132",
+    "206",
+    "133"
+   ],
+   "top5_scores": [
+    0.5295,
+    0.4668,
+    0.4418,
+    0.4339,
+    0.4042
+   ],
+   "expected_score": 0.5295,
+   "n_sections": 250
+  },
+  {
+   "id": "M24",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Can the traffic police take away my vehicle if I don't have registration papers?",
+   "expected": [
+    "207"
+   ],
+   "also_ok": [
+    "130"
+   ],
+   "rank_sem": 3,
+   "rank_sem_lenient": 3,
+   "rank_lex": 9,
+   "rank_lex_lenient": 9,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "39",
+    "206",
+    "207",
+    "127",
+    "192B"
+   ],
+   "top5_scores": [
+    0.4631,
+    0.4607,
+    0.4603,
+    0.4486,
+    0.4439
+   ],
+   "expected_score": 0.4603,
+   "n_sections": 250
+  },
+  {
+   "id": "M25",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "After an accident, what information must the driver give to the police and the insurer?",
+   "expected": [
+    "134",
+    "159"
+   ],
+   "also_ok": [
+    "132"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "134",
+    "160",
+    "159",
+    "133",
+    "132"
+   ],
+   "top5_scores": [
+    0.5973,
+    0.5597,
+    0.54,
+    0.4859,
+    0.4737
+   ],
+   "expected_score": 0.5973,
+   "n_sections": 250
+  },
+  {
+   "id": "M26",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "What is the speed limit enforced under the Act and the penalty for exceeding it?",
+   "expected": [
+    "112",
+    "183"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "112",
+    "183",
+    "116",
+    "84",
+    "194"
+   ],
+   "top5_scores": [
+    0.557,
+    0.5088,
+    0.4363,
+    0.4131,
+    0.4062
+   ],
+   "expected_score": 0.557,
+   "n_sections": 250
+  },
+  {
+   "id": "M27",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "Does a commercial vehicle need a fitness certificate?",
+   "expected": [
+    "56"
+   ],
+   "also_ok": [],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "56",
+    "62A",
+    "84",
+    "110B",
+    "158"
+   ],
+   "top5_scores": [
+    0.5316,
+    0.4051,
+    0.3906,
+    0.3869,
+    0.3802
+   ],
+   "expected_score": 0.5316,
+   "n_sections": 250
+  },
+  {
+   "id": "M28",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": true,
+   "q": "Is the 'golden hour' cashless treatment of accident victims in the law?",
+   "expected": [
+    "162"
+   ],
+   "also_ok": [
+    "134A"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "162",
+    "134A",
+    "134",
+    "161",
+    "164B"
+   ],
+   "top5_scores": [
+    0.6408,
+    0.417,
+    0.3749,
+    0.3627,
+    0.3375
+   ],
+   "expected_score": 0.6408,
+   "n_sections": 250
+  },
+  {
+   "id": "M29",
+   "act_key": "mv_act_1988",
+   "kind": "lawyer",
+   "hard": false,
+   "q": "What is the validity of a learner's licence and when can the holder apply for a permanent licence?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "9"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 1,
+   "rank_lex_lenient": 1,
+   "rank_fused": 1,
+   "rank_fused_lenient": 1,
+   "top5_sem": [
+    "8",
+    "14",
+    "13",
+    "6",
+    "7"
+   ],
+   "top5_scores": [
+    0.5667,
+    0.5493,
+    0.5008,
+    0.4905,
+    0.486
+   ],
+   "expected_score": 0.5667,
+   "n_sections": 250
+  },
+  {
+   "id": "M30",
+   "act_key": "mv_act_1988",
+   "kind": "layman",
+   "hard": false,
+   "q": "I used my vehicle without registering it. What is the fine?",
+   "expected": [
+    "192"
+   ],
+   "also_ok": [
+    "39"
+   ],
+   "rank_sem": 1,
+   "rank_sem_lenient": 1,
+   "rank_lex": 13,
+   "rank_lex_lenient": 13,
+   "rank_fused": 2,
+   "rank_fused_lenient": 2,
+   "top5_sem": [
+    "192",
+    "192B",
+    "55",
+    "196",
+    "192A"
+   ],
+   "top5_scores": [
+    0.5513,
+    0.5437,
+    0.456,
+    0.4504,
+    0.4379
+   ],
+   "expected_score": 0.5513,
+   "n_sections": 250
+  }
+ ]
+}

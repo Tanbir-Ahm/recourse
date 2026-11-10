@@ -487,18 +487,35 @@ def strip_repeated_heading(c):
     return True
 
 
+def _find_state_label(lines):
+    """-> (line index, offset in that line, state name or None) of the 'STATE AMENDMENT' label, or None. Three forms occur: the label alone on its line (the usual one); the label at the END of a line of the section's last words
+    ("... prescribed by the Central Government. STATE AMENDMENT" / "Rajasthan" on the next line, Motor Vehicles Act s.41); and the label run into the State's name at the START of a line ("STATE AMENDMENTHaryana Amendment of section 65", s.65 and s.192)."""
+    for i, ln in enumerate(lines):
+        if STATE_AMENDMENT_LABEL.match(ln):
+            return i, 0, _state_label(lines[i + 1:])
+        m = re.search(r"\S\s+STATE\s+AMENDMENTS?\s*:?\s*$", ln)
+        if m:
+            return i, ln.index("STATE", m.start()), _state_label(lines[i + 1:])
+        m = re.match(r"\s*STATE\s+AMENDMENTS?(?=[A-Z][a-z])\s*", ln)
+        if m:
+            nm = re.match(r"([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)*?)\s+Amendment\b", ln[m.end():])
+            return i, 0, (nm.group(1) if nm else None)
+    return None
+
+
 def set_aside_state_amendments(c):
     """A State or Union Territory amendment that India Code prints inside a central section (after a line 'STATE AMENDMENT') applies only there. It is moved to c['state_amendments'] and the text ends with a
     one-line note, so the answer model neither applies Karnataka's wording to everyone nor spends 8,500 characters on it. True when something was set aside."""
     lines = c["text"].split("\n")
-    for i, ln in enumerate(lines):
-        if STATE_AMENDMENT_LABEL.match(ln):
-            central, tail = "\n".join(lines[:i]).rstrip(), "\n".join(lines[i:]).strip()
-            label = _state_label(lines[i + 1:])
-            c["state_amendments"] = tail
-            c["text"] = central + "\n" + NOTE_PREFIX + (f" ({label})" if label else "") + "; they apply only there and are not set out here.]"
-            return True
-    return False
+    found = _find_state_label(lines)
+    if not found:
+        return False
+    i, off, label = found
+    central = "\n".join(lines[:i] + ([lines[i][:off]] if off else [])).rstrip()
+    tail = "\n".join([lines[i][off:]] + lines[i + 1:]).strip()
+    c["state_amendments"] = tail
+    c["text"] = central + "\n" + NOTE_PREFIX + (f" ({label})" if label else "") + "; they apply only there and are not set out here.]"
+    return True
 
 
 def tidy_chunks(chunks):
@@ -527,7 +544,7 @@ def _find_seq(hay, needle, start):
     return -1
 
 
-def ordered_compare(chunks, pdf_text):
+def ordered_compare(chunks, pdf_text, locate_as=None):
     """The strict comparison: each section against the PDF's running text, word by word, in order, both ways. `pdf_text` is body_text(...). Every non-omitted section is located in the PDF by its heading
     (number and title, the longest prefix that is found, in order); its words are then aligned (difflib) with the PDF's words up to the next section's heading. Returns
       {'sections', 'words', 'digits_ignored', 'diffs': [{'section', 'tag': 'delete'|'insert'|'replace', 'loaded', 'pdf', 'tail', 'loaded_ctx', 'pdf_ctx'}]}
@@ -539,6 +556,8 @@ def ordered_compare(chunks, pdf_text):
         if c.get("omitted"):
             continue
         t = cmp_tokens(c["text"].split("\n", 1)[0])
+        if locate_as and str(c["section_number"]) in locate_as:          # manifest "locate_as": the heading as the PDF's running text prints it, for a section whose heading differs from the database's title (used only to FIND the section; its words are still compared)
+            t = cmp_tokens(f"{c['section_number']}. {locate_as[str(c['section_number'])]['heading']}")
         pos = -1
         for n in (6, 5, 4, 3, 2):
             if len(t) >= n:
@@ -643,7 +662,7 @@ def build_act(entry, fetcher, loaded_on=None, with_pdf=True, discover=False):
         raise LoadError("words in India Code's section text that are nowhere in its PDF, not corrected or accepted in the manifest: " + "; ".join(f"s.{s} '{w}' ...{ctx}..." for s, w, ctx in unresolved[:12]))
     if stale and not discover:
         raise LoadError(f"the manifest accepts words that are not (or no longer) absent: {stale}")
-    ordered = ordered_compare(chunks, body)
+    ordered = ordered_compare(chunks, body, {str(a["section"]): a for a in entry.get("locate_as") or []})
     unexplained, unused = explain_differences(ordered["diffs"], entry.get("ordered_accepted"))
     report["ordered_check"] = {"sections_compared": ordered["sections"], "words_compared": ordered["words"], "bare_numbers_ignored": ordered["digits_ignored"], "differences": len(ordered["diffs"]),
                                "accepted_in_manifest": len(ordered["diffs"]) - len(unexplained), "unexplained": unexplained, "accepted_unused": unused}
