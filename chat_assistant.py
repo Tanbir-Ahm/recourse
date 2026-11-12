@@ -2120,7 +2120,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 import section_checks
                 _smode = section_checks.mode()
                 if _smode != "off":
-                    _gl, _ab = section_checks.section_gloss(text, matches, question), section_checks.absence_arguments(text)
+                    _gl, _ab = section_checks.section_gloss(text, matches, question, section_checks.classification_text(g_material)), section_checks.absence_arguments(text)
                     if _gl or _ab:
                         import hashlib
                         section_checks.log_line(hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], _gl, _ab)

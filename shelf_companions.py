@@ -32,6 +32,8 @@ RULES = [
      "add": ["134", "187"]},
 ]
 MAX_ADDED = 2
+_CLASS_WORDS = re.compile(r"\b(?:bail\w*|cognizab\w*|non-?cognizab\w*|arrest\w*|warrant|compound\w*|custody|remand|released?)\b", re.I)
+_PUNISH = re.compile(r"\b(?:imprisonment|punishable|punished|punishment)\b", re.I)
 
 
 def enabled():
@@ -67,6 +69,32 @@ def add(question, matches):
                 m = act_shelf._match(st, c, "companion", None)
                 m["companion"] = True
                 out.append(m)
+        try:                                                          # 2026-11-12: an Act that classifies its own offences (offence_class.OWN_CLASSIFIERS): its classifying section goes with any section of the Act that names a punishment, or with any section of it when the question is about bail, arrest, cognizability or compounding
+            import offence_class
+            for act_key, nums in offence_class.OWN_CLASSIFIERS.items():
+                mine = [m for m in matches or [] if isinstance(m, dict) and m.get("source") == "act_shelf" and m.get("act_key") == act_key]
+                if not mine or not (any(_PUNISH.search(m.get("text") or "") for m in mine) or _CLASS_WORDS.search(question)):
+                    continue
+                st = (shelf.get("acts") or {}).get(act_key)
+                if not st or not st.get("ok"):
+                    continue
+                have = {str(m.get("section_number") or "").upper() for m in mine} | {str(m.get("section_number") or "").upper() for m in out if m.get("act_key") == act_key}
+                for num in nums:
+                    if len(out) >= MAX_ADDED + 1:                      # this rule may take the last place even when two others filled the cap: the classifying section is the one a wrong default would contradict
+                        break
+                    if num.upper() in have:
+                        for m in mine:
+                            if str(m.get("section_number") or "").upper() == num.upper():
+                                m["companion"] = True
+                        continue
+                    c = st["by_num"].get(num.upper())
+                    if not c or c.get("omitted"):
+                        continue
+                    m = act_shelf._match(st, c, "companion", None)
+                    m["companion"] = True
+                    out.append(m)
+        except Exception:  # noqa: BLE001
+            pass
         if out:
             print("SHELF_COMPANIONS " + json.dumps({"added": [f"{m['act']} s.{m['section_number']}" for m in out]}), flush=True)
         return out

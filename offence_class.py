@@ -72,6 +72,32 @@ _TERM = re.compile(r"(?:extend|up)\s+to\s+(?:a\s+(?:period|term)\s+of\s+)?((?:\w
 _OFFENCE_WORDS = re.compile(r"\b(?:imprisonment|punishable|punished|punishment)\b", re.I)
 _OWN_CLASS = re.compile(r"\b(?:cognizable|non-cognizable|bailable|non-bailable)\b", re.I)
 
+# 2026-11-12 (owner's staging test of the Dowry Prohibition Act): Part II is the DEFAULT for an offence under another law, and an Act's own provisions govern where they speak. Section 4 of the Dowry Prohibition Act
+# named a term of two years, the default said "Non-cognizable. Bailable.", and the answer built its first ground for bail on it, while section 8(2) of the Act says every offence under it is non-bailable (section 8 never reached
+# the model). So for an Act that classifies its own offences in a section of its own, the default is NOT offered; the line says which section governs, and shelf_companions hands that section over.
+# This is the whole list: each entry was found by searching the shelf's section texts for the words cognizable / bailable (test_own_classifiers.py repeats the search and fails when a new section turns up that is neither here nor in
+# NOT_CLASSIFIERS). The Information Technology Act (section 77B) is excluded from Part II by act code in other_law_block. Nothing here says what the section provides: the model reads the section.
+OWN_CLASSIFIERS = {
+    "dowry_prohibition_act_1961": ["8"],      # offences cognizable only for investigation (not arrest without warrant), non-bailable, non-compoundable
+    "jj_act_2015": ["86"],                    # its own bands by punishment, and the Children's Court
+    "muslim_women_act_2019": ["7"],           # cognizable only on information from the woman or her blood / marriage relatives, compoundable, bail only after the Magistrate hears her
+    "pmla_2002": ["45"],                      # cognizable and non-bailable, with its twin conditions for bail
+    "uapa_1967": ["43D"],                     # offences deemed cognizable, modified sections 167 and 437, and its bail restriction
+}
+# shelf sections whose text uses the words but that do NOT classify the Act's offences (read 2026-11-12): checked by the test that repeats the search
+NOT_CLASSIFIERS = {
+    ("it_act_2000", "69"), ("it_act_2000", "69A"), ("it_act_2000", "77B"),   # 77B classifies its own offences: the Act is excluded from Part II by code
+    ("jj_act_2015", "12"),               # bail for a child alleged to be in conflict with the law
+    ("mv_act_1988", "19"),               # a licensing authority's power to disqualify; "cognizable" names an offence the licence holder used a vehicle in
+    ("ni_act_1881", "147"),              # "every offence punishable under this Act shall be compoundable": compounding only, nothing on bail or arrest
+    ("pc_act_1988", "9"),                # a commercial organisation's offence
+    ("uapa_1967", "14"),                 # "an offence punishable under this Act shall be cognizable": one line, repeated in 43D(1), which is the section handed over
+}
+
+
+def classifier_sections(act_key):
+    return list(OWN_CLASSIFIERS.get(str(act_key or ""), []))
+
 
 def other_law_enabled():
     return (os.environ.get("OTHER_LAW_CLASS") or "on").strip().strip("\"'").strip().lower() not in ("off", "0", "false", "no")
@@ -125,12 +151,14 @@ def band_for(terms, life, fine_only=False):
 
 def other_law_block(matches, limit=5):
     """For each statute section of a LAW OTHER THAN the BNS, BNSS and BSA that reaches the answer and names a punishment: the terms its text names and the Part II row they fall in, with the instruction to state the
-    classification only so, as the Schedule's DEFAULT for an offence under another law (an Act's own provisions on arrest, bail, cognizability or the court govern where they speak). '' when switched off, when no section
-    qualifies, or on any failure."""
+    classification only so, as the Schedule's DEFAULT for an offence under another law (an Act's own provisions on arrest, bail, cognizability or the court govern where they speak). For an Act that classifies its own
+    offences in a section of its own (OWN_CLASSIFIERS) NO default is offered: the line names the governing section, and says so plainly when that section's text is not in the material. '' when switched off, when no
+    section qualifies, or on any failure."""
     try:
         if not other_law_enabled() or not load().get("part_II_rows"):
             return ""
-        seen, lines = set(), []
+        have = {(str(m.get("act_key") or ""), str(m.get("section_number") or "").upper()) for m in matches or [] if isinstance(m, dict) and not m.get("case_name")}
+        seen, lines, own_lines, own_acts = set(), [], [], {}
         for m in matches or []:
             if not isinstance(m, dict) or m.get("case_name") or m.get("type") not in (None, "statute"):
                 continue
@@ -143,6 +171,14 @@ def other_law_block(matches, limit=5):
             key = (act, str(m.get("section_number")))
             if key in seen:
                 continue
+            name = m.get("act_display") or act
+            gov = classifier_sections(m.get("act_key"))
+            if gov and str(m.get("section_number") or "").upper() not in [g.upper() for g in gov]:
+                seen.add(key)
+                own_acts.setdefault(str(m.get("act_key")), {"name": name, "gov": gov, "sections": []})["sections"].append(str(m.get("section_number")))
+                if len(seen) >= limit:
+                    break
+                continue
             terms, life = terms_in(text)
             fine_only = not terms and not life and bool(re.search(r"\bfine\b", text, re.I)) and not re.search(r"\bimprisonment\b", text, re.I)
             row = band_for(terms, life, fine_only)
@@ -151,16 +187,28 @@ def other_law_block(matches, limit=5):
             seen.add(key)
             named = ", ".join(t for t, _ in terms) + (", imprisonment for life or death" if life else "") if (terms or life) else "no imprisonment (a fine)"
             own = " The section's own text uses the words cognizable / bailable: go by it." if _OWN_CLASS.search(text) else ""
-            lines.append(f"- {m.get('act_display') or act} section {m.get('section_number')}: the terms its text names: {named}. Part II row: {row.get('cognizable')} {row.get('bailable')} {row.get('court')}{own}")
+            lines.append(f"- {name} section {m.get('section_number')}: the terms its text names: {named}. Part II row: {row.get('cognizable')} {row.get('bailable')} {row.get('court')}{own}")
             if len(seen) >= limit:
                 break
-        if not lines:
+        for ak, info in own_acts.items():
+            nums = " and ".join(f"section {g}" for g in info["gov"])
+            secs = ", ".join(info["sections"])
+            if all((ak, g.upper()) in have for g in info["gov"]):
+                own_lines.append(f"- {info['name']}, sections {secs}: this Act classifies its own offences in {nums}, whose text is in the material above. The Part II default does NOT apply to this Act: say whether an offence under it is cognizable, bailable or compoundable, and what the Act provides on arrest, bail or the court, only from {nums} itself.")
+            else:
+                own_lines.append(f"- {info['name']}, sections {secs}: this Act classifies its own offences in {nums}, whose text is NOT in the material. The Part II default does NOT apply to this Act: do not state whether an offence under it is cognizable, bailable or compoundable; say that the material does not show it and that {nums} of the Act must be read.")
+        if not lines and not own_lines:
             return ""
-        return ("\n\n## Classification of offences under OTHER laws (BNSS, First Schedule, Part II) - the Schedule's default, applied by a program to the terms the section's own text names\n" + "\n".join(lines) +
-                "\nPart II classifies an offence against another law by its punishment: " + part2_note().split(": ", 1)[1] + "\n"
-                "If you say whether such an offence is cognizable or bailable, or which court tries it, say it as this default from Part II of the Schedule, and say that the Act's own provisions govern where they speak (a special court, "
-                "a power of arrest without warrant, a section that makes offences cognizable or non-bailable). Where a section has different punishments for a first and a later offence, apply the rule to each. Do not say the material "
-                "does not show the classification when a line above gives it; do not state a classification for a section not listed above.\n")
+        head = "\n\n## Classification of offences under OTHER laws (BNSS, First Schedule, Part II) - the Schedule's default, applied by a program to the terms the section's own text names\n"
+        out = head + "\n".join(own_lines + lines)
+        if lines:
+            out += ("\nPart II classifies an offence against another law by its punishment: " + part2_note().split(": ", 1)[1] + "\n"
+                    "If you say whether such an offence is cognizable or bailable, or which court tries it, say it as this default from Part II of the Schedule, and say that the Act's own provisions govern where they speak (a special court, "
+                    "a power of arrest without warrant, a section that makes offences cognizable or non-bailable). Where a section has different punishments for a first and a later offence, apply the rule to each. Do not say the material "
+                    "does not show the classification when a line above gives it; do not state a classification for a section not listed above.\n")
+        if own_lines:
+            out += "\nFor an Act whose line above says it classifies its own offences, never give the Part II default, not even as a fallback; the Act's own section governs.\n"
+        return out
     except Exception:  # noqa: BLE001
         return ""
 

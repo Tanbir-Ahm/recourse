@@ -93,17 +93,40 @@ def _resolve(sentence, num, statutes):
     return cands[0] if len(cands) == 1 and not named else None
 
 
-def section_gloss(answer, matches, question=""):
-    """[{'act', 'section', 'words': [...], 'sentence'}] for the sentences that attribute a word to a section whose text lacks it while another section of the material has it. [] when none (the usual case)."""
+_CLASSIFICATION_SENT = re.compile(r"\bPart\s+II\b|\bFirst\s+Schedule\b|\bclassif(?:ied|ication|ies)\b|\bSchedule\b", re.I)    # a sentence that says how the Schedule classifies an offence describes the Schedule, not the section
+_CASE_CUT = re.compile(r"\s*(?:;|[,]\s+(?:and\s+|while\s+|but\s+)?(?:the\s+)?(?:Supreme\s+Court|High\s+Court)\b|\s+—\s+|\s+\(\s*(?:para|paras|paragraph)\b)", re.I)    # a ';', a dash, or ", the Supreme Court ..." : the sentence turns to a case
+
+
+def clause_about_section(sent):
+    """The part of a sentence that says what the SECTION says: up to the first ';' and before the place where the sentence turns to a court or a case ("Section 47 requires X; the Supreme Court in Prabir held that grounds must be furnished" is two statements)."""
+    m = _CASE_CUT.search(sent or "")
+    return (sent[:m.start()] if m else (sent or "")).strip()
+
+
+def classification_text(material):
+    """The code-built classification blocks inside the answer model's material (Part II lines, the First Schedule's rows): the words the answer takes from them are not borrowed from another section."""
+    try:
+        parts = re.findall(r"\n## Classification of [^\n]*\n.*?(?=\n\n## |\Z)", material or "", flags=re.S)
+        return "\n".join(parts)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def section_gloss(answer, matches, question="", extra=""):
+    """[{'act', 'section', 'words': [...], 'sentence'}] for the sentences that attribute a word to a section whose text lacks it while another section of the material has it. [] when none (the usual case). `extra`: text the program itself
+    put in the material (classification_text), whose words are treated like the person's own."""
     try:
         statutes = [m for m in matches or [] if isinstance(m, dict) and m.get("type") in (None, "statute") and not m.get("case_name") and m.get("text") and m.get("section_number") not in (None, "")]
         if not statutes or not answer:
             return []
         df = _df_table()
-        qwords = _words(question)
+        qwords = _words(question) | _words(extra)
         body = re.split(r"\*\*\s*Gaps and checks\s*\*\*", answer, maxsplit=1)[0]
         out, seen = [], set()
         for sent in _SPLIT.split(body):
+            if _CLASSIFICATION_SENT.search(sent):
+                continue
+            sent = clause_about_section(sent)
             nums = {re.sub(r"\s+", "", n).upper() for n in _SEC.findall(sent)}
             if len(nums) != 1 or not _DESCRIBES.match(sent.strip()):
                 continue
