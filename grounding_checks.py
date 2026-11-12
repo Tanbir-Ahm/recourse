@@ -76,6 +76,9 @@ _STARTERS = {"in", "see", "also", "under", "section", "court", "held", "and", "b
              "although", "though", "even", "yet", "now", "here", "both", "each", "every", "any", "some", "all", "no", "not", "only", "just", "likewise", "similarly", "moreover", "furthermore", "finally"}
 
 
+_SECTION_REF = re.compile(r"^\(?\d+[A-Za-z]{0,2}\([A-Za-z0-9]+\)?")        # 7(c)  35(3)  482(1)(a)  (also with a bracket in front)
+
+
 def _is_name_token(tok, first_party):
     core = tok.strip(",;:()\"'\u201c\u201d")
     if not core:
@@ -94,18 +97,23 @@ def _mentions(text):
     for i, t in enumerate(toks):
         if t.strip(",;:()\"'\u201c\u201d").lower() not in _VS:
             continue
-        back = []
+        back, raw_back = [], []
         j = i - 1
         while j >= 0 and len(back) < 6:
             tk = toks[j]
             core = tk.strip(",;:()\"'\u201c\u201d")
             if not _is_name_token(tk, True):
                 break
+            if _SECTION_REF.match(tk):                  # "(Section 7(c) (Rahna Jalal v. State of Kerala)": 7(c) is a section, not the first word of the name (2026-11-12)
+                break
             if tk.endswith((",", ";", ":")) and back:
                 break
             if tk.endswith(".") and len(core.rstrip(".")) > 3 and core.rstrip(".").lower() not in _ABBREV and back:
                 break                                   # the end of the previous sentence
             back.append(core)
+            raw_back.append(tk)
+            if tk.startswith("(") and sum(t.count("(") for t in raw_back) > sum(t.count(")") for t in raw_back):      # a name does not reach back across a bracket that is still open at its start; "State (NCT of Delhi)" and "(I)" are closed groups and stay
+                break
             j -= 1
         back.reverse()
         while back and back[0].lower().rstrip(".") in _CONNECT and back[0].lower() != "the":
@@ -118,12 +126,12 @@ def _mentions(text):
             if tk.startswith("(") and fwd:
                 grp = [tk]
                 m = k
-                while not toks[m].endswith(")") and m + 1 < len(toks) and m - k < 8:
+                while not toks[m].rstrip(".,;:").endswith(")") and m + 1 < len(toks) and m - k < 8:
                     m += 1
                     grp.append(toks[m])
                 if toks[m].rstrip(".,;:").endswith(")"):
                     gtxt = " ".join(grp).rstrip(".,;:")
-                    if re.search(r"[A-Za-z]{4,}", gtxt) and not re.search(r"\b(?:SCC|AIR|SCR|SCALE|INSC|JT)\b", gtxt):     # a name's own parenthesis, not a year or a citation
+                    if re.search(r"[A-Za-z]{4,}", gtxt) and not re.search(r"\b(?:SCC|AIR|SCR|SCALE|INSC|JT|Court|Bench)\b", gtxt) and not re.match(r"\(\s*\d{4}\b", gtxt):     # a name's own parenthesis, not a year, a court or a citation
                         fwd.append(gtxt)
                     k = m + 1
                     break
@@ -141,7 +149,10 @@ def _mentions(text):
         while fwd and fwd[-1].lower() in _CONNECT:
             fwd.pop()
         if back and fwd:
-            names.append(" ".join(back).rstrip(".") + " v. " + " ".join(fwd).rstrip("."))
+            nm = " ".join(back).rstrip(".") + " v. " + " ".join(fwd).rstrip(".")
+            while nm.endswith(")") and nm.count(")") > nm.count("("):         # the bracket that closes the citation around the name is not part of it
+                nm = nm[:-1].rstrip(".")
+            names.append(nm)
     return names
 
 

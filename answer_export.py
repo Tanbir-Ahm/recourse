@@ -319,7 +319,7 @@ def merged_authorities(tables):
         head = ["Case"] + ([] if single else ["Source"]) + ["Citation", "Paragraph"] + (["Court"] if show_court else []) + ["Where it stands on our lists", "Link"]
         out = []
         for x in rows:
-            out.append([x["case"]] + ([] if single else [x["source"]]) + [x["cit"], x["par"]] + ([[R(x["court"] or "Supreme Court of India")]] if show_court else []) + [x["where"], x["link"]])
+            out.append([x["case"]] + ([] if single else [x["source"]]) + [x["cit"], x["par"]] + ([[R(x["court"] or "not recorded")]] if show_court else []) + [x["where"], x["link"]])
         return {"t": "table", "head": head, "rows": out, "single_source": single}
     except Exception:  # noqa: BLE001
         return None

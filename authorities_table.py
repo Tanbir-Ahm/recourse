@@ -18,6 +18,47 @@ TIER_ANCHOR = "Verbatim excerpts"
 _SC = "Supreme Court of India"               # a wider-search row with no court recorded is a Supreme Court one (the search service sent no court before 2026-10)
 
 
+_LIB_COURTS = {}
+
+
+def library_court(name, citation=None):
+    """The court recorded for a reviewed-library judgment (the metadata record in corpus/<name>.json), or None when no record is found. 2026-11-12: the export and the page printed 'Supreme Court of India' for a Karnataka
+    High Court judgment of the library (Sri Manjunath M P) because library rows carried no court at all and the default was the Supreme Court. Read once; every failure gives None (the cell then says 'not recorded')."""
+    try:
+        if not _LIB_COURTS:
+            import glob
+            import json
+            import os
+            here = os.path.dirname(os.path.abspath(__file__))
+            by_name, by_cit = {}, {}
+            for f in glob.glob(os.path.join(here, "corpus", "*.json")) + glob.glob(os.path.join(here, "pilot_corpus", "*.json")):
+                try:
+                    with open(f, encoding="utf-8") as fh:
+                        d = json.load(fh)
+                except Exception:  # noqa: BLE001
+                    continue
+                if not isinstance(d, dict) or not d.get("case_name"):
+                    continue
+                court = str(d.get("court") or "").strip()
+                if not court and "api.sci.gov.in/jonew/judis/" in str(d.get("source_url") or ""):
+                    court = _SC                                                    # a pilot record with no court field whose source is the Supreme Court's own archive address
+                if court:
+                    by_name.setdefault(re.sub(r"\s+", " ", str(d["case_name"])).strip().lower(), court)
+                    if d.get("citation"):
+                        by_cit.setdefault(re.sub(r"\s+", " ", str(d["citation"])).strip().lower(), court)
+            _LIB_COURTS.update({"name": by_name, "cit": by_cit, "ok": True})
+        n = re.sub(r"\s+", " ", str(name or "")).strip().lower()
+        c = re.sub(r"\s+", " ", str(citation or "")).strip().lower()
+        return _LIB_COURTS["name"].get(n) or (_LIB_COURTS["cit"].get(c) if c else None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _other_court(c):
+    """True for a court that is not the Supreme Court of India (a Constitution Bench of it is still the Supreme Court)."""
+    return bool(c) and not str(c).startswith(_SC)
+
+
 def _paras(ms):
     out = []
     for m in ms:
@@ -62,7 +103,7 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", 
         name, cit = k
         st = status_fn(name, _year_of(ms[0]), cit if isinstance(cit, str) else None) or {}
         library.append({"case": name, "year": _year_of(ms[0]), "citation": cit if isinstance(cit, str) and cit.strip() else None, "paragraphs": _paras(ms),
-                        "bench": next((m.get(bench_key) for m in ms if m.get(bench_key)), None), "tier": TIER_LIBRARY,
+                        "bench": next((m.get(bench_key) for m in ms if m.get(bench_key)), None), "tier": TIER_LIBRARY, "court": library_court(name, cit if isinstance(cit, str) else None),
                         "status": SHORT_STATUS.get(st.get("source")) or st.get("note"), "status_source": st.get("source"),
                         "link": link_by_name.get(name) or next((m.get("source_url") for m in ms if isinstance(m.get("source_url"), str) and m["source_url"].startswith("http")), None)})
     wider, seen = [], set()
@@ -87,7 +128,7 @@ def build(matches, named_cases, links, sci_cases, status_fn, bench_key="bench", 
                         "tier": TIER_ANCHOR, "status": ("Excerpt not yet confirmed by our reviewer. " if unconfirmed else "Excerpt confirmed by our reviewer. ") + (SHORT_STATUS.get(st.get("source")) or st.get("note") or ""),
                         "status_source": st.get("source"), "link": j.get("link")})
     out = {"library": library, "wider": wider, "anchors": ex_rows, "has_bench": any(r.get("bench") for r in library + wider)}
-    if any(r.get("court") != _SC for r in wider):               # a Court column only when a wider-search row is not a Supreme Court one; otherwise the result is exactly what it was before
+    if any(r.get("court") != _SC for r in wider) or any(_other_court(r.get("court")) for r in library):               # a Court column only when a wider-search or library row is not a Supreme Court one; otherwise the result is exactly what it was before
         out["has_court"] = True
     return out
 
@@ -132,7 +173,7 @@ def render_markdown(table):
     """[(heading, markdown table)] for the page; empty list when there is nothing to show."""
     out = []
     if table.get("library"):
-        out.append(("Authorities (reviewed library)", _table(table["library"], table.get("has_bench"))))
+        out.append(("Authorities (reviewed library)", _table(table["library"], table.get("has_bench"), bool(table.get("has_court")))))
     if table.get("anchors"):
         out.append(("Verbatim excerpts the answer read (copied word for word from the judgment; checked by code against the Supreme Court's own PDF)", _table(table["anchors"], table.get("has_bench"))))
     if table.get("wider"):

@@ -90,6 +90,11 @@ _PUNISHMENT_YEARS = re.compile(r"\b(?:sentenc\w+|imprisonment|punish\w*|rigorous
 _TRIAL_YEARS = re.compile(r"\b(?:trial|trials|case|cases|proceedings?|prosecution|charge[- ]?sheet|hearings?)\b[^.?!]{0,60}?\b" + _NUM + r"\s*[- ]?(?:years?|yrs?)\b|\b" + _NUM + r"\s*[- ]?(?:years?|yrs?)\b[^.?!]{0,60}?\b(?:trial|trials|case|cases|proceedings?|prosecution|charge[- ]?sheet|hearings?)\b", re.I)
 
 
+# 2026-11-12 (owner's Muslim Women Act staging test): "Can the case against the 31-year-old shopkeeper be compounded ..." handed over the two trial-delay excerpts, because "case ... 31-year" read as a case that has run 31 years.
+# A person's AGE is not the length of a trial. Written before the question set review_results/2026-11-12_anchor_age/questions.json was run (24 age questions that are not about delay, 10 that are and also give an age).
+_AGE = re.compile(r"\b\d{1,3}\s*[- ]?years?[- ]?old\b|\bages?d?\s+(?:of\s+|about\s+|around\s+|nearly\s+|almost\s+)?\d{1,3}(?:\s*[- ]?(?:years?|yrs?)(?!\s+(?:in|of|and|but|ago)\b))?|\b\d{1,3}\s*[- ]?(?:years?|yrs?)\s+of\s+age\b", re.I)
+
+
 def _trial_delay(question):
     """A question about delay in a criminal trial: an explicit mention of the right to a speedy trial, a time limit for trials or Article 21 with delay; or a trial/case/proceeding that is 'going on',
     'dragging' or being adjourned, with a number of years or a plain complaint of delay; or a number of years next to the trial itself. A delay in filing an FIR, a complaint or an appeal is not this,
@@ -97,7 +102,7 @@ def _trial_delay(question):
     q = question or ""
     if _SPEEDY.search(q):
         return True
-    q = _PUNISHMENT_YEARS.sub(" ", _OTHER_DELAY.sub(" ", q))
+    q = _AGE.sub(" ", _PUNISHMENT_YEARS.sub(" ", _OTHER_DELAY.sub(" ", q)))
     if _TRIAL_YEARS.search(q):
         return True
     return bool(_TRIAL.search(q) and _DRAG.search(q) and (_LONG.search(q) or re.search(r"\b(?:adjourn\w*|postpone\w*|delay\w*|dragg\w*|asking for (?:more )?time|seeking (?:more )?time|taking (?:more )?time)\b", q, re.I)))
