@@ -30,6 +30,7 @@ import datetime
 import hashlib
 import json
 import os
+import os
 import re
 import threading
 
@@ -49,6 +50,10 @@ CITED_MAX_CHARS = 4000             # a cited section longer than this is not add
 MAX_FANOUT = 2                     # a section that cites MORE than this many other sections of its Act (a rule-making power, a list of offences, section 19 of the PC Act with its four) is not followed at all: all or none, so the page never shows two of four as if they were all
 WHOLE_ACT_MAX_CHARS = 6000         # a manifest entry may say "whole_act": true only for an Act this short (sections that are not omitted, in all); a longer Act with that flag is NOT held, so a slip in the manifest cannot hand over a long Act in full
 MIN_MEANING = 2                    # a question that names sections still gets this many by meaning, when any clears the floor
+
+MAX_SENT_PICKS = 2                 # sections added because ONE sentence of a longer message matches them best (SHELF_MULTIQUERY), at most this many for one Act; they come after the sections the whole message found
+MAX_SENTENCES = 4                  # sentences of the message searched on their own
+MIN_SENT_WORDS = 6                 # a shorter sentence ("He was arrested.") is not searched on its own
 WINDOW = 45                        # characters either side of a section number in which the Act's name must START (after the number) or END (before it): 'section 45 of the PMLA', 'PMLA section 45'
 NAME_ROOM = 110                    # how far past WINDOW a name may run: the longest name of an Act, the SC/ST Act's full title with its short name, is under 100 characters (until 2026-10-17 the whole name had to fit inside WINDOW, which no official title of a long-named Act does)
 GOOD_STATUS = ("machine_checked", "machine_extracted", "reviewed")    # machine_extracted (2026-10-31): the text of an Act that India Code holds only as a PDF, cut into sections by program and read by two PDF readers (build_act_from_pdf.py); weaker than machine_checked
@@ -559,6 +564,39 @@ def _embed_query(text):
     return resp.embeddings[0]
 
 
+def multiquery_enabled():
+    """SHELF_MULTIQUERY=on turns the sentence-level search on. DEFAULT OFF (2026-11-12): it was built for the drink-driving follow-up whose search missed sections 3 and 181, and on the 21 multi-sentence questions
+    written before it (acts/shelf_multisentence_eval.py) it changed nothing: 19 of 21 with and without; for the follow-up itself it added sections 35 and 15, not 3 or 181 (a section such as 181, 'driving in contravention of
+    section 3', does not say 'licence', so no sentence about a licence is close to it). Kept as a switch, not shipped as a default: two extra sections of noise per long message with no measured gain."""
+    return (os.environ.get("SHELF_MULTIQUERY") or "off").strip().strip("\"'").strip().lower() in ("on", "1", "true", "yes")
+
+
+def sentences_of(text):
+    """The sentences of a message that are searched on their own: at least MIN_SENT_WORDS words, at most MAX_SENTENCES, in order; [] unless the message has TWO or more sentences of that length (a one-sentence message is searched exactly as before).
+    Why: a long case narrative has one meaning vector, and the sentence that carries the legal point ('the driving licence had expired two weeks before the checkpoint') is a small part of it; the staging follow-up
+    of 2026-11-12 never reached sections 3 and 181 of the Motor Vehicles Act for that reason."""
+    try:
+        parts = [p.strip() for p in re.split(r"(?<=[.?!])\s+(?=[A-Z0-9\"'(])", re.sub(r"\s+", " ", text or "").strip())]
+        good = [p for p in parts if len(p.split()) >= MIN_SENT_WORDS]
+        return good[:MAX_SENTENCES] if len(good) >= 2 else []
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _embed_queries(texts):
+    """The sentences as voyage-law-2 query vectors in ONE call (cost logged like the whole-message vector)."""
+    import voyageai
+    from semantic_retrieval import _resolve_voyage_api_key
+    resp = voyageai.Client(api_key=_resolve_voyage_api_key(), max_retries=1, timeout=20).embed(list(texts), model=MODEL, input_type="query")
+    try:
+        import cost_log
+        cost_log.note_voyage("act_shelf_sentence_embed", MODEL, getattr(resp, "total_tokens", 0))
+    except Exception:  # noqa: BLE001
+        pass
+    return resp.embeddings
+
+
+
 def _counterpart_note(st, c):
     """The fixed Evidence Act / Adhiniyam pairing note (ea_bsa_map.py) for a section of those two Acts, '' for every other section and on any problem."""
     try:
@@ -615,6 +653,16 @@ def search(question, acts, current_message=None, embed_fn=None):
                 info["embed"] = "ok"
             except Exception as exc:  # noqa: BLE001 -- the named sections and pointers still go
                 info["embed"] = f"failed: {type(exc).__name__}"
+        svecs = []
+        if qvec is not None and multiquery_enabled():
+            sents = sentences_of(text)
+            if sents:
+                try:
+                    vecs = [(embed_fn or _embed_query)(x) for x in sents] if embed_fn else _embed_queries(sents)
+                    svecs = [(x, np.array(v, dtype=float)) for x, v in zip(sents, vecs)]
+                    info["sentences"] = len(svecs)
+                except Exception as exc:  # noqa: BLE001 -- the whole-message search still goes
+                    info["sentences"] = f"failed: {type(exc).__name__}"
         k_meaning = TOP_K_ONE if len(ids) == 1 else TOP_K_TWO
         budget = MAX_CHARS // len(ids)
         matches = []
@@ -680,6 +728,34 @@ def search(question, acts, current_message=None, embed_fn=None):
                     rec["meaning"].append({"s": str(c["section_number"]), "score": round(sc, 3)})
                     used += len(c["text"])
                     got += 1
+            if svecs and qvec is not None:                              # SHELF_MULTIQUERY: the best section of each sentence that the whole message did not find, the highest scores first, at most MAX_SENT_PICKS, within the character budget
+                cand = []
+                for sx, sv in svecs:
+                    ss_ = st["matrix"] @ sv
+                    for i in np.argsort(-ss_, kind="stable")[:6]:
+                        c = st["ranked"][int(i)]
+                        sc = float(ss_[int(i)])
+                        if sc < FLOOR:
+                            break
+                        if str(c["section_number"]).upper() in seen or _housekeeping(c):
+                            continue
+                        cand.append((sc, int(i), sx))
+                        break
+                used = sum(len(m["text"]) for m in mine)
+                for sc, i, sx in sorted(cand, key=lambda t: -t[0]):
+                    c = st["ranked"][i]
+                    n_ = str(c["section_number"]).upper()
+                    if n_ in seen or len(rec.setdefault("sentence", [])) >= MAX_SENT_PICKS:
+                        continue
+                    if used + len(c["text"]) > budget:
+                        rec["dropped_by_cap"].append(str(c["section_number"]))
+                        continue
+                    seen.add(n_)
+                    mm = _match(st, c, "meaning", sc)
+                    mm["via_sentence"] = True
+                    mine.append(mm)
+                    rec["sentence"].append({"s": str(c["section_number"]), "score": round(sc, 3)})
+                    used += len(c["text"])
             if xref_enabled():
                 _add_cited(st, mine, rec)                              # SECTION_XREF: the sections that the named section cites
             info["per_act"][aid] = rec

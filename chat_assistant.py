@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from anthropic import Anthropic
 
@@ -2022,6 +2023,10 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         try:                                       # OFFENCE_CLASS=on (offence_class.py): the BNSS First Schedule's row for each BNS offence among the sections, so the answer can state cognizable / bailable / court from the Schedule's words; '' otherwise
             import offence_class
             retrieved_text = retrieved_text + offence_class.prompt_block(matches)
+            _olc = offence_class.other_law_block(matches)             # OTHER_LAW_CLASS (default ON): Part II of the same Schedule for sections of OTHER laws that name a punishment (2026-11-12)
+            if _olc:
+                retrieved_text = retrieved_text + _olc
+                print("OTHER_LAW_CLASS " + json.dumps({"sections": [ln[2:].split(":")[0] for ln in _olc.split("\n") if ln.startswith("- ")]}), flush=True)
         except Exception:  # pragma: no cover -- fail-open
             pass
         try:                                       # case_file.py: the person tapped 'under 18'; POCSO is in the material; answer only what changes (_case_delta_block); '' for every other turn
@@ -2044,6 +2049,12 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                     print("ANSWER_SHAPE " + json.dumps({"asks": len(answer_shape.asks(_m)), "tier": answer_shape.tier(_m)}), flush=True)
         except Exception as exc:  # noqa: BLE001 -- fail-open
             logger.warning("answer shape failed: %s", type(exc).__name__)
+        try:                                       # ABSENCE_RULE (default on): what the material does not show is a gap to report, never an argument
+            _abs = _absence_rule()
+            if _abs:
+                conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _abs
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         pilot_context = _format_pilot_context_for_prompt(pilot_matches, question)
         prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
@@ -2103,6 +2114,18 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                     return None                                  # a case that exists nowhere we can look, still in the answer after a second try: withheld
                 if g_mode in ("warn", "enforce") and (cases or quotes):
                     grounding_checks.add_notes(grounding_checks.notices(cases, quotes))
+            except Exception:  # noqa: BLE001
+                pass
+            try:                                                  # section_checks.py (2026-11-12): a word the answer attributes to a section that the section lacks, and a sentence that reasons from what the material does not contain
+                import section_checks
+                _smode = section_checks.mode()
+                if _smode != "off":
+                    _gl, _ab = section_checks.section_gloss(text, matches, question), section_checks.absence_arguments(text)
+                    if _gl or _ab:
+                        import hashlib
+                        section_checks.log_line(hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:12], _gl, _ab)
+                        if _smode == "warn":
+                            grounding_checks.add_notes(section_checks.notices(_gl, _ab))
             except Exception:  # noqa: BLE001
                 pass
             return text
@@ -4204,6 +4227,20 @@ def _carried_case_matches(have_names):
     if out:
         print("CARRY_CASES " + json.dumps({"cases": [str(m.get("case_name")) for m in out]}), flush=True)
     return out
+
+
+ABSENCE_RULE_TEXT = ("## What the material does not show (applies to every answer)\n"
+                     "What the material does not show is a gap to report, never an argument. Do not write, as a conclusion or as a ground for the person, that a provision does not exist, that an act is not an offence, "
+                     "that a rule does not apply, or that a charge should not be pressed, because the material does not contain a provision for it. Say instead that the material does not show it, and what to check "
+                     "(the full Act, the rules made under it, the original judgment, a lawyer). A ground that depends on a provision you cannot see is not offered as a ground.\n")
+
+
+def _absence_rule():
+    """The prompt clause above, or '' when ABSENCE_RULE=off. Added 2026-11-12 after a staging answer listed, as a ground for a driver whose licence had expired, that 'no Motor Vehicles Act section in the material penalises mere
+    non-renewal' (the Act's sections 3 and 181 do, and did not reach the answer). It sits outside the Hard rules block, which stays word for word what it was."""
+    if (os.environ.get("ABSENCE_RULE") or "on").strip().strip("\"'").strip().lower() in ("off", "0", "false", "no"):
+        return ""
+    return ABSENCE_RULE_TEXT
 
 
 def _carried_matches(have):

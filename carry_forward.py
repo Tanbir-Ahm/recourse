@@ -15,7 +15,7 @@ Pure functions, no model, no network.
 """
 import re
 
-MAX_CARRIED = 3
+MAX_CARRIED = 4
 STATES = ("single_match", "conflicting_matches")
 
 
@@ -25,15 +25,28 @@ def _named_in(text, num):
     return bool(re.search(r"(?<![\w.])(?:sections?|sec\.|ss?\.)\s+[^.;:\n]{0,40}?(?<![\w.])" + n + r"(?![\w])", text or "", re.I))
 
 
+def _mentions(text, num):
+    """How many times `text` names section `num` (same test as _named_in, counted)."""
+    n = re.escape(str(num))
+    return len(re.findall(r"(?<![\w.])(?:sections?|sec\.|ss?\.)\s+[^.;:\n]{0,40}?(?<![\w.])" + n + r"(?![\w])", text or "", re.I))
+
+
+HEAD_CHARS = 900                       # the opening of the answer (its Bottom line): a section named there is the one the answer turns on
+
+
 def refs_from_turns(turns, limit=MAX_CARRIED):
-    """[{'act', 'section', 'act_key'}] for the statute sections the earlier answers named, latest answer first, no repeats, at most `limit`. `turns`: [{'q', 'answer': the stored result}]."""
+    """[{'act', 'section', 'act_key'}] for the statute sections the earlier answers named, latest answer first, no repeats, at most `limit`. `turns`: [{'q', 'answer': the stored result}].
+    Within one answer the sections the answer leans on come first: ranked by how often its text names the section, with the opening of the answer (its Bottom line) counting double, then in the order they were handed over
+    (2026-11-12: a drink-driving answer relied on s.185 of the Motor Vehicles Act in every part, but s.203, s.205 and s.204 were handed over first, so with a limit of three the follow-up never saw s.185)."""
     out, seen = [], set()
     for t in reversed(turns or []):
         a = t.get("answer") if isinstance(t, dict) else None
         if not isinstance(a, dict) or a.get("state") not in STATES:
             continue
         text = a.get("response_text") or ""
-        for m in a.get("matches") or []:
+        head = text[:HEAD_CHARS]
+        found = []
+        for k, m in enumerate(a.get("matches") or []):
             if not isinstance(m, dict) or m.get("type") not in (None, "statute") or m.get("case_name") or not m.get("act") or m.get("section_number") in (None, ""):
                 continue
             if m.get("retrieval") == "cited" or not m.get("text"):
@@ -42,10 +55,14 @@ def refs_from_turns(turns, limit=MAX_CARRIED):
             key = (str(m["act"]).upper(), num.upper())
             if key in seen or not _named_in(text, num):
                 continue
-            seen.add(key)
             ref = {"act": str(m["act"]), "section": num}
             if m.get("act_key"):
                 ref["act_key"] = str(m["act_key"])
+            found.append((-(_mentions(text, num) + _mentions(head, num)), k, key, ref))
+        for _, _, key, ref in sorted(found, key=lambda x: (x[0], x[1])):
+            if key in seen:
+                continue
+            seen.add(key)
             out.append(ref)
             if len(out) >= limit:
                 return out

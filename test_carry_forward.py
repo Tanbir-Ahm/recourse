@@ -48,6 +48,15 @@ check([r["section"] for r in C.refs_from_turns(T2)][:1] == ["480"] and len({(r["
 check(C._named_in("Section 482 of the BNSS", "482") and C._named_in("sections 482 and 483", "483") and C._named_in("s. 482(1)", "482") and not C._named_in("the 1482 cases", "482") and not C._named_in("Section 4821", "482") and not C._named_in("482 alone", "482"),
       "'named' means the word section (or s.) a few words before the number, the number a whole token")
 sh = dict(stat("PMLA", "45"), act_key="pmla_2002", source="act_shelf")
+# ranking within one answer (2026-11-12): the section the answer leans on comes first, whatever order the sections were handed over in
+def _sh(num):
+    return {"type": "statute", "act": "MVACT", "act_key": "mv_act_1988", "section_number": num, "text": "x", "source": "act_shelf"}
+_txt = ("**Bottom line** Section 185 of the Motor Vehicles Act is the charge. Section 206(4) governs the licence and under Section 206(4) it goes to the licensing authority. Section 203(3) allows arrest. "
+        "Section 185 punishes the first offence with six months. For a first offence under Section 185 the bracket is lower. Section 205 and Section 204 add little.")
+_T = [{"q": "q", "answer": {"state": "single_match", "response_text": _txt, "matches": [_sh("203"), _sh("205"), _sh("204"), _sh("185"), _sh("206")]}}]
+_r = [x["section"] for x in C.refs_from_turns(_T)]
+check(_r[0] == "185" and "206" in _r and len(_r) == C.MAX_CARRIED == 4, f"the section named most often comes first and the limit is four ({_r})")
+check([x["section"] for x in C.refs_from_turns(_T, limit=1)] == ["185"], "with a limit of one it is the section the answer leans on")
 check(C.refs_from_turns([{"q": "q", "answer": {"state": "single_match", "response_text": "Section 45 of the PMLA restricts bail.", "matches": [sh]}}]) == [{"act": "PMLA", "section": "45", "act_key": "pmla_2002"}], "a shelf section is carried with its Act's key")
 
 # 2. when it is carried
