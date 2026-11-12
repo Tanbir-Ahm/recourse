@@ -1,0 +1,237 @@
+{
+ "written": "2026-11-12",
+ "by": "Claude (AI), BEFORE the multi-query shelf search was written (owner: 'Build 1, 2 and 3 ... for every query from now on' after the licence follow-up whose search missed ss.3 and 181). Expected sections were chosen by reading the section titles of the loaded Acts. Multi-sentence questions: facts first, then asks, as a lawyer types. NOT a lawyer's list; run once after the build, no tuning.",
+ "questions": [
+  {
+   "id": "MS01",
+   "act_key": "mv_act_1988",
+   "q": "Her car was stopped at a checkpoint and the driving licence she showed had lapsed a fortnight earlier. She was not drunk and there was no accident. What can the police do and what is the penalty?",
+   "expected": [
+    "181"
+   ],
+   "also_ok": [
+    "3"
+   ]
+  },
+  {
+   "id": "MS02",
+   "act_key": "mv_act_1988",
+   "q": "The truck's insurance expired last month and a traffic officer stopped it on the highway. All the other papers were in order. What is the offence and the fine?",
+   "expected": [
+    "196"
+   ],
+   "also_ok": [
+    "146"
+   ]
+  },
+  {
+   "id": "MS03",
+   "act_key": "mv_act_1988",
+   "q": "A bus was carrying standing passengers beyond its capacity on a ghat road and the conductor was challaned. What is the penalty for this?",
+   "expected": [
+    "194A"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS04",
+   "act_key": "mv_act_1988",
+   "q": "A 17-year-old boy took his father's scooter without a licence and hit a parked car. Nobody was hurt. Is the father liable and what happens to the boy?",
+   "expected": [
+    "199A"
+   ],
+   "also_ok": [
+    "4",
+    "181"
+   ]
+  },
+  {
+   "id": "MS05",
+   "act_key": "mv_act_1988",
+   "q": "He rode a motorcycle without a helmet on the highway. The police fined him on the spot and kept his licence. Can they do that?",
+   "expected": [
+    "194D"
+   ],
+   "also_ok": [
+    "129",
+    "206"
+   ]
+  },
+  {
+   "id": "MS06",
+   "act_key": "mv_act_1988",
+   "q": "A driver hit a pedestrian, took him to hospital himself and reported to the police. The pedestrian survived. Does he have any duty under the Act, and is there any protection for him?",
+   "expected": [
+    "134",
+    "134A"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS07",
+   "act_key": "mv_act_1988",
+   "q": "My client's car was damaged when another driver crashed into it, and the other driver's insurer refuses to pay, saying the policy was cancelled. Where does my client file a claim and what time limit applies?",
+   "expected": [
+    "166"
+   ],
+   "also_ok": [
+    "165",
+    "149"
+   ]
+  },
+  {
+   "id": "MS08",
+   "act_key": "mv_act_1988",
+   "q": "A taxi owner let a friend who had no licence drive the taxi and the friend caused an accident. Is the owner liable under the Act?",
+   "expected": [
+    "180"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS09",
+   "act_key": "mv_act_1988",
+   "q": "The police seized a vehicle because the registration papers were not with the driver. The papers are at the owner's house. How long can the vehicle be kept?",
+   "expected": [
+    "207"
+   ],
+   "also_ok": [
+    "130"
+   ]
+  },
+  {
+   "id": "MS10",
+   "act_key": "mv_act_1988",
+   "q": "The driver was racing another car on the expressway at night. Nobody was hurt. What is the punishment, and can the licence be cancelled?",
+   "expected": [
+    "189"
+   ],
+   "also_ok": [
+    "20",
+    "19"
+   ]
+  },
+  {
+   "id": "MS11",
+   "act_key": "pc_act_1988",
+   "q": "A clerk in the land records office took Rs 5,000 from a farmer to enter a mutation. The farmer complained to the anti-corruption bureau. What offence is this and what is the punishment?",
+   "expected": [
+    "7"
+   ],
+   "also_ok": [
+    "13",
+    "11"
+   ]
+  },
+  {
+   "id": "MS12",
+   "act_key": "pc_act_1988",
+   "q": "The government wants to prosecute a retired officer for a bribe he took ten years ago when he was in service. Does it need any permission and from whom?",
+   "expected": [
+    "19"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS13",
+   "act_key": "pc_act_1988",
+   "q": "A businessman gave money to a public servant to get a contract, and now says he was forced to. Is giving a bribe also an offence? Is there any defence?",
+   "expected": [
+    "8"
+   ],
+   "also_ok": [
+    "9"
+   ]
+  },
+  {
+   "id": "MS14",
+   "act_key": "pocso_act_2012",
+   "q": "A teacher touched a nine-year-old girl inappropriately in the class. The girl told her mother. Is the mother required to report this, and what happens if she does not?",
+   "expected": [
+    "19",
+    "21"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS15",
+   "act_key": "pocso_act_2012",
+   "q": "A man kept obscene photographs of children on his phone and did not share them. Is that an offence under the Act and what is the punishment?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [
+    "14"
+   ]
+  },
+  {
+   "id": "MS16",
+   "act_key": "pocso_act_2012",
+   "q": "The child's statement is to be recorded in a case. Where and how must it be recorded, and who may be present?",
+   "expected": [
+    "24"
+   ],
+   "also_ok": [
+    "25",
+    "26"
+   ]
+  },
+  {
+   "id": "MS17",
+   "act_key": "pmla_2002",
+   "q": "The ED attached a flat bought with the accused's salary savings, saying it is proceeds of crime. How long can it stay attached and where can the owner object?",
+   "expected": [
+    "5"
+   ],
+   "also_ok": [
+    "8"
+   ]
+  },
+  {
+   "id": "MS18",
+   "act_key": "pmla_2002",
+   "q": "An accused in a PMLA case applies for bail. What twin conditions must the court be satisfied about?",
+   "expected": [
+    "45"
+   ],
+   "also_ok": []
+  },
+  {
+   "id": "MS19",
+   "act_key": "dowry_prohibition_act_1961",
+   "q": "The bride's family gave gifts at the wedding voluntarily and a list was made. Later the in-laws demand more money. What does the Act say about the gifts and about the demand?",
+   "expected": [
+    "4"
+   ],
+   "also_ok": [
+    "3",
+    "5",
+    "6"
+   ]
+  },
+  {
+   "id": "MS20",
+   "act_key": "jj_act_2015",
+   "q": "A 16-year-old is accused of a serious offence. Who decides whether he is tried as an adult, and on what basis?",
+   "expected": [
+    "15"
+   ],
+   "also_ok": [
+    "18",
+    "19"
+   ]
+  },
+  {
+   "id": "MS21",
+   "act_key": "jj_act_2015",
+   "q": "A child who is arrested must be produced somewhere within a time. Where, and can he be given bail?",
+   "expected": [
+    "12"
+   ],
+   "also_ok": [
+    "10"
+   ]
+  }
+ ],
+ "sha256": "91113eedc01e6ae9e3581f2c3335a257e864ca872a7f5461019f4822d5c66721"
+}
