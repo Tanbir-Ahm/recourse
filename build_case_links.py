@@ -523,6 +523,53 @@ def read_archive_list(path):
     return [{"id": int(r[0]), "type": r[1], "open": r[2]} for r in d["rows"]]
 
 
+def wide_flags(links, official, extras, names_new, names_old=None, base=BUCKET):
+    """Which title-list judgments (and which court-linked extras) also have their FULL TEXT in the wide search index (added 2026-11-16, the owner's Judgments-page label: a card said 'Supreme Court index (title and
+    citation only)' for Gunmala, S.M.S. Pharmaceuticals, Bridgestone and others whose text IS searchable in the wider search). `names_new` / `names_old` are the `rows` of the names table of the newer index and of the
+    pinned (production) index; a row counts only if it is a Supreme Court one. A title row is in an index when (a) it was tied to a court address from that table (`official`, three guarded passes) or (b) its bucket PDF is
+    the very file one of that table's bucket-linked rows points at. A judgment the archive list alone tied (`official_list`) is NOT counted: the criminal-law index never embedded those. Returns
+    {'both': [case ids in the pinned and the newer index], 'newer': [only in the newer], 'extras': {url: 'both' | 'newer'}}."""
+    def sc(rows):
+        return [r for r in rows or [] if r.get("court") in (None, "", "Supreme Court of India")]
+
+    def bucket_keys(rows):
+        out = set()
+        for r in rows:
+            lk = r.get("link") or ""
+            if r.get("link_kind") == "open_bucket_pdf" and lk.startswith(base):
+                out.add(path_norm(lk[len(base):]))
+        return out
+
+    new_rows, old_rows = sc(names_new), sc(names_old)
+    by_key = {}
+    for cid, k in (links or {}).items():
+        by_key.setdefault(path_norm(k), []).append(cid)
+    in_new = {cid for k in bucket_keys(new_rows) for cid in by_key.get(k, [])} | set(official or {})
+    old_links = {r.get("link") for r in old_rows if r.get("link")}
+    in_old = {cid for k in bucket_keys(old_rows) for cid in by_key.get(k, [])} | {cid for cid, url in (official or {}).items() if url in old_links}
+    both = sorted(in_new & in_old)
+    newer = sorted(in_new - in_old)
+    ex = {e["url"]: ("both" if e.get("url") in old_links else "newer") for e in extras or [] if isinstance(e, dict) and e.get("url")}
+    return {"both": both, "newer": newer, "extras": ex}
+
+
+def annotate(path, names_new, names_old=None, out=None, log=print):
+    """Adds the wide-index flags (wide_flags) to an existing case_pdf_links file without any download: `wide_index` {'both', 'newer', 'commits'} and a 'wide' field on every extras entry. Nothing else in the file changes."""
+    doc = json.load(gzip.open(path, "rt", encoding="utf-8"))
+    nn = json.load(gzip.open(names_new, "rt", encoding="utf-8"))
+    no = json.load(gzip.open(names_old, "rt", encoding="utf-8")) if names_old else None
+    f = wide_flags(doc.get("links"), doc.get("official"), doc.get("extras"), nn["rows"], no["rows"] if no else None, base=doc.get("bucket_base") or BUCKET)
+    doc["wide_index"] = {"both": f["both"], "newer": f["newer"], "commits": {"newer": nn.get("index_commit"), "pinned": (no or {}).get("index_commit")}}
+    for e in doc.get("extras") or []:
+        if isinstance(e, dict) and e.get("url") in f["extras"]:
+            e["wide"] = f["extras"][e["url"]]
+    out = out or path
+    with gzip.open(out, "wt", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    log(f"wide index: {len(f['both'])} title rows in both indexes, {len(f['newer'])} only in the newer; extras: {sum(1 for v in f['extras'].values() if v == 'both')} in both, {sum(1 for v in f['extras'].values() if v == 'newer')} only in the newer")
+    return doc
+
+
 def build(db, cache, names_table=None, out=None, log=print, archive_list=None):
     rows = title_rows(db)
     fetch_metadata(cache, log=log)
@@ -562,12 +609,17 @@ def build(db, cache, names_table=None, out=None, log=print, archive_list=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--cache", required=True, help="folder for the downloaded bucket metadata and listing")
+    ap.add_argument("--cache", required=False, help="folder for the downloaded bucket metadata and listing")
     ap.add_argument("--db", default=os.path.join(HERE, "case_lookup_index.db"))
     ap.add_argument("--names-table", help="names_table_<index commit>.json.gz of the research repository (adds the court's own addresses)")
     ap.add_argument("--archive-list", help="the Court's archive list (names_table/archive_list_*.json.gz of the research repository): adds court addresses for judgments the names table does not hold")
     ap.add_argument("--out")
+    ap.add_argument("--annotate", help="add the wide-index flags to this existing case_pdf_links.json.gz (needs --names-table and, for the two-index wording, --names-table-pinned); no download")
+    ap.add_argument("--names-table-pinned", help="names_table.json.gz of the pinned (production) index")
     a = ap.parse_args(argv)
+    if a.annotate:
+        annotate(a.annotate, a.names_table, a.names_table_pinned, a.out)
+        return 0
     build(a.db, a.cache, a.names_table, a.out, archive_list=a.archive_list)
     return 0
 

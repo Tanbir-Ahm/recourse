@@ -72,6 +72,11 @@ WIDER_UNAVAILABLE = "The wider search is not available right now."
 WIDER_NEEDS_WORDS = "The wider search needs a few words that describe what you are looking for."
 TIER_LIBRARY_LABEL = "Reviewed library"
 TIER_INDEX_LABEL = "Supreme Court index (title and citation only)"
+# 2026-11-16 (owner: "Fix the Judgments page label"): a card from the title list said "title and citation only" for judgments whose full text IS searchable in the wider search (Gunmala, S.M.S. Pharmaceuticals, Bridgestone,
+# HDFC Bank 2025, Kamalkishor ...), so a tester read them as unreadable. When case_links knows the judgment is also in the wide index the label says so; 'both' = in the pinned (production) index and the newer one,
+# 'newer' = only in the newer index, so it says "may" (the wider search may run on the older index). Everything else keeps the old words.
+TIER_INDEX_WIDE_LABEL = "Supreme Court index (title and citation here; the full text is in the wider search)"
+TIER_INDEX_WIDE_MAYBE_LABEL = "Supreme Court index (title and citation here; the full text may be in the wider search)"
 TIER_WIDER_LABEL = "Wider search (not independently verified)"
 WIDER_LABEL = "(from a wider search, not independently verified)"
 
@@ -907,6 +912,19 @@ def _para_label(pn):
     return head if head.isdigit() else None
 
 
+def _index_tier(status):
+    """The tier label of a Supreme Court index card; `status` is case_links.wide_status(...) or an extras entry's 'wide' field."""
+    return TIER_INDEX_WIDE_LABEL if status == "both" else (TIER_INDEX_WIDE_MAYBE_LABEL if status == "newer" else TIER_INDEX_LABEL)
+
+
+def _wide_status_of(case_id):
+    try:
+        import case_links
+        return case_links.wide_status(case_id)
+    except Exception:  # noqa: BLE001 -- the old label is the safe one
+        return None
+
+
 def _case_card(title, year, citation, held, how, links, **extra):
     d = {"title": title, "year": year, "citation": citation, "held": held, "tier": TIER_LIBRARY_LABEL if held == "library" else TIER_INDEX_LABEL, "how": how, "links": links,
          "court": None, "scr_citation": None, "neutral": None, "date": None, "passages": [], "status": None}
@@ -1027,7 +1045,7 @@ def _extra_cards(parsed, cit, existing):
         cite = e.get("scr") or e.get("air") or None
         out.append((len(toks), _case_card(e["name"], year, cite, "index", "citation" if by_cit else "name",
                                           [{"label": "Read the judgment (Supreme Court website)", "url": e["url"], "kind": "court_site_pdf"}, {"label": "Search for it on Indian Kanoon", "url": _ik_search(e["name"])}],
-                                          court="Supreme Court of India", date=e.get("date"), scr_citation=e.get("scr"))))
+                                          court="Supreme Court of India", date=e.get("date"), scr_citation=e.get("scr"), tier=_index_tier(e.get("wide")))))
     out.sort(key=lambda x: x[0])
     return [c for _, c in out[:10]]
 
@@ -1036,6 +1054,7 @@ _HC_NEUTRAL = re.compile(r"(?<![A-Za-z0-9])((?:19|20)\d\d)\s*:\s*GAU\s*-\s*([A-Z
 _HC_CASENO = re.compile(r"^\s*((?:[A-Za-z][A-Za-z.()\- ]{0,30}?)\s*[A-Za-z.()]*)[\s./\-]*?(\d{1,6})\s*/\s*((?:19|20)\d\d)\s*$")
 HC_COURT = "Gauhati High Court"
 TIER_HC_LABEL = "Gauhati High Court list (title, case number and link only)"
+TIER_HC_WIDE_LABEL = "Gauhati High Court list (title, case number and link here; the full text may be in the wider search)"     # every Gauhati judgment of this list is a document of the wide index (the newer one)
 _HC_CACHE = {}
 
 
@@ -1100,7 +1119,7 @@ def _hc_cards(parsed, existing):
         import case_links
         out.append((len(toks), _case_card(e["name"], year, e.get("case_no"), "index", how,
                                           [{"label": lk["label"], "url": lk["url"], "kind": lk["kind"]} for lk in case_links.hc_links(e)] + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(e["name"])}],
-                                          court=HC_COURT, date=e.get("date"), neutral=e.get("neutral"), tier=TIER_HC_LABEL)))
+                                          court=HC_COURT, date=e.get("date"), neutral=e.get("neutral"), tier=TIER_HC_WIDE_LABEL)))
     out.sort(key=lambda x: x[0])
     return [c for _, c in out[:10]]
 
@@ -1164,7 +1183,7 @@ def case_cards(parsed, lex=None, sem=None, notes=None, court=None):
                 continue
             rl = _read_links(row["case_id"])
             cases.append(_case_card(title, year, row.get("citation") or None, "index", "close" if not exact else ("citation" if cit else "name"),
-                                    rl + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date")))
+                                    rl + [{"label": "Search for it on Indian Kanoon", "url": _ik_search(title)}], court=row.get("court"), neutral=_neutral(row["case_id"]), date=row.get("decision_date"), tier=_index_tier(_wide_status_of(row["case_id"]))))
             added_close = added_close or not exact
         if added_close:
             notes.append(CLOSE_NOTE)

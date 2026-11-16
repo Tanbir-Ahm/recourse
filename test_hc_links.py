@@ -153,7 +153,7 @@ cs = [c for c in r["cases"] if c["court"] == "Gauhati High Court"]
 check(any(c["title"] == e1["name"] for c in cs), "a neutral citation (2019:GAU-AS:nnnn) finds the judgment")
 c = next(c for c in cs if c["title"] == e1["name"])
 check([l["label"] for l in c["links"]][:2] == [CL.HC_OFFICIAL_LABEL, CL.HC_MIRROR_LABEL] and c["links"][0]["url"] == e1["court_url"] and c["links"][1]["url"] == e1["copy_url"], "its card shows the court's address first, then the copy")
-check(c["links"][-1]["label"].startswith("Search for it on Indian Kanoon") and c["tier"] == S.TIER_HC_LABEL and c["held"] == "index" and c["neutral"] == e1["neutral"] and c["citation"] == e1["case_no"], "then the Indian Kanoon search; the tier says what the list holds; the neutral citation and the case number are on the card")
+check(c["links"][-1]["label"].startswith("Search for it on Indian Kanoon") and c["tier"] == S.TIER_HC_WIDE_LABEL and c["held"] == "index" and c["neutral"] == e1["neutral"] and c["citation"] == e1["case_no"], "then the Indian Kanoon search; the tier says what the list holds; the neutral citation and the case number are on the card")
 check(c["status"] and c["status"]["source"] in ("not_checked", "card_quiet"), "it carries a verdict sentence like any card (not checked by us)")
 r = S.search(e1["case_no"], "library")
 check(any(c["title"] == e1["name"] for c in r["cases"]), "a case number with its type (Crl.A./nnn/yyyy) finds it")

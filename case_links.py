@@ -50,13 +50,13 @@ def _load():
         st = _STATE.get(p)
         if st is not None:
             return st
-        out = {"links": {}, "official": {}, "official_list": {}, "extras": [], "base": "", "built": None}
+        out = {"links": {}, "official": {}, "official_list": {}, "extras": [], "base": "", "built": None, "wide_both": frozenset(), "wide_newer": frozenset()}
         try:
             with gzip.open(p, "rt", encoding="utf-8") as fh:
                 d = json.load(fh)
             if d.get("schema") == "case-pdf-links-1" and _ok(str(d.get("bucket_base") or "")):
                 ex = [e for e in (d.get("extras") or []) if isinstance(e, dict) and isinstance(e.get("name"), str) and e["name"].strip() and _ok(str(e.get("url") or ""))]
-                out = {"links": d.get("links") or {}, "official": d.get("official") or {}, "official_list": d.get("official_list") or {}, "extras": ex, "base": d["bucket_base"], "built": d.get("built")}
+                out = {"links": d.get("links") or {}, "official": d.get("official") or {}, "official_list": d.get("official_list") or {}, "extras": ex, "base": d["bucket_base"], "built": d.get("built"), "wide_both": frozenset(str(x) for x in ((d.get("wide_index") or {}).get("both") or [])), "wide_newer": frozenset(str(x) for x in ((d.get("wide_index") or {}).get("newer") or []))}
         except Exception:  # noqa: BLE001 -- a missing or unreadable file means no links, never an error
             pass
         _STATE[p] = out
@@ -160,6 +160,20 @@ def links_for(case_id):
     if mir:
         out.append({"url": mir, "kind": "open_bucket_pdf", "label": MIRROR_LABEL})
     return out
+
+
+def wide_status(case_id):
+    """'both' when the judgment of this title-index case id also has its full text in the wide search index of the pinned (production) AND the newer index, 'newer' when only in the newer, None when it is not known to be in
+    either (and always None when CASE_LINKS=off or the file has no flags). Added 2026-11-16: the Judgments page card said 'title and citation only' for judgments whose text is searchable in the wider search."""
+    if not enabled() or not case_id:
+        return None
+    st = _load()
+    cid = str(case_id).strip().replace(" ", "_")
+    if cid in st["wide_both"]:
+        return "both"
+    if cid in st["wide_newer"]:
+        return "newer"
+    return None
 
 
 def extras():
