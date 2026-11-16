@@ -1670,6 +1670,42 @@ def _classification_note(problems: list, variants: dict) -> str:
     return ("\n\n**Classification check** *(written by our program from its table of the BNS, not by the model; where the text above says otherwise about these sections, go by this line and confirm it against the BNSS First Schedule)*: " + "; ".join(lines) + ".")
 
 
+def _retry_by_code_mode():
+    """RETRY_BY_CODE (default off; 2026-11-16, owner: 'Build the cost-saving fixes for lawyer answers'). Only for the lawyers' research note.
+    on   = when the ONLY thing a check found is a fact the answer left out (a cognizable / bailable status our table has, or a companion section that reached the material), the answer is kept and
+           the missing fact is added as a note written by code, instead of paying for a whole second answer (about Rs 6 to 10 each, FOLLOW_UPS 2em).
+    soft = also for a case the answer credits with more than its excerpt shows: a 'check the excerpt' note instead of a second answer.
+    A wrong statement (a status that contradicts our table, a section or Act not in the material, a wrong court, a wider-search case used as authority) still gets the second answer."""
+    v = _env_value("RETRY_BY_CODE").lower()
+    return v if v in ("on", "soft") else ""
+
+
+def _omission_note(problems: list, variants: dict) -> str:
+    """The table's status for the sections whose cognizable / bailable status the answer left out (written by code)."""
+    note = _classification_note(problems, variants)
+    return note.replace("where the text above says otherwise about these sections, go by this line and confirm it against the BNSS First Schedule", "the text above leaves out the status of these sections: this line gives it; confirm it against the BNSS First Schedule") if note else ""
+
+
+def _companion_note(missing: list, section_act_map: dict) -> str:
+    """A note, written by code, for companion sections that reached the material but that the answer does not discuss."""
+    names = []
+    for n in missing or []:
+        act = section_act_map.get(n)
+        names.append(f"{_shelf_display(act) or act or 'the Act'} section {n}")
+    if not names:
+        return ""
+    return ("\n\n**Not discussed above** *(written by our program, not by the model)*: " + ", ".join(names)
+            + " went with the sections above in the material we looked at, but the answer does not address them. Read them before relying on this answer.")
+
+
+def _generalisation_note(cases: list) -> str:
+    """A note, written by code, for a case the answer credits with more than the excerpt it was given shows."""
+    if not cases:
+        return ""
+    return ("\n\n**Check the excerpt** *(written by our program, not by the model)*: for " + ", ".join(str(c) for c in cases)
+            + " the answer says what the case \"illustrates\" or \"shows\", but the excerpt we held for it contains no ruling of the court on that point (it shows background facts or what a party said). Read the excerpt before relying on that sentence.")
+
+
 def _format_mismatch(problem: dict) -> str:
     """'Section 318(4) is cognizable, not non-cognizable as you wrote.'"""
     field = problem["field"]
@@ -2129,6 +2165,21 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             except Exception:  # noqa: BLE001
                 pass
             return text
+
+        _rbc = _retry_by_code_mode()
+        if (_rbc and answer_style.template_key() == "v3-lawyer"
+                and not (ungrounded or mismatches or missing_act or court_misattributions or pilot_overreach or g_enforce)
+                and (omissions or missing_companion or (_rbc == "soft" and unsupported_cases))
+                and (_rbc == "soft" or not unsupported_cases)):
+            _note = (_omission_note(omissions, variants) + _companion_note(missing_companion, section_act_map)
+                     + (_generalisation_note(unsupported_cases) if _rbc == "soft" else ""))
+            if _note:
+                try:
+                    print("RETRY_SKIPPED_BY_CODE " + __import__("json").dumps({"mode": _rbc, "omissions": [o.get("section") for o in omissions], "missing_companion": list(missing_companion),
+                                                                                "unsupported_cases": list(unsupported_cases) if _rbc == "soft" else []}, default=str)[:600], flush=True)
+                except Exception:  # noqa: BLE001
+                    pass
+                return _g_finish(response_text + _note, g_cases, g_quotes, False)
 
         if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
                 or court_misattributions or omissions or pilot_overreach or g_enforce):
@@ -4704,7 +4755,7 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         try:
             import cost_log
             cost_log.finish(style=answer_style.style(), audience=answer_style.effective_audience(),
-                            switches={"effort": _sw_start.get("effort", _answer_effort()), "scope_model": _scope_model(), "prompt_cache": _prompt_cache_mode(), "grounding": grounding_checks.mode(),
+                            switches={"effort": _sw_start.get("effort", _answer_effort()), "scope_model": _scope_model(), "prompt_cache": _prompt_cache_mode(), "retry_by_code": _retry_by_code_mode() or None, "grounding": grounding_checks.mode(),
                                       "budget": _sw_start.get("budget", cost_log.budget_state()), "budget_after": cost_log.budget_state()})
         except Exception:  # noqa: BLE001
             pass
