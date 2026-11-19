@@ -17,7 +17,7 @@ import os, sys, time
 sys.path.insert(0, %(here)r)
 from api import engine_adapter
 class E:
-    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None):
+    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None):
         import cost_log, progress
         cost_log.begin(question)
         try:
@@ -33,6 +33,14 @@ class E:
                         "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "grounding_notes": ["One quotation could not be matched to the sources."],
                         "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a><script>window.__xss=1</script>."},
                         "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2"}]}
+            if matter_docs and matter_docs.get("chosen"):        # MATTER_FILES: quote the first handed passage's first eight words with its citation (the check must find them), and once on a wrong page when asked to
+                import matter_files as MF
+                p0 = matter_docs["chosen"][0]
+                d0 = matter_docs["docs"].get(p0["doc"]) or {}
+                words = " ".join(p0["text"].split()[:8])
+                loc = p0["loc"] + (1 if "WRONGPAGE" in question else 0)
+                return {"state": "single_match", "audience": audience, "matches": [],
+                        "response_text": "The document states \"" + words + "\" " + MF.cite(p0["doc"], d0.get("unit") or "page", loc) + "." + (" [with the matter's instructions]" if matter_instructions else "")}
             if case_file and case_file.get("charges"):        # the 'what else could he be charged with' button: the real candidate table, no model
                 import charge_map
                 cands = charge_map.candidates(case_file["charges"]["facts"], case_file.get("victim_minor"), search=lambda t: [])

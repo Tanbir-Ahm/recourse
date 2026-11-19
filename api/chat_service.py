@@ -15,9 +15,10 @@ from sqlalchemy import func, select
 
 import carry_forward
 import case_file as CF
+import matter_files as MF
 import web_chat
 
-from . import engine_adapter, quota
+from . import engine_adapter, matter_docs, quota
 from .db import models as M
 from .db import session as dbs
 
@@ -52,6 +53,13 @@ def matter_notes(db, chat):
     if m is None:
         return None
     return {"title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": m.next_date.isoformat() if m.next_date else None, "facts": m.facts}
+
+
+def matter_instructions(db, chat):
+    """The standing instructions of the matter a chat is filed under (P0), or None."""
+    if chat.matter_id is None:
+        return None
+    return db.execute(select(M.Matter.instructions).where(M.Matter.id == chat.matter_id, M.Matter.user_id == chat.user_id)).scalar_one_or_none()
 
 
 FACT_LABELS = {"typed": "From your message", "edited": "You edited this", "added": "You added this", "button": "You tapped this"}
@@ -128,6 +136,8 @@ class Turn:
     matter: dict | None = None                  # the notes of the matter the chat is filed under (title, court, case_number, sections, stage, next_date, facts), read once when the question was accepted
     case_file: dict | None = None               # the chat's case file (case_file.py) as it was when the question was accepted; None when CASE_FILE is off
     intent: str | None = None                   # 'age_minor': the question is the person's tap on 'under 18' (the server wrote its words)
+    matter_id: object = None                    # the matter the chat is filed under (MATTER_FILES: its documents are searched for each question, inside the worker thread)
+    instructions: str | None = None             # the matter's standing instructions (MATTER_INSTRUCTIONS on); never folded into the question
 
 
 def _style():
@@ -158,7 +168,11 @@ def run_turn(on_step, c):
         engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter, case_file=c.case_file)
         web_chat.log_turn(engine_q, info)
         ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent, audience=c.audience) if c.case_file is not None or CF.enabled() else None
-        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf)
+        docs = _matter_docs(c)
+        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf, matter_docs=docs,
+                                  matter_instructions=c.instructions if c.instructions and MF.instructions_enabled() else None)
+        if docs:
+            _check_documents(c, out, docs)
     except BaseException:
         _release_only(c.event_id)
         unclaim(c.chat_id, c.request_id)
@@ -167,6 +181,48 @@ def run_turn(on_step, c):
         return _save(c, out, info)
     finally:
         unclaim(c.chat_id, c.request_id)
+
+
+def _matter_docs(c):
+    """MATTER_FILES on and the chat filed under a matter with documents: the passages that match the question (this matter's only), else None. The search text is the person's current message and their two previous
+    messages (a follow-up such as 'and on page 3?' leans on them), never our answers. Fails open: the question is answered without the documents."""
+    if c.matter_id is None or not MF.enabled():
+        return None
+    try:
+        earlier = [t.get("q") or "" for t in (c.turns or []) if isinstance(t, dict)][-2:]
+        text = " ".join(earlier + [c.question or ""])
+        with dbs.session() as db:
+            d = matter_docs.for_question(db, c.user_id, c.matter_id, text)
+        if d:
+            print("MATTER_DOCS " + __import__("json").dumps({"files": len(d["docs"]), "handed": len(d["chosen"]), "meaning": d.get("meaning"),
+                                                              "chars": sum(len(p["text"]) for p in d["chosen"])}), flush=True)        # counts only: no names, no text
+        return d
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("matter documents could not be read for a question: %s", type(exc).__name__)
+        print("MATTER_DOCS " + __import__("json").dumps({"error": type(exc).__name__}), flush=True)
+        return None
+
+
+def _check_documents(c, out, docs):
+    """After the answer: every quotation the answer attributes to a document and a page is looked for on that page of the document's whole read text (matter_files.check_quotes); the passages handed over and the
+    notes go into result['matter_files'] for the box under the answer. Never changes the answer's text; fails open."""
+    result = out.get("result") if isinstance(out.get("result"), dict) else None
+    if result is None:
+        return
+    try:
+        with dbs.session() as db:
+            full = matter_docs.full_text(db, c.user_id, c.matter_id)
+        text = result.get("response_text") or ""
+        checks = MF.check_quotes(text, full) if text else []
+        meta = {str(k): {"name": v["name"], "unit": v["unit"], "unread": v["unread"]} for k, v in docs["docs"].items()}
+        notes = MF.quote_notes(checks, meta)
+        cited = sorted({int(m.group(1)) for m in MF._CITE.finditer(text)})
+        result["matter_files"] = {"docs": meta, "handed": [{"doc": p["doc"], "loc": p["loc"], "loc_to": p["loc_to"], "text": p["text"]} for p in docs["chosen"]],
+                                  "cited_docs": cited, "quote_checks": [{k: (list(v) if isinstance(v, tuple) else v) for k, v in r.items()} for r in checks], "notes": notes + list(result.pop("matter_files_engine_notes", []) or [])}
+        print("MATTER_QUOTES " + __import__("json").dumps({"checked": len(checks), **{v: sum(1 for r in checks if r["verdict"] == v) for v in ("ok", "other_page", "other_doc", "not_in_file", "unknown_doc", "skipped_short")},
+                                                            "cited_docs": len(cited)}), flush=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("matter documents check failed: %s", type(exc).__name__)
 
 
 def _save(c, out, info):

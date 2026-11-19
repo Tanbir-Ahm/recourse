@@ -20,6 +20,7 @@ from ..deps import Principal, get_db, ready_user
 
 router = APIRouter()
 MAX_FACTS = 4000
+MAX_INSTRUCTIONS = 2000           # P0 (2026-11-19): the lawyer's standing preferences for the matter (matter_files.instructions_block)
 Stage = Literal["fir", "arrest", "remand", "bail", "chargesheet", "trial", "appeal", "other"]
 
 
@@ -32,9 +33,15 @@ def _line(v, n):
     return t[:n] or None
 
 
+def features():
+    """What the screens may offer for a matter: the documents (MATTER_FILES) and the standing instructions (MATTER_INSTRUCTIONS); both default off."""
+    import matter_files as MF
+    return {"files": MF.enabled(), "instructions": MF.instructions_enabled()}
+
+
 def matter_view(m, chats=None):
     return {"id": str(m.id), "title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": _iso(m.next_date),
-            "facts": m.facts, "archived": m.archived, "created_at": _iso(m.created_at), "updated_at": _iso(m.updated_at), "chat_count": chats}
+            "facts": m.facts, "instructions": m.instructions, "archived": m.archived, "created_at": _iso(m.created_at), "updated_at": _iso(m.updated_at), "chat_count": chats, "features": features()}
 
 
 def _own_matter(db, user, matter_id):
@@ -57,6 +64,7 @@ class MatterIn(BaseModel):
     stage: Optional[Stage] = None
     next_date: Optional[datetime.date] = None
     facts: Optional[str] = Field(default=None, max_length=MAX_FACTS)
+    instructions: Optional[str] = Field(default=None, max_length=MAX_INSTRUCTIONS)
 
 
 class MatterPatch(BaseModel):
@@ -68,6 +76,7 @@ class MatterPatch(BaseModel):
     stage: Optional[Stage] = None
     next_date: Optional[datetime.date] = None
     facts: Optional[str] = Field(default=None, max_length=MAX_FACTS)
+    instructions: Optional[str] = Field(default=None, max_length=MAX_INSTRUCTIONS)
     archived: Optional[bool] = None
 
 
@@ -90,7 +99,7 @@ def list_matters(archived: bool = False, principal: Principal = Depends(ready_us
     far = datetime.date.max
     rows.sort(key=lambda m: (m.next_date or far, -(m.updated_at.timestamp() if m.updated_at else 0)))
     open_n = db.execute(select(func.count()).select_from(M.Matter).where(M.Matter.user_id == user.id, M.Matter.archived.is_(False))).scalar()
-    return {"matters": [matter_view(m, counts.get(m.id, 0)) for m in rows], "open": open_n, "limit": _active_limit(db, user)}
+    return {"matters": [matter_view(m, counts.get(m.id, 0)) for m in rows], "open": open_n, "limit": _active_limit(db, user), "features": features()}
 
 
 @router.post("/api/matters", status_code=201, summary="Open a matter", description="409 matter_limit when the plan's number of open matters is reached (the body of the error says the limit).")
@@ -105,7 +114,7 @@ def create_matter(body: MatterIn, principal: Principal = Depends(ready_user), db
     if not title:
         raise HTTPException(status_code=422, detail="title_required")
     m = M.Matter(user_id=user.id, title=title, court=_line(body.court, 200), case_number=_line(body.case_number, 100), sections=_line(body.sections, 300), stage=body.stage,
-                 next_date=body.next_date, facts=(body.facts or "").strip() or None)
+                 next_date=body.next_date, facts=(body.facts or "").strip() or None, instructions=(body.instructions or "").strip() or None)
     db.add(m)
     db.commit()
     return matter_view(m, 0)
@@ -143,6 +152,8 @@ def patch_matter(matter_id: uuid.UUID, body: MatterPatch, principal: Principal =
         m.next_date = body.next_date
     if "facts" in sent:
         m.facts = (body.facts or "").strip() or None
+    if "instructions" in sent:
+        m.instructions = (body.instructions or "").strip() or None
     if body.archived is not None:
         m.archived = body.archived
     m.updated_at = datetime.datetime.now(datetime.timezone.utc)

@@ -202,6 +202,7 @@ def _prepare(db, principal, chat_id, key, question, intent=None):
         db.commit()                      # keeps the unit and releases the row lock before the engine runs
         turns = chat_service.turns_of(chat.messages) if ok else []
         matter = chat_service.matter_notes(db, chat) if ok else None
+        instructions = chat_service.matter_instructions(db, chat) if ok else None
     except BaseException:
         db.rollback()
         chat_service.unclaim(chat.id, key)
@@ -210,7 +211,7 @@ def _prepare(db, principal, chat_id, key, question, intent=None):
         chat_service.unclaim(chat.id, key)
         return "refused", info
     return "run", chat_service.Turn(user_id=user.id, chat_id=chat.id, audience=chat.audience, question=question, request_id=key, event_id=event_id, usage=info, turns=turns, matter=matter,
-                                    case_file=chat.case_file if CF.enabled() else None, intent=intent)
+                                    case_file=chat.case_file if CF.enabled() else None, intent=intent, matter_id=chat.matter_id if matter is not None else None, instructions=instructions)
 
 
 @router.post("/api/chats/{chat_id}/ask", summary="Ask in a conversation", description="Header Idempotency-Key is required. Send 'Accept: text/event-stream' for the live steps; otherwise one JSON reply. The answer is saved by the server.")

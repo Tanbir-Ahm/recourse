@@ -2091,10 +2091,28 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _abs
         except Exception:  # pragma: no cover -- fail-open
             pass
+        _docs_block, _docs_plain = "", ""
+        try:                                       # MATTER_FILES: the matter's own documents, AFTER the law and under their own header (never inside the legal information); the rules for using them sit with the other answer-shaping clauses, outside the Hard rules
+            _md = getattr(_MATTER, "docs", None)
+            if _md:
+                import matter_files as _MF
+                _docs_block = _MF.documents_block(_md.get("docs") or {}, _md.get("chosen") or [])
+                _docs_plain = "\n".join(p.get("text") or "" for p in (_md.get("chosen") or []))
+                if _docs_block:
+                    conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _MF.DOCS_CLAUSE
+            _mi = getattr(_MATTER, "instructions", None)
+            if _mi:
+                import matter_files as _MF
+                _ib = _MF.instructions_block(_mi)
+                if _ib:
+                    conflict_instruction = (conflict_instruction + "\n" if conflict_instruction else "") + _ib
+        except Exception as exc:  # noqa: BLE001 -- fail-open: the question is answered without them
+            logger.warning("matter documents block failed: %s", type(exc).__name__)
+            _docs_block, _docs_plain = "", ""
         pilot_context = _format_pilot_context_for_prompt(pilot_matches, question)
         prompt = _response_prompt_template().format(
             question=question, retrieved_text=retrieved_text,
-            conflict_instruction=conflict_instruction, pilot_context=pilot_context,
+            conflict_instruction=conflict_instruction, pilot_context=(pilot_context or "") + _docs_block,
         )
         # The prompt targets 300-400 words, but claude-sonnet-5 spends
         # ~600-1200 tokens on an internal thinking block BEFORE any
@@ -2116,7 +2134,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         if _wrong_acts:
             print("ACT_NAME_CORRECTED_BY_CODE " + ",".join(_wrong_acts), flush=True)
         _repair_map = {k: v for k, v in section_act_map.items() if len(acts_all.get(k, ())) <= 1}      # a number in both Acts is never repaired by guesswork
-        ungrounded = _find_ungrounded_sections(response_text, retrieved_text)
+        ungrounded = _find_ungrounded_sections(response_text, retrieved_text + ("\n" + _docs_plain if _docs_plain else ""))       # a section the person's documents name is not 'made up'; whether the answer could state its text is the note below
         mismatches = _find_cognizable_bailable_mismatches(response_text, variants)
         missing_act = _find_sections_missing_act(response_text, section_act_map, acts_all)
         if missing_act:                            # FIRST PASS (owner's go 2026-10-15): a missing Act name is added by code from the retrieved sections, so it never costs a second paid call; a mention that names another Code is left alone
@@ -2135,9 +2153,19 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
         g_mode = grounding_checks.mode()
         g_material = "\n".join([question or "", retrieved_text or "", pilot_context or "", " ".join(str(m.get("case_name") or "") for m in (matches or []) if isinstance(m, dict))])
         g_cases, g_quotes = [], []
-        if g_mode != "off":
-            g_cases, g_quotes = grounding_checks.check_cases(response_text, g_material), grounding_checks.check_quotes(response_text, g_material, question=question)
+        if g_mode != "off":                         # a case named only in the person's documents is NOT material for the case check (a document cannot make a case real); a quotation of a document is (its page is checked after the answer)
+            g_cases, g_quotes = grounding_checks.check_cases(response_text, g_material), grounding_checks.check_quotes(response_text, g_material + ("\n" + _docs_plain if _docs_plain else ""), question=question)
         g_enforce = g_mode == "enforce" and bool(g_cases or g_quotes)
+        if _docs_plain:
+            try:
+                import matter_files as _MF
+                _only = _MF.sections_only_in_documents(response_text, retrieved_text + "\n" + (pilot_context or ""), _docs_plain)
+                if _only:
+                    _MATTER.notes = list(getattr(_MATTER, "notes", None) or []) + ["The answer names section " + ", ".join(_only) + (" which appear" if len(_only) > 1 else " which appears")
+                                                                                   + " in your documents but whose text was not among the law given to it: check what " + ("they say" if len(_only) > 1 else "it says") + " before relying on the answer about " + ("them." if len(_only) > 1 else "it.")]
+                    print("MATTER_DOC_SECTIONS " + json.dumps({"only_in_documents": _only}), flush=True)
+            except Exception:  # noqa: BLE001
+                pass
 
         def _g_finish(text, cases, quotes, retried):
             if g_mode == "off":
@@ -2240,7 +2268,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             # the checks that guard against showing an actively WRONG or
             # unverifiable claim -- a wrong court is exactly that: a
             # checkable fact, not a nuance.
-            _still = {"ungrounded_sections": _find_ungrounded_sections(retry_text, retrieved_text),
+            _still = {"ungrounded_sections": _find_ungrounded_sections(retry_text, retrieved_text + ("\n" + _docs_plain if _docs_plain else "")),
                       "section_mismatch": _find_cognizable_bailable_mismatches(retry_text, variants),
                       "missing_act": _find_sections_missing_act(retry_text, section_act_map, acts_all),
                       "court_misattribution": _find_court_misattributions(retry_text, matches),
@@ -2266,7 +2294,7 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 return None
             if g_mode == "off":
                 return retry_text
-            return _g_finish(retry_text, grounding_checks.check_cases(retry_text, g_material), grounding_checks.check_quotes(retry_text, g_material, question=question), True)
+            return _g_finish(retry_text, grounding_checks.check_cases(retry_text, g_material), grounding_checks.check_quotes(retry_text, g_material + ("\n" + _docs_plain if _docs_plain else ""), question=question), True)
 
         return _g_finish(response_text, g_cases, g_quotes, False)
     except Exception:
@@ -3925,6 +3953,9 @@ def _answer_question_core(question, inline_domains=frozenset()):
         wider = _answer_from_wider_search_only(question)         # only for a question the topic bar was opened for (SCOPE_GATE=open) and only with SCI_SEARCH_MODE=feed; None otherwise
         if wider is not None:
             return wider
+        docs_only = _answer_from_documents_only(question)        # MATTER_FILES: nothing in the library, but the matter's documents had passages for the question
+        if docs_only is not None:
+            return docs_only
         return {"state": "no_match"}
 
     if result["state"] == "conflicting_matches":
@@ -4251,6 +4282,7 @@ import threading as _threading_carry
 
 _CARRIED = _threading_carry.local()                 # per thread: [{'act','section','act_key'?}] handed to answer_question for a follow-up (carry_forward.py)
 
+_MATTER = _threading_carry.local()                 # per thread: the matter's documents and standing instructions for the question being answered (matter_files.py; MATTER_FILES / MATTER_INSTRUCTIONS)
 _CASE = _threading_carry.local()                   # per thread: the case file's separate argument for the question being answered (case_file.py, web_chat.engine_case_file): search_hint, victim_minor, age_gate, delta, cases
 
 
@@ -4586,6 +4618,22 @@ def _answer_from_wider_search_only(question):
         return None
 
 
+def _answer_from_documents_only(question):
+    """MATTER_FILES: the library found nothing for the question (state no_match) but the matter's documents had passages for it (a question about the facts of the file: 'when was he arrested?'). The answer is written
+    from the documents alone, with no law (the Hard rules still forbid adding any). Returns an answer dict or None (no documents, generation failed or withheld): the caller then ends as 'no_match'. Never raises."""
+    try:
+        if not getattr(_MATTER, "docs", None):
+            return None
+        response_text = generate_grounded_response(question, "")
+        if not response_text:
+            return None
+        print("MATTER_DOCS_ONLY " + json.dumps({"note": "nothing in the library; answered from the matter's documents"}), flush=True)
+        return {"state": "single_match", "matches": [], "response_text": response_text, "situation_detected": False, "from_cache": False, "unverified_related_judgments": [], "documents_only": True}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_answer_from_documents_only failed: %s", type(exc).__name__)
+        return None
+
+
 def _library_summary(matches, limit=8):
     """What the library supplied for a question, for the SCOPE_OPEN log line (names and numbers only, no text): {'judgments': [{case, score, via?}], 'sections': ['BNSS 482', ...]}. The score is the
     retrieval score (a cosine similarity for a meaning hit; JUDGMENT_SIMILARITY_THRESHOLD is 0.40; 'via': 'lexical' marks a keyword backfill that ranked just below it). Never raises."""
@@ -4701,7 +4749,7 @@ def _progress_wider(result):
         pass
 
 
-def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None):
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
     answer_style.set_audience(audience)
@@ -4709,6 +4757,9 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     _CARRIED.refs = list(carried_sections) if carried_sections else None          # carry_forward.py: sections the earlier answers of this conversation relied on (a follow-up only); cleared in the finally below
     _CASE.arg = dict(case_file) if isinstance(case_file, dict) else None
     _CASE.charge_candidates = None          # case_file.py: the conversation's case file as a separate argument (a follow-up's search text, the victim's age, the POCSO delta); cleared in the finally below
+    _MATTER.docs = matter_docs if isinstance(matter_docs, dict) and matter_docs.get("chosen") else None          # matter_files.py (MATTER_FILES): the matter's document passages for this question; facts, never law, never words of the question
+    _MATTER.instructions = (matter_instructions or "").strip() or None                                            # matter_files.instructions_block (MATTER_INSTRUCTIONS): the lawyer's standing preferences for the matter
+    _MATTER.notes = []
     try:
         import cost_log
         cost_log.begin(question)
@@ -4750,6 +4801,8 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
                         result["charge_candidates"] = list(_CASE.charge_candidates)
         except Exception as exc:  # fail-open: the answer always goes out
             logger.warning("authorities table failed: %s", exc)
+        if isinstance(result, dict) and getattr(_MATTER, "notes", None):
+            result["matter_files_engine_notes"] = list(_MATTER.notes)          # api/chat_service._check_documents merges them into result['matter_files']
         return result
     finally:
         try:
@@ -4763,6 +4816,9 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         answer_style.set_channel(None)
         _CARRIED.refs = None
         _CASE.arg = None
+        _MATTER.docs = None
+        _MATTER.instructions = None
+        _MATTER.notes = []
 
 
 def _person_message(question):

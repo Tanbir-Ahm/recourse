@@ -95,7 +95,7 @@ try:
     check(c.get("/api/matters").status_code == 401 and c.post("/api/matters", json={"title": "x"}).status_code == 401, "without signing in: 401")
     r = c.get("/api/matters", headers=N())
     check(r.status_code == 403 and r.json()["detail"] == "consent_required", f"signed in but the documents not accepted: 403 consent_required ({r.status_code})")
-    check(c.get("/api/matters", headers=A()).json() == {"matters": [], "open": 0, "limit": 10}, "a new person: no matters, 0 open, the plan's limit of 10")
+    check(c.get("/api/matters", headers=A()).json() == {"matters": [], "open": 0, "limit": 10, "features": {"files": False, "instructions": False}}, "a new person: no matters, 0 open, the plan's limit of 10; the documents and instructions features are off")
 
     # ------------------------------------------------------------ creating
     r = c.post("/api/matters", json={"title": "  State  v.   Roy  (bail) ", "court": " Sessions Court,  Guwahati ", "case_number": "Sess. 12/2026", "sections": "BNS 103, 238", "stage": "bail",

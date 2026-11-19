@@ -288,6 +288,18 @@
             ],
             "title": "Facts"
           },
+          "instructions": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
+          },
           "next_date": {
             "anyOf": [
               {
@@ -395,6 +407,18 @@
               }
             ],
             "title": "Facts"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
           },
           "next_date": {
             "anyOf": [
@@ -596,6 +620,28 @@
           "q"
         ],
         "title": "SearchBody",
+        "type": "object"
+      },
+      "Upload": {
+        "properties": {
+          "content_base64": {
+            "maxLength": 13981021,
+            "minLength": 4,
+            "title": "Content Base64",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content_base64"
+        ],
+        "title": "Upload",
         "type": "object"
       },
       "ValidationError": {
@@ -1552,6 +1598,198 @@
           }
         },
         "summary": "Change a matter, archive it or bring it back"
+      }
+    },
+    "/api/matters/{matter_id}/files": {
+      "get": {
+        "description": "404 feature_off while MATTER_FILES is off.",
+        "operationId": "list_files_api_matters__matter_id__files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The documents of a matter"
+      },
+      "post": {
+        "description": "JSON {name, content_base64}. PDF (with text), Word (.docx) or plain text. 409 file_limit (10 per matter), storage_limit (the plan's total), matter_archived; 413 too_large (10 MB); 415 unsupported_type; 422 unreadable, empty, no_text (a scan: there is no OCR), too_many_pages. The file's bytes are not kept.",
+        "operationId": "add_file_api_matters__matter_id__files_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add a document to a matter"
+      }
+    },
+    "/api/matters/{matter_id}/files/{doc_no}/text": {
+      "get": {
+        "description": "?loc=N. What the program read, so a citation under an answer can be checked against it.",
+        "operationId": "page_api_matters__matter_id__files__doc_no__text_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_no",
+            "required": true,
+            "schema": {
+              "title": "Doc No",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "loc",
+            "required": true,
+            "schema": {
+              "title": "Loc",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The read text of one page or paragraph of a document"
+      }
+    },
+    "/api/matters/{matter_id}/files/{file_id}": {
+      "delete": {
+        "description": "Its read text goes with it, now.",
+        "operationId": "delete_file_api_matters__matter_id__files__file_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove a document from a matter"
       }
     },
     "/api/me": {

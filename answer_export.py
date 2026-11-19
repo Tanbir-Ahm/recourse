@@ -390,6 +390,15 @@ def _answer_blocks(view, lawyer):
         if runs:
             B.append(_box(runs))
     ANSWER_PART, B = B, []                                    # what follows is the apparatus: it goes under one heading, after the answer (2026-11-02)
+    mf = view.get("matter_files")
+    if isinstance(mf, dict) and (mf.get("items") or mf.get("notes")):          # MATTER_FILES: the passages of the matter's documents handed to the answer, and the quotation check's notes
+        B.append({"t": "h3", "text": "Your documents used for this answer"})
+        B.append(_p(mf.get("note") or "", muted=True))
+        for n in mf.get("notes") or []:
+            B.append(_box([R(str(n))]))
+        for it in mf.get("items") or []:
+            B.append({"t": "p", "runs": [R(str(it.get("cite") or ""), b=True), R("  " + str(it.get("name") or ""), muted=True)]})
+            B.append({"t": "quote", "runs": [R(str(it.get("text") or ""))]})
     for it in view.get("section_notes") or []:
         if it.get("lead"):
             B.append(_box([R(it["lead"])]))

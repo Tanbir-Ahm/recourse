@@ -434,6 +434,34 @@ def _charge_table(v):
         return None
 
 
+MATTER_FILES_NOTE = ("Passages of the documents filed under this matter that were handed to the answer, as a program read them. Nobody has checked the reading. A program looked for every quotation the answer takes "
+                     "from a document on the page it cites; it proves where words are, not that the answer uses them fairly. Scanned pages are not read.")
+
+
+def _matter_files(v):
+    """MATTER_FILES: {'note', 'items': [{'cite', 'name', 'text', 'cited'}], 'notes': [...], 'checked', 'found'} or None. 'cited' says whether the answer cites that document at all."""
+    try:
+        if not isinstance(v, dict) or not isinstance(v.get("handed"), list):
+            return None
+        import matter_files as MF
+        docs = v.get("docs") if isinstance(v.get("docs"), dict) else {}
+        cited = {int(x) for x in (v.get("cited_docs") or []) if str(x).isdigit()}
+        items = []
+        for p in v["handed"]:
+            if not isinstance(p, dict):
+                continue
+            d = docs.get(str(p.get("doc"))) or {}
+            items.append({"cite": MF.cite(p.get("doc"), d.get("unit") or "page", p.get("loc"), p.get("loc_to")), "name": str(d.get("name") or ""), "text": str(p.get("text") or "")[:1500],
+                          "doc": p.get("doc"), "loc": p.get("loc"), "cited": int(p.get("doc") or 0) in cited})
+        checks = [c for c in (v.get("quote_checks") or []) if isinstance(c, dict) and c.get("verdict") != "skipped_short"]
+        unread = [{"name": str(d.get("name") or ""), "pages": list(d.get("unread") or [])} for d in docs.values() if isinstance(d, dict) and d.get("unread")]
+        if not items and not checks and not v.get("notes"):
+            return None
+        return {"note": MATTER_FILES_NOTE, "items": items, "notes": _strings(v.get("notes")), "checked": len(checks), "found": sum(1 for c in checks if c.get("verdict") == "ok"), "unread": unread}
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def build(result):
     """The presentation data for one engine result, or None. For an answer: the pieces in the order the page draws them. For anything else: the shared refusal wording plus the notes the page shows under it."""
     try:
@@ -501,6 +529,8 @@ def build(result):
             "grounding_notes": _strings(result.get("grounding_notes")), "sci_related": sci, "anchors": anchors, "unverified": unverified,
             "ask_check": _ask_check(result.get("ask_check")),
             "charge_table": _charge_table(result.get("charge_candidates")),
+            "matter_files": _matter_files(result.get("matter_files")),
+            "documents_only": bool(result.get("documents_only")),
         }
     except Exception:  # noqa: BLE001 -- the view is a convenience for the front end; the engine's own result is still sent
         logger.exception("answer view failed")

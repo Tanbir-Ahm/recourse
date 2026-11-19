@@ -136,9 +136,9 @@ try:
     with eng.connect() as c:
         rev = c.execute(text("select version_num from alembic_version")).scalar()
         drift = compare_metadata(MigrationContext.configure(c, opts={"compare_type": True}), D.Base.metadata)
-    check(rev == "0004", f"the schema is at revision 0004 ({rev})")
+    check(rev == "0005", f"the schema is at revision 0005 ({rev})")
     check(drift == [], f"the migrated schema and the models do not differ ({drift[:2]})")
-    check(res == {"plans_added": 2, "entitlements_added": 11}, f"the seed added the two plans and their eleven limits ({res})")
+    check(res == {"plans_added": 2, "entitlements_added": 12}, f"the seed added the two plans and their twelve limits ({res})")
     with Session(eng) as ss:
         plans = {p.code: p for p in ss.execute(select(D.Plan)).scalars()}
         ents = {(e.plan.code, e.feature): (e.period, e.limit_count, e.version) for e in ss.execute(select(D.Entitlement)).scalars()}
@@ -327,7 +327,7 @@ try:
         npl = c.execute(text("select count(*) from plans")).scalar()
         nen = c.execute(text("select count(*) from entitlements")).scalar()
     e2.dispose()
-    check(not errs and len(out) == 4 and npl == 2 and nen == 11, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
+    check(not errs and len(out) == 4 and npl == 2 and nen == 12, f"four migrations at once: no error, one set of plans and limits ({errs}, plans {npl}, entitlements {nen})")
     check(sum(r["plans_added"] for r in out) == 2, "...and exactly one of them did the seeding")
 
     # ------------------------------------------------------------ the migrate command
@@ -350,7 +350,7 @@ try:
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         rc = M.main()
-    check(rc == 0 and "schema at head; plans added 2, entitlements added 11" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
+    check(rc == 0 and "schema at head; plans added 2, entitlements added 12" in buf.getvalue(), f"migrate on a fresh database: exits 0 ({buf.getvalue().strip()})")
     r = subprocess.run([sys.executable, "-m", "api.db.migrate"], cwd=HERE, env={**os.environ}, capture_output=True, text=True, timeout=120)
     check(r.returncode == 0 and "plans added 0, entitlements added 0" in r.stdout, f"`python -m api.db.migrate` as the start command would run it: exits 0 on an up-to-date database ({r.stdout.strip()})")
 

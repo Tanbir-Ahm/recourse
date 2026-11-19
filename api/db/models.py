@@ -12,7 +12,7 @@ Nothing here is used by the answer route yet: the ask route still needs no datab
 import datetime
 import uuid
 
-from sqlalchemy import (JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func, text)
+from sqlalchemy import (JSON, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, LargeBinary, Numeric, String, Text, UniqueConstraint, Uuid, func, text)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -139,9 +139,47 @@ class Matter(Base):
     stage: Mapped[str | None] = mapped_column(String(20))
     next_date: Mapped[datetime.date | None] = mapped_column(Date)
     facts: Mapped[str | None] = mapped_column(Text)
+    instructions: Mapped[str | None] = mapped_column(Text)                    # P0 (2026-11-19, migration 0005): the lawyer's standing preferences for the matter; never folded into the question (matter_files.instructions_block)
     archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime.datetime] = _created()
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MatterFile(Base):
+    """One document filed under a matter (MATTER_FILES; matter_files.py). The file's bytes are NOT kept: only what a program read from it (the passages below), its name, size and SHA-256. doc_no is the number the
+    answer cites ([Doc 3, p. 2]); it is never reused inside the matter while the file exists."""
+    __tablename__ = "matter_files"
+    __table_args__ = (CheckConstraint("kind IN ('pdf', 'docx', 'txt')", name="ck_matter_file_kind"), CheckConstraint("unit IN ('page', 'para')", name="ck_matter_file_unit"),
+                      UniqueConstraint("matter_id", "doc_no", name="uq_matter_file_no"), Index("ix_matter_files_user", "user_id"))
+    id: Mapped[uuid.UUID] = _id()
+    matter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("matters.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    doc_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    unit: Mapped[str] = mapped_column(String(10), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    units: Mapped[int] = mapped_column(Integer, nullable=False)
+    unread: Mapped[list | None] = mapped_column(JSONType)
+    passages: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedded: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime.datetime] = _created()
+
+
+class MatterFilePassage(Base):
+    """A passage of a filed document: its text as read, its page (or paragraph range) and, when the meaning search was reachable at upload, its vector (float32 bytes). matter_id is repeated so that a search reads ONE
+    matter's passages with one indexed condition."""
+    __tablename__ = "matter_file_passages"
+    __table_args__ = (UniqueConstraint("file_id", "seq", name="uq_matter_passage_seq"), Index("ix_matter_file_passages_matter", "matter_id"))
+    id: Mapped[uuid.UUID] = _id()
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("matter_files.id", ondelete="CASCADE"), nullable=False)
+    matter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("matters.id", ondelete="CASCADE"), nullable=False)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    loc: Mapped[int] = mapped_column(Integer, nullable=False)
+    loc_to: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    vec: Mapped[bytes | None] = mapped_column(LargeBinary)
 
 
 class Chat(Base):

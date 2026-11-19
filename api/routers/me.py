@@ -89,8 +89,9 @@ def export_me(principal: Principal = Depends(current_user), db=Depends(get_db)):
         "sign_in_methods": [{"provider": i.provider, "since": _iso(i.created_at)} for i in db.execute(select(M.Identity).where(M.Identity.user_id == u.id)).scalars()],
         "consents": [{"document": c.document, "version": c.version, "accepted_at": _iso(c.accepted_at)} for c in db.execute(select(M.Consent).where(M.Consent.user_id == u.id).order_by(M.Consent.accepted_at)).scalars()],
         "chats": chats,
-        "matters": [{"id": str(m.id), "title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": _iso(m.next_date), "facts": m.facts, "archived": m.archived,
+        "matters": [{"id": str(m.id), "title": m.title, "court": m.court, "case_number": m.case_number, "sections": m.sections, "stage": m.stage, "next_date": _iso(m.next_date), "facts": m.facts, "instructions": m.instructions, "archived": m.archived,
                      "created_at": _iso(m.created_at), "updated_at": _iso(m.updated_at)} for m in db.execute(select(M.Matter).where(M.Matter.user_id == u.id).order_by(M.Matter.created_at)).scalars()],
+        "matter_files": _matter_files(db, u.id),
         "notes": [{"id": str(n.id), "body": n.body, "created_at": _iso(n.created_at), "updated_at": _iso(n.updated_at)} for n in db.execute(select(M.Note).where(M.Note.user_id == u.id)).scalars()],
         "feedback": [{"kind": f.kind, "comment": f.comment, "status": f.status, "created_at": _iso(f.created_at)} for f in db.execute(select(M.Feedback).where(M.Feedback.user_id == u.id)).scalars()],
         "usage": [{"kind": e.kind, "at": _iso(e.at), "cost_inr": float(e.cost_inr) if e.cost_inr is not None else None, "counted": e.counted} for e in db.execute(select(M.UsageEvent).where(M.UsageEvent.user_id == u.id).order_by(M.UsageEvent.at)).scalars()],
@@ -111,3 +112,13 @@ def delete_me(response: Response, confirm: str = "", principal: Principal = Depe
     db.commit()
     clear_session_cookies(response)
     return {"deleted": True}
+
+
+def _matter_files(db, user_id):
+    """The documents filed under the person's matters: name, size, pages and the text a program read from them (the files themselves are not kept, so they cannot be given back)."""
+    out = []
+    for f in db.execute(select(M.MatterFile).where(M.MatterFile.user_id == user_id).order_by(M.MatterFile.created_at)).scalars():
+        ps = db.execute(select(M.MatterFilePassage).where(M.MatterFilePassage.file_id == f.id).order_by(M.MatterFilePassage.seq)).scalars().all()
+        out.append({"matter_id": str(f.matter_id), "doc_no": f.doc_no, "name": f.name, "kind": f.kind, "size_bytes": f.size_bytes, "sha256": f.sha256, "pages_or_paragraphs": f.units, "unread": list(f.unread or []),
+                    "added_at": _iso(f.created_at), "text": [{"from": p.loc, "to": p.loc_to, "text": p.text} for p in ps]})
+    return out
