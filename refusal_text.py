@@ -27,6 +27,8 @@ DRAFT_LABEL = "Drafting"
 _DRAFT_BODY = ("Recourse cannot draft documents yet. With the documents in this matter you can ask what they say (for example the sections charged, or the dates of arrest and remand), "
                "or ask a legal question on these facts (for example whether bail can be sought now).")
 _DRAFT_FOOTER = "No answer was used up by this message."
+SMALLTALK_LABEL = "Recourse"
+_SMALLTALK_BODY = "You can ask what your documents say (for example the sections charged, or the dates of arrest and remand), ask for the sections explained, or ask a legal question on these facts."
 
 ANSWER_STATES = ("single_match", "conflicting_matches")
 
@@ -44,6 +46,8 @@ def notice(result):
     if state in ANSWER_STATES or state is None:
         return None
     base = {"state": state, "label": OUT_OF_SCOPE_LABEL, "title": None, "body": "", "body_template": "", "topic": None, "reasoning": None, "footer": None}
+    if state == "smalltalk":
+        return {**base, "label": SMALLTALK_LABEL, "title": None, "body": _SMALLTALK_BODY, "body_template": _SMALLTALK_BODY, "footer": _DRAFT_FOOTER}
     if state == "draft_unavailable":
         return {**base, "label": DRAFT_LABEL, "title": "Recourse can't draft this yet", "body": _DRAFT_BODY, "body_template": _DRAFT_BODY, "footer": _DRAFT_FOOTER}
     if state == "budget_paused":

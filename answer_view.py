@@ -470,9 +470,23 @@ def _matter_route(v):
             return None
         o = v.get("offers") if isinstance(v.get("offers"), dict) else {}
         refs = [str(r) for r in (o.get("explain_sections") or []) if isinstance(r, str)]
-        return {"route": v["route"], "label": str(v.get("label") or ""), "escaped": bool(v.get("escaped")),
-                "offers": {"with_law": bool(o.get("with_law")), "documents_only": bool(o.get("documents_only")), "explain_sections": refs,
+        size = v.get("size") if v.get("size") in ("file", "explain", "standard", "research", "law") else None
+        return {"route": v["route"], "size": size, "label": str(v.get("label") or ""), "escaped": bool(v.get("escaped")),
+                "offers": {"with_law": bool(o.get("with_law")), "documents_only": bool(o.get("documents_only")), "go_deeper": bool(o.get("go_deeper")), "explain_sections": refs,
                            "explain_label": ("Explain " + ", ".join(refs[:4]) + (" and more" if len(refs) > 4 else "")) if refs else ""}}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _law_on_hand(v):
+    """LAW_ON_HAND: the sections an explain answer stood on, word for word, and the Schedule rows read by a program: {'sections': [{'ref','on_hand','text','cut','source','status'}], 'table': [...], 'no_row': [refs], 'note'} or None."""
+    try:
+        if not isinstance(v, dict) or not isinstance(v.get("sections"), list):
+            return None
+        secs = [{"ref": str(x.get("ref") or ""), "on_hand": bool(x.get("on_hand")), "text": str(x.get("text") or ""), "cut": bool(x.get("cut")), "source": str(x.get("source") or ""), "status": str(x.get("status") or "")}
+                for x in v["sections"] if isinstance(x, dict) and x.get("ref")]
+        table = [{k: str(r.get(k) or "") for k in ("ref", "offence", "punishment", "cognizable", "bailable", "court")} for r in (v.get("table") or []) if isinstance(r, dict)]
+        return {"sections": secs, "table": table, "no_row": [str(x) for x in (v.get("no_row") or []) if isinstance(x, str)], "note": str(v.get("note") or "")} if secs else None
     except Exception:  # noqa: BLE001
         return None
 
@@ -547,6 +561,8 @@ def build(result):
             "matter_files": _matter_files(result.get("matter_files")),
             "documents_only": bool(result.get("documents_only")) and result.get("route") != "file",
             "matter_route": _matter_route(result.get("matter_route")),
+            "law_on_hand": _law_on_hand(result.get("law_on_hand")),
+            "depth": result.get("depth") if result.get("depth") in ("file", "explain", "standard", "research") else None,
         }
     except Exception:  # noqa: BLE001 -- the view is a convenience for the front end; the engine's own result is still sent
         logger.exception("answer view failed")

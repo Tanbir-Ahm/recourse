@@ -16,6 +16,8 @@ from sqlalchemy import func, select
 import carry_forward
 import case_file as CF
 import matter_files as MF
+import law_on_hand as LOH
+import matter_depth as MD
 import matter_routing as MR
 import web_chat
 
@@ -171,14 +173,19 @@ def run_turn(on_step, c):
         ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent, audience=c.audience) if c.case_file is not None or CF.enabled() else None
         dec = _route_decision(c)
         acting = bool(dec and dec["mode"] == "on")
-        if acting and dec["route"] == "draft":
+        size = dec["size"] if acting else None
+        if size == "draft":
             docs = None                                                   # a request to draft: drafting is not available; a fixed notice, no model, no cost (DRAFTING_PLAN.md section 10, D0)
             out = {"result": {"state": "draft_unavailable"}, "cost_inr": 0.0, "elapsed_ms": 0}
+        elif size == "smalltalk":
+            docs = None                                                   # thanks / hello: a fixed line, no model, no cost (matter_depth.py)
+            out = {"result": {"state": "smalltalk"}, "cost_inr": 0.0, "elapsed_ms": 0}
         else:
-            file_route = acting and dec["route"] == "file"
+            file_route = size in ("file", "explain")                      # the whole matter when it is short (matter_docs.for_question)
             docs = _matter_docs(c, file_route=file_route)
             out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf, matter_docs=docs,
-                                      matter_instructions=c.instructions if c.instructions and MF.instructions_enabled() else None, matter_route="file" if (file_route and docs) else None)
+                                      matter_instructions=c.instructions if c.instructions and MF.instructions_enabled() else None, matter_route="file" if (size == "file" and docs) else None,
+                                      matter_depth=size if size in ("explain", "standard", "research") else None, matter_pins=dec.get("pins") if size in ("explain", "standard") else None)
             if docs:
                 _check_documents(c, out, docs)
         if acting:
@@ -193,18 +200,58 @@ def run_turn(on_step, c):
         unclaim(c.chat_id, c.request_id)
 
 
-ROUTE_INTENTS = {"with_law": "law", "documents_only": "file", "explain_sections": "law"}
+ROUTE_INTENTS = {"with_law": "law", "documents_only": "file", "explain_sections": "law", "go_deeper": "research"}
 ROUTE_LABELS = {"file": "From your documents only. This answer states no law.", "law": "Answered with the law and your documents.",
                 "escaped": "This question needed the law, so it was answered with the law and your documents."}
+_REF_OK = re.compile(r"(?:BNS|BNSS|BSA) \d{1,3}[A-Z]?(?:\(\d+\))?")
+
+
+def routing_active():
+    """Any of the matter switches that change how a question in a matter is answered: MATTER_ROUTING (on), MATTER_DEPTH (on) or LAW_ON_HAND."""
+    return MR.mode() == "on" or MD.mode() == "on" or LOH.enabled()
+
+
+def pins_for(c):
+    """['BNS 309(4)', ...]: the sections of the matter to explain, chosen by CODE and never from model text: the list the last answer in the conversation gave (a documents-only answer's code-checked list, or an explain answer's
+    own sections), else the sections the matter's documents give as charged on a labelled line. [] when neither."""
+    refs = []
+    try:
+        last = ((c.turns or [])[-1].get("answer") if c.turns else None) or {}
+        refs = list((((last.get("matter_route") or {}).get("offers") or {}).get("explain_sections")) or [])
+        if not refs:
+            refs = [x.get("ref") for x in ((last.get("law_on_hand") or {}).get("sections") or []) if isinstance(x, dict) and x.get("on_hand")]
+        refs = [r for r in refs if isinstance(r, str) and _REF_OK.fullmatch(r)]
+        if not refs:
+            with dbs.session() as db:
+                refs = matter_docs.charged_pins(db, c.user_id, c.matter_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("pins: %s", type(exc).__name__)
+        refs = []
+    return list(dict.fromkeys(refs))[:LOH.MAX_ITEMS]
+
+
+def _intent_size(intent):
+    """The size a tapped button asks for."""
+    dm = MD.mode() == "on"
+    if intent == "documents_only":
+        return "file"
+    if intent == "go_deeper":
+        return "research"
+    if intent == "with_law":
+        return "standard" if dm else "law"
+    if intent == "explain_sections":
+        return "explain" if LOH.enabled() else "law"
+    return None
 
 
 def _route_decision(c):
-    """MATTER_ROUTING (matter_routing.py): which path answers this question, for a chat filed under a matter that has documents; None when routing does not apply (switch off, no matter, no documents). A tapped
-    'Ask this with the law' / 'Answer from my documents only' / 'Explain these sections' decides by itself. Logged in every mode except off (counts and rule names only, never the question)."""
+    """Which size of answer this question gets, for a chat filed under a matter that has documents; None when nothing applies (every switch off, no matter, no documents). {'size', 'route', 'why', 'mode', 'pins', ...}.
+    'size' is file | explain | standard | research | draft | smalltalk, or 'law' (the full path as before: MATTER_ROUTING alone). MATTER_DEPTH (matter_depth.py) chooses among all sizes (unsure means standard); with it off,
+    MATTER_ROUTING chooses between the file path and the full path as before, and LAW_ON_HAND alone adds the explain size. A tapped button decides by itself. Logged in every mode (counts and rule names, never the question)."""
     if c.matter_id is None or not MF.enabled():
         return None
-    m = MR.mode()
-    if m == "off":
+    rm, dm, lh = MR.mode(), MD.mode(), LOH.enabled()
+    if rm == "off" and dm == "off" and not lh:
         return None
     try:
         with dbs.session() as db:
@@ -213,30 +260,55 @@ def _route_decision(c):
     except Exception as exc:  # noqa: BLE001
         logger.warning("routing: could not read the matter's documents: %s", type(exc).__name__)
         return None
+    import json as _json
+    pins = pins_for(c) if (dm != "off" or lh) else []
+    router = MR.route(c.question, True)
+    d = {"route": router["route"], "why": router["why"], "law_signals": router["law_signals"], "file_signals": router["file_signals"], "lookup_like": router["lookup_like"], "pins": pins, "size": None}
+    plan = MD.plan(c.question, pins_available=bool(pins), has_documents=True) if (dm != "off" or lh) else None
     if c.intent in ROUTE_INTENTS:
-        d = {"route": ROUTE_INTENTS[c.intent], "why": "tapped_" + c.intent, "law_signals": [], "file_signals": [], "lookup_like": False}
+        sz = _intent_size(c.intent)
+        d.update(route=ROUTE_INTENTS[c.intent], why="tapped_" + c.intent, lookup_like=False, size=sz)
+        if sz == "explain" and not pins and not LOH.refs_in_text(c.question, pins):
+            d["size"] = "standard" if dm == "on" else "law"
+        d["mode"] = "on" if (rm == "on" or dm == "on" or (lh and sz == "explain")) else "shadow"
+    elif dm == "on":
+        sz = plan["size"]
+        if sz == "explain" and not lh:
+            sz = "standard"                                                # the explain size needs LAW_ON_HAND: without it a question about sections takes the Standard size
+        d.update(size=sz, why=plan["why"], mode="on")
     else:
-        d = MR.route(c.question, True)
-    d["mode"] = m
-    print("MATTER_ROUTE " + __import__("json").dumps({"mode": m, "route": d["route"], "why": d["why"], "law_signals": d["law_signals"], "file_signals": d["file_signals"]}), flush=True)
+        legacy = {"file": "file", "draft": "draft"}.get(router["route"], "law")
+        d["size"], d["mode"] = legacy, ("on" if rm == "on" else "shadow")
+        if lh and plan and plan["size"] == "explain" and pins:
+            d.update(size="explain", why=plan["why"], mode="on")
+        elif rm != "on":
+            d["size"], d["mode"] = None, "shadow"
+    d["plan_size"] = plan["size"] if plan else None
+    print("MATTER_ROUTE " + _json.dumps({"mode": d["mode"], "route": d["route"], "why": d["why"], "law_signals": d["law_signals"], "file_signals": d["file_signals"], "depth_mode": dm, "size": d["size"], "plan": d["plan_size"], "pins": len(pins)}), flush=True)
     return d
 
 
 def _attach_route(out, dec):
-    """result['matter_route']: the path that actually answered, its label, and the one-tap other ways (MATTER_ROUTING=on only)."""
+    """result['matter_route']: the path and size that actually answered, its label, and the one-tap other ways."""
     result = out.get("result") if isinstance(out.get("result"), dict) else None
-    if result is None or result.get("state") == "draft_unavailable":
+    if result is None or result.get("state") in ("draft_unavailable", "smalltalk"):
         return
-    answered_file = result.get("route") == "file"
-    escaped = dec["route"] == "file" and not answered_file
-    route = "file" if answered_file else "law"
+    answered = result.get("route")                                           # 'file' | 'explain' | None (the full path)
     answer = result.get("state") in ANSWER_STATES
-    offers = {"with_law": bool(answered_file and answer),
-              "documents_only": bool(route == "law" and answer and not escaped and dec.get("lookup_like") and not dec["why"].startswith("tapped_")),
-              "explain_sections": list(result.get("explain_sections") or []) if answered_file else []}
-    result["matter_route"] = {"route": route, "decided": dec["route"], "why": dec["why"], "escaped": escaped, "label": ROUTE_LABELS["escaped" if escaped else route], "offers": offers}
+    depth_on = MD.mode() == "on"
+    size = (result.get("depth") or answered or "law") if (answered or result.get("depth")) else "law"
+    escaped = (dec["size"] == "file" and answered != "file") or (dec["size"] == "explain" and answered != "explain")
+    offers = {"with_law": bool(answered == "file" and answer),
+              "documents_only": bool(answered is None and answer and not escaped and dec.get("lookup_like") and not dec["why"].startswith("tapped_") and not depth_on),
+              "explain_sections": list(result.get("explain_sections") or []) if answered == "file" else [],
+              "go_deeper": bool(depth_on and answer and size in ("file", "explain", "standard"))}
+    if (size == "explain" or (depth_on and size in MD.LABELS)) and MD.LABELS.get(size):
+        label = MD.LABELS[size]
+    else:
+        label = ROUTE_LABELS["escaped" if escaped else ("file" if answered == "file" else "law")]
+    result["matter_route"] = {"route": "file" if answered == "file" else "law", "size": size, "decided": dec["route"], "why": dec["why"], "escaped": escaped, "label": label, "offers": offers}
     if escaped:
-        print("MATTER_ROUTE_ESCAPED " + __import__("json").dumps({"why": dec["why"]}), flush=True)
+        print("MATTER_ROUTE_ESCAPED " + __import__("json").dumps({"why": dec["why"], "size": dec["size"]}), flush=True)
 
 
 def last_exchange(chat):
@@ -252,11 +324,11 @@ def last_exchange(chat):
 
 def route_intent_question(chat, intent):
     """The words of a tapped routing button, written by the server from the stored answer (never from the client): None when the button was not offered under the last answer."""
-    if not (MF.enabled() and MR.mode() == "on" and chat.matter_id):
+    if not (MF.enabled() and routing_active() and chat.matter_id):
         return None
     q, res = last_exchange(chat)
     offers = ((res or {}).get("matter_route") or {}).get("offers") or {}
-    if intent in ("with_law", "documents_only"):
+    if intent in ("with_law", "documents_only", "go_deeper"):
         return q if (q and offers.get(intent)) else None
     if intent == "explain_sections":
         refs = [r for r in (offers.get("explain_sections") or []) if isinstance(r, str) and re.fullmatch(r"(?:BNS|BNSS|BSA) \d{1,3}[A-Z]?(?:\(\d+\))?", r)]

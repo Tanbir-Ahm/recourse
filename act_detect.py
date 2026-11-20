@@ -49,7 +49,15 @@ def _env_on(name):
 def mode():
     """'off' (default), 'wide' or 'ai', from ACT_DETECT. Quotation marks around the value are ignored."""
     v = (os.environ.get("ACT_DETECT") or "").strip().strip("\"'").strip().lower()
-    return v if v in ("wide", "ai") else "off"
+    v = v if v in ("wide", "ai") else "off"
+    if v == "ai":
+        try:                                   # MATTER_DEPTH (depth_ctx.py): a Standard answer keeps the free word pass and skips the Haiku guess
+            import depth_ctx
+            if depth_ctx.skip_ai_act():
+                return "wide"
+        except Exception:  # pragma: no cover -- fail-open
+            pass
+    return v
 
 
 def enabled():

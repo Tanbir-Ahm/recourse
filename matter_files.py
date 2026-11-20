@@ -636,14 +636,14 @@ _CHARGE_TALK = re.compile(r"\b(?:charg\w*|offen[cs]es?|booked|registered under|i
 _FILED_UNDER = re.compile(r"\b(?:filed|submitted|report|forwarded|produced|made|moved)\s+under\b", re.I)
 
 
-def explain_sections(answer, chosen):
+def explain_sections(answer, chosen, require_charge_talk=True):
     """['BNS 309(4)', 'BNS 115(2)', ...]: the sections a file answer gives as CHARGED, with their Act, each standing in a passage handed over (so the button asks about what the documents say, never about a number the
     model made up). Only sentences that talk about charges or offences; never a sentence about the provision a report is filed under. The Act is taken only from the same sentence; a sentence naming two of the three
     Acts is skipped (ambiguous). Only the BNS, BNSS and BSA (the library's own Acts)."""
     passages = re.sub(r"\s+", "", "\n".join(p.get("text") or "" for p in chosen or []).lower())
     out = []
     for sent in _sentences(answer or ""):
-        if not _CHARGE_TALK.search(sent) or _FILED_UNDER.search(sent):
+        if (require_charge_talk and not _CHARGE_TALK.search(sent)) or _FILED_UNDER.search(sent):
             continue
         acts = [code for code, rx in _ACT_ALIASES if re.search(rx, sent, re.I)]
         if len(acts) != 1:
@@ -661,6 +661,30 @@ def explain_sections(answer, chosen):
     return out[:8]
 
 
+_CHARGE_LABEL = re.compile(r"^\s*(?:sections?(?:\s+(?:charged|of\s+law|invoked))?|offences?(?:\s+charged)?|charged\s+under|provisions?\s+of\s+law)\s*[:\-\u2013]\s*(?=\S)", re.I)
+
+
+def charged_refs(passages):
+    """['BNS 309(4)', 'BNS 115(2)', 'BNS 3(5)']: the sections a matter's documents give as charged, read by code from LABELLED lines only ('Sections: 309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, read with
+    section 3(5).'; 'Offences charged: ...'). A heading such as 'final report under section 193' is not a label, so the section a report is filed under is never taken for a charge. Each number must stand in the
+    same passage text it was read from; one Act per line (a line naming two of BNS / BNSS / BSA is skipped, as in explain_sections). At most 8. [] when no line is labelled (the sheet of the Matter Workspace plan,
+    W4, will read the rest)."""
+    out = []
+    for p in passages or []:
+        text = p.get("text") or ""
+        for line in re.split(r"[\r\n]+", text):
+            m = _CHARGE_LABEL.match(line)
+            if not m:
+                continue
+            body = line[m.end():]
+            compact = re.sub(r"\s+", "", body)
+            refs = explain_sections(body, [{"text": line}], require_charge_talk=False)
+            for ref in sorted(refs, key=lambda r: compact.find(r.split(" ", 1)[1])):          # the order the line gives them
+                if ref not in out:
+                    out.append(ref)
+    return out[:8]
+
+
 def explain_question(refs):
     """The question the 'Explain these sections' button sends (the server writes it from the stored, code-checked list)."""
     by_act = {}
@@ -671,4 +695,4 @@ def explain_question(refs):
     for act, nums in by_act.items():
         nums_txt = nums[0] if len(nums) == 1 else ", ".join(nums[:-1]) + " and " + nums[-1]
         parts.append(f"section{'s' if len(nums) > 1 else ''} {nums_txt} of {ACT_FULL.get(act, act)}")
-    return ("Explain " + "; and ".join(parts) + ", and how they apply to the facts of this matter.") if parts else ""
+    return ("Explain " + "; and ".join(parts) + ", and say what the documents of this matter allege about them.") if parts else ""

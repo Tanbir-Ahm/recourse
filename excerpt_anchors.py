@@ -183,6 +183,12 @@ def selected(question):
     try:
         if not question:
             return []
+        try:                                   # MATTER_DEPTH (depth_ctx.py): a Standard answer carries no verbatim case excerpts
+            import depth_ctx
+            if depth_ctx.skip_cases():
+                return []
+        except Exception:  # pragma: no cover -- fail-open
+            pass
         topics = active_topics(question)
         if not topics:
             return []

@@ -121,7 +121,7 @@ try:
     check((res.get("matter_files") or {}).get("quote_checks") and res["matter_files"]["quote_checks"][0]["verdict"] == "ok", "the quotation of the file is checked against the paragraph it cites")
     # ------------------------------------------------------------ the buttons under a file answer
     r2, _ = ask("ignored client text", intent="explain_sections")
-    check(r2.status_code == 200 and ENG.calls[-1]["question"].endswith("Explain sections 309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, and how they apply to the facts of this matter.")
+    check(r2.status_code == 200 and ENG.calls[-1]["question"].endswith("Explain sections 309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, and say what the documents of this matter allege about them.")
           and "matter_route" not in ENG.calls[-1] and "ignored client text" not in ENG.calls[-1]["question"], "Explain these sections: the server writes the question; it goes the legal path")
     r3, _ = ask("x", intent="explain_sections")
     check(r3.status_code == 409 and r3.json()["detail"] == "intent_not_ready", "the button is refused when the last answer did not offer it")

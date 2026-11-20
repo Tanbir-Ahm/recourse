@@ -6,6 +6,7 @@ from anthropic import Anthropic
 
 import answer_shape
 import answer_style
+import depth_ctx
 import grounding_checks
 
 logger = logging.getLogger("chat_assistant")
@@ -588,6 +589,34 @@ def _build_v3_templates(v1):
 
 RESPONSE_GENERATION_PROMPT_V3, RESPONSE_GENERATION_PROMPT_V3_LAWYER = _build_v3_templates(RESPONSE_GENERATION_PROMPT)
 
+# ---------------------------------------------------------------------------
+# MATTER_DEPTH, the Standard answer (ADDED 2026-11-20, MATTER_WORKSPACE_PLAN.md W2; owner: "Go ahead with W1 and W2 together"). A short answer for a lawyer's question inside a matter: the law on hand applied to the facts, no judgments,
+# no research-note headings. Built from the same blocks as the research note: the Hard rules and the "what to include" section are carried over word for word (a test asserts it); only the shape is replaced.
+# ---------------------------------------------------------------------------
+_STANDARD_SHAPE = """## Voice and shape (the Standard answer)
+Write a short answer for an advocate who asked a specific question about a matter. No title, no "Bottom line" heading, no table unless the question asks for a comparison, and no section called "Gaps and checks".
+1. The FIRST sentence is the answer itself, with its main condition, in plain words. Do not repeat the question.
+2. Then at most three short paragraphs, or a short numbered list: the provision that answers it (with its Act and the sub-section as the material below shows it, and its own words where they matter); how it bears on the facts of the matter, only as the question or the DOCUMENTS block state them, cited exactly as [Doc 2, p. 3] and stated as what the document says, not as true; and the one fact or point that would change the answer.
+3. No judgments are given for this answer. Do not name, describe or allude to any case, and do not say that you searched for cases. If the answer turns on case law, say in one line that it does and stop.
+4. If the material below does not show something the answer needs, say so in one line at the end ("The material does not show ..."), never as a section.
+Use no heading unless the question has two or more separate asks; then one short bold line for each ask. Write sections as the material shows them. Sentences of 30 words or fewer; exact verbs ("provides", "requires", "states"); never "clearly" or "settled".
+Length: at most about 250 words. If the person asks for detail ("in detail", "explain each", "elaborate"), up to about 400. Write the whole answer; do not stop before the last line.
+"""
+
+
+_STANDARD_INTRO = (
+    "You are a careful legal assistant answering one specific question from an advocate about a matter, on Indian criminal law and procedure (BNS / BNSS). "
+    "You do NOT give legal advice and you do not decide anyone's case -- you set out what the provisions say and how they bear on the facts that the question or the documents state."
+)
+
+
+def _build_standard_template(v1):
+    i_hard, i_inc, i_conf = (v1.index(x) for x in ("## Hard rules (never break)", "## What to include, what to leave out", "{conflict_instruction}"))
+    return _STANDARD_INTRO + "\n\n" + v1[i_hard:i_inc] + _V3_LAWYER_INCLUDE + _STANDARD_SHAPE + "\n" + v1[i_conf:]
+
+
+RESPONSE_GENERATION_PROMPT_STANDARD = _build_standard_template(RESPONSE_GENERATION_PROMPT)
+
 _WHATSAPP_NOTE = ("- This answer will be read on a phone in WhatsApp: keep the whole answer under about 1,800 characters (roughly 280 words), keep every part, and use no table.")
 
 
@@ -597,6 +626,8 @@ def response_style():
 
 
 def _response_prompt_template():
+    if depth_ctx.is_standard():
+        return RESPONSE_GENERATION_PROMPT_STANDARD
     key = answer_style.template_key()
     return {"v2": RESPONSE_GENERATION_PROMPT_V2, "v3": RESPONSE_GENERATION_PROMPT_V3, "v3-lawyer": RESPONSE_GENERATION_PROMPT_V3_LAWYER}.get(key, RESPONSE_GENERATION_PROMPT)
 
@@ -1783,6 +1814,8 @@ def _answer_max_tokens():
     """Output budget for the answer call. It also pays for the model's own thinking, which is why 4000 (enough for a 300-word layman answer) was not enough for the longer lawyers' research note
     (staging 2026-10-14: the note stopped in mid-sentence). The research note gets 12000. The v3 layman answers get 8000: a cap costs nothing unless it is used, and a reply cut off at 4000
     was paid for twice (staging 2026-10-14, question 5: Rs 12.46 against about Rs 3.5)."""
+    if depth_ctx.depth() in ("explain", "standard"):               # MATTER_DEPTH: a short answer; a cap costs nothing unless it is used
+        return 5000
     key = answer_style.template_key()
     return 12000 if key == "v3-lawyer" else (8000 if answer_style.is_v3() else 4000)      # v1 and v2 (today's production) keep 4000
 
@@ -1824,6 +1857,9 @@ def _answer_effort():
             return "low"
     except Exception:  # noqa: BLE001
         pass
+    _d = depth_ctx.effort()                    # MATTER_DEPTH: thinking is 'low' for every size below research (depth_ctx.py); unmeasured with the model
+    if _d:
+        return _d
     v = _env_value("ANSWER_EFFORT").lower()
     return v if v in _EFFORTS else None
 
@@ -2114,6 +2150,10 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
             question=question, retrieved_text=retrieved_text,
             conflict_instruction=conflict_instruction, pilot_context=(pilot_context or "") + _docs_block,
         )
+        try:                                       # PROMPT_SIZES: where the input tokens go, by block (counts only; about 4 characters a token). Added 2026-11-20: the log of that day could not say what the 19,600 tokens of one answer were.
+            print("PROMPT_SIZES " + json.dumps({"depth": depth_ctx.depth(), "template": len(_response_prompt_template()), "question": len(question or ""), "retrieved": len(retrieved_text or ""), "pilot_and_docs": len(prompt) - len(_response_prompt_template().format(question=question, retrieved_text=retrieved_text, conflict_instruction=conflict_instruction, pilot_context="")) , "conflict": len(conflict_instruction or ""), "total_chars": len(prompt), "approx_tokens": len(prompt) // 4}), flush=True)
+        except Exception:  # noqa: BLE001
+            pass
         # The prompt targets 300-400 words, but claude-sonnet-5 spends
         # ~600-1200 tokens on an internal thinking block BEFORE any
         # answer text. At 2000 a large retrieved-text prompt (many
@@ -2208,6 +2248,40 @@ def generate_grounded_response(question, retrieved_text, is_conflict=False, mode
                 except Exception:  # noqa: BLE001
                     pass
                 return _g_finish(response_text + _note, g_cases, g_quotes, False)
+
+        if depth_ctx.no_regen() and (ungrounded or mismatches or missing_act or missing_companion or omissions):
+            # MATTER_DEPTH, Standard answer (MATTER_WORKSPACE_PLAN.md 4.3): never a second paid answer. An untraceable section number is removed with its sentence, a missing Act name or a companion section is added by
+            # code, a classification that differs from our table gets our table's words appended. On 2026-11-20 one untraceable number cost Rs 9.50 for a second answer. Nothing here regenerates.
+            _fixed_text, _did = response_text, {}
+            try:
+                if ungrounded:
+                    import law_on_hand as _LH
+                    _fixed_text, _n = _LH.drop_sentences_naming(_fixed_text, ungrounded)
+                    _did["removed_sentences"] = _n
+                    if _n:
+                        _MATTER.notes = list(getattr(_MATTER, "notes", None) or []) + [f"{_n} sentence{'s' if _n != 1 else ''} of the first draft {'were' if _n != 1 else 'was'} removed by a program because " + ("they name" if _n != 1 else "it names") + " section " + ", ".join(ungrounded) + ", which is not in the law on hand for this answer."]
+                if missing_act:
+                    _again = _add_missing_acts(_fixed_text, missing_act, _repair_map)
+                    if len(_find_sections_missing_act(_again, section_act_map, acts_all)) < len(missing_act):
+                        _fixed_text = _again
+                        _did["acts_added"] = len(missing_act)
+                if mismatches:
+                    _cn = _classification_note(mismatches, variants)
+                    if _cn:
+                        _fixed_text, _did["classification_note"] = _fixed_text + _cn, True
+                if omissions:
+                    _on = _omission_note(omissions, variants)
+                    if _on:
+                        _fixed_text, _did["omission_note"] = _fixed_text + _on, True
+                if missing_companion:
+                    _cmp = _companion_note(missing_companion, section_act_map)
+                    if _cmp:
+                        _fixed_text, _did["companion_note"] = _fixed_text + _cmp, True
+                print("STANDARD_FIXED_BY_CODE " + json.dumps({"reasons": [n for n, v in (("ungrounded", ungrounded), ("mismatch", mismatches), ("missing_act", missing_act), ("companion", missing_companion), ("omission", omissions)) if v], **_did}, default=str)[:600], flush=True)
+            except Exception as exc:  # noqa: BLE001 -- fail-open: the first draft is kept as it was
+                logger.warning("standard fix by code failed: %s", type(exc).__name__)
+                _fixed_text = response_text
+            return _g_finish(_fixed_text, g_cases, g_quotes, False)
 
         if (ungrounded or mismatches or missing_act or missing_companion or unsupported_cases
                 or court_misattributions or omissions or pilot_overreach or g_enforce):
@@ -2997,6 +3071,8 @@ def format_retrieved_text_for_prompt(matches):
         block = f"[{source}, Section/Para {label}]\n{m['text']}"
         if m.get("retrieval") == "carried":                                          # carry_forward.py: relied on in an earlier answer of this same conversation
             block = f"[{source}, Section/Para {label}]\n(Relied on in your earlier answer in this same conversation. It is given again because a follow-up carries no subject of its own: use it only if it bears on the new question, and say nothing about it otherwise.)\n{m['text']}"
+        if m.get("retrieval") == "pinned":                                           # law_on_hand.py: a section the matter's documents charge, given because the question is about the matter
+            block = f"[{source}, Section/Para {label}]\n(A section the documents of this matter give as charged, handed over by a program because the question concerns the matter: use it only if it bears on the question.)\n{m['text']}"
         if m.get("retrieval") == "charge_map":                                      # charge_map.py: a section the facts may bring in
             block = f"[{source}, Section/Para {label}]\n(A section the facts may bring in, chosen by a program: {m.get('charge_why') or ''})\n{m['text']}"
         if m.get("retrieval") == "cited" and m.get("cited_by"):                       # SECTION_XREF: a section handed over because the section the person asked about refers to it
@@ -3612,6 +3688,8 @@ def _fetch_pilot_related_judgments(question: str, exclude_case_names: set, match
     Same fail-open contract as the vaquill fetch: any failure (missing pilot_chunks/, missing
     embeddings, import error) is swallowed and returns [] rather than ever risking the real answer
     this is attached to."""
+    if depth_ctx.skip_cases():                 # MATTER_DEPTH: a Standard answer names no judgment (depth_ctx.py)
+        return []
     topic = _infer_pilot_topic(matches, question) if matches else None
     try:
         import pilot_tier_search
@@ -3772,7 +3850,11 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # WHAT THE CURRENT MESSAGE IS ABOUT uses current_message instead --
     # see _extract_current_message's docstring for the confirmed real
     # failure this avoids.
-    category, reasoning, redirect_domain = classify_scope(question)
+    if depth_ctx.skip_scope():                 # MATTER_DEPTH: a question in a matter with documents is in scope; no scope check (two Haiku calls, and the first once invented a section number) (depth_ctx.py)
+        category, reasoning, redirect_domain = "in_scope", "", None
+        print("DEPTH_SKIP scope", flush=True)
+    else:
+        category, reasoning, redirect_domain = classify_scope(question)
     current_message = _extract_current_message(question)
     _progress("scope", category=category or "unavailable")
 
@@ -3909,10 +3991,13 @@ def _answer_question_core(question, inline_domains=frozenset()):
     _progress_sections(shelf_overrides)
 
     # everything curated that must reach the answer regardless of ranking
+    if depth_ctx.skip_cases():                 # MATTER_DEPTH: the law on hand only; no judgment of the library in a Standard answer
+        judgment_overrides = []
     overrides = statute_overrides + judgment_overrides + shelf_overrides
     # a follow-up: the sections the earlier answers of this conversation relied on (carry_forward.py), unless the question already has them
     overrides = overrides + _carried_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
-    overrides = overrides + _carried_case_matches({str(o.get("case_name") or "").lower() for o in overrides if isinstance(o, dict)})
+    if not depth_ctx.skip_cases():
+        overrides = overrides + _carried_case_matches({str(o.get("case_name") or "").lower() for o in overrides if isinstance(o, dict)})
     overrides = overrides + _charge_matches({((o.get("act") or "").upper(), str(o.get("section_number")).upper()) for o in overrides if isinstance(o, dict)})
 
     # Search on the CURRENT message first, falling back to the full
@@ -3923,7 +4008,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     result = _find_relevant_sections_for_turn(current_message, question)
     _progress_library(result)
     _lib = {((m.get("act") or "").upper(), str(m.get("section_number")).upper()) for m in (result.get("matches") or []) if isinstance(m, dict)}
-    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") in ("carried", "alias", "charge_map") and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
+    overrides = [o for o in overrides if not (isinstance(o, dict) and o.get("retrieval") in ("carried", "pinned", "alias", "charge_map") and ((o.get("act") or "").upper(), str(o.get("section_number")).upper()) in _lib)]       # the library's own search found it too: once only
     overrides = _drop_full_act_duplicates(overrides, (result.get("matches") or []) + statute_overrides)       # the NI Act / IT Act shelf copies (detection on since 2026-11-02): a section the library already supplies is not handed over twice
 
     if result["state"] == "unavailable":
@@ -3959,7 +4044,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
         return {"state": "no_match"}
 
     if result["state"] == "conflicting_matches":
-        all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
+        all_matches = result["matches"] + ([] if depth_ctx.skip_cases() else result.get("judgment_matches", [])) + overrides
         all_matches = _inject_definitional_companions(all_matches)
         retrieved_text = format_retrieved_text_for_prompt(all_matches)
         # Same fetch-once-reuse-twice pattern as _answer_single_match's fresh path above.
@@ -3984,7 +4069,7 @@ def _answer_question_core(question, inline_domains=frozenset()):
     # it was the single highest-scoring result overall) AND any
     # curated statute overrides that matched alongside the normal
     # semantic results.
-    all_matches = result["matches"] + result.get("judgment_matches", []) + overrides
+    all_matches = result["matches"] + ([] if depth_ctx.skip_cases() else result.get("judgment_matches", [])) + overrides
     return _answer_single_match(question, all_matches)
 
 
@@ -4333,7 +4418,7 @@ def _carried_matches(have):
     if not refs:
         return []
     out, tried = [], []
-    for r in refs[:5]:
+    for r in refs[:8]:
         try:
             act, num = str(r.get("act") or "").upper(), str(r.get("section") or "").strip()
             if not act or not num or (act, num.upper()) in have:
@@ -4357,7 +4442,7 @@ def _carried_matches(have):
                 if data:
                     m = {"type": "statute", "act": data["act"], "section_number": data["section_number"], "text": data["text"], "source": "carried_section"}
             if m:
-                m["retrieval"] = "carried"
+                m["retrieval"] = "pinned" if r.get("pinned") else "carried"
                 out.append(m)
         except Exception as exc:  # noqa: BLE001 -- fail-open: a section that cannot be fetched is simply not carried
             logger.warning("carry-forward of %s failed: %s", r, type(exc).__name__)
@@ -4650,6 +4735,45 @@ def _answer_file_lookup(question):
         return None
 
 
+def _answer_explain(question):
+    """MATTER_DEPTH / LAW_ON_HAND, size 'explain' (MATTER_WORKSPACE_PLAN.md W1): explain named or charged sections from the text of the law on hand. The sections come BY CODE (the ones the person's own message names, else the matter's pinned
+    sections); their text, cut to the cited sub-section, and the BNSS First Schedule rows come from our own copy (law_on_hand.py); the model explains them in one small call (no thinking budget to speak of) and cannot add law; code removes
+    any sentence that names a section not on hand, quotes words that are not in the text, or gives a figure that is in no source. Returns an answer dict, or None when nothing is on hand to explain (the Standard answer runs
+    instead). Never raises."""
+    try:
+        import law_on_hand as _L
+        import matter_files as _MF
+        if client is None:
+            return None
+        pins = list(getattr(_MATTER, "pins", None) or [])
+        named = _L.refs_in_text(_person_message(question), pins)
+        items = _L.items_for(named if named else pins)
+        if not any(i["on_hand"] for i in items):
+            print("EXPLAIN_NOTHING_ON_HAND " + json.dumps({"named": len(named), "pins": len(pins)}), flush=True)
+            return None
+        md = getattr(_MATTER, "docs", None) or {}
+        chosen = md.get("file_chosen") or md.get("chosen") or []
+        docs_block = _MF.documents_block(md.get("docs") or {}, chosen) if chosen else ""
+        docs_plain = "\n".join(p.get("text") or "" for p in chosen)
+        _progress("write")
+        text = _create_answer(SONNET_MODEL, _L.explain_prompt(question, items, docs_block, getattr(_MATTER, "instructions", None) or ""), label="explain_answer")
+        if not text:
+            return None
+        clean, notes, removed = _L.check_explain(text, items, docs_plain)
+        print("EXPLAIN_ANSWER " + json.dumps({"sections": len(items), "on_hand": len(_L.on_hand_refs(items)), "removed_sentences": removed, "docs_passages": len(chosen), "named_by_person": bool(named)}), flush=True)
+        if not clean.strip():
+            return None
+        out = {"state": "single_match", "matches": [], "response_text": clean, "situation_detected": False, "from_cache": False, "unverified_related_judgments": [],
+               "route": "explain", "law_on_hand": _L.view(items), "coverage": _MF.coverage(md.get("docs") or {}, chosen) if chosen else ""}
+        allnotes = list(getattr(_MATTER, "notes", None) or []) + notes
+        if allnotes:
+            out["matter_files_engine_notes"] = allnotes
+        return out
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_answer_explain failed: %s", type(exc).__name__)
+        return None
+
+
 def _answer_from_documents_only(question):
     """MATTER_FILES: the library found nothing for the question (state no_match) but the matter's documents had passages for it (a question about the facts of the file: 'when was he arrested?'). The answer is written
     from the documents alone, with no law (the Hard rules still forbid adding any). Returns an answer dict or None (no documents, generation failed or withheld): the caller then ends as 'no_match'. Never raises."""
@@ -4781,7 +4905,7 @@ def _progress_wider(result):
         pass
 
 
-def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None):
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None, matter_depth=None, matter_pins=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
     answer_style.set_audience(audience)
@@ -4792,6 +4916,16 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
     _MATTER.docs = matter_docs if isinstance(matter_docs, dict) and matter_docs.get("chosen") else None          # matter_files.py (MATTER_FILES): the matter's document passages for this question; facts, never law, never words of the question
     _MATTER.instructions = (matter_instructions or "").strip() or None                                            # matter_files.instructions_block (MATTER_INSTRUCTIONS): the lawyer's standing preferences for the matter
     _MATTER.notes = []
+    _MATTER.pins = [str(x) for x in matter_pins] if matter_pins else None          # law_on_hand.py: the sections the matter's documents charge ('BNS 309(4)'), chosen by code; never words of the question
+    depth_ctx.set_depth(matter_depth)                                              # MATTER_DEPTH: the size of this answer (depth_ctx.py); cleared in the finally below
+    if matter_depth == "standard" and _MATTER.pins:
+        _pin_refs = []
+        for _r in _MATTER.pins:
+            _a, _n = (_r.split(" ", 1) + [""])[:2]
+            _n = re.sub(r"\(.*$", "", _n)
+            if _a and _n and not any(x["act"] == _a and x["section"] == _n for x in _pin_refs):
+                _pin_refs.append({"act": _a, "section": _n, "pinned": True, **({"act_key": "bsa_2023"} if _a == "BSA" else {})})
+        _CARRIED.refs = _pin_refs + [r for r in (_CARRIED.refs or []) if (r.get("act"), r.get("section")) not in {(x["act"], x["section"]) for x in _pin_refs}]
     try:
         import cost_log
         cost_log.begin(question)
@@ -4815,10 +4949,19 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         result = None
         if matter_route == "file" and getattr(_MATTER, "docs", None) and (_MATTER.docs.get("file_chosen") or _MATTER.docs.get("chosen")):
             result = _answer_file_lookup(question)            # matter_routing.py: the quick answer from the documents; None = the model said NEEDS_LAW, or it failed: the legal path answers instead
+        if result is None and matter_depth == "explain":
+            result = _answer_explain(question)                # law_on_hand.py: the sections explained from their own text; None = nothing on hand: a Standard answer instead
+            if result is None:
+                depth_ctx.set_depth("standard")
+                matter_depth = "standard"
         if result is None:
             result = _answer_question_inner(question, inline_domains=inline_domains)
-        if isinstance(result, dict) and result.get("route") == "file":
-            return result                                      # no research-note dressing (Bottom line, table of authorities, ask checklist) for a documents-only answer
+        if isinstance(result, dict) and result.get("route") in ("file", "explain"):
+            if matter_depth:
+                result["depth"] = result["route"]
+            return result                                      # no research-note dressing (Bottom line, table of authorities, ask checklist) for a documents-only or an explain answer
+        if isinstance(result, dict) and matter_depth in ("standard", "research") and result.get("state") in _LINK_STATES:
+            result["depth"] = matter_depth
         try:
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and grounding_checks.mode() in ("warn", "enforce"):
                 notes = grounding_checks.pop_notes()
@@ -4831,7 +4974,7 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         try:
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and answer_style.is_v3():
                 result["audience"] = answer_style.effective_audience()
-                if result["audience"] == "lawyer":
+                if result["audience"] == "lawyer" and not depth_ctx.is_standard():          # a Standard answer has no research-note dressing (Bottom line heading, table of authorities, ask checklist)
                     result["response_text"] = _ensure_bottom_line(result.get("response_text"))
                     result["authorities"] = _build_authorities(result)
                     result = _attach_ask_check(result, question)
@@ -4857,6 +5000,8 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
         _MATTER.docs = None
         _MATTER.instructions = None
         _MATTER.notes = []
+        _MATTER.pins = None
+        depth_ctx.set_depth(None)
 
 
 def _person_message(question):

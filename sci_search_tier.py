@@ -47,6 +47,12 @@ def _env(name, default=""):
 def mode():
     m = _env("SCI_SEARCH_MODE", "off").lower()
     m = m if m in MODES else "off"
+    try:                                       # MATTER_DEPTH (depth_ctx.py): a Standard answer in a matter never runs the wider search
+        import depth_ctx
+        if depth_ctx.skip_wider():
+            return "off"
+    except Exception:  # pragma: no cover -- fail-open
+        pass
     if not _ANNOUNCED:
         _ANNOUNCED.append(m)
         print("SCI_TIER mode=%s url_set=%s token_set=%s" % (m, bool(_env("SCI_SEARCH_URL")), bool(_env("SCI_SEARCH_TOKEN"))), flush=True)       # once per process: shows in the log what the setting really is

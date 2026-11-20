@@ -369,6 +369,20 @@ def _answer_blocks(view, lawyer):
             B.append({"t": "p", "runs": [R(str(it.get("section") or ""), b=True), R("  —  " + str(it.get("why") or "") + " (" + str(it.get("how") or "") + ")")]})
             for l in it.get("class_lines") or []:
                 B.append(_official(l))
+    loh = view.get("law_on_hand")
+    if isinstance(loh, dict) and loh.get("sections"):                  # LAW_ON_HAND: the sections the explain answer stood on, word for word, and the Schedule table (code-built; a program read it)
+        B.append({"t": "h3", "text": "Law on hand"})
+        B.append(_p(loh.get("note") or "", muted=True))
+        for sec in loh["sections"]:
+            note = ("  (cut to the cited sub-section)" if sec.get("cut") else "") + ("" if sec.get("on_hand") else "  \u2014 its text is not in our library")
+            B.append({"t": "p", "runs": [R(str(sec.get("ref") or ""), b=True), R(note, muted=True)]})
+            if sec.get("on_hand") and sec.get("text"):
+                B.append(_official(sec["text"]))
+        if loh.get("table"):
+            B.append({"t": "table", "head": ["Section", "Punishment", "Cognizable", "Bailable", "Triable by"],
+                      "rows": [[[R(str(r.get(k) or ""))] for k in ("ref", "punishment", "cognizable", "bailable", "court")] for r in loh["table"]]})
+        if loh.get("no_row"):
+            B.append(_p("No First Schedule row for: " + ", ".join(str(x) for x in loh["no_row"]) + ".", muted=True))
     if not lawyer:
         try:
             cl = answer_pdf.unclear_checklist(view.get("copy_text") or "") if view.get("answer_markdown") else {"items": [], "documents": [], "from_answer": ""}

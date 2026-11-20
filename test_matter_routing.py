@@ -71,7 +71,7 @@ check(MF.coverage(docs, ch) == "Looked at: Doc 1 chargesheet.pdf (pages 1, 2 of 
       f"the coverage line ({MF.coverage(docs, ch)})")
 good = 'The chargesheet states the sections charged are "309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, read with section 3(5)" [Doc 1, p. 1]. It is filed under section 193 of the BNSS [Doc 1, p. 1].'
 check(MF.explain_sections(good, ch) == ["BNS 3(5)", "BNS 309(4)", "BNS 115(2)"], f"Explain these sections: the charged ones, not the section the report is filed under ({MF.explain_sections(good, ch)})")
-check(MF.explain_question(["BNS 309(4)", "BNS 115(2)"]) == "Explain sections 309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, and how they apply to the facts of this matter.", "the button's question")
+check(MF.explain_question(["BNS 309(4)", "BNS 115(2)"]) == "Explain sections 309(4) and 115(2) of the Bharatiya Nyaya Sanhita, 2023, and say what the documents of this matter allege about them.", "the button's question")
 check(MF.explain_sections("The offences charged are section 999 of the BNS [Doc 1, p. 1].", ch) == [], "a section number that is not in the documents is never offered")
 check(MF.explain_sections("The charges are 309(4) BNS and 193 BNSS [Doc 1, p. 1].", ch) == [], "a sentence naming two Acts is skipped (ambiguous)")
 check(MF.file_answer_checks(good, ch) == [], "a clean file answer: no notes")

@@ -140,6 +140,15 @@ def for_question(db, user_id, matter_id, query_text, file_route=False):
     return out
 
 
+def charged_pins(db, user_id, matter_id):
+    """['BNS 309(4)', ...]: the sections the matter's documents give as charged, read by code from labelled lines only (matter_files.charged_refs); [] when none."""
+    try:
+        return MF.charged_refs([{"text": r.text} for r in _rows(db, user_id, matter_id)])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("pins: could not read the matter's documents: %s", type(exc).__name__)
+        return []
+
+
 def has_documents(db, user_id, matter_id):
     return bool(db.execute(select(func.count()).select_from(M.MatterFile).where(M.MatterFile.matter_id == matter_id, M.MatterFile.user_id == user_id)).scalar())
 

@@ -63,7 +63,8 @@
                   "charges",
                   "with_law",
                   "documents_only",
-                  "explain_sections"
+                  "explain_sections",
+                  "go_deeper"
                 ],
                 "type": "string"
               },
@@ -71,7 +72,7 @@
                 "type": "null"
               }
             ],
-            "description": "'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question. 'with_law' / 'documents_only' / 'explain_sections' (MATTER_ROUTING=on): the buttons under an answer in a matter with documents; the server takes the words from the stored last question, or writes them from the sections the last answer gave (409 intent_not_ready when that button was not offered).",
+            "description": "'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question. 'with_law' / 'documents_only' / 'explain_sections' / 'go_deeper' (MATTER_ROUTING, MATTER_DEPTH or LAW_ON_HAND on): the buttons under an answer in a matter with documents; the server takes the words from the stored last question, or writes them from the sections the last answer gave (409 intent_not_ready when that button was not offered).",
             "title": "Intent"
           },
           "question": {

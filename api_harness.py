@@ -17,7 +17,7 @@ import os, sys, time
 sys.path.insert(0, %(here)r)
 from api import engine_adapter
 class E:
-    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None):
+    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None, matter_depth=None, matter_pins=None):
         import cost_log, progress
         cost_log.begin(question)
         try:
@@ -43,6 +43,19 @@ class E:
                 text = "The document states the charges: \"" + line.strip() + "\" " + MF.cite(p0["doc"], d0.get("unit") or "page", loc) + "." + (" [with the matter's instructions]" if matter_instructions else "")
                 return {"state": "single_match", "audience": audience, "matches": [], "response_text": text, "route": "file", "documents_only": True,
                         "explain_sections": MF.explain_sections(text, ch), "coverage": MF.coverage(matter_docs["docs"], ch)}
+            if matter_depth == "explain":        # LAW_ON_HAND: the sections explained from their own text; the view is built by the real code, the words are a stub
+                import law_on_hand as LH
+                items = LH.items_for(matter_pins or [])
+                return {"state": "single_match", "audience": audience, "matches": [], "response_text": "Stub explanation of " + ", ".join(i["ref"] for i in items) + ".", "route": "explain", "depth": "explain",
+                        "law_on_hand": LH.view(items)}
+            if matter_depth in ("standard", "research"):        # MATTER_DEPTH: a Standard or a Research answer (stub words); like the real ones it may quote a handed document passage with its citation (and once on a wrong page when asked to)
+                tail = ""
+                if matter_docs and matter_docs.get("chosen"):
+                    import matter_files as MF
+                    p0 = matter_docs["chosen"][0]
+                    d0 = matter_docs["docs"].get(p0["doc"]) or {}
+                    tail = " The document states \"" + " ".join(p0["text"].split()[:8]) + "\" " + MF.cite(p0["doc"], d0.get("unit") or "page", p0["loc"] + (1 if "WRONGPAGE" in question else 0)) + "."
+                return {"state": "single_match", "audience": audience, "matches": [], "depth": matter_depth, "response_text": "Stub " + matter_depth + " answer to: " + question[-60:] + (" [pins " + ",".join(matter_pins) + "]" if matter_pins else "") + tail}
             if matter_docs and matter_docs.get("chosen"):        # MATTER_FILES: quote the first handed passage's first eight words with its citation (the check must find them), and once on a wrong page when asked to
                 import matter_files as MF
                 p0 = matter_docs["chosen"][0]
