@@ -106,7 +106,7 @@ def _safe_name(name):
 def docs_meta(db, user_id, matter_id):
     """{doc_no: {'name', 'unit', 'unread', 'kind'}} for the matter's files (the person's own only)."""
     rows = db.execute(select(M.MatterFile).where(M.MatterFile.matter_id == matter_id, M.MatterFile.user_id == user_id).order_by(M.MatterFile.doc_no)).scalars().all()
-    return {f.doc_no: {"name": f.name, "unit": f.unit, "unread": list(f.unread or []), "kind": f.kind, "id": str(f.id)} for f in rows}
+    return {f.doc_no: {"name": f.name, "unit": f.unit, "unread": list(f.unread or []), "kind": f.kind, "id": str(f.id), "units": f.units} for f in rows}
 
 
 def _rows(db, user_id, matter_id):
@@ -117,8 +117,9 @@ def _rows(db, user_id, matter_id):
     return db.execute(q).all()
 
 
-def for_question(db, user_id, matter_id, query_text):
-    """{'docs': docs_meta, 'chosen': [passages handed over]} or None when the matter has no files. The search sees only this matter's passages, read with the person's id as well as the matter's."""
+def for_question(db, user_id, matter_id, query_text, file_route=False):
+    """{'docs': docs_meta, 'chosen': [passages for the legal path], 'file_chosen': [passages for a file question] (only with file_route)} or None when the matter has no files. The search sees only this matter's
+    passages, read with the person's id as well as the matter's. A file question gets the WHOLE matter when its read text is short (matter_files.WHOLE_MATTER_CHARS), else a larger search than the legal path's."""
     meta = docs_meta(db, user_id, matter_id)
     if not meta:
         return None
@@ -127,8 +128,20 @@ def for_question(db, user_id, matter_id, query_text):
     if any(r["vec"] for r in rows):
         e = embed([query_text[:2000]], "query")
         qv = e[0] if e else None
-    chosen = MF.search(query_text, rows, qvec=qv)
-    return {"docs": meta, "chosen": chosen, "meaning": qv is not None}
+    out = {"docs": meta, "chosen": MF.search(query_text, rows, qvec=qv), "meaning": qv is not None}
+    if file_route:
+        total = sum(len(r["text"]) for r in rows)
+        if total <= MF.WHOLE_MATTER_CHARS:
+            out["file_chosen"] = [{k: v for k, v in r.items() if k != "vec"} for r in rows]
+            out["whole"] = True
+        else:
+            out["file_chosen"] = MF.search(query_text, rows, qvec=qv, k=MF.FILE_HANDOVER, max_chars=MF.FILE_HANDOVER_CHARS)
+            out["whole"] = False
+    return out
+
+
+def has_documents(db, user_id, matter_id):
+    return bool(db.execute(select(func.count()).select_from(M.MatterFile).where(M.MatterFile.matter_id == matter_id, M.MatterFile.user_id == user_id)).scalar())
 
 
 def full_text(db, user_id, matter_id):

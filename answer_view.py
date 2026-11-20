@@ -457,7 +457,22 @@ def _matter_files(v):
         unread = [{"name": str(d.get("name") or ""), "pages": list(d.get("unread") or [])} for d in docs.values() if isinstance(d, dict) and d.get("unread")]
         if not items and not checks and not v.get("notes"):
             return None
-        return {"note": MATTER_FILES_NOTE, "items": items, "notes": _strings(v.get("notes")), "checked": len(checks), "found": sum(1 for c in checks if c.get("verdict") == "ok"), "unread": unread}
+        return {"note": MATTER_FILES_NOTE, "items": items, "notes": _strings(v.get("notes")), "checked": len(checks), "found": sum(1 for c in checks if c.get("verdict") == "ok"), "unread": unread,
+                "coverage": str(v.get("coverage") or "")}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _matter_route(v):
+    """MATTER_ROUTING=on: {'route': 'file'|'law', 'label', 'escaped', 'offers': {'with_law', 'documents_only', 'explain_sections': [refs], 'explain_label'}} or None."""
+    try:
+        if not isinstance(v, dict) or v.get("route") not in ("file", "law"):
+            return None
+        o = v.get("offers") if isinstance(v.get("offers"), dict) else {}
+        refs = [str(r) for r in (o.get("explain_sections") or []) if isinstance(r, str)]
+        return {"route": v["route"], "label": str(v.get("label") or ""), "escaped": bool(v.get("escaped")),
+                "offers": {"with_law": bool(o.get("with_law")), "documents_only": bool(o.get("documents_only")), "explain_sections": refs,
+                           "explain_label": ("Explain " + ", ".join(refs[:4]) + (" and more" if len(refs) > 4 else "")) if refs else ""}}
     except Exception:  # noqa: BLE001
         return None
 
@@ -530,7 +545,8 @@ def build(result):
             "ask_check": _ask_check(result.get("ask_check")),
             "charge_table": _charge_table(result.get("charge_candidates")),
             "matter_files": _matter_files(result.get("matter_files")),
-            "documents_only": bool(result.get("documents_only")),
+            "documents_only": bool(result.get("documents_only")) and result.get("route") != "file",
+            "matter_route": _matter_route(result.get("matter_route")),
         }
     except Exception:  # noqa: BLE001 -- the view is a convenience for the front end; the engine's own result is still sent
         logger.exception("answer view failed")

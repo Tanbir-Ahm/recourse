@@ -23,6 +23,10 @@ _UNRELATED_BODY = "Recourse is built for police arrests, FIRs and criminal proce
 _NO_MATCH_BODY = ("Recourse looked but could not find anything in the law and judgments it holds that clearly matches this. Try adding detail "
                   "— what happened, and roughly when — or name the section of law if you know it.")
 _TROUBLE_BODY = "This is a technical problem on Recourse's side, not your question. Try again in a moment."
+DRAFT_LABEL = "Drafting"
+_DRAFT_BODY = ("Recourse cannot draft documents yet. With the documents in this matter you can ask what they say (for example the sections charged, or the dates of arrest and remand), "
+               "or ask a legal question on these facts (for example whether bail can be sought now).")
+_DRAFT_FOOTER = "No answer was used up by this message."
 
 ANSWER_STATES = ("single_match", "conflicting_matches")
 
@@ -40,6 +44,8 @@ def notice(result):
     if state in ANSWER_STATES or state is None:
         return None
     base = {"state": state, "label": OUT_OF_SCOPE_LABEL, "title": None, "body": "", "body_template": "", "topic": None, "reasoning": None, "footer": None}
+    if state == "draft_unavailable":
+        return {**base, "label": DRAFT_LABEL, "title": "Recourse can't draft this yet", "body": _DRAFT_BODY, "body_template": _DRAFT_BODY, "footer": _DRAFT_FOOTER}
     if state == "budget_paused":
         return {**base, "label": DAILY_LIMIT_LABEL, "body": _BUDGET_BODY, "body_template": _BUDGET_BODY}
     if state == "covered_elsewhere_in_tool":

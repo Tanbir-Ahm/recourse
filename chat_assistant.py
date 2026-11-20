@@ -4618,6 +4618,38 @@ def _answer_from_wider_search_only(question):
         return None
 
 
+def _answer_file_lookup(question):
+    """MATTER_ROUTING route 'file' (matter_routing.py): a question whose answer lives in the matter's documents. One small call with its own prompt (matter_files.FILE_ANSWER_RULES): the documents only, pages cited, no
+    law. The model may reply NEEDS_LAW when the question needs the law: then None, and the legal path answers (the log says so). Code checks the answer (a section or case not in the passages, a sentence that states
+    law) and lists the sections it gives as charged that stand in the passages (the 'Explain these sections' button). Returns an answer dict, or None. Never raises."""
+    try:
+        import matter_files as _MF
+        md = _MATTER.docs
+        chosen = md.get("file_chosen") or md.get("chosen") or []
+        docs = md.get("docs") or {}
+        if client is None or not chosen:
+            return None
+        _progress("write")
+        prompt = _MF.file_answer_prompt(question, _MF.documents_block(docs, chosen), getattr(_MATTER, "instructions", None) or "")
+        text = _create_answer(SONNET_MODEL, prompt, label="file_answer")
+        if not text or _MF.is_needs_law(text):
+            print("MATTER_ROUTE_ESCAPE " + json.dumps({"reason": "needs_law" if text else "empty"}), flush=True)
+            return None
+        notes = _MF.file_answer_checks(text, chosen)
+        if notes:
+            _MATTER.notes = list(getattr(_MATTER, "notes", None) or []) + notes
+        explain = _MF.explain_sections(text, chosen)
+        print("MATTER_FILE_ANSWER " + json.dumps({"passages": len(chosen), "whole": bool(md.get("whole")), "notes": len(notes), "explain": len(explain)}), flush=True)
+        out = {"state": "single_match", "matches": [], "response_text": text, "situation_detected": False, "from_cache": False, "unverified_related_judgments": [], "documents_only": True,
+               "route": "file", "explain_sections": explain, "coverage": _MF.coverage(docs, chosen)}
+        if getattr(_MATTER, "notes", None):
+            out["matter_files_engine_notes"] = list(_MATTER.notes)
+        return out
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("_answer_file_lookup failed: %s", type(exc).__name__)
+        return None
+
+
 def _answer_from_documents_only(question):
     """MATTER_FILES: the library found nothing for the question (state no_match) but the matter's documents had passages for it (a question about the facts of the file: 'when was he arrested?'). The answer is written
     from the documents alone, with no law (the Hard rules still forbid adding any). Returns an answer dict or None (no documents, generation failed or withheld): the caller then ends as 'no_match'. Never raises."""
@@ -4749,7 +4781,7 @@ def _progress_wider(result):
         pass
 
 
-def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None):
+def answer_question(question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None):
     """Public entry point. audience ('layman' | 'lawyer') and channel ('whatsapp' | None) matter only under RESPONSE_STYLE=v3 (see answer_style.py); they are set for the length of this one call.
     The result of an answer state carries 'audience' (the voice actually used) and, for the lawyers' note, 'authorities' (the table of authorities, built by code)."""
     answer_style.set_audience(audience)
@@ -4780,7 +4812,13 @@ def answer_question(question, inline_domains=frozenset(), audience=None, channel
                 return {"state": "budget_paused"}
         except Exception:  # noqa: BLE001
             pass
-        result = _answer_question_inner(question, inline_domains=inline_domains)
+        result = None
+        if matter_route == "file" and getattr(_MATTER, "docs", None) and (_MATTER.docs.get("file_chosen") or _MATTER.docs.get("chosen")):
+            result = _answer_file_lookup(question)            # matter_routing.py: the quick answer from the documents; None = the model said NEEDS_LAW, or it failed: the legal path answers instead
+        if result is None:
+            result = _answer_question_inner(question, inline_domains=inline_domains)
+        if isinstance(result, dict) and result.get("route") == "file":
+            return result                                      # no research-note dressing (Bottom line, table of authorities, ask checklist) for a documents-only answer
         try:
             if isinstance(result, dict) and result.get("state") in _LINK_STATES and grounding_checks.mode() in ("warn", "enforce"):
                 notes = grounding_checks.pop_notes()

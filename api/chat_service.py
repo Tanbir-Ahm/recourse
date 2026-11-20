@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 import carry_forward
 import case_file as CF
 import matter_files as MF
+import matter_routing as MR
 import web_chat
 
 from . import engine_adapter, matter_docs, quota
@@ -168,11 +169,20 @@ def run_turn(on_step, c):
         engine_q, info = web_chat.question_for_engine(c.turns, c.question, matter=c.matter, case_file=c.case_file)
         web_chat.log_turn(engine_q, info)
         ecf = web_chat.engine_case_file(c.case_file, info, c.turns, c.question, intent=c.intent, audience=c.audience) if c.case_file is not None or CF.enabled() else None
-        docs = _matter_docs(c)
-        out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf, matter_docs=docs,
-                                  matter_instructions=c.instructions if c.instructions and MF.instructions_enabled() else None)
-        if docs:
-            _check_documents(c, out, docs)
+        dec = _route_decision(c)
+        acting = bool(dec and dec["mode"] == "on")
+        if acting and dec["route"] == "draft":
+            docs = None                                                   # a request to draft: drafting is not available; a fixed notice, no model, no cost (DRAFTING_PLAN.md section 10, D0)
+            out = {"result": {"state": "draft_unavailable"}, "cost_inr": 0.0, "elapsed_ms": 0}
+        else:
+            file_route = acting and dec["route"] == "file"
+            docs = _matter_docs(c, file_route=file_route)
+            out = engine_adapter.work(engine_q, c.audience, on_step, carried=info.get("carry") or None, case_file=ecf, matter_docs=docs,
+                                      matter_instructions=c.instructions if c.instructions and MF.instructions_enabled() else None, matter_route="file" if (file_route and docs) else None)
+            if docs:
+                _check_documents(c, out, docs)
+        if acting:
+            _attach_route(out, dec)
     except BaseException:
         _release_only(c.event_id)
         unclaim(c.chat_id, c.request_id)
@@ -183,7 +193,78 @@ def run_turn(on_step, c):
         unclaim(c.chat_id, c.request_id)
 
 
-def _matter_docs(c):
+ROUTE_INTENTS = {"with_law": "law", "documents_only": "file", "explain_sections": "law"}
+ROUTE_LABELS = {"file": "From your documents only. This answer states no law.", "law": "Answered with the law and your documents.",
+                "escaped": "This question needed the law, so it was answered with the law and your documents."}
+
+
+def _route_decision(c):
+    """MATTER_ROUTING (matter_routing.py): which path answers this question, for a chat filed under a matter that has documents; None when routing does not apply (switch off, no matter, no documents). A tapped
+    'Ask this with the law' / 'Answer from my documents only' / 'Explain these sections' decides by itself. Logged in every mode except off (counts and rule names only, never the question)."""
+    if c.matter_id is None or not MF.enabled():
+        return None
+    m = MR.mode()
+    if m == "off":
+        return None
+    try:
+        with dbs.session() as db:
+            if not matter_docs.has_documents(db, c.user_id, c.matter_id):
+                return None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("routing: could not read the matter's documents: %s", type(exc).__name__)
+        return None
+    if c.intent in ROUTE_INTENTS:
+        d = {"route": ROUTE_INTENTS[c.intent], "why": "tapped_" + c.intent, "law_signals": [], "file_signals": [], "lookup_like": False}
+    else:
+        d = MR.route(c.question, True)
+    d["mode"] = m
+    print("MATTER_ROUTE " + __import__("json").dumps({"mode": m, "route": d["route"], "why": d["why"], "law_signals": d["law_signals"], "file_signals": d["file_signals"]}), flush=True)
+    return d
+
+
+def _attach_route(out, dec):
+    """result['matter_route']: the path that actually answered, its label, and the one-tap other ways (MATTER_ROUTING=on only)."""
+    result = out.get("result") if isinstance(out.get("result"), dict) else None
+    if result is None or result.get("state") == "draft_unavailable":
+        return
+    answered_file = result.get("route") == "file"
+    escaped = dec["route"] == "file" and not answered_file
+    route = "file" if answered_file else "law"
+    answer = result.get("state") in ANSWER_STATES
+    offers = {"with_law": bool(answered_file and answer),
+              "documents_only": bool(route == "law" and answer and not escaped and dec.get("lookup_like") and not dec["why"].startswith("tapped_")),
+              "explain_sections": list(result.get("explain_sections") or []) if answered_file else []}
+    result["matter_route"] = {"route": route, "decided": dec["route"], "why": dec["why"], "escaped": escaped, "label": ROUTE_LABELS["escaped" if escaped else route], "offers": offers}
+    if escaped:
+        print("MATTER_ROUTE_ESCAPED " + __import__("json").dumps({"why": dec["why"]}), flush=True)
+
+
+def last_exchange(chat):
+    """(the person's last question, the stored result of the answer to it) of a chat, or (None, None)."""
+    q, res = None, None
+    for m in chat.messages:
+        if m.role == "user":
+            q, res = m.content, None
+        elif m.role == "assistant":
+            res = m.result if isinstance(m.result, dict) else {}
+    return q, res
+
+
+def route_intent_question(chat, intent):
+    """The words of a tapped routing button, written by the server from the stored answer (never from the client): None when the button was not offered under the last answer."""
+    if not (MF.enabled() and MR.mode() == "on" and chat.matter_id):
+        return None
+    q, res = last_exchange(chat)
+    offers = ((res or {}).get("matter_route") or {}).get("offers") or {}
+    if intent in ("with_law", "documents_only"):
+        return q if (q and offers.get(intent)) else None
+    if intent == "explain_sections":
+        refs = [r for r in (offers.get("explain_sections") or []) if isinstance(r, str) and re.fullmatch(r"(?:BNS|BNSS|BSA) \d{1,3}[A-Z]?(?:\(\d+\))?", r)]
+        return MF.explain_question(refs) or None
+    return None
+
+
+def _matter_docs(c, file_route=False):
     """MATTER_FILES on and the chat filed under a matter with documents: the passages that match the question (this matter's only), else None. The search text is the person's current message and their two previous
     messages (a follow-up such as 'and on page 3?' leans on them), never our answers. Fails open: the question is answered without the documents."""
     if c.matter_id is None or not MF.enabled():
@@ -192,7 +273,7 @@ def _matter_docs(c):
         earlier = [t.get("q") or "" for t in (c.turns or []) if isinstance(t, dict)][-2:]
         text = " ".join(earlier + [c.question or ""])
         with dbs.session() as db:
-            d = matter_docs.for_question(db, c.user_id, c.matter_id, text)
+            d = matter_docs.for_question(db, c.user_id, c.matter_id, text, file_route=file_route)
         if d:
             print("MATTER_DOCS " + __import__("json").dumps({"files": len(d["docs"]), "handed": len(d["chosen"]), "meaning": d.get("meaning"),
                                                               "chars": sum(len(p["text"]) for p in d["chosen"])}), flush=True)        # counts only: no names, no text
@@ -217,7 +298,8 @@ def _check_documents(c, out, docs):
         meta = {str(k): {"name": v["name"], "unit": v["unit"], "unread": v["unread"]} for k, v in docs["docs"].items()}
         notes = MF.quote_notes(checks, meta)
         cited = sorted({int(m.group(1)) for m in MF._CITE.finditer(text)})
-        result["matter_files"] = {"docs": meta, "handed": [{"doc": p["doc"], "loc": p["loc"], "loc_to": p["loc_to"], "text": p["text"]} for p in docs["chosen"]],
+        handed = docs.get("file_chosen") if (result.get("route") == "file" and docs.get("file_chosen")) else docs["chosen"]
+        result["matter_files"] = {"docs": meta, "handed": [{"doc": p["doc"], "loc": p["loc"], "loc_to": p["loc_to"], "text": p["text"]} for p in handed], "coverage": result.pop("coverage", None) or "",
                                   "cited_docs": cited, "quote_checks": [{k: (list(v) if isinstance(v, tuple) else v) for k, v in r.items()} for r in checks], "notes": notes + list(result.pop("matter_files_engine_notes", []) or [])}
         print("MATTER_QUOTES " + __import__("json").dumps({"checked": len(checks), **{v: sum(1 for r in checks if r["verdict"] == v) for v in ("ok", "other_page", "other_doc", "not_in_file", "unknown_doc", "skipped_short")},
                                                             "cited_docs": len(cited)}), flush=True)

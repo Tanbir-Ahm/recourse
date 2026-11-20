@@ -17,7 +17,7 @@ import os, sys, time
 sys.path.insert(0, %(here)r)
 from api import engine_adapter
 class E:
-    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None):
+    def answer_question(self, question, inline_domains=frozenset(), audience=None, channel=None, carried_sections=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None):
         import cost_log, progress
         cost_log.begin(question)
         try:
@@ -33,6 +33,16 @@ class E:
                         "register_notes": ["Reported as overruled; not yet confirmed by our reviewer."], "grounding_notes": ["One quotation could not be matched to the sources."],
                         "act_notice": {"html": "The <b>Bharatiya Nagarik Suraksha Sanhita</b> is on <a href=\"https://www.indiacode.nic.in/\">India Code</a><script>window.__xss=1</script>."},
                         "unverified_related_judgments": [{"case_name": "Z v. W", "ik_search_url": "https://indiankanoon.org/search/?formInput=z", "paragraph_number": "2"}]}
+            if matter_route == "file" and matter_docs and (matter_docs.get("file_chosen") or matter_docs.get("chosen")):        # MATTER_ROUTING: the quick answer from the documents, built like the real one (code-checked lists)
+                import matter_files as MF
+                ch = matter_docs.get("file_chosen") or matter_docs["chosen"]
+                p0 = next((p for p in ch if "Sections:" in p["text"]), ch[0])
+                d0 = matter_docs["docs"].get(p0["doc"]) or {}
+                line = next((ln for ln in p0["text"].split("\n") if "Sections:" in ln), " ".join(p0["text"].split()[:8]))
+                loc = p0["loc"] + (1 if "WRONGPAGE" in question else 0)
+                text = "The document states the charges: \"" + line.strip() + "\" " + MF.cite(p0["doc"], d0.get("unit") or "page", loc) + "." + (" [with the matter's instructions]" if matter_instructions else "")
+                return {"state": "single_match", "audience": audience, "matches": [], "response_text": text, "route": "file", "documents_only": True,
+                        "explain_sections": MF.explain_sections(text, ch), "coverage": MF.coverage(matter_docs["docs"], ch)}
             if matter_docs and matter_docs.get("chosen"):        # MATTER_FILES: quote the first handed passage's first eight words with its citation (the check must find them), and once on a wrong page when asked to
                 import matter_files as MF
                 p0 = matter_docs["chosen"][0]

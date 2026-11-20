@@ -78,7 +78,7 @@ class PatchChat(BaseModel):
 
 class AskChat(BaseModel):
     question: str = Field(min_length=1, description="The person's own words.")
-    intent: Optional[Literal["age_minor", "charges"]] = Field(default=None, description="'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question.")
+    intent: Optional[Literal["age_minor", "charges", "with_law", "documents_only", "explain_sections"]] = Field(default=None, description="'age_minor': the person tapped 'under 18' on the age card; the server writes the question's words and asks what changes under POCSO (needs that answer in the case file). 'charges': the person pressed 'What else could he be charged with?' (lawyers' conversations; needs CHARGE_MAP and facts in the case file); the server writes the question. 'with_law' / 'documents_only' / 'explain_sections' (MATTER_ROUTING=on): the buttons under an answer in a matter with documents; the server takes the words from the stored last question, or writes them from the sections the last answer gave (409 intent_not_ready when that button was not offered).")
 
 
 class CaseFileFact(BaseModel):
@@ -184,6 +184,10 @@ def _prepare(db, principal, chat_id, key, question, intent=None):
     """Runs in a thread (database work). -> ('replay', out) | ('refused', info) | ('run', Turn); raises HTTPException for the plain refusals."""
     user = principal.user
     chat = _own_chat(db, user, chat_id)
+    if intent in chat_service.ROUTE_INTENTS:
+        question = chat_service.route_intent_question(chat, intent)            # the server writes the words (matter_routing.py buttons); the client's text is ignored
+        if not question:
+            raise HTTPException(status_code=409, detail="intent_not_ready")
     kind, out = chat_service.stored_reply(db, chat.id, key, question)
     if kind == "reused":
         raise HTTPException(status_code=409, detail="idempotency_key_reused")

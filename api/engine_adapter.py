@@ -69,7 +69,7 @@ def jsonable(obj):
     return _scrub(json.loads(json.dumps(obj, default=_default, ensure_ascii=False)))
 
 
-def work(question, audience, on_step, carried=None, case_file=None, matter_docs=None, matter_instructions=None):
+def work(question, audience, on_step, carried=None, case_file=None, matter_docs=None, matter_instructions=None, matter_route=None):
     """Runs in a worker thread: one question, start to finish. on_step(step_id, detail) hears the engine's live steps (this thread only)."""
     import cost_log
     import progress
@@ -84,6 +84,8 @@ def work(question, audience, on_step, carried=None, case_file=None, matter_docs=
             kw["matter_docs"] = matter_docs                              # the matter's document passages for this question (MATTER_FILES); a separate argument, never words of the question
         if matter_instructions:
             kw["matter_instructions"] = matter_instructions              # the matter's standing instructions (MATTER_INSTRUCTIONS); a separate argument
+        if matter_route:
+            kw["matter_route"] = matter_route                            # matter_routing.py: 'file' = the quick answer from the documents (MATTER_ROUTING=on); not passed otherwise
         result = eng.answer_question(question, inline_domains=INLINE_DOMAINS, audience=audience, channel=None, **kw)
     finally:
         progress.clear()
